@@ -1,6 +1,6 @@
 import { defineMessages } from '../message-core'
 
-/** Slideshow from the selection (TODO R5, docs/PLAN_SLIDESHOW.md, Pem 2026-11-14/15). */
+/** Slideshow from the selection (TODO R5, docs/archive/PLAN_SLIDESHOW.md, Pem 2026-11-14/15). */
 export const slideshowMessages = defineMessages({
   ss_open: { fr: 'Diaporama', en: 'Slideshow' },
   ss_open_title: { fr: 'Voir la sélection en diaporama, plein écran', en: 'Show the selection as a full-screen slideshow' },

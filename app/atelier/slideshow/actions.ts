@@ -1,6 +1,6 @@
 'use server'
 
-// Saved slideshows (TODO R5, docs/PLAN_SLIDESHOW.md). Team table `slideshow`
+// Saved slideshows (TODO R5, docs/archive/PLAN_SLIDESHOW.md). Team table `slideshow`
 // (supabase/sql/slideshow.sql): RLS lets any team member read and write; signed-out → nothing.
 
 import { createClient } from '@/lib/supabase/server'

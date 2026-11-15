@@ -1,5 +1,5 @@
 /**
- * Slideshow export, step 2 (docs/PLAN_SLIDESHOW.md, Pem 2026-11-15): an animated GIF (one frame per
+ * Slideshow export, step 2 (docs/archive/PLAN_SLIDESHOW.md, Pem 2026-11-15): an animated GIF (one frame per
  * slide held for a pause time, no transitions) and a ZIP of the same frames as full-colour JPEG / PNG.
  * Everything runs in the browser (no server job). Browser-only.
  */

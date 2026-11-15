@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Slideshow export (step 2, docs/PLAN_SLIDESHOW.md, Pem 2026-11-15): GIF (one frame per slide, a pause
+ * Slideshow export (step 2, docs/archive/PLAN_SLIDESHOW.md, Pem 2026-11-15): GIF (one frame per slide, a pause
  * time, no transitions; 256 colours accepted) or the same frames as full-colour JPEG / PNG in a ZIP.
  * Frame sizes 1:1, 4:5, 9:16, 16:9 or custom (+ web = half size); picture contained or filling the frame.
  */

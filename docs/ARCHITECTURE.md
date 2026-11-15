@@ -37,7 +37,7 @@ Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Catal
 | 4 | `trg_oeuvre_field_defaults` | `LocalisationID`, `ContactID`, `Profondeur`, `Encadree`, `Montee`, `Technique` | No holder → owner (else Pem 13); empty depth, not framed/mounted/sculpture → `0.1` |
 | 5 | `trg_oeuvre_holder_check` | `statusId`, `ContactID`, `LocalisationID` | 1/2/3: Pem owns + holds. 4: Pem owns. 7/8: custodian ≠ Pem + active custody order. 6: owner ≠ Pem + paid sale order; custody to buyer only on delivery. 11: owner ≠ Pem. Errors `custody_order_required`, `holder_required`, `sale_order_required` |
 | 6 | `trg_oeuvre_location_by_stage` | `statusId`, `Catalogué`, `NeedsPhotograph`, `LocalisationID`, `localisation_address_id`, `fate` | Address must belong to the holder. Holder ≠ Pem with one address → that address. Pem: address follows stage (Atelier in production, Principal from Disponible) unless picked by hand |
-| 7 | `trg_oeuvre_production_span` | `Catalogué`, `statusId`, `Année`, `production_started_on`, `production_completed_on` | Status 3 ⇒ catalogued. Catalogued → `production_completed_on` = today; un-catalogued → cleared + "Reprise en production" line in `Historique`. `Année` empty → year of completion. End before start → error |
+| 7 | `trg_oeuvre_production_span` | `Catalogué`, `statusId`, `Année`, `production_started_on`, `production_completed_on`, `production_started_precision`, `production_completed_precision` | Status 3 ⇒ catalogued. Catalogued → `production_completed_on` = today (precision reset to day); un-catalogued → cleared + "Reprise en production" line in `Historique`. `Année` empty → year of completion. End before start → error. Start / end can be a year or month (stored 1 Jan / the 1st + precision; null = day, [`oeuvres_production_precision.sql`](../supabase/sql/oeuvres_production_precision.sql), 2026-11-14). Status 1 also covers « catalogued, photo still to take » (`NeedsPhotograph`) — screens must word it from `Catalogué`, not from the status label |
 | 8 | `trg_oeuvre_soft_delete_gate` | `deleted_at` | Soft-deleting a sold / gift work: admin only |
 | 9 | `trg_sync_is_public` | `statusId`, `fate` | `is_public` = status in (2, 4, 6, 7, 8, 11) and no fate |
 | after | `graph_register_oeuvre_node` / `graph_unregister_oeuvre_node` | INSERT / DELETE | Index node in `nodes` |
@@ -78,7 +78,8 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 
 ## 6. Derived values (display only, nothing stored)
 
-- **Period** (`lib/work-periods.ts`): manual override, else the period containing `periodYearOf(work)` = `Année`, else the year of `production_started_on`. Overlaps: latest start wins.
+- **Period** (`lib/work-periods.ts`, `workWhen` / `whenWithSteps` / `effectivePeriod`; same rule in SQL `oeuvre_search_text`): manual override, else the period containing the work's day — production end, else start (a month reads as its 15th, a bare year gives no day), else a real day in `Année`, else the last « Historique de création » line dated to the day — else its year (`Année`, else production start, else the last dated creation line). Lines spanning two periods → the card asks which. Overlaps: latest start wins.
+- **Place made** (`effectivePlace`): the « Historique de création » route (`work_creation_step` places, in order), else the period's place.
 - **Vault types**: counts and type lists ignore `.keep` folder markers; custom types get their own row.
 - **Session journal compare / drawer version history**: diff of `oeuvre_versions` snapshots on real column names.
 

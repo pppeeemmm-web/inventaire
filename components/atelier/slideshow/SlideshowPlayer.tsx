@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Full-screen slideshow of a selection (TODO R5, docs/PLAN_SLIDESHOW.md step 1, Pem 2026-11-14/15).
+ * Full-screen slideshow of a selection (TODO R5, docs/archive/PLAN_SLIDESHOW.md step 1, Pem 2026-11-14/15).
  * The whole picture, never cropped, on black / grey / white; ← → / Space / Esc / F on a computer,
  * swipe + tap on a phone; cut / fade / slide; loop; random order (shuffled once); an optional caption
  * dragged anywhere. Opens over the current page (portal) so closing returns exactly where Pem was.

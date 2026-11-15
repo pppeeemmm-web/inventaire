@@ -1,7 +1,7 @@
 'use client'
 
 // BatchEditModal — edit many works at once, laid out like a mixing desk (B2, design pass
-// 2026-11-13, mock `docs/design/2026-11-13/Batch.dc.html`). Every field starts "unchanged"
+// 2026-11-13, mock `docs/archive/design/2026-11-13/Batch.dc.html`). Every field starts "unchanged"
 // (quiet grey, em dash); a field that will change turns gold (dot, label, border, row tint, ✕).
 // The footer repeats what Apply will do. Only fields explicitly set are sent to `batchEdit`.
 // Non-admins only see what the server lets them change in bulk (period, place made, broadcast,

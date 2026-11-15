@@ -1,5 +1,5 @@
 /**
- * Slideshow from the selection (TODO R5, plan docs/PLAN_SLIDESHOW.md, Pem 2026-11-14/15).
+ * Slideshow from the selection (TODO R5, plan docs/archive/PLAN_SLIDESHOW.md, Pem 2026-11-14/15).
  * Settings shape shared by the player, the remembered settings (this device) and saved slideshows
  * (`slideshow.settings`). Browser-safe.
  */

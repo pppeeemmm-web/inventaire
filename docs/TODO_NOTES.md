@@ -1,6 +1,6 @@
 # TODO — notes
 
-_Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-13. A reference, not a list: the list and the order are in `TODO.md`. When an item closes, move its note to [`DONE.md`](./DONE.md)._
+_Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-13 (sections added 2026-11-15 say so). A reference, not a list: the list and the order are in `TODO.md`. When an item closes, move its note to [`DONE.md`](./DONE.md)._
 
 ## security
 
@@ -27,6 +27,8 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 ## custody
 
 **Custody follow-ups** — orders do not store the custodian's address (picked in the drawer when the custodian has several); a cancelled sale of a consigned work returns it to Pem, not to the gallery; none of the order paths clicked through yet (no orders in the data).
+
+**Where the papers are made (checked 2026-11-15, for TODO R7).** Sale: Sales tab → « Créer la commande + PDF » (`createSaleOrder` → `buildOrderPdf`; commission taken from an active consignment that covers the works, `detectActiveConsignment`). Consignment / loan: Pipeline → new process (`PipelineProcessModal` → `createConsignmentOrder`, `app/atelier/consignments/actions.ts`) → `BORDEREAU_<ref>.pdf` / `BORDEREAU_PRET_<ref>.pdf`, registered in the Vault; regenerate / close from `PipelineProcessDrawer`. Gift: work card gift dialog (`markAsGift`, `app/atelier/works/gift-actions.ts`) → `gifts/BORDEREAU_DON_<id>_<date>.pdf` in the Vault, no order. Live 2026-11-15: 0 `sale_order`, 0 `consignment_order`, 6 works `is_gift`.
 
 ## concept-documents
 
@@ -76,6 +78,8 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 **Fournitures / Supplies — follow-ups** (2026-11-02). Shipped locally: one Studio tab `/atelier/stock` with sub-views Stock (SupplierHub) · Comptage (StockTake; `/atelier/stock-take` redirects) · Réassort / Commande (out of stock or below `min_stock`, grouped by supplier, per-device order draft, copy order). Live data: 235 items, **0 with a minimum set**, 98 without a supplier. Open: no orders table (an order is a copied text, not tracked); a placed order could become an expense (and feed cost per work); the Stock list still lists suppliers first — rename its heading if it still reads as "contacts".
 
+**Invoice → stock (2026-11-15, TODO 11d).** Pem asked how a supplier invoice feeds stock and suppliers. Today it does not: Income & Expenses (`Fiscal.tsx`) records a bill / ticket by hand (type, amount, `receipt_ref`) with no link to `stock` items or to the supplier contact; stock quantities change only through Count (`/atelier/stock?view=count`). A design would tie: invoice (expense) → its lines → stock items (+ quantity) → supplier contact, and the order of item 11 → that invoice. Reading the invoice by itself = OCR (needs Pem's GO, `CLAUDE.md`). Suppliers section of Stock starts open (`SupplierHub.tsx` `suppliersOpen` = true) — TODO B8.
+
 ## s6
 
 **S6 leftovers** (2026-11-01 block moved to [`DONE.md`](./DONE.md)): photo background / frame counts as a colour; storage cost as a per-day rate; re-check the iOS share-sheet → PWA path (iPhone share menu may not list PWAs); audit `/atelier/site` controls before changes.
@@ -83,3 +87,23 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 ## vat
 
 **Idea (owner 2026-11-12, no GO): VAT per sale** — today `Oeuvres.tva_rate` is typed by hand. Wanted: rate resolved from the transaction itself (date, buyer country, buyer VAT number, artist-author 5.5 %, EU B2C distance-sale threshold €10k → OSS, intra-EU B2B reverse charge, export exempt), with a running total against the thresholds. Rules to confirm with the accountant before any build.
+
+## notes-transcript
+
+**Notes: transcript not shown (2026-11-15, TODO B1).** `scripts/transcribe/voice_batch.py --write` adds each transcript as a `journal_entry` (`voice_note_id`, `engine` « faster-whisper large-v3 ») and never writes `voice_note.transcript`. The Notes list, the right panel and the triage panel (`app/atelier/(portal)/notes/_components/Notes.tsx`, `NoteTriagePanel.tsx`) read only `voice_note.transcript` → empty for both audio notes (« Couleur » 2026-11-14: 272 characters in the Journal; « Light study figure sur cadre noir » 2026-08-08: 1 400). Overview « Voice notes to transcribe » counts notes with audio and no linked entry → 0, correct. Fix: when `transcript` is empty, show the linked entry's text (marked « ✦ transcript · engine · unverified », as in the Journal); « Save transcript » then writes `voice_note.transcript` (Pem's version) and leaves the machine entry alone. Typed-but-unsaved text is lost on leaving (TODO B2).
+
+## inputs
+
+**Inputs (R1) — Notes, 2026-11-15.** Kinds `memo / dictation / meeting / field` and projects (buckets) `terrain / studio / commercial / general` come from `lib/voice-note-domain.ts`; set only in the record sheet (`components/shared/VoiceNoteSheet.tsx`, defaults memo · general); the Notes screen filters by them but cannot change them. Pem wants the tab called « Notes » — a sketchbook / notebook plus voice. Idea (Pem): say keywords at the start or end of a recording (« projet X », « œuvre 2357 », « recherche… ») so the PC transcript routes the note by itself — a rule list matched after transcription, suggestions to confirm, not silent moves.
+
+## previews
+
+**`#1234` previews everywhere (R4) — from the closed handoff NEXT §5 ([archive](./archive/HANDOFF_2026-11-14_NEXT.md)).** The hover / hold card exists (`components/atelier/WorkRef.tsx`). Plain `#id` links without it (2026-11-14): AI suggestion rows, Kaizen works row and changes list in `JournalDayExtras.tsx`; `NoteTriagePanel.tsx` (`#{note.oeuvre_id}`, Pem screenshot 2026-11-15 « #2357 · Les mortes marguerites »), `Notes.tsx` labels, `Production.tsx`, `Sales.tsx`, `DrawerWorkSessionsSection.tsx`. Sweep: grep `#{` and `#${` in `.tsx`, keep work ids only. Then thumbnail + loupe like Inventory (`WorkThumb` 40 px in `ImageLoupe`), AI suggestion rows first; those queries likely lack the cover file and the title.
+
+## voice-limits
+
+**Voice notes, limits (1c).** A note longer than one upload (~4 MB, auto-stopped today; the owner starts a new one) → browser → R2 direct upload (needs a CORS PUT rule on the public bucket); a note recorded with no network is kept only while the sheet is open → keep it on the phone (IndexedDB) and send later.
+
+## docket-scan
+
+**Batch scan of expenses / dockets (2026-11-15, TODO 11e).** Pem pasted a proposal (written by another assistant): Google Drive app on the iPhone → « + » → Scan (several dockets → one PDF) into a Drive folder « To Import » → Google Drive for Desktop shows it on the PC (`G:\My Drive\To Import`) → a PC processor reads it. Facts (2026-11-15): Google Drive for Desktop is **not installed** on the studio PC (no `C:\Program Files\Google\Drive File Stream`, no `G:`); nothing was set up. Other paths to weigh in the design: the iPhone's own « Scan Documents » (Files / Notes) → Share → the PWA share target (`/atelier/share-receive`), which lands in R2 without a third-party drive; or OneDrive / a synced folder. Processing fits the existing pattern: a PC batch on the local GPU like `scripts/transcribe/*` (no server queue — `CLAUDE.md` no-GO), one PDF page per docket, fields proposed and confirmed by hand in Income & Expenses, never written silently. Reading dockets = OCR beyond business cards → **needs Pem's explicit GO** (`CLAUDE.md` Hard Rules). Linked: 11 (orders → expense), 11d (invoice lines → stock + supplier).

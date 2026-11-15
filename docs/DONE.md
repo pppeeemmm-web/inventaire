@@ -6,7 +6,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Step 1 (`bab78b6`, What's new 3.1.17): « Diaporama » in the selection bar — full screen, whole picture on black / grey / white, ← → / swipe, play / pause, cut / fade / slide, loop, random order, caption dragged anywhere (FR / EN, chosen details, shadow); saved slideshows shared with the team in Catalogue → « Diaporamas » (play, rename, delete). SQL `slideshow.sql` applied with Pem's OK. Reorder = ‹ › under each thumbnail (≤ 20 works).
 - Step 2 (`7caaebe`, 3.1.18): export in the browser — animated GIF (one frame per work, no transition, pause time, loops) or full-colour JPEG / PNG frames in a ZIP with `sequence.txt`; 1:1, 4:5, 9:16, 16:9, custom, web half size; whole or fill; 9:16 caption out of Instagram's bands. Adds `gifenc` 1.0.3 (MIT). Measured on dev: 3 works → GIF 1080² 1.9 MB / 12 s; ZIP 1080 × 1920 1.9 MB / 5 s.
-- Plan and Pem's answers: [`PLAN_SLIDESHOW.md`](./PLAN_SLIDESHOW.md). Live checks left → TODO §4.
+- Plan and Pem's answers: [`PLAN_SLIDESHOW.md`](./archive/PLAN_SLIDESHOW.md). Live checks left → TODO §4.
 
 ## 2026-11-14 — Inventory and sidebar (other session, all on `origin/main`)
 

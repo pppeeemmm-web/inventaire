@@ -15,13 +15,13 @@ export const whatsNewMessages = defineMessages({
     fr: 'Exporter → Étiquettes : cochez « QR code » pour l’imprimer à droite de chaque étiquette. Scanné avec l’Atelier, il ouvre l’œuvre — pour les étiquettes de stockage et d’inventaire.',
     en: 'Export → Labels: tick « QR code » to print it on the right of each label. Scanned with the Atelier, it opens the work — for storage and inventory labels.',
   },
-  // 3.1.18 (2026-11-15) — slideshow export (docs/PLAN_SLIDESHOW.md step 2).
+  // 3.1.18 (2026-11-15) — slideshow export (docs/archive/PLAN_SLIDESHOW.md step 2).
   wn_slideshow_export_t: { fr: 'Diaporama : export GIF ou images', en: 'Slideshow: GIF or image export' },
   wn_slideshow_export_d: {
     fr: 'Dans les réglages ⚙ du diaporama, « Exporter » : un GIF animé (une image par œuvre, sans transition, pause réglable, 256 couleurs) ou les mêmes images en couleurs complètes (JPEG ou PNG, numérotées, dans un ZIP avec la liste de l’ordre) pour en faire une vidéo plus tard. Formats 1:1, 4:5, 9:16 Reels, 16:9 ou sur mesure, taille web en option ; l’image entière (fond autour) ou remplissant le cadre (bords coupés). En 9:16, la légende reste hors des bandes d’Instagram. Tout se fait dans le navigateur.',
     en: 'In the slideshow settings ⚙, « Export »: an animated GIF (one frame per work, no transition, adjustable pause, 256 colours) or the same frames in full colour (JPEG or PNG, numbered, in a ZIP with the order list) to make a video later. Sizes 1:1, 4:5, 9:16 Reels, 16:9 or custom, web size optional; the whole picture (background around) or filling the frame (edges cut). In 9:16 the caption stays out of Instagram’s bands. It all runs in the browser.',
   },
-  // 3.1.17 (2026-11-15) — slideshow (TODO R5, docs/PLAN_SLIDESHOW.md step 1).
+  // 3.1.17 (2026-11-15) — slideshow (TODO R5, docs/archive/PLAN_SLIDESHOW.md step 1).
   wn_slideshow_t: { fr: 'Diaporama de la sélection', en: 'Slideshow of the selection' },
   wn_slideshow_d: {
     fr: 'Sélectionnez des œuvres, puis « Diaporama » dans la barre de sélection : chaque œuvre en plein écran, l’image entière (jamais recadrée), sur fond noir, gris ou blanc. ← → ou glisser sur le téléphone, Espace pour lecture / pause, Échap pour fermer. Réglages ⚙ : secondes par image, coupe / fondu / glissé, en boucle, ordre au hasard, légende (titre, année, technique, support, dimensions, numéro ; FR ou EN ; à placer en la glissant ; ombre portée). « Enregistrer » garde le diaporama sous un nom, pour toute l’équipe : Catalogue → Diaporamas pour le relire, le renommer ou le supprimer.',

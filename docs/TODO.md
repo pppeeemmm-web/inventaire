@@ -2,34 +2,56 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-15** (verified against live code + DB + `origin/main` `7caaebe` 2026-11-15). Pem's rethink comes first: design whole screens before building ([RETHINK](./RETHINK_2026-11-14.md)). Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place.
+**Last refresh: 2026-11-15** (Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
+
+## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
+
+- [ ] B1. **Notes: an audio note's transcript does not show.** Nothing is lost: the PC writes it as a Journal entry (`journal_entry.voice_note_id`, e.g. « Couleur » 14/11, « Light study figure… » 08/08), but Notes and the triage panel read `voice_note.transcript`, which stays empty → show the Journal transcript there (and in ⌘K / Overview where a note is listed) → [notes](./TODO_NOTES.md#notes-transcript)
+- [ ] B2. **Notes: a typed transcript is lost if you leave without « Save transcript ».** No unsaved guard; the button sits below the text. Add the drawer guard (`useUnsavedActionGuard`) and a sticky save bar.
+- [ ] B3. **Exhibitions: a new exhibition vanishes on reload.** It is saved (« MOULIN » exists twice), but the list only shows type `exposition` **with a start or end date** (`listExhibitionsWithSteps`); other types (salon, résidence…) never show either. Show undated ones; delete the duplicate « MOULIN » with Pem's OK.
+- [ ] B4. **Exhibition floor plan:** Group view lists « All groups (0) » — `FloorPlanTool` passes no groups to the canvas (the point of groups); double-click on a work does nothing (`onOpen` empty); French copy hard-coded there (« Upload en cours… », « Changer le plan », « Glissez les œuvres… »).
+- [ ] B5. **Constellation: leaving the tab empties the blank canvas and the selection** (kept in memory only) — keep them for the session at least.
+- [ ] B6. **Constellation eraser** rubs out drawn strokes bit by bit as you drag and never removes a link — make it remove a whole object (stroke, text, box, link) on click.
+- [ ] B7. **Export → Labels: « Image » stays ticked but no label prints an image.** Pem 2026-11-15: « yes, otherwise it's absurd » → print a small image on the label (left of the text, PDF + HTML, fits beside the QR on L7163 / L7651); grey out the ticks that still do not apply (status, notes).
+- [ ] B8. **Pivot tables and side sections open by default** — Pem has asked many times: every pivot (`PivotPanel`: Inventory, Sales, Reports ×3, Income & Expenses ×2) and Supplies « Suppliers » start **collapsed**; opening one stays open for the session.
+- [ ] B10. **Vault: the detail panel cuts its buttons** — « Voir · Télécharger · Modifier · Supprimer » sit in one row in a 340 px panel, « Supprimer » cut off (Pem screenshot 2026-11-15; `Vault.tsx` ~l.840, no wrap). Also a `.txt` shows « Preview unavailable » — show its text.
+- [ ] B9. **Inventory / drawer quick fixes (6)** from Pem's review of 2026-11-15 (status wording for status 1, QR fallback on dev, cut column titles, « Filters + », « Data history », palette accents) → [DESIGN_DRAWER](./DESIGN_DRAWER.md) « Quick fixes ».
+- [ ] 1f. The work card's field-session list says « 1 photos » (no singular; `DrawerWorkSessionsSection.tsx`).
 
 ## 1. Waiting on Pem — only you can do these
 
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
-- [ ] **Period places:** Waterford / Rebirth and Youth have no place yet (Marseille and Tooreeney do) — give the addresses, or set them in Inventory → Périodes & sources.
+- [ ] **Period places:** Waterford / Rebirth and Youth have no place yet — give the addresses, or set them in Inventory → Périodes & sources.
+- [ ] **Batch scan of expenses / dockets (11e):** GO to read dockets by OCR on the PC (widening OCR needs your explicit GO, `CLAUDE.md`), and which scan path (below).
 
 ## 2. Rethink — design first (Pem 2026-11-14) → [RETHINK](./RETHINK_2026-11-14.md)
 
-Each one: what the screen is for, a whole-screen design, Pem's say — then build. No tweaks to the current screens meanwhile. (R5 slideshow: built and pushed 2026-11-15 → [DONE](./DONE.md); live checks in §4.)
+Each one: what the screen is for, a whole-screen design, Pem's say — then build. No tweaks to the current screens meanwhile (bugs in §0 excepted).
 
-- [ ] R1. **Inputs → outputs.** One clear place for inputs (images / documents with their text, voice notes as the main spoken input, writings) feeding the practice; outputs = works via sessions. Clears the research / concepts / voice notes / « reminders » / AI suggestions / search confusion. Takes in: 1b (one plan for every local "reading" AI — inventory first, widening field OCR needs a GO), 1d (Overview tile « Reminders » opens voice notes, `od_rem_*`), 11c (concepts ↔ catalogue themes — hold until R1), search indexing (whole re-index each time vs one by one — Pem: not now), and the ⌘K proposal after « degas » found nothing: a word match over the works' search text with typo tolerance, so ⌘K answers with the PC off (needs GO; `pg_trgm` not installed).
-- [ ] R2. **Mobile terminal reprioritized** for the day-to-day, not the sales on the welcome page. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px; the menu leads there since ➕ left the bar); a session work with no « Nouvelle / Ancienne » choice still gets no date, so no period (46 backfilled 2026-11-14) — make the choice required?
-- [ ] R3. **Work drawer reorganized** — a quicker, organized glance at everything. Replaces "empty fields folded" ([NEXT §4](./HANDOFF_2026-11-14_NEXT.md)). Step 1 done 2026-11-15 and answered by Pem: top block (stages, swatches, image strip, custody, title, dimensions, technique, support, period) + two drawers « Création » / « Objet », read first, empty = greyed out, collapse switch; phone = a recording drawer with fewer fields → [DESIGN_DRAWER](./DESIGN_DRAWER.md); next: mockups.
-- [ ] R4. **Timeline + map + previews.** Takes in: timeline map / map « Création » mode (places with coordinates, works by date), `#1234` thumbnail + loupe everywhere, and a title next to the number in the AI suggestion rows ([NEXT §5](./HANDOFF_2026-11-14_NEXT.md) lists every plain `#id` link).
+- [ ] R1. **Inputs → outputs.** One clear place for inputs (images / documents with their text, voice notes as the main spoken input, writings) feeding the practice; outputs = works via sessions. Takes in: **rename « Voice notes » → « Notes »** (a sketchbook / notebook + voice — the input of the rethink, Pem 2026-11-15); kind (memo / dictation / meeting / field) and project (field / studio / commercial / general) are only chosen while recording (default Memo · General) and cannot be changed after — make them editable or drop them; **spoken keywords** at the start or end of a recording to route a note by itself (after the PC transcript; Pem 2026-11-15); 1b (one plan for every local "reading" AI — widening field OCR needs a GO); 1d (Overview « Reminders » opens voice notes); 11c (concepts ↔ catalogue themes); search re-indexing (Pem: not now); the ⌘K word match with typo tolerance (needs GO; `pg_trgm` not installed) → [notes](./TODO_NOTES.md#inputs)
+- [ ] R2. **Mobile terminal reprioritized** for the day-to-day. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px); a session work with no « Nouvelle / Ancienne » choice still gets no date — make the choice required?
+- [ ] R3. **Work drawer reorganized** — top block + « Création » / « Objet » drawers, empty greyed out, collapse switch; phone recording drawer → [DESIGN_DRAWER](./DESIGN_DRAWER.md); next: mockups.
+- [ ] R4. **Timeline + map + previews.** Timeline map / map « Création » mode; `#1234` thumbnail + loupe everywhere (Notes triage « #2357 · Les mortes marguerites » has neither — Pem 2026-11-15); a title next to the number in the AI suggestion rows → [notes](./TODO_NOTES.md#previews)
+- [ ] R6. **Exhibitions → « Exhibitions / events »** (Pem 2026-11-15): collaborations live there too; **editions** (prints, books… issued from a series) as an in-between state — taken out of the inventory, then back. Ties to the custody model ([`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md)).
+- [ ] R7. **Commercial: orders and their papers in one place** (Pem 2026-11-15: « this needs to be rationalized »). Today: sales in « Sales » (order + PDF), consignment / loan slips in **Pipeline** (`createConsignmentOrder` → « Bordereau » PDF in the Vault), gift slip in the **work card** gift dialog (« Bordereau de Don »). Consignment is not a sale → rename « Sales » to « Orders »? Not proven: **0 sale orders, 0 consignment / loan orders** in the data (6 gifts) — no path clicked through yet → [notes](./TODO_NOTES.md#custody)
 
-## 3. To build — outside the rethink
+## 3. To build — outside the rethink (needs GO)
+
+Constellation (Pem 2026-11-15)
+- [ ] 20. Undo (drawing, moves, links) · marquee selection with marching ants · arrows as a drawing tool · a real how-to in the right panel (double-click opens a work, shift / drag, space to pan, what each link type means…). « Add all » caps at 120 works on purpose (canvas stays readable; thumbnails load 20 at a time) — say so next to the button.
+
+Slideshow
+- [ ] 21. **Small GIFs** (Pem 2026-11-15, pixels): today a frame must be 200–4 000 px a side (`FRAME_MIN` / `FRAME_MAX`, `lib/slideshow-export.ts`) — lower the minimum to ~40 px (20 × 20 is too small, 40 × 40 / 50 × 60 wanted), a size slider beside the presets; + a **round** frame (only with « Whole (background around) »).
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
-- [ ] 1c. Voice notes, after the record-first sheet (2026-11-14): a note longer than one upload (~4 MB — auto-stopped today, the owner starts a new one) → browser → R2 direct upload (needs a CORS PUT rule on the public bucket); a note recorded with no network is kept only while the sheet is open → keep it on the phone (IndexedDB) and send later. Build only if Pem hits either ≥2×.
-- [ ] 1f. Bug: the work card's field-session list says « 1 photos » (no singular; `DrawerWorkSessionsSection.tsx`, Pem screenshot 2026-11-14).
-- [ ] 1e. Drop `work_place`: no code reads or writes it since 2026-11-14 (« Historique de création »); its 2 rows are in `work_creation_step`. A one-line SQL — show it, apply with Pem's OK.
+- [ ] 1c. Voice notes longer than one upload (~4 MB) or recorded offline → build only if Pem hits either ≥2× → [notes](./TODO_NOTES.md#voice-limits)
+- [ ] 1e. Drop `work_place` (nothing reads or writes it since 2026-11-14; rows moved to `work_creation_step`). One-line SQL — show it, apply with Pem's OK.
 
 Links
-- [ ] 6. Versions: a partial rework (glaze, correction) = a new version of the same work, same number, recorded in its history with its photo (owner 2026-11-13) → [notes](./TODO_NOTES.md#work-or-version)
+- [ ] 6. Versions: a partial rework = a new version of the same work, same number, with its photo → [notes](./TODO_NOTES.md#work-or-version)
 
 Transmission (safety of what is kept)
 - [ ] 8. Security remaining: anon write grants, `system_log` / `studio_task` access, CSP report-only, `xlsx`, `storage_object_ledger` → [notes](./TODO_NOTES.md#security)
@@ -38,48 +60,51 @@ Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)
 - [ ] 10. Money: `is_paid` from payments; clean `sales-client.ts` extras → [notes](./TODO_NOTES.md#money)
 - [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies)
-- [ ] 11b. Collector share kit (F5, owner 2026-11-13): one click → a private link for one collector with a selection of works, a printable PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md)
+- [ ] 11d. **Supplier invoice → stock + supplier** (Pem 2026-11-15 asked how it works: **it does not today**). An expense (Income & Expenses: bill / ticket) is typed by hand and touches neither stock quantities nor the supplier list; stock moves only by Count. Design with 11; reading the invoice by itself = OCR → needs GO → [notes](./TODO_NOTES.md#supplies)
+- [ ] 11e. **Batch scan of expenses and dockets** (Pem 2026-11-15): scan many dockets in one go on the iPhone → a folder the PC sees → a PC batch (like `scripts/transcribe/`) reads each one and proposes an expense (date, supplier, amount, VAT, `receipt_ref`) to confirm, the scan kept in the Vault « Factures ». Needs the OCR GO (§1); with 11d (lines → stock) → [notes](./TODO_NOTES.md#docket-scan)
+- [ ] 11b. Collector share kit (F5): a private link for one collector with a selection, a PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md)
 
 Public site — next batch
-- [ ] Phones must show the closing text ("outro") of a works sequence on `/works` (owner 2026-11-13: visitors need to see it) — desktop shows it as the last card; decide its place on phones (own last slide, or below the sequence)
+- [ ] Phones must show the closing text ("outro") of a works sequence on `/works` — decide its place (own last slide, or below)
 - [ ] Status chips in English (translate the DB labels) → [notes](./TODO_NOTES.md#status-labels)
-- [ ] 12. Circadian sky leftovers (preview another hour, real shadow direction, inert `atm` knobs) → [notes](./TODO_NOTES.md#circadian)
+- [ ] 12. Circadian sky leftovers → [notes](./TODO_NOTES.md#circadian)
 - [ ] 13. Upload the panorama + video for the map / motion layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`)
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
-- [ ] 15. S6 leftovers (frame counted as a colour, storage per day, iOS share path, `/atelier/site` audit) → [notes](./TODO_NOTES.md#s6)
+- [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Speed and code health — measure first, change after
-- [ ] 16b. Live measures (read only): Inventory first paint + full catalogue, opening a work card, Overview; compare with the last ones. (The Journal's own cold load was measured and fixed 2026-11-14 — DONE.)
-- [ ] 17. Session flow speed: parallel apply, defer day consolidation, indexed work search → [notes](./TODO_NOTES.md#session-flow)
+- [ ] 16b. Live measures (read only): Inventory first paint + full catalogue, opening a work card, Overview.
+- [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
 - [ ] 18. Per-tab lazy Atelier reference fetch · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
 - [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
 
 ## 4. To check once, when it happens (no build)
 
-- [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a year / month start or end; a work created with « Nouvelle » starts production today.
-- [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line (« Tooreeney → Marseille ») in a browser.
+- [ ] Export labels with QR (`00f8085`): scan one printed label with the phone.
+- [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a start / end date; a « Nouvelle » work starts production today.
+- [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
-- [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works (size, time); full screen + swipe on a real iPhone; « Renommer » in Diaporamas; fade / slide by eye; a full loop of auto-advance.
-- [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; the export panel + a real export; a real print (300 dpi, Light B&W, labels on a sheet); admin screens in Chrome (Local jobs, ✦ bar); one real Production drag-back; saving a contact from the pop-up.
+- [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works; full screen + swipe on a real iPhone; « Renommer »; fade / slide by eye; a full loop.
+- [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; a real export; a real print (300 dpi, Light B&W, labels); admin screens in Chrome (Local jobs, ✦ bar); one Production drag-back; saving a contact from the pop-up.
 - [ ] Phone: opening today's session records place and weather by itself.
 - [ ] Constellation: the arrow on the first real "painted on" / "derived from" / "answers" link.
-- [ ] Image descriptions: 1 174 written, none rated yet (2026-11-14) — read a sample (work card or ⌘K); log in `transcribe-out/describe-batch/`.
+- [ ] Image descriptions: 1 174 written, none rated yet — read a sample.
 - [ ] Next real field capture: technique / support written; removing an applied photo → [notes](./TODO_NOTES.md#session-write-paths)
-- [ ] First real sale + payment, end to end → [notes](./TODO_NOTES.md#money)
+- [ ] First real sale + payment, end to end (see R7) → [notes](./TODO_NOTES.md#money)
 - [ ] Concept documents: click through once → [notes](./TODO_NOTES.md#concept-documents)
-- [ ] ⌘K on the live site queues new phrases until the PC indexes them (known) → [notes](./TODO_NOTES.md#semantic-search)
+- [ ] ⌘K on the live site queues new phrases until the PC indexes them (known; Local jobs « Search index backlog » 1 182 on 2026-11-15) → [notes](./TODO_NOTES.md#semantic-search)
 - [ ] Procession layout "not working": reopen only with repro steps.
 
 ## 5. Parked ideas — no GO
 
 - VAT per sale, resolved from the transaction → [notes](./TODO_NOTES.md#vat)
-- Photothèque (~4 000 photos): a **library** (owner 2026-11-13) — standalone photographs, mostly not tied to a work; Pem 2026-11-14: needs a different system, another time → [notes](./TODO_NOTES.md#phototheque)
+- Photothèque (~4 000 photos): a **library**, needs a different system, another time → [notes](./TODO_NOTES.md#phototheque)
 - Writings as an output (Pem 2026-11-14: "we'll leave it for now").
-- A "no year" filter in Inventory to fill dates in batch — only if wanted (641 works have no year; a period can't be inferred without a date, Pem 2026-11-14).
-- Journal entries as Constellation canvas nodes — a big one, not now (owner 2026-11-13) → [notes](./TODO_NOTES.md#journal-phase-2)
-- F7 daily digest email (owner: "not sure"; needs an email service) · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
+- A "no year" filter in Inventory to fill dates in batch — only if wanted (641 works have no year).
+- Journal entries as Constellation canvas nodes — a big one, not now → [notes](./TODO_NOTES.md#journal-phase-2)
+- F7 daily digest email · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
 - Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`)
 
 ## Rules (not tasks)
 
-After a new `public` table: `npm run gen:types` · after schema changes: `grant_audit_queries.sql` · RLS + `GRANT` on new tables · EU R2 endpoint · bilingual copy · 375 px / 44 px phone contract · extend `audit_log_prune()` for new audit tables · a closed item moves to `DONE.md` the same day (no ✓ inside an open line).
+After a new `public` table: `npm run gen:types` · after schema changes: `grant_audit_queries.sql` · RLS + `GRANT` on new tables · EU R2 endpoint · bilingual copy · 375 px / 44 px phone contract · extend `audit_log_prune()` for new audit tables · **pivots and side sections collapsed by default** · a closed item moves to `DONE.md` the same day (no ✓ inside an open line).
