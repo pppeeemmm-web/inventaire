@@ -36,7 +36,8 @@
 // '3.1.18' (2026-11-15): slideshow export — animated GIF or full-colour frames (ZIP), frame sizes, whole / fill.
 // '3.1.19' (2026-11-15): QR code on export labels (opens the work in the Atelier).
 // '3.1.20' (2026-11-15): bug batch 1 — PC transcripts in Notes, unsaved-transcript guard, pivots collapsed, Vault buttons + text preview, « 1 photo ».
-export const WHATS_NEW_RELEASE = '3.1.20'
+// '3.1.21' (2026-11-15): palette names a work's main colours (white chalk, a touch of red), every cover recomputed.
+export const WHATS_NEW_RELEASE = '3.1.21'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -48,6 +49,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'palette_main_colours', day: '2026-11-15' },
   { id: 'bug_batch_1', day: '2026-11-15' },
   { id: 'labels_qr', day: '2026-11-15' },
   { id: 'slideshow_export', day: '2026-11-15' },

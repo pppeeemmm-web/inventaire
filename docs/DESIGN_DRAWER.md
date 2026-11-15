@@ -166,6 +166,6 @@ Facts checked the same night are marked *(checked)*.
 3. Inventory: Year « in progress » overflows; Broadcast column title and « embedding waiting » cut.
 4. « Filters + » opens a filter straight away.
 5. « Version history » → « Data history ».
-6. Palette misses small vivid accents (#2233) — **rule changed 2026-11-15** (`lib/image-palette.ts` rules 6–8, docs/TODO_NOTES.md « palette-main-colours »): new uploads use it; stored palettes change only after the backfill `--all`, which waits for Pem's OK.
+6. Palette misses small vivid accents (#2233) — **rule changed 2026-11-15** (`lib/image-palette.ts` rules 6–8, docs/TODO_NOTES.md « palette-main-colours »): deployed `a825695`; every stored palette recomputed the same day (1 233 / 1 237). Next: regroup the main colours on Pem's wheel (design step).
 
 Next: whole-screen mockups — desktop (a full work, an almost-empty one) + phone (recording a new work; inventory) — then build.

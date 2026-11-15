@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.21 (2026-11-15) — palette = main colours (TODO B9 #6, docs/TODO_NOTES.md « palette-main-colours »).
+  wn_palette_main_colours_t: { fr: 'Palette : les couleurs principales de l’œuvre', en: 'Palette: the work’s main colours' },
+  wn_palette_main_colours_d: {
+    fr: 'La palette nomme les couleurs de l’œuvre, pas leur surface. Une touche de rouge compte même minuscule, nommée par sa primaire (un rouge orangé est un rouge, un brun un orange sombre) ; sa pastille est la moyenne de la touche. Un trait blanc sur fond sombre (craie) compte comme blanc. Le bord de la photo (scotch, table) est ignoré pour les touches. Toutes les palettes ont été recalculées, le filtre couleur en tient compte.',
+    en: 'The palette names the work’s colours, not their area. A touch of red counts even when tiny, named by its primary (an orange-ish red is a red, a brown a dark orange); its swatch is the touch’s average. A white mark on a dark ground (chalk) counts as white. The edge of the photo (tape, table) is ignored for touches. Every palette was recomputed; the colour filter uses them.',
+  },
   // 3.1.20 (2026-11-15) — bug batch 1 (TODO B1, B2, B8, B10, 1f).
   wn_bug_batch_1_t: { fr: 'Corrections : Notes, tableaux croisés, Coffre', en: 'Fixes: Notes, pivot tables, Vault' },
   wn_bug_batch_1_d: {

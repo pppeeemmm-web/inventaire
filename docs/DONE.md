@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — palette = the work's main colours (TODO B9 #6, What's new 3.1.21)
+
+- `lib/image-palette.ts` (`a825695`): 400 px sample, white relative to the picture, quieter touch threshold in near-neutral pictures, small touches named by their primary on Pem's wheel (« primary always takes »; brown = dark orange, a dark red stays red), border band ignored. Every stored palette recomputed with Pem's OK: 1 233 / 1 237 (4 orphan `W_null_*` without thumb). #2233 in DB: grey, black, white, red touch. Details → [TODO_NOTES « palette-main-colours »](./TODO_NOTES.md#palette-main-colours). Still open: main colours regrouped on the wheel (filter « Rouge » = every red) — design first.
+
 ## 2026-11-15 — bug batch 1 (TODO B1, B2, B8, B10, 1f; verified against live code + dev 2026-11-15, What's new 3.1.20)
 
 - B1 Notes: an audio note with no saved transcript shows the PC transcript (latest visible `journal_entry` with its `voice_note_id`), marked « ✦ transcript · engine · unverified »; « Save transcript » writes `voice_note.transcript` and leaves the Journal entry alone. Same fallback in list preview + search, linked-notes blocks (concepts / works / projects) and constat creation (`notes/actions.ts` `machineTranscripts`). Checked in DB: « Couleur » 272 chars, « Light study… » 1 400 chars, both empty `transcript`. Not seen in the pane (dev user has no notes: RLS own notes) → check once live as admin.
