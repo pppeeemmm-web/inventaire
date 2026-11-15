@@ -574,6 +574,40 @@ export async function getSignedUrl(storagePath: string): Promise<{ url: string }
   }
 }
 
+const TEXT_PREVIEW_MAX_BYTES = 512 * 1024
+const TEXT_PREVIEW_MAX_CHARS = 20_000
+
+/** First characters of a vault text file (.txt, .md, .csv) for the detail panel (TODO B10).
+ *  Read on the server, so no bucket CORS and the UTF-8 accents decode right. */
+export async function getDocumentTextPreview(
+  storagePath: string,
+): Promise<{ text: string; truncated: boolean } | { error: string }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: doc, error } = await fromDocument(supabase)
+    .select('file_size')
+    .eq('storage_path', storagePath)
+    .limit(1)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!doc) return { error: 'NOT_FOUND' }
+  if (doc.file_size != null && doc.file_size > TEXT_PREVIEW_MAX_BYTES) return { error: 'TOO_LARGE' }
+
+  try {
+    // Vault bucket, not the images bucket (`r2GetObjectBuffer` reads R2_BUCKET).
+    const obj = await r2Client().send(new GetObjectCommand({ Bucket: BUCKET, Key: storagePath }))
+    const bytes = await obj.Body?.transformToByteArray()
+    if (!bytes) return { error: 'EMPTY' }
+    if (bytes.length > TEXT_PREVIEW_MAX_BYTES) return { error: 'TOO_LARGE' }
+    const buf = Buffer.from(bytes)
+    const all = buf.toString('utf8')
+    return { text: all.slice(0, TEXT_PREVIEW_MAX_CHARS), truncated: all.length > TEXT_PREVIEW_MAX_CHARS }
+  } catch (e) {
+    return { error: `Read failed: ${String(e)}` }
+  }
+}
+
 /** Latest `document.kind = 'bible'` (Studio Bible) — signed URL for browser download. */
 export async function downloadLatestStudioBible(): Promise<
   { url: string; filename: string } | { error: string }

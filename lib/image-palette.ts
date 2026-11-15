@@ -19,6 +19,18 @@ import sharp from 'sharp'
  *     (Lab L ≥ 65) and a dark one (L < 40) — `tones: [light, dark]` — so the filter can tell
  *     light blue from navy inside "blue".
  *
+ *  Main colours, not area (Pem 2026-11-15, #2233 « black, grey, white and red »; TODO B9 #6,
+ *  docs/TODO_NOTES.md « palette-main-colours »):
+ *  6. White is judged against the picture: on a dark ground, chalk at L 65–80 is white, not
+ *     light grey (neutral L ≥ max(65, median L + 30), and always above 82).
+ *  7. In a near-neutral picture (≥ 90 % neutral pixels) a hue stands out at a lower chroma
+ *     (QUIET_ACCENT_CHROMA), so a faint red in a grey work still counts.
+ *  8. A small touch counts by its presence, not its exact hue: small hues are gathered by their
+ *     main colour on Pem's wheel (red-orange, red-violet, dark red → red; brown → orange…) and kept as
+ *     one accent of that colour, swatch = the average of its vivid pixels. Not in the border band
+ *     of the shot (tape, table, wall).
+ *  The sample is the 400 px thumb at full size (thin chalk lines blurred into grey at 160 px).
+ *
  * Accuracy = the photo's own colours (Lightroom white balance / exposure); background, margin
  * or frame in the shot count too.
  */
@@ -32,7 +44,8 @@ export type { ColourFamily, PaletteSwatch }
 const TONE_LIGHT_MIN = 65
 const TONE_DARK_MAX = 40
 
-const SAMPLE_EDGE = 160
+/** The input is the 400 px thumb; read it whole (never enlarged). */
+const SAMPLE_EDGE = 400
 /** Families below this share of the image are left out — unless they qualify as an accent. */
 const MIN_SHARE = 0.015
 /**
@@ -48,6 +61,32 @@ const RUST_HUE_MAX = 60
 const RUST_CHROMA_MIN = 30
 /** Lab chroma under which a pixel reads as neutral (black / grey / white). */
 const NEUTRAL_CHROMA = 10
+/** Neutral lightness: black under BLACK_L; white above WHITE_L, or relative to the picture (rule 6). */
+const BLACK_L = 22
+const WHITE_L = 82
+const WHITE_REL_MIN_L = 65
+const WHITE_REL_OFFSET = 30
+/** Rule 7: a picture this neutral lowers the accent chroma to QUIET_ACCENT_CHROMA. */
+const QUIET_NEUTRAL_SHARE = 0.9
+const QUIET_ACCENT_CHROMA = 20
+/**
+ * Rule 8 — Pem's wheel (2026-11-15): red, yellow, blue; orange, green, violet where they meet;
+ * an in-between hue is its primary with a lean — « primary always takes » (an orange-ish red is a
+ * red, a greenish blue is a blue). Brown is a dark orange; a dark red filed as brown stays red.
+ * Used to name small touches; main families keep their own names for now.
+ */
+const TOUCH_MAIN: Record<ColourFamily, ColourFamily> = {
+  red: 'red', red_orange: 'red', red_violet: 'red', brown: 'orange',
+  orange: 'orange',
+  yellow_orange: 'yellow', yellow: 'yellow', yellow_green: 'yellow',
+  green: 'green',
+  blue_green: 'blue', blue: 'blue', blue_violet: 'blue',
+  violet: 'violet',
+  black: 'black', grey: 'grey', white: 'white',
+}
+const NEUTRALS = new Set<ColourFamily>(['black', 'grey', 'white'])
+/** Rule 8: a touch in this border band of the shot is the setting, not the work (#1263's top edge). */
+const TOUCH_EDGE_BAND = 0.03
 
 type Lab = [number, number, number]
 
@@ -104,10 +143,10 @@ const HUE_FAMILIES: [number, ColourFamily][] = [
   [260, 'blue_violet'], [290, 'violet'], [345, 'red_violet'], [360, 'red'],
 ]
 
-function familyOf(r: number, g: number, b: number, lab: Lab): ColourFamily {
+function familyOf(r: number, g: number, b: number, lab: Lab, whiteMinL: number): ColourFamily {
   const [L, a, bb] = lab
   const chroma = Math.hypot(a, bb)
-  if (chroma < NEUTRAL_CHROMA) return L < 22 ? 'black' : L > 82 ? 'white' : 'grey'
+  if (chroma < NEUTRAL_CHROMA) return L < BLACK_L ? 'black' : L > whiteMinL ? 'white' : 'grey'
   const h = hueOf(r, g, b)
   const fam = HUE_FAMILIES.find(([max]) => h < max)?.[1] ?? 'red'
   // Dark warm tones: rust / brick / burnt sienna (reddish and saturated in Lab) stay red-orange;
@@ -124,24 +163,42 @@ function familyOf(r: number, g: number, b: number, lab: Lab): ColourFamily {
 export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
   const { data, info } = await sharp(buf)
     .rotate()
-    .resize(SAMPLE_EDGE, SAMPLE_EDGE, { fit: 'inside' })
+    .resize(SAMPLE_EDGE, SAMPLE_EDGE, { fit: 'inside', withoutEnlargement: true })
     .removeAlpha()
     .toColourspace('srgb')
     .raw()
     .toBuffer({ resolveWithObject: true })
 
-  const groups = new Map<ColourFamily, { lab: Lab; chroma: number }[]>()
-  let total = 0
-  for (let i = 0; i + 2 < data.length; i += info.channels) {
+  // Pass 1: Lab of every pixel, the picture's median lightness and how neutral it is.
+  // `edge`: in the border band of the shot (tape, table, wall) — never a touch (rule 8).
+  const px: { r: number; g: number; b: number; lab: Lab; chroma: number; edge: boolean }[] = []
+  const bandX = Math.max(2, Math.round(info.width * TOUCH_EDGE_BAND))
+  const bandY = Math.max(2, Math.round(info.height * TOUCH_EDGE_BAND))
+  for (let i = 0, k = 0; i + 2 < data.length; i += info.channels, k++) {
     const r = data[i], g = data[i + 1], b = data[i + 2]
     const lab = rgbToLab(r, g, b)
-    const fam = familyOf(r, g, b, lab)
+    const x = k % info.width, y = Math.floor(k / info.width)
+    const edge = x < bandX || y < bandY || x >= info.width - bandX || y >= info.height - bandY
+    px.push({ r, g, b, lab, chroma: Math.hypot(lab[1], lab[2]), edge })
+  }
+  const total = px.length
+  if (total === 0) return []
+  const lights = px.map((p) => p.lab[0]).sort((a, b) => a - b)
+  const medianL = lights[Math.floor(lights.length / 2)]
+  // Rule 6: white relative to the picture (never stricter than the absolute WHITE_L).
+  const whiteMinL = Math.min(WHITE_L, Math.max(WHITE_REL_MIN_L, medianL + WHITE_REL_OFFSET))
+  // Rule 7: a near-neutral picture lets a fainter hue count as an accent.
+  const neutralShare = px.filter((p) => p.chroma < NEUTRAL_CHROMA).length / total
+  const accentChroma = neutralShare >= QUIET_NEUTRAL_SHARE ? QUIET_ACCENT_CHROMA : ACCENT_CHROMA
+
+  // Pass 2: one family per pixel.
+  const groups = new Map<ColourFamily, { lab: Lab; chroma: number; edge: boolean }[]>()
+  for (const p of px) {
+    const fam = familyOf(p.r, p.g, p.b, p.lab, whiteMinL)
     let list = groups.get(fam)
     if (!list) { list = []; groups.set(fam, list) }
-    list.push({ lab, chroma: Math.hypot(lab[1], lab[2]) })
-    total++
+    list.push({ lab: p.lab, chroma: p.chroma, edge: p.edge })
   }
-  if (total === 0) return []
 
   const swatches: PaletteSwatch[] = []
   const accents: (PaletteSwatch & { vivid: number })[] = []
@@ -160,27 +217,48 @@ export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
     }
     return [Math.round((light / px.length) * 100) / 100, Math.round((dark / px.length) * 100) / 100]
   }
-  for (const [family, px] of groups) {
-    const share = px.length / total
+  // Small hues, gathered by their main colour on the wheel (rule 8).
+  const touches = new Map<ColourFamily, { all: number; vivid: { lab: Lab }[] }>()
+  for (const [family, fpx] of groups) {
+    const share = fpx.length / total
     if (share < MIN_SHARE) {
       if (family === 'black' || family === 'grey' || family === 'white') continue
-      const vivid = px.filter((p) => p.chroma >= ACCENT_CHROMA)
-      if (vivid.length / total < ACCENT_MIN_SHARE) continue
-      accents.push({
-        family,
-        hex: meanHex(vivid),
-        share: Math.round(share * 1000) / 1000,
-        accent: true,
-        vivid: vivid.length,
-      })
+      for (const p of fpx) {
+        if (p.edge) continue
+        // Brown is a dark orange (Pem) — but a dark red filed as brown is still a red (#2233's red
+        // is mostly that): split by Lab hue, like the rust rule in familyOf.
+        const main = family === 'brown' && (Math.atan2(p.lab[2], p.lab[1]) * 180) / Math.PI < RUST_HUE_MAX
+          ? 'red'
+          : TOUCH_MAIN[family]
+        let t = touches.get(main)
+        if (!t) { t = { all: 0, vivid: [] }; touches.set(main, t) }
+        t.all++
+        if (p.chroma >= accentChroma) t.vivid.push(p)
+      }
       continue
     }
     // Representative shade: the more saturated half of the family (neutrals: all of it).
-    const sorted = [...px].sort((p, q) => q.chroma - p.chroma)
+    const sorted = [...fpx].sort((p, q) => q.chroma - p.chroma)
     const pick = family === 'black' || family === 'grey' || family === 'white'
       ? sorted
       : sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)))
-    swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000, tones: tonesOf(px) })
+    swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000, tones: tonesOf(fpx) })
+  }
+  // Rule 8: a touch is its presence, not its exact hue (#2233: red 0.23 % + red-orange 0.29 % +
+  // dark red read as brown 0.36 % = « a touch of red »). Kept when enough of it is vivid, unless
+  // that main colour is already one of the picture's main families; swatch = its vivid average.
+  const present = new Set<ColourFamily>(
+    swatches.filter((s) => s.family !== 'brown' && !NEUTRALS.has(s.family)).map((s) => TOUCH_MAIN[s.family]),
+  )
+  for (const [main, t] of touches) {
+    if (present.has(main) || t.vivid.length / total < ACCENT_MIN_SHARE) continue
+    accents.push({
+      family: main,
+      hex: meanHex(t.vivid),
+      share: Math.round((t.all / total) * 1000) / 1000,
+      accent: true,
+      vivid: t.vivid.length,
+    })
   }
   // No cap on main families: a family at ≥ MIN_SHARE is a real colour of the picture.
   const main = swatches.sort((a, b) => b.share - a.share)

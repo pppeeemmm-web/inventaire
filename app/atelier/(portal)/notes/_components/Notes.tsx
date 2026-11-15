@@ -1,10 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import type { Oeuvre, VoiceNoteRow } from '@/lib/types/database'
+import type { Oeuvre } from '@/lib/types/database'
 import { imageUrl } from '@/lib/data'
-import { deleteVoiceNote, listVoiceNotes, updateVoiceNoteTranscript } from '@/app/atelier/(portal)/notes/actions'
+import {
+  deleteVoiceNote,
+  listVoiceNotes,
+  updateVoiceNoteTranscript,
+  type VoiceNoteListRow,
+} from '@/app/atelier/(portal)/notes/actions'
+import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
+import type { WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import {
   VOICE_NOTE_BUCKETS,
   VOICE_NOTE_KINDS,
@@ -46,6 +53,11 @@ function voiceBucketKey(b: VoiceNoteBucket): DictKey {
   }
 }
 
+/** What the note says: Pem's saved transcript, else the PC transcript from the Journal (TODO B1). */
+function noteText(r: VoiceNoteListRow): string {
+  return r.transcript?.trim() ? (r.transcript ?? '') : (r.machine_transcript?.body ?? '')
+}
+
 function workLabel(oeuvres: Oeuvre[], id: number | null): string | null {
   if (id == null) return null
   const o = oeuvres.find((x) => x.OeuvreID === id)
@@ -54,11 +66,20 @@ function workLabel(oeuvres: Oeuvre[], id: number | null): string | null {
   return t || `#${id}`
 }
 
-export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: Oeuvre[] }) {
+export function Notes({
+  refreshTick,
+  oeuvres,
+  guardRef,
+}: {
+  refreshTick: number
+  oeuvres: Oeuvre[]
+  /** Lets the portal ask before leaving the tab with an unsaved transcript (TODO B2). */
+  guardRef?: React.Ref<WorkDrawerGuardHandle>
+}) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
-  const [rows, setRows] = useState<VoiceNoteRow[]>([])
+  const [rows, setRows] = useState<VoiceNoteListRow[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -96,16 +117,20 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
     })
   }, [refreshTick])
 
-  // `/atelier/notes?note=<id>` (linked-notes blocks on concepts, works, projects) opens that note.
-  useEffect(() => {
-    if (deepNoteId) setSelectedId(deepNoteId)
-  }, [deepNoteId])
-
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId])
+  const baseline = selected ? noteText(selected) : ''
+  const showingMachine = !!selected && !selected.transcript?.trim() && !!selected.machine_transcript
 
+  // Reset the draft only when another note opens (or once it loads), not on every rows refresh.
+  const selectedLoaded = !!selected
   useEffect(() => {
-    if (selected) setDraftTranscript(selected.transcript ?? '')
-  }, [selected])
+    setDraftTranscript(selected ? noteText(selected) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedLoaded])
+
+  const dirty = !!selected && draftTranscript !== baseline
+  const dirtyRef = useRef(false)
+  dirtyRef.current = dirty
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase()
@@ -115,34 +140,78 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
       if (bucketFilter && r.bucket !== bucketFilter) return false
       if (!qq) return true
       const sub = (r.subject ?? '').toLowerCase()
-      const tx = (r.transcript ?? '').toLowerCase()
+      const tx = noteText(r).toLowerCase()
       return sub.includes(qq) || tx.includes(qq)
     })
   }, [rows, kindFilter, bucketFilter, q, toSortOnly])
 
   const toSortCount = useMemo(() => rows.filter((r) => !r.routed_at).length, [rows])
 
-  const preview = (r: VoiceNoteRow) => {
-    const tx = (r.transcript ?? '').replace(/\s+/g, ' ').trim()
+  const preview = (r: VoiceNoteListRow) => {
+    const tx = noteText(r).replace(/\s+/g, ' ').trim()
     if (!tx) return '—'
     return tx.length > 120 ? `${tx.slice(0, 120)}…` : tx
   }
 
-  const saveTranscript = async () => {
-    if (!selected) return
+  const saveTranscript = useCallback(async (): Promise<boolean> => {
+    if (!selected) return true
     setSavingTx(true)
     try {
       const res = await updateVoiceNoteTranscript(selected.id, draftTranscript)
       if ('error' in res) {
         toast.error(t('error'))
-        return
+        return false
       }
       setRows((prev) => prev.map((x) => (x.id === selected.id ? { ...x, transcript: draftTranscript } : x)))
       toast.success(t('voice_note_saved'))
+      return true
     } finally {
       setSavingTx(false)
     }
-  }
+  }, [selected, draftTranscript, t])
+
+  // Opening another note inside the tab: Save / Discard / Cancel (TODO B2).
+  const pendingRef = useRef<(() => void) | null>(null)
+  const { attemptAction, unsavedDialog } = useUnsavedActionGuard({
+    isDirty: dirty,
+    getIsDirty: () => dirtyRef.current,
+    onProceed: () => {
+      const fn = pendingRef.current
+      pendingRef.current = null
+      fn?.()
+    },
+    performSave: saveTranscript,
+  })
+  const guarded = useCallback(
+    (fn: () => void) => {
+      pendingRef.current = fn
+      attemptAction()
+    },
+    [attemptAction],
+  )
+
+  // Leaving the tab: the portal's guard asks through this handle.
+  useImperativeHandle(
+    guardRef,
+    () => ({ runGuarded: guarded, isDirty: () => dirtyRef.current, performSave: saveTranscript }),
+    [guarded, saveTranscript],
+  )
+
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
+  // `/atelier/notes?note=<id>` (linked-notes blocks on concepts, works, projects) opens that note.
+  useEffect(() => {
+    if (deepNoteId) guarded(() => setSelectedId(deepNoteId))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepNoteId])
 
   const runDelete = async (id: string) => {
     const res = await deleteVoiceNote(id)
@@ -254,7 +323,9 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setSelectedId(r.id)}
+                  onClick={() => {
+                    if (r.id !== selectedId) guarded(() => setSelectedId(r.id))
+                  }}
                   data-testid={`notes-row-${r.id}`}
                   style={{
                     width: '100%',
@@ -311,6 +382,20 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
             ) : null}
             <div>
               <div className="t-label" style={{ marginBottom: 6 }}>{t('notes_transcript')}</div>
+              {showingMachine && selected.machine_transcript ? (
+                <div
+                  className="t-mono-sm"
+                  data-testid="notes-machine-transcript"
+                  style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 6, lineHeight: 1.45 }}
+                >
+                  ✦ {t('je_transcript_label')}
+                  {selected.machine_transcript.engine ? ` · ${selected.machine_transcript.engine}` : ''}
+                  {' · '}
+                  {t(selected.machine_transcript.verification === 'unverified' ? 'je_unverified_label' : 'je_verified_label')}
+                  <br />
+                  {t('notes_machine_tx_hint')}
+                </div>
+              ) : null}
               <textarea
                 className="input"
                 value={draftTranscript}
@@ -320,10 +405,34 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                 aria-label={t('notes_transcript')}
               />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              <button type="button" className="btn primary sm" onClick={() => void saveTranscript()} disabled={savingTx}>
+            <div
+              data-testid="notes-save-bar"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                alignItems: 'center',
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 2,
+                background: 'var(--bg1)',
+                margin: '0 -16px',
+                padding: '10px 16px max(10px, env(safe-area-inset-bottom))',
+                borderTop: '1px solid var(--bd)',
+              }}
+            >
+              <button
+                type="button"
+                className="btn primary sm"
+                onClick={() => void saveTranscript()}
+                disabled={savingTx || (!dirty && !showingMachine)}
+                style={{ minHeight: narrow ? 44 : undefined }}
+              >
                 {t('notes_save')}
               </button>
+              {dirty ? (
+                <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--rust)' }}>{t('notes_unsaved_badge')}</span>
+              ) : null}
               {pendingDeleteId === selected.id ? (
                 <>
                   <span className="t-mono-sm" style={{ fontSize: 11 }}>{t('notes_delete_confirm')}</span>
@@ -355,6 +464,7 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
           </div>
         )}
       </div>
+      {unsavedDialog}
     </div>
   )
 }

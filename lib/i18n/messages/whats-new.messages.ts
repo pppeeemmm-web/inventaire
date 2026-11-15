@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.20 (2026-11-15) — bug batch 1 (TODO B1, B2, B8, B10, 1f).
+  wn_bug_batch_1_t: { fr: 'Corrections : Notes, tableaux croisés, Coffre', en: 'Fixes: Notes, pivot tables, Vault' },
+  wn_bug_batch_1_d: {
+    fr: 'Notes : la transcription faite par le PC (aussi dans le Journal) s’affiche maintenant dans la note, marquée ✦ ; « Enregistrer » garde votre version. Une transcription modifiée n’est plus perdue : changer de note ou d’onglet demande d’enregistrer, et le bouton reste en bas de l’écran. Les tableaux croisés (Inventaire, Ventes, Rapports, Revenus & Dépenses) et « Fournisseurs » s’ouvrent repliés ; ouverts une fois, ils le restent pour la session. Coffre : les boutons du panneau ne sont plus coupés, et un fichier .txt montre son texte. Fiche œuvre : « 1 photo » au singulier.',
+    en: 'Notes: the PC transcript (also in the Journal) now shows in the note, marked ✦; « Save » keeps your version. An edited transcript is no longer lost: switching note or tab asks to save, and the button stays at the bottom of the screen. Pivot tables (Inventory, Sales, Reports, Income & Expenses) and « Suppliers » open collapsed; once opened they stay open for the session. Vault: the panel buttons are no longer cut off, and a .txt file shows its text. Work card: « 1 photo », singular.',
+  },
   // 3.1.19 (2026-11-15) — QR code on labels.
   wn_labels_qr_t: { fr: 'Étiquettes avec QR code', en: 'Labels with a QR code' },
   wn_labels_qr_d: {

@@ -8,7 +8,7 @@ import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import {
-  uploadDocument, updateDocument, deleteDocument, getSignedUrl, generateCOA,
+  uploadDocument, updateDocument, deleteDocument, getSignedUrl, getDocumentTextPreview, generateCOA,
   renameFolder, moveDocuments, moveFolder, deleteFolder, createFolder, renameDocument,
   reconcileVaultFolders,
   type VaultDoc,
@@ -277,6 +277,27 @@ export function Vault({ oeuvres, tM }: Props) {
     }).catch(err => {
       console.error("Vault Preview Error:", err)
     })
+  }, [selected])
+
+  // Text files (.txt, .md, .csv): read on the server and shown as text (TODO B10).
+  const [previewText, setPreviewText] = useState<{ text: string; truncated: boolean } | null>(null)
+  const [previewTextFailed, setPreviewTextFailed] = useState(false)
+  useEffect(() => {
+    setPreviewText(null)
+    setPreviewTextFailed(false)
+    if (!selected?.storage_path || !isText(selected.mime_type, selected.name)) return
+    let alive = true
+    void getDocumentTextPreview(selected.storage_path).then((r) => {
+      if (!alive) return
+      if ('text' in r) setPreviewText(r)
+      else {
+        console.warn('[Vault text preview]', r.error)
+        setPreviewTextFailed(true)
+      }
+    })
+    return () => {
+      alive = false
+    }
   }, [selected])
 
   // ── Sorting & Filtering ─────────────────────────────────────────
@@ -792,7 +813,23 @@ export function Vault({ oeuvres, tM }: Props) {
                       />
                     </div>
                   )
-                  : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_unavailable')}</div>
+                  : previewText
+                    ? (
+                      <pre
+                        data-testid="vault-text-preview"
+                        style={{
+                          alignSelf: 'stretch', width: '100%', height: '100%', margin: 0, padding: 12,
+                          overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+                          fontFamily: 'var(--mono)', fontSize: 11, lineHeight: 1.5, color: 'var(--tx)',
+                        }}
+                      >
+                        {previewText.text}
+                        {previewText.truncated ? `\n${t('vault_preview_truncated')}` : ''}
+                      </pre>
+                    )
+                    : isText(selected.mime_type, selected.name) && !previewTextFailed
+                      ? <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_loading')}</div>
+                      : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_unavailable')}</div>
               : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_loading')}</div>
             }
           </div>
@@ -837,11 +874,12 @@ export function Vault({ oeuvres, tM }: Props) {
                 </span>
               } />
             )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            {/* Two buttons a row in the 340 px rail: nothing cut off (TODO B10). */}
+            <div className="vault-detail-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
               {previewUrl && (
                 <button
                   className="btn sm"
-                  style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
+                  style={{ flex: '1 1 calc(50% - 4px)', minHeight: 36, background: 'var(--bg2)', color: 'var(--tx1)' }}
                   onClick={() => window.open(previewUrl, '_blank')}
                   title={t('vault_open_new_tab')}
                 >
@@ -851,7 +889,7 @@ export function Vault({ oeuvres, tM }: Props) {
               {selected.storage_path ? (
                 <button
                   className="btn sm"
-                  style={{ flex: 1, background: 'var(--ac)33', color: 'var(--ac)' }}
+                  style={{ flex: '1 1 calc(50% - 4px)', minHeight: 36, background: 'var(--ac)33', color: 'var(--ac)' }}
                   onClick={() => handleDownload(selected)}
                 >
                   ↓ Télécharger
@@ -859,14 +897,14 @@ export function Vault({ oeuvres, tM }: Props) {
               ) : null}
               <button
                 className="btn sm"
-                style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
+                style={{ flex: '1 1 calc(50% - 4px)', minHeight: 36, background: 'var(--bg2)', color: 'var(--tx1)' }}
                 onClick={() => { setEditingDoc(selected); setShowEdit(true); }}
               >
                 Modifier
               </button>
               <button
                 className="btn sm"
-                style={{ flex: 1, background: '#442222', color: '#ff8888' }}
+                style={{ flex: '1 1 calc(50% - 4px)', minHeight: 36, background: '#442222', color: '#ff8888' }}
                 onClick={() => {
                   if (!confirm(t('vault_confirm_delete_one'))) return
                   startDel(async () => {
@@ -1892,6 +1930,10 @@ function mimeIcon(mime: string | null) {
 
 function isPdf(mime: string | null)   { return mime === 'application/pdf' }
 function isImage(mime: string | null) { return !!mime?.startsWith('image/') }
+function isText(mime: string | null, name?: string | null) {
+  if (mime === 'text/plain' || mime === 'text/markdown' || mime === 'text/csv') return true
+  return !mime && /\.(txt|md|csv)$/i.test(name ?? '')
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024)           return `${bytes} o`

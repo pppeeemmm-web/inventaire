@@ -103,6 +103,8 @@ export type SegmentRoutePanelProps = {
   onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
   onOeuvreRemoved?: (oeuvreIds: number[]) => void
   inventoryDrawerGuardRef?: React.RefObject<WorkDrawerGuardHandle | null>
+  /** Notes tab: unsaved transcript guard (TODO B2). */
+  notesGuardRef?: React.RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }
 
@@ -156,6 +158,7 @@ export function SegmentRoutePanel({
   onOeuvrePatched,
   onOeuvreRemoved,
   inventoryDrawerGuardRef,
+  notesGuardRef,
   onInventoryPanelDirtyChange,
 }: SegmentRoutePanelProps) {
   const { t } = useI18n()
@@ -404,7 +407,7 @@ export function SegmentRoutePanel({
     case 'notes':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} />
+          <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} guardRef={notesGuardRef} />
         </div>
       )
     case 'audit':

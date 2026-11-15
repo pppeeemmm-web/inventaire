@@ -22,7 +22,8 @@ export type PivotPanelProps<R> = {
   initialToolbarCollapsed?: boolean
   /** When true (requires `title`), user can hide/show the summary line + data table. */
   collapsibleSection?: boolean
-  /** Initial state for the section toggle; only used when `collapsibleSection` is true. */
+  /** Titled panels start collapsed (Pem, TODO B8); opening one stays open for the browser session
+   *  (sessionStorage, keyed by `exportFileName`). Pass false to start open. */
   initialSectionCollapsed?: boolean
   /** Optional note under the title row (e.g. subset scope). */
   footnote?: string
@@ -39,7 +40,7 @@ export function PivotPanel<R>({
   exportFileName = 'pivot',
   initialToolbarCollapsed = false,
   collapsibleSection = false,
-  initialSectionCollapsed = false,
+  initialSectionCollapsed = true,
   footnote,
 }: PivotPanelProps<R>) {
   const { t, lang } = useI18n()
@@ -55,7 +56,26 @@ export function PivotPanel<R>({
   const [sectionExpanded, setSectionExpanded] = useState(
     () => !(collapsibleSection && initialSectionCollapsed),
   )
-  const [bodyCollapsed, setBodyCollapsed] = useState(Boolean(title) && initialSectionCollapsed)
+  const openKey = `pem_pivot_open:${exportFileName}`
+  const [bodyCollapsed, setBodyCollapsed] = useState(() => {
+    if (!title || !initialSectionCollapsed) return false
+    try {
+      return window.sessionStorage.getItem(openKey) !== '1'
+    } catch {
+      return true
+    }
+  })
+  const toggleBody = useCallback(() => {
+    setBodyCollapsed((c) => {
+      try {
+        if (c) window.sessionStorage.setItem(openKey, '1')
+        else window.sessionStorage.removeItem(openKey)
+      } catch {
+        /* private mode: state only */
+      }
+      return !c
+    })
+  }, [openKey])
 
   const fmt = useCallback(
     (n: number | null, kind: string) => {
@@ -196,7 +216,7 @@ export function PivotPanel<R>({
         >
           <button
             type="button"
-            onClick={() => setBodyCollapsed((c) => !c)}
+            onClick={toggleBody}
             aria-expanded={bodyOpen}
             aria-label={bodyCollapsed ? t('pivotPanel_toggle_expand') : t('pivotPanel_toggle_collapse')}
             title={bodyCollapsed ? t('pivotPanel_toggle_expand') : t('pivotPanel_toggle_collapse')}

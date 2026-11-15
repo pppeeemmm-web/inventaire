@@ -35,4 +35,9 @@ export const notesTriageMessages = defineMessages({
   },
   linked_notes_title_fmt: { fr: 'Notes vocales ({n})', en: 'Voice notes ({n})' },
   linked_notes_untitled: { fr: 'Note sans titre', en: 'Untitled note' },
+  notes_machine_tx_hint: {
+    fr: 'Transcription du PC (aussi dans le Journal). Enregistrer garde votre version ici ; l’entrée du Journal ne bouge pas.',
+    en: 'PC transcript (also in the Journal). Saving keeps your version here; the Journal entry stays as it is.',
+  },
+  notes_unsaved_badge: { fr: 'non enregistré', en: 'unsaved' },
 })

@@ -128,7 +128,8 @@ export function SupplierHub({ contacts }: Props) {
   const [materialSupplierFilter, setMaterialSupplierFilter] = useState<number | null>(
     null,
   )
-  const [suppliersOpen, setSuppliersOpen] = useState(true)
+  // Collapsed by default (Pem, TODO B8); opening it stays open for the session.
+  const [suppliersOpen, setSuppliersOpen] = useState(false)
   const [deleteStep2, setDeleteStep2] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState('')
   const [supplierSelected, setSupplierSelected] = useState<Set<number>>(new Set())
@@ -206,7 +207,7 @@ export function SupplierHub({ contacts }: Props) {
 
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(SUPPLIERS_OPEN_KEY) === '0') setSuppliersOpen(false)
+      if (sessionStorage.getItem(SUPPLIERS_OPEN_KEY) === '1') setSuppliersOpen(true)
     } catch {
       /* sessionStorage unavailable */
     }

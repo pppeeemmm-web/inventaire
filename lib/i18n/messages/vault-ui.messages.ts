@@ -9,6 +9,10 @@ export const vaultUiMessages = defineMessages({
     fr: 'Chargement aperçu…',
     en: 'Loading preview…',
   },
+  vault_preview_truncated: {
+    fr: '… (suite dans le fichier)',
+    en: '… (rest in the file)',
+  },
   vault_import_title: {
     fr: 'Importer un document',
     en: 'Import document',

@@ -119,7 +119,7 @@ export function DrawerWorkSessionsSection({
                 }}
               >
                 <span style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  {updated} · {t(statusKey(row.status))} · {itemCount} {t('session_journal_items_count')} · {n} {t('drawer_work_sessions_shots')}
+                  {updated} · {t(statusKey(row.status))} · {itemCount} {t(itemCount === 1 ? 'st_item_one' : 'session_journal_items_count')} · {n} {t(n === 1 ? 'st_shot_one' : 'drawer_work_sessions_shots')}
                   {payload.notes ? (
                     <span style={{ display: 'block', marginTop: 4, color: 'var(--tx3)' }}>
                       {payload.notes}
@@ -130,7 +130,8 @@ export function DrawerWorkSessionsSection({
                       {payload.items.map((item, idx) => (
                         <span key={item.id} style={{ display: 'block', color: 'var(--tx3)' }}>
                           {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? `#${item.oeuvre_id}` : item.title_hint || '—'} ·{' '}
-                          {item.shots.length + (item.applied_shot_count ?? 0)} {t('drawer_work_sessions_shots')}
+                          {item.shots.length + (item.applied_shot_count ?? 0)}{' '}
+                          {t(item.shots.length + (item.applied_shot_count ?? 0) === 1 ? 'st_shot_one' : 'drawer_work_sessions_shots')}
                         </span>
                       ))}
                     </span>

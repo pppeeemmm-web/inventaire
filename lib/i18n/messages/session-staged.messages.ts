@@ -12,4 +12,7 @@ export const sessionStagedMessages = defineMessages({
     fr: 'Une photo prise en session reste en attente tant qu’elle n’est pas appliquée à l’œuvre (un admin l’applique depuis la session).',
     en: 'A session photo waits until it is applied to the work (an admin applies it from the session).',
   },
+  /** Singular forms for the work card's session list (TODO 1f); plurals stay in the legacy dict. */
+  st_shot_one: { fr: 'photo', en: 'photo' },
+  st_item_one: { fr: 'entrée', en: 'entry' },
 })

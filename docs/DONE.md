@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — bug batch 1 (TODO B1, B2, B8, B10, 1f; verified against live code + dev 2026-11-15, What's new 3.1.20)
+
+- B1 Notes: an audio note with no saved transcript shows the PC transcript (latest visible `journal_entry` with its `voice_note_id`), marked « ✦ transcript · engine · unverified »; « Save transcript » writes `voice_note.transcript` and leaves the Journal entry alone. Same fallback in list preview + search, linked-notes blocks (concepts / works / projects) and constat creation (`notes/actions.ts` `machineTranscripts`). Checked in DB: « Couleur » 272 chars, « Light study… » 1 400 chars, both empty `transcript`. Not seen in the pane (dev user has no notes: RLS own notes) → check once live as admin.
+- B2 Notes: unsaved transcript guarded — Save / Discard / Cancel when opening another note, leaving the tab (portal guard via `notesGuardRef`) or the page (`beforeunload`); save bar sticky at the bottom with safe-area padding, « unsaved » badge.
+- B8: titled `PivotPanel`s start collapsed, opened state kept for the browser session (`sessionStorage` `pem_pivot_open:<exportFileName>`); Income & Expenses by-year pivot got a title (so a toggle); the expenses pivot was already in a closed `<details>`, the Reports pivot behind its own toggle. Supplies « Fournisseurs » collapsed by default (session `1` keeps it open). Checked on dev: Sales pivot collapsed → open → survives reload; Suppliers collapsed.
+- B10 Vault: detail buttons two per row (none cut at 340 px); `.txt` / `.md` / `.csv` show their text, read on the server from the vault bucket (`getDocumentTextPreview`, ≤ 512 KB, 20 000 chars). Checked on dev with the Lightroom guide .txt (screenshot).
+- 1f Work card session list: « 1 photo » / « 1 entrée » in the singular (`DrawerWorkSessionsSection`). Same plural-only wording still in `SessionNewClient` and `PendingWorkSessions` (not touched).
+
 ## 2026-11-15 — slideshow (TODO R5, verified against live code + dev + `origin/main` 2026-11-15)
 
 - Step 1 (`bab78b6`, What's new 3.1.17): « Diaporama » in the selection bar — full screen, whole picture on black / grey / white, ← → / swipe, play / pause, cut / fade / slide, loop, random order, caption dragged anywhere (FR / EN, chosen details, shadow); saved slideshows shared with the team in Catalogue → « Diaporamas » (play, rename, delete). SQL `slideshow.sql` applied with Pem's OK. Reorder = ‹ › under each thumbnail (≤ 20 works).

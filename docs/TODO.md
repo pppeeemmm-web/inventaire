@@ -2,21 +2,16 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-15** (Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
+**Last refresh: 2026-11-15** (bug batch 1 — B1, B2, B8, B10, 1f — closed → [DONE](./DONE.md); earlier: Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B1. **Notes: an audio note's transcript does not show.** Nothing is lost: the PC writes it as a Journal entry (`journal_entry.voice_note_id`, e.g. « Couleur » 14/11, « Light study figure… » 08/08), but Notes and the triage panel read `voice_note.transcript`, which stays empty → show the Journal transcript there (and in ⌘K / Overview where a note is listed) → [notes](./TODO_NOTES.md#notes-transcript)
-- [ ] B2. **Notes: a typed transcript is lost if you leave without « Save transcript ».** No unsaved guard; the button sits below the text. Add the drawer guard (`useUnsavedActionGuard`) and a sticky save bar.
 - [ ] B3. **Exhibitions: a new exhibition vanishes on reload.** It is saved (« MOULIN » exists twice), but the list only shows type `exposition` **with a start or end date** (`listExhibitionsWithSteps`); other types (salon, résidence…) never show either. Show undated ones; delete the duplicate « MOULIN » with Pem's OK.
 - [ ] B4. **Exhibition floor plan:** Group view lists « All groups (0) » — `FloorPlanTool` passes no groups to the canvas (the point of groups); double-click on a work does nothing (`onOpen` empty); French copy hard-coded there (« Upload en cours… », « Changer le plan », « Glissez les œuvres… »).
 - [ ] B5. **Constellation: leaving the tab empties the blank canvas and the selection** (kept in memory only) — keep them for the session at least.
 - [ ] B6. **Constellation eraser** rubs out drawn strokes bit by bit as you drag and never removes a link — make it remove a whole object (stroke, text, box, link) on click.
 - [ ] B7. **Export → Labels: « Image » stays ticked but no label prints an image.** Pem 2026-11-15: « yes, otherwise it's absurd » → print a small image on the label (left of the text, PDF + HTML, fits beside the QR on L7163 / L7651); grey out the ticks that still do not apply (status, notes).
-- [ ] B8. **Pivot tables and side sections open by default** — Pem has asked many times: every pivot (`PivotPanel`: Inventory, Sales, Reports ×3, Income & Expenses ×2) and Supplies « Suppliers » start **collapsed**; opening one stays open for the session.
-- [ ] B10. **Vault: the detail panel cuts its buttons** — « Voir · Télécharger · Modifier · Supprimer » sit in one row in a 340 px panel, « Supprimer » cut off (Pem screenshot 2026-11-15; `Vault.tsx` ~l.840, no wrap). Also a `.txt` shows « Preview unavailable » — show its text.
 - [ ] B9. **Inventory / drawer quick fixes (6)** from Pem's review of 2026-11-15 (status wording for status 1, QR fallback on dev, cut column titles, « Filters + », « Data history », palette accents) → [DESIGN_DRAWER](./DESIGN_DRAWER.md) « Quick fixes ».
-- [ ] 1f. The work card's field-session list says « 1 photos » (no singular; `DrawerWorkSessionsSection.tsx`).
 
 ## 1. Waiting on Pem — only you can do these
 
@@ -80,6 +75,7 @@ Speed and code health — measure first, change after
 
 ## 4. To check once, when it happens (no build)
 
+- [ ] Notes (bug batch 1, What's new 3.1.20), live as admin: « Couleur » shows its ✦ PC transcript; edit, switch note → Save / Discard / Cancel.
 - [ ] Export labels with QR (`00f8085`): scan one printed label with the phone.
 - [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a start / end date; a « Nouvelle » work starts production today.
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.

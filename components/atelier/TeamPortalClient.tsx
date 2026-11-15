@@ -629,6 +629,7 @@ export function TeamPortalClient({
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
   const deepLinkFetchRef = useRef<number | null>(null)
   const inventoryDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+  const notesGuardRef = useRef<WorkDrawerGuardHandle>(null)
   const [drawerDirty, setDrawerDirty] = useState(false)
   const [inventoryPanelDirty, setInventoryPanelDirty] = useState(false)
   const pendingNavRef = useRef<(() => void) | null>(null)
@@ -653,7 +654,8 @@ export function TeamPortalClient({
   const getAnyDrawerDirty = useCallback(() => {
     return !!(
       workDrawerGuardRef.current?.isDirty() ||
-      inventoryDrawerGuardRef.current?.isDirty()
+      inventoryDrawerGuardRef.current?.isDirty() ||
+      notesGuardRef.current?.isDirty()
     )
   }, [])
 
@@ -664,6 +666,10 @@ export function TeamPortalClient({
     }
     if (inventoryDrawerGuardRef.current?.isDirty()) {
       const ok = await inventoryDrawerGuardRef.current.performSave()
+      if (!ok) return false
+    }
+    if (notesGuardRef.current?.isDirty()) {
+      const ok = await notesGuardRef.current.performSave()
       if (!ok) return false
     }
     return true
@@ -1597,6 +1603,7 @@ export function TeamPortalClient({
             onOeuvrePatched={patchOeuvreInCatalogue}
             onOeuvreRemoved={removeOeuvresFromCatalogue}
             inventoryDrawerGuardRef={inventoryDrawerGuardRef}
+            notesGuardRef={notesGuardRef}
             onInventoryPanelDirtyChange={setInventoryPanelDirty}
           />
         ) : null}

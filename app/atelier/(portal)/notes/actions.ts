@@ -35,7 +35,35 @@ async function rpcIsAdmin(supabase: Awaited<ReturnType<typeof createClient>>): P
 export type NotesActionErr = { error: string }
 export type CreateVoiceNoteResult = { ok: true; id: string; followUpOk?: boolean }
 
-export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[] } | NotesActionErr> {
+/** PC transcript of an audio note: `scripts/transcribe/voice_batch.py` writes it as a Journal entry
+ *  (`journal_entry.voice_note_id`) and leaves `voice_note.transcript` empty (TODO B1). */
+export type MachineTranscript = { body: string; engine: string | null; verification: string }
+export type VoiceNoteListRow = VoiceNoteRow & { machine_transcript: MachineTranscript | null }
+
+async function machineTranscripts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[],
+): Promise<Map<string, MachineTranscript>> {
+  const out = new Map<string, MachineTranscript>()
+  if (ids.length === 0) return out
+  const { data, error } = await supabase
+    .from('journal_entry')
+    .select('voice_note_id, body, engine, verification, created_at')
+    .in('voice_note_id', ids)
+    .is('hidden_at', null)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('[machineTranscripts]', error.message)
+    return out
+  }
+  for (const r of data ?? []) {
+    if (!r.voice_note_id || out.has(r.voice_note_id) || !r.body?.trim()) continue
+    out.set(r.voice_note_id, { body: r.body, engine: r.engine, verification: r.verification })
+  }
+  return out
+}
+
+export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteListRow[] } | NotesActionErr> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -51,7 +79,12 @@ export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[
     .limit(lim)
 
   if (error) return { error: error.message }
-  const rows: VoiceNoteRow[] = data ?? []
+  const base: VoiceNoteRow[] = data ?? []
+  const machine = await machineTranscripts(
+    supabase,
+    base.filter((r) => r.audio_r2_key).map((r) => r.id),
+  )
+  const rows: VoiceNoteListRow[] = base.map((r) => ({ ...r, machine_transcript: machine.get(r.id) ?? null }))
   return { rows }
 }
 
@@ -408,7 +441,8 @@ export async function routeVoiceNote(
   if (patch.new_condition_report) {
     const workId = (update.oeuvre_id as number | null | undefined) ?? r.oeuvre_id
     if (workId == null) return { error: 'no_work' }
-    const notes = [r.subject?.trim(), r.transcript?.trim()].filter(Boolean).join('\n\n').slice(0, 20_000) || null
+    const tx = r.transcript?.trim() || (await machineTranscripts(supabase, [r.id])).get(r.id)?.body.trim()
+    const notes = [r.subject?.trim(), tx].filter(Boolean).join('\n\n').slice(0, 20_000) || null
     const { data: rep, error: repErr } = await supabase
       .from('condition_report')
       .insert({ oeuvre_id: workId, author_id: user.id, notes })
@@ -466,5 +500,10 @@ export async function listLinkedVoiceNotes(
     console.error('[listLinkedVoiceNotes]', error.message)
     return []
   }
-  return (data ?? []) as LinkedVoiceNote[]
+  const rows = (data ?? []) as LinkedVoiceNote[]
+  const machine = await machineTranscripts(
+    supabase,
+    rows.filter((r) => !r.transcript?.trim()).map((r) => r.id),
+  )
+  return rows.map((r) => (r.transcript?.trim() ? r : { ...r, transcript: machine.get(r.id)?.body ?? r.transcript }))
 }

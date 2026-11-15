@@ -168,6 +168,7 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
           defaultRowDimId="year"
           defaultColDimId="flow"
           defaultValueIds={['amount']}
+          title={t('pivot')}
           exportFileName="fiscal-by-year"
         />
       ) : null}
