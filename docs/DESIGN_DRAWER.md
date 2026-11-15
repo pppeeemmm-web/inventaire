@@ -1,6 +1,6 @@
 # Design — the work drawer (TODO R3)
 
-Pem 2026-11-14: "so much information that needs to be visually organized … a quicker glance at everything, in a more organized way. That's going to be a big one." Part of the [rethink](./RETHINK_2026-11-14.md). **Design only — nothing built. Step 1 = this inventory + a grouping to agree; step 2 = whole-screen mockups (desktop + phone); then build.** Measured on the live catalogue 2026-11-15 (1 182 works), read from live code 2026-11-15 (`components/atelier/work-drawer/DrawerContent.tsx` and its sections).
+Pem 2026-11-14: "so much information that needs to be visually organized … a quicker glance at everything, in a more organized way. That's going to be a big one." Part of the [rethink](./RETHINK_2026-11-14.md). **Design only — nothing built. Step 1 = this inventory + a grouping (answered by Pem 2026-11-15, end of this doc); step 2 = whole-screen mockups (desktop + phone); then build.** Measured on the live catalogue 2026-11-15 (1 182 works), read from live code 2026-11-15 (`components/atelier/work-drawer/DrawerContent.tsx` and its sections).
 
 ## What the drawer shows today, top to bottom (desktop, « Tous les champs » on the phone)
 
@@ -88,4 +88,25 @@ States: 828 Disponible, 204 Archive artiste, 143 En production, 7 Gift; 835 publ
 4. **The glance line** — anything missing that you look for first (e.g. price for available works, location)?
 5. **Phone:** same drawers, or the phone keeps a shorter « field » set (pictures, title, identity, comments) with the rest one tap away, as today?
 
-Next, on Pem's answers: whole-screen mockups (desktop + phone, a full work and an almost-empty one), then build.
+## Pem's answers (2026-11-15) — the agreed structure
+
+1. **Read first, edit on tap:** yes.
+2. **Missing basics:** no « À compléter » chips — **colour code**: an empty field shows **greyed out** in its place (tap to fill).
+3. **Never-used fields** (Presentation, Framed, Costs, broadcast caption): **collapsed**, not hidden or removed.
+4. **Layout — one top block + two drawers** (replaces the four-drawer proposal above), with a **collapse / develop switch** for the whole drawer:
+   - **Always visible:** pipeline **stages**, colour **swatches**, the **image strip**, **custody and ownership**, **title**, **dimensions**, **technique**, **support**, **period**. « Download » and « replace » become **icons over the image**.
+   - **Création** (creative): creation history, sources, links, comments and notes, field-session history, AI description, themes. Voice notes belong here; their transcript should sit in the comments with its reference (date).
+   - **Objet** (object): history / provenance (and future tracking), visibility, fate, condition, physical label, presentation (with the pipeline's gates and checkboxes), value, groups (in link with exhibitions / events).
+5. **Phone — two uses:**
+   - **Recording a new work or a new version** (the field drawer): the same drawer adapted to the phone with fewer fields, mostly inputs — title, technique, support, dimensions, source, maybe a link, place (recorded automatically, or typed), a note, maybe record a voice note.
+   - **Inventory on the phone:** the same as desktop (though Pem prefers the desktop for it).
+   - Same colour code: greyed out when empty.
+
+## Open points (to settle in the mockups)
+
+- **Voice transcript "in the comments with refs (date)":** copy the transcript text into Commentaires (one text, editable), or show it inside the comments area as a dated entry that stays linked to its audio (nothing copied)? The second keeps one source of truth and the audio; proposed unless Pem prefers the copy.
+- **Themes** move from the top into Création (Pem's list) — the top block then shows period but not themes. OK?
+- **Price** is in Objet → value; for « Disponible » works, should the price show in the top block?
+- **Collapse / develop switch:** collapse = only the top block + the two drawer headers (each with a one-line summary); develop = everything open.
+
+Next: whole-screen mockups — desktop (a full work, an almost-empty one) + phone (recording a new work; inventory) — then build.
