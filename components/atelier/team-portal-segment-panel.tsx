@@ -352,6 +352,7 @@ export function SegmentRoutePanel({
             tM={tM}
             selection={selection}
             setSelection={setSelection}
+            groupsCtx={{ groups, groupWorkCount, oeuvreGroupIdsByOeuvre, onOpen }}
           />
         </div>
       )

@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.24 (2026-11-15) — exhibition floor plan: groups, saved moves, open a work (TODO B4).
+  wn_floor_plan_groups_t: { fr: 'Plan de salle : placer un groupe', en: 'Floor plan: place a group' },
+  wn_floor_plan_groups_d: {
+    fr: 'Dans Expositions → Plan de salle, choisissez un groupe d’œuvres au-dessus de la liste : ses œuvres s’affichent, « Tout placer » les pose sur le plan. Une œuvre déplacée sur le plan garde sa place (avant, le déplacement se perdait). Double-clic sur une œuvre : sa fiche s’ouvre.',
+    en: 'In Exhibitions → Floor plan, pick a work group above the list: its works show, « Place all » puts them on the plan. A work moved on the plan keeps its spot (moves used to be lost). Double-click a work to open its card.',
+  },
   // 3.1.22 → corrected 3.1.23 (2026-11-15) — Exhibitions list keeps new and past exhibitions (TODO B3; applications stay in Pipeline).
   wn_exhibitions_all_t: { fr: 'Expositions : les nouvelles restent dans la liste', en: 'Exhibitions: new ones stay in the list' },
   wn_exhibitions_all_d: {

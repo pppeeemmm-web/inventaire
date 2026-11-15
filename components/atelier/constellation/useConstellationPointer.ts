@@ -60,7 +60,9 @@ export interface UseConstellationPointerArgs {
   removeFromCustom: (id: number) => void
   reloadGraphData:  (force: boolean) => Promise<void>
   onDropExternal?:  (id: number, x: number, y: number) => void
-  redraw:           () => void
+  /** Floor-plan mode: report dragged works instead of saving Constellation's layout. */
+  onNodesMoved?:    (moves: { id: number; x: number; y: number }[]) => void
+  redraw:          () => void
   router:           ReturnType<typeof useRouter>
   t:                (key: DictKey) => string
 }
@@ -72,7 +74,7 @@ export function useConstellationPointer({
   tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
   selectedThemeId, selectedGroupId, frozenEdges, activeShape, marquee, customIds, oeuvresById,
   setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
-  onOpen, removeFromCustom, reloadGraphData, onDropExternal,
+  onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
   redraw, router, t,
 }: UseConstellationPointerArgs) {
 
@@ -324,6 +326,15 @@ export function useConstellationPointer({
       }
       setPanelNode(null)
       redraw()
+    } else if (drag.mode === 'node' && onNodesMoved) {
+      // Floor plan: hand the dragged works back to the plan (its own saved view); never touch Constellation's layout.
+      // Always report (onMouseMove re-bases startX/Y on every move, so « did it move? » can't be told here; a click reports the same spot).
+      const ids = drag.moveIds?.length ? drag.moveIds : [drag.nodeId!]
+      const moves = ids.flatMap((id) => {
+        const p = posRef.current.get(id)
+        return p ? [{ id, x: p.x, y: p.y }] : []
+      })
+      if (moves.length > 0) onNodesMoved(moves)
     } else if (drag.mode === 'node') {
       savePos(
         groupByRef.current,
@@ -354,7 +365,7 @@ export function useConstellationPointer({
 
     dragRef.current = { mode: 'idle', startX: 0, startY: 0 }
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-  }, [linkType, oeuvresById, onOpen, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee])
+  }, [linkType, oeuvresById, onOpen, onNodesMoved, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee])
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault()

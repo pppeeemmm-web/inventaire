@@ -17,17 +17,18 @@ import { useI18n } from '@/lib/i18n/context'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { ExhibitionsListPanel } from '@/components/atelier/exhibitions/ExhibitionsListPanel'
 import { ExhibitionDetail } from '@/components/atelier/exhibitions/ExhibitionDetail'
-import type { Exhibition, Step, ExhibitionContact } from '@/components/atelier/exhibitions/exhibitions-types'
+import type { Exhibition, Step, ExhibitionContact, ExhibitionGroupsCtx } from '@/components/atelier/exhibitions/exhibitions-types'
 
 // ── Exhibitions ───────────────────────────────────────────────────────────────
 
-export function Exhibitions({ oeuvres, contacts, themes, tM, selection, setSelection }: {
+export function Exhibitions({ oeuvres, contacts, themes, tM, selection, setSelection, groupsCtx }: {
   oeuvres:      Oeuvre[]
   contacts:     ExhibitionContact[]
   themes:       { id: number; name: string }[]
   tM:           Record<number, string>
   selection:    Set<number>
   setSelection: (next: Set<number>) => void
+  groupsCtx:    ExhibitionGroupsCtx
 }) {
   const { lang, t } = useI18n()
   const [oauthBanner, setOauthBanner] = useState<string | null>(null)
@@ -177,6 +178,7 @@ export function Exhibitions({ oeuvres, contacts, themes, tM, selection, setSelec
             tM={tM}
             selection={selection}
             setSelection={setSelection}
+            groupsCtx={groupsCtx}
             onDelete={handleDelete}
             onUpdate={(p) => handleUpdateStatus(selected.id, p)}
           />

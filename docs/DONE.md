@@ -2,6 +2,16 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — Exhibition floor plan: groups, saved moves, open a work (TODO B4; verified on dev 2026-11-15, What's new 3.1.24)
+
+- Pem 2026-11-15: **groups = collections of works gathered for an exhibition or event** (not themes, which are creative); you use a group to dispatch works onto the floor plan, and the plan is saved as its own view (one per « mise en espace »).
+- `FloorPlanTool`: a **group menu** above the candidate works (exhibitable works, or a group A→Z with its count; « n / total chargées » when the shell has not loaded every work) + **« Tout placer (n) »** puts the group's unplaced works in rows below what is on the plan. Groups, counts and `onOpen` come from the Atelier shell (`ExhibitionGroupsCtx`, `exhibitions-types.ts`).
+- Canvas floor-plan mode (`ConstellationCanvas` `onNodesMoved` + `hideToolbar`): moving a work on the plan updates the plan's placements — before, moves were lost on « Enregistrer » and written into **Constellation's own saved layout** (localStorage) instead. Constellation's toolbar (group view, links) is hidden on the plan; plan opacity is a slider in the plan's bar.
+- **Double-click a work → its work card.** All the plan's copy FR / EN (`exh_fp_*`).
+- Found and fixed while testing: the floor plan looped (« Maximum update depth exceeded », 400+ errors) — the canvas's default `groups = []` was a new array each render, re-firing the initial-positions effect. Stable default `NO_GROUPS`; stable selection props in `FloorPlanTool`.
+- Checked on dev without saving: Liquid (10) placed, a moved work keeps its spot after the canvas reloads, double-click opened #347, `pem_const_pos_*` untouched; DB placements still 0. Not checked: « Enregistrer » round-trip (would write a real plan).
+- Still as before: unlinked floor plans (3 today) show under every exhibition.
+
 ## 2026-11-15 — Exhibitions list keeps new and past exhibitions (TODO B3; verified against live code + dev 2026-11-15, What's new 3.1.22 / 3.1.23)
 
 - `listExhibitionsWithSteps` listed only type `exposition` with a start or end date, so a new exhibition (no dates yet) vanished on reload and salons / résidences made in Pipeline never showed. Now every type in `EXHIBITION_LIST_TYPES` (`lib/data.ts`: `EXHIBITION_READY_TYPES` minus `consignment`, an order — R7), dated or not; undated first, then newest end date. « + Nouveau » offers those types (A→Z); list rows and the detail show the type's label; the detail's « Type » is a menu, not free text (a typo would hide the row again). Checked on dev: MOULIN ×2, therapeia, CoG 2026, Salon de Montrouge 2027 listed.

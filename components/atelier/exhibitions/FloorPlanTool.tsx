@@ -9,21 +9,30 @@ import {
 } from '@/app/atelier/(portal)/exhibitions/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { ConstellationCanvas } from '@/components/atelier/ConstellationCanvas'
+import { NW, NH } from '@/components/atelier/constellation/constellation-shared'
 import { WorkChip } from './WorkChip'
-import { WALL_COLORS, inputSt } from './exhibitions-types'
+import { WALL_COLORS, inputSt, type ExhibitionGroupsCtx } from './exhibitions-types'
 
 // Direct public URL for floor plans (stored in public paintings bucket)
 const R2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
 
+/** Stable props for the canvas (new objects each render re-fire its effects). */
+const NO_SELECTION = new Set<number>()
+const noop = () => {}
+
 // ── FloorPlanTool ─────────────────────────────────────────────────────────────
 
-export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
+export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM, groupsCtx }: {
   exhibitionId: string
   oeuvres:      Oeuvre[]
   themes:       { id: number; name: string }[]
   tM:           Record<number, string>
+  groupsCtx:    ExhibitionGroupsCtx
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const { groups, groupWorkCount, oeuvreGroupIdsByOeuvre, onOpen } = groupsCtx
+  /** '' = the exhibitable works; else a work group (Pem: groups gather the works for an event). */
+  const [groupId,     setGroupId]     = useState('')
   const [layouts,     setLayouts]     = useState<ExhibitionLayout[]>([])
   const [selected,    setSelected]    = useState<ExhibitionLayout | null>(null)
   const [creating,    setCreating]    = useState(false)
@@ -100,7 +109,7 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
     if (!layout) return
     const i  = layout.walls.length % WALL_COLORS.length
     const id = `w${Date.now()}`
-    patchLocal({ walls: [...layout.walls, { id, nom: `Mur ${layout.walls.length + 1}`, color: WALL_COLORS[i] }] })
+    patchLocal({ walls: [...layout.walls, { id, nom: t('exh_fp_wall_default_fmt').replace('{n}', String(layout.walls.length + 1)), color: WALL_COLORS[i] }] })
   }
 
   function updateWall(id: string, field: 'nom' | 'color', value: string) {
@@ -117,6 +126,50 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
   }
 
   const exposable = useMemo(() => oeuvres.filter((o) => o.Exposable), [oeuvres])
+
+  /** Groups that hold works, A→Z. */
+  const groupOptions = useMemo(
+    () => groups
+      .filter((g) => (groupWorkCount[g.id] ?? 0) > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, lang)),
+    [groups, groupWorkCount, lang],
+  )
+  const groupWorks = useMemo(
+    () => groupId ? oeuvres.filter((o) => (oeuvreGroupIdsByOeuvre[o.OeuvreID] ?? []).includes(groupId)) : [],
+    [groupId, oeuvres, oeuvreGroupIdsByOeuvre],
+  )
+  const candidates = groupId ? groupWorks : exposable
+  const groupTotal = groupId ? (groupWorkCount[groupId] ?? groupWorks.length) : 0
+  const unplaced = useMemo(() => {
+    const placed = new Set((layout?.placements ?? []).map((p) => p.oeuvre_id))
+    return groupWorks.filter((o) => !placed.has(o.OeuvreID))
+  }, [groupWorks, layout])
+
+  /** Place the group's unplaced works in rows below what is already on the plan (saved with « Enregistrer »). */
+  function placeAll() {
+    if (!layout || unplaced.length === 0) return
+    const ys = layout.placements.filter((p) => p.y != null).map((p) => (p.y as number) * 10)
+    const top = ys.length > 0 ? Math.max(...ys) + NH + 40 : 0
+    const cols = 6
+    const added = unplaced.map((o, i) => ({
+      oeuvre_id: o.OeuvreID, wall_id: 'canvas', position: 50, scale: 1,
+      x: ((i % cols) * (NW + 20)) / 10,
+      y: (top + Math.floor(i / cols) * (NH + 20)) / 10,
+    }))
+    patchLocal({ placements: [...layout.placements, ...added] })
+  }
+
+  /** Works dragged on the plan → this plan's placements (never Constellation's own layout). */
+  function handleNodesMoved(moves: { id: number; x: number; y: number }[]) {
+    if (!layout) return
+    const byId = new Map(moves.map((m) => [m.id, m]))
+    patchLocal({
+      placements: layout.placements.map((p) => {
+        const m = byId.get(p.oeuvre_id)
+        return m ? { ...p, x: m.x / 10, y: m.y / 10 } : p
+      }),
+    })
+  }
 
   const floorplanUrl = layout?.floorplan_path
     ? `${R2}/${layout.floorplan_path}`
@@ -154,7 +207,7 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
       <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--bd)' }}>
           <form onSubmit={handleCreate} style={{ display: 'flex', gap: 6 }}>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nouvelle mise…" style={{ ...inputSt, flex: 1, fontSize: 11 }} />
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('exh_fp_new_layout_ph')} style={{ ...inputSt, flex: 1, fontSize: 11 }} />
             <button type="submit" className="btn sm" disabled={creating || !newName.trim()} aria-label={t('exh_create_layout_aria')}>+</button>
           </form>
         </div>
@@ -169,7 +222,7 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
               borderLeft: selected?.id === l.id ? '2px solid var(--ac)' : '2px solid transparent',
             }}>
               <div style={{ fontSize: 13, color: 'var(--tx)' }}>{l.nom}</div>
-              <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{l.placements.length} œuvre{l.placements.length !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{l.placements.length === 1 ? t('exh_fp_works_one') : t('exh_fp_works_fmt').replace('{n}', String(l.placements.length))}</div>
             </button>
           ))}
         </div>
@@ -194,8 +247,26 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             <div style={{ padding: '10px 12px', fontSize: 11, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', borderBottom: '1px solid var(--bd)' }}>
               {t('exh_candidate_works')}
             </div>
+            <div style={{ padding: 6, borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <select value={groupId} onChange={(e) => setGroupId(e.target.value)} aria-label={t('exh_fp_group_label')} style={{ ...inputSt, fontSize: 11, padding: '6px 8px' }}>
+                <option value="">{t('exh_fp_group_exposable')}</option>
+                {groupOptions.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name} ({groupWorkCount[g.id] ?? 0})</option>
+                ))}
+              </select>
+              {groupId && groupTotal > groupWorks.length && (
+                <div style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                  {t('exh_fp_group_loaded_fmt').replace('{loaded}', String(groupWorks.length)).replace('{total}', String(groupTotal))}
+                </div>
+              )}
+              {groupId && (
+                <button type="button" className="btn sm" onClick={placeAll} disabled={unplaced.length === 0} style={{ fontSize: 11 }}>
+                  {t('exh_fp_place_all_fmt').replace('{n}', String(unplaced.length))}
+                </button>
+              )}
+            </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
-              {exposable.map((o) => (
+              {candidates.map((o) => (
                 <WorkChip key={o.OeuvreID} oeuvre={o} onDragStart={(id, e) => {
                   e.dataTransfer.setData('oeuvre_id', String(id))
                 }} />
@@ -214,12 +285,12 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                   border: 'none', borderBottom: subTab === tab ? '2px solid var(--ac)' : '2px solid transparent',
                   color: subTab === tab ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
                 }}>
-                  {tab === 'murs' ? 'Placement spatial' : 'Paramètres'}
+                  {tab === 'murs' ? t('exh_fp_tab_plan') : t('exh_fp_tab_settings')}
                 </button>
               ))}
               <div style={{ flex: 1 }} />
               <button onClick={handleSave} disabled={saving} className="btn sm" style={{ margin: '4px 8px' }}>
-                {saving ? 'Enregistrement…' : 'Enregistrer'}
+                {saving ? t('exh_fp_saving') : t('exh_fp_save')}
               </button>
             </div>
 
@@ -236,23 +307,30 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                       oeuvres={oeuvres}
                       themes={themes}
                       tM={tM}
-                      selection={new Set()}
-                      setSelection={() => {}}
-                      onOpen={() => {}}
+                      selection={NO_SELECTION}
+                      setSelection={noop}
+                      onOpen={onOpen}
                       onSaveGroup={async () => null}
                       backgroundImage={floorplanUrl || undefined}
                       backgroundOpacity={bgOpacity}
-                      onBackgroundOpacity={setBgOpacity}
                       initialPositions={initialPositions}
                       onDropExternal={handleConstellationDrop}
+                      onNodesMoved={handleNodesMoved}
+                      hideToolbar
                     />
                   </div>
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 24px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
                     <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 12, opacity: uploading ? 0.6 : 1 }}>
-                      {uploading ? 'Upload en cours…' : floorplanUrl ? 'Changer le plan' : 'Uploader un plan'}
+                      {uploading ? t('exh_fp_uploading') : floorplanUrl ? t('exh_fp_change_plan') : t('exh_fp_upload_plan')}
                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFloorplanUpload} disabled={uploading} />
                     </label>
-                    <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Glissez les œuvres sur le plan</div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('exh_fp_drag_hint')}</div>
+                    {floorplanUrl && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--tx3)' }}>
+                        {t('exh_fp_plan_opacity')}
+                        <input type="range" min={0.1} max={1} step={0.05} value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} />
+                      </label>
+                    )}
                     {uploadError && (
                       <div style={{ fontSize: 12, color: '#c06060', marginLeft: 16 }}>⚠ {uploadError}</div>
                     )}
@@ -263,7 +341,7 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                 <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 12, background: 'var(--bg1)' }}>
                   <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{t('exh_placements_heading')}</div>
                   {layout.placements.length === 0 ? (
-                    <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune œuvre placée.</div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>{t('exh_fp_no_placement')}</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {layout.placements.map(p => {
@@ -282,11 +360,11 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Nom</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>{t('exh_fp_name')}</div>
                   <input value={layout.nom} onChange={(e) => patchLocal({ nom: e.target.value })} style={inputSt} />
                 </div>
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Murs</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>{t('exh_fp_walls')}</div>
                   {layout.walls.map((w) => (
                     <div key={w.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                       <input type="color" value={w.color} onChange={(e) => updateWall(w.id, 'color', e.target.value)}
@@ -296,10 +374,10 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                       <button onClick={() => removeWall(w.id)} className="btn sm" aria-label={t('exh_remove_wall_aria')} style={{ color: '#c06060', flexShrink: 0, fontSize: 14 }}>×</button>
                     </div>
                   ))}
-                  <button onClick={addWall} className="btn sm">+ Mur</button>
+                  <button onClick={addWall} className="btn sm">{t('exh_fp_add_wall')}</button>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Notes</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>{t('exh_fp_notes')}</div>
                   <textarea value={layout.notes ?? ''} onChange={(e) => patchLocal({ notes: e.target.value })}
                     rows={4} style={{ ...inputSt, resize: 'vertical', fontSize: 13 }} />
                 </div>

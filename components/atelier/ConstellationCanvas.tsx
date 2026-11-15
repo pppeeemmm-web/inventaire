@@ -63,14 +63,22 @@ interface Props {
   onDropExternal?:      (id: number, x: number, y: number) => void
   hideToolbar?:         boolean
   initialPositions?:    NodeMap
+  /**
+   * Floor-plan mode (exhibitions): works dragged on the canvas are reported here (top-left world coords)
+   * instead of being written to Constellation's own saved layout in localStorage.
+   */
+  onNodesMoved?:        (moves: { id: number; x: number; y: number }[]) => void
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function ConstellationCanvas({ 
+/** Stable default: a fresh `[]` each render changed `redraw` every render → the floor-plan effect looped (B4). */
+const NO_GROUPS: { id: string; name: string }[] = []
+
+export function ConstellationCanvas({
   oeuvres, tM, themes, themeWorkCount, oeuvreThemeIdsByOeuvre,
-  groups = [], groupWorkCount, oeuvreGroupIdsByOeuvre,
+  groups = NO_GROUPS, groupWorkCount, oeuvreGroupIdsByOeuvre,
   selection, setSelection, onOpen, onSaveGroup,
-  backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
+  backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions, onNodesMoved,
 }: Props) {
   const router = useRouter()
   const { t, lang } = useI18n()
@@ -519,7 +527,7 @@ export function ConstellationCanvas({
     tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
     selectedThemeId, selectedGroupId, frozenEdges, activeShape, marquee, customIds, oeuvresById,
     setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
-    onOpen, removeFromCustom, reloadGraphData, onDropExternal,
+    onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
     redraw, router, t,
   })
 

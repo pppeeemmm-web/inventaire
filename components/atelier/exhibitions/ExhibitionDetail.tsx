@@ -14,13 +14,14 @@ import { StepPill } from './StepPill'
 import { CalendarExportStrip } from './CalendarExportStrip'
 import { FloorPlanTool } from './FloorPlanTool'
 import {
-  type Step, type Exhibition, type ExhibitionContact,
+  type Step, type Exhibition, type ExhibitionContact, type ExhibitionGroupsCtx,
   STATUT_COLORS, STATUT_LABELS, STEP_COLORS, inputSt, fmtDate,
 } from './exhibitions-types'
 
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
-export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection, setSelection, onDelete, onUpdate }: {
+export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection, setSelection, groupsCtx, onDelete, onUpdate }: {
+  groupsCtx:    ExhibitionGroupsCtx
   exhibition:   Exhibition
   oeuvres:      Oeuvre[]
   contacts:     ExhibitionContact[]
@@ -365,7 +366,7 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
       {/* Floor plan — outside scroll container so it can fill remaining height */}
       {activeTab === 'floorplan' && (
         <ExhibitionFloorPlanEditor>
-          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} />
+          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} groupsCtx={groupsCtx} />
         </ExhibitionFloorPlanEditor>
       )}
     </div>

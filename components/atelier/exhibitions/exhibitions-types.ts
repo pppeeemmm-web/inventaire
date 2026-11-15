@@ -1,8 +1,20 @@
 // Shared types + constants for Exhibitions components
 
 import type { CSSProperties } from 'react'
+import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Work groups (Pem 2026-11-15: collections of works gathered for an exhibition or event — not themes)
+ * + opening a work card, handed down from the Atelier shell to the floor plan.
+ */
+export type ExhibitionGroupsCtx = {
+  groups:                 { id: string; name: string }[]
+  groupWorkCount:         Record<string, number>
+  oeuvreGroupIdsByOeuvre: Record<number, string[]>
+  onOpen:                 (o: Oeuvre) => void
+}
 
 export interface Step {
   id:               string

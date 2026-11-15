@@ -6,7 +6,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B4. **Exhibition floor plan:** Group view lists « All groups (0) » — `FloorPlanTool` passes no groups to the canvas (the point of groups); double-click on a work does nothing (`onOpen` empty); French copy hard-coded there (« Upload en cours… », « Changer le plan », « Glissez les œuvres… »).
 - [ ] B5. **Constellation: leaving the tab empties the blank canvas and the selection** (kept in memory only) — keep them for the session at least.
 - [ ] B6. **Constellation eraser** rubs out drawn strokes bit by bit as you drag and never removes a link — make it remove a whole object (stroke, text, box, link) on click.
 - [ ] B7. **Export → Labels: « Image » stays ticked but no label prints an image.** Pem 2026-11-15: « yes, otherwise it's absurd » → print a small image on the label (left of the text, PDF + HTML, fits beside the QR on L7163 / L7651); grey out the ticks that still do not apply (status, notes).
