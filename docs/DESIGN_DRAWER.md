@@ -110,4 +110,62 @@ States: 828 Disponible, 204 Archive artiste, 143 En production, 7 Gift; 835 publ
 - **Collapse / develop switch:** Pem: collapsed shows "the fields in their entirety" — read as: collapsed still lists every field with its full value (no one-line summaries); the mockups show both states so Pem can confirm what the switch folds.
 - ~~Price in the top block?~~ Pem 2026-11-15: **the value group** (price, VAT, discount, payment, costs) stays together in Objet.
 
+## Pem's review of today's screens (2026-11-15, screenshots of #2233 at 2 000 px wide) — what not to keep
+
+Facts checked the same night are marked *(checked)*.
+
+**Inventory page**
+- **« Filters + »** should open a filter straight away — today it only reveals « + filter », which then has to be clicked again (two steps for one).
+- **Sidebar:** too much empty space between the section names and the table's first column (the checkboxes) — reclaim it.
+- **« All themes »** select is far too long; shorter, so « All groups » and « All states » move left.
+- **Medium** column too wide (dead space).
+- **Year** column: « in progress » overflows into the Period column (bug).
+- **Broadcast** column: its title is cut, and « embedding waiting » is cut (bug).
+
+**Work drawer — header and pictures**
+- The **work number** always visible: in the sticky bar, larger.
+- A **yellow diamond** next to the number — Pem doesn't know what it is (it must say what it is, or go).
+- Too much space between the expand and close buttons.
+- **Download / replace retouched** → icons over the picture (as agreed).
+- **« Gift »** in the sticky save bar — still relevant there?
+- **Palette** of #2233 shows Grey 84 % / Black 16 % and misses the **red accent** visible in the picture *(checked: the stored palette has only those two colours — the extraction drops a small vivid patch; to investigate)*.
+
+**Production / state**
+- Confusing block: « En production », then « Production · Start unknown → 15 Nov 2026 », then « Production ended 2026-11-15 » — in production *and* ended. *(checked: #2233 was catalogued at 01:17 on 15 Nov with « photo required » still on; the database keeps that as status 1, the same number as « En production ». Inventory already says « Catalogued »; the drawer's status line shows the raw label « En production ». The end date is right; the label is wrong.)*
+- The help text under « Production started / ended » → beside the fields.
+- « Photo required » checked: its explanation → beside the checkbox, not below.
+- **Owner / custodian:** the small box that opens the contact drawer is poor and wastes space; the **address** select needs a redesign ("ugly").
+- **Contact confidentiality:** explanation → beside the section title; the three buttons are fine.
+
+**Identity**
+- **Year vs production dates** seem to conflict (a year-only date is handy, but the two must read as one story).
+- Technique, support, dimensions: fine.
+- **Framed / Ready for broadcast / Presentation** and their texts: rearrange as in the brief, **with the pipeline's gates** in place.
+- **Themes:** total rework — today every theme in the catalogue is shown as a chip; show **only the work's own themes** (the long names take far too much room).
+
+**Period & sources** (weak section)
+- « Manage periods and sources » is fine; the period line (« Automatic: Marseille · 13 Jun 2024– ») and the **creation history** need a complete rework.
+- Source buttons: fine. **Links to other works:** fine in principle but unclear — weak visual hierarchy.
+
+**Physical label (QR)**
+- Explanation → beside the title; « Copy link » / « Print » → beside the QR, not below; the link text too.
+- The link must **never be localhost** — always `https://www.thepemworkshop.com/atelier/works/<id>` *(checked: on the live site it is, from `NEXT_PUBLIC_SITE_URL`; on dev that setting is empty, so `lib/atelier/work-physical-bridge-url.ts` falls back to the page's own address — fix: fall back to the public address, never the page's)*.
+
+**Value, condition, groups, sessions, AI, comments, versions**
+- **Finances** = the value group (price, discount, VAT, final amount, payment received).
+- Condition reports: fine.
+- **Groups:** same as themes — show none when none is chosen. Idea (not sure it's needed): a search box to add a theme or group.
+- **Linked field sessions:** collapsed by default, always.
+- **« Seen by AI »:** colour-coded when it still needs judging / reviewing — visible (e.g. red, or white on black).
+- Comments: fine.
+- **« Version history » → rename « Data history »** (« version » suggests a reworked work — TODO 6).
+
+### Quick fixes this review found (bugs, not design — can go before the mockups on Pem's GO)
+1. Drawer status line says « En production » for a catalogued work waiting for its photo (status 1) — use the Inventory's wording.
+2. QR link falls back to the page's address on dev — fall back to the public address.
+3. Inventory: Year « in progress » overflows; Broadcast column title and « embedding waiting » cut.
+4. « Filters + » opens a filter straight away.
+5. « Version history » → « Data history ».
+6. Palette misses small vivid accents (#2233) — investigate.
+
 Next: whole-screen mockups — desktop (a full work, an almost-empty one) + phone (recording a new work; inventory) — then build.
