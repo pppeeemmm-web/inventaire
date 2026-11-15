@@ -390,3 +390,6 @@ export const EXHIBITION_READY_TYPES = [
   'prix',
   'residence',
 ]
+
+/** Types listed in the Exhibitions tab (TODO B3): the ready types minus consignment, which is an order (R7). Dated or not. */
+export const EXHIBITION_LIST_TYPES = EXHIBITION_READY_TYPES.filter((t) => t !== 'consignment')

@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
+import { EXHIBITION_LIST_TYPES } from '@/lib/data'
 
 const inputSt: CSSProperties = {
   width: '100%',
@@ -99,7 +100,11 @@ export function ExhibitionsListPanel({
         <form onSubmit={onCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <input name="nom" value={newNom} onChange={(e) => onSetNewNom(e.target.value)} placeholder={t('exh_new_name_placeholder')} style={inputSt} autoFocus />
           <select value={newType} onChange={(e) => onSetNewType(e.target.value)} style={inputSt}>
-            <option value="exposition">{pipelineTypeLabel('exposition' as ProcessType, lang)}</option>
+            {[...EXHIBITION_LIST_TYPES]
+              .sort((a, b) => pipelineTypeLabel(a as ProcessType, lang).localeCompare(pipelineTypeLabel(b as ProcessType, lang), lang))
+              .map((typ) => (
+              <option key={typ} value={typ}>{pipelineTypeLabel(typ as ProcessType, lang)}</option>
+            ))}
           </select>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="submit" disabled={creating} className="btn sm" style={{ flex: 1 }}>Créer</button>
@@ -135,7 +140,7 @@ export function ExhibitionsListPanel({
                 <div style={{ height: '100%', width: `${pct}%`, background: accentColor, borderRadius: 1 }} />
               </div>
               <div style={{ marginTop: 3, fontSize: 8, color: 'var(--tx3)' }}>
-                {ex.type ?? 'exposition'}
+                {pipelineTypeLabel((ex.type ?? 'exposition') as ProcessType, lang)}
                 {ex.date_fin && <span> · {fmtDate(ex.date_fin)}</span>}
               </div>
             </button>

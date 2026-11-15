@@ -6,7 +6,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B3. **Exhibitions: a new exhibition vanishes on reload.** It is saved (« MOULIN » exists twice), but the list only shows type `exposition` **with a start or end date** (`listExhibitionsWithSteps`); other types (salon, résidence…) never show either. Show undated ones; delete the duplicate « MOULIN » with Pem's OK.
 - [ ] B4. **Exhibition floor plan:** Group view lists « All groups (0) » — `FloorPlanTool` passes no groups to the canvas (the point of groups); double-click on a work does nothing (`onOpen` empty); French copy hard-coded there (« Upload en cours… », « Changer le plan », « Glissez les œuvres… »).
 - [ ] B5. **Constellation: leaving the tab empties the blank canvas and the selection** (kept in memory only) — keep them for the session at least.
 - [ ] B6. **Constellation eraser** rubs out drawn strokes bit by bit as you drag and never removes a link — make it remove a whole object (stroke, text, box, link) on click.
@@ -15,6 +14,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 1. Waiting on Pem — only you can do these
 
+- [ ] **Duplicate « MOULIN »** in Exhibitions (two identical empty rows, made 12:36 and 12:43 on 2026-11-15): OK to delete the second one?
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
@@ -29,7 +29,7 @@ Each one: what the screen is for, a whole-screen design, Pem's say — then buil
 - [ ] R2. **Mobile terminal reprioritized** for the day-to-day. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px); a session work with no « Nouvelle / Ancienne » choice still gets no date — make the choice required?
 - [ ] R3. **Work drawer reorganized** — top block + « Création » / « Objet » drawers, empty greyed out, collapse switch; phone recording drawer → [DESIGN_DRAWER](./DESIGN_DRAWER.md); next: mockups.
 - [ ] R4. **Timeline + map + previews.** Timeline map / map « Création » mode; `#1234` thumbnail + loupe everywhere (Notes triage « #2357 · Les mortes marguerites » has neither — Pem 2026-11-15); a title next to the number in the AI suggestion rows → [notes](./TODO_NOTES.md#previews)
-- [ ] R6. **Exhibitions → « Exhibitions / events »** (Pem 2026-11-15): collaborations live there too; **editions** (prints, books… issued from a series) as an in-between state — taken out of the inventory, then back. Ties to the custody model ([`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md)).
+- [ ] R6. **Exhibitions → « Exhibitions / events »** (Pem 2026-11-15): collaborations live there too; **editions** (prints, books… issued from a series) as an in-between state — taken out of the inventory, then back. An event is about works (a print-series launch is one): a group of works tracked out and back + what to prepare; PR and books / publications stay in Pipeline (Pem 2026-11-15, [RETHINK](./RETHINK_2026-11-14.md)). Ties to the custody model ([`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md)).
 - [ ] R7. **Commercial: orders and their papers in one place** (Pem 2026-11-15: « this needs to be rationalized »). Today: sales in « Sales » (order + PDF), consignment / loan slips in **Pipeline** (`createConsignmentOrder` → « Bordereau » PDF in the Vault), gift slip in the **work card** gift dialog (« Bordereau de Don »). Consignment is not a sale → rename « Sales » to « Orders »? Not proven: **0 sale orders, 0 consignment / loan orders** in the data (6 gifts) — no path clicked through yet → [notes](./TODO_NOTES.md#custody)
 
 ## 3. To build — outside the rethink (needs GO)

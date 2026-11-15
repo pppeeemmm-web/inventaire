@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
-import { thumbUrl } from '@/lib/data'
+import { thumbUrl, EXHIBITION_LIST_TYPES } from '@/lib/data'
+import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { sendWorksToExhibition } from '@/app/atelier/(portal)/exhibitions/actions'
 import { gateErrorKey } from '@/lib/work-save-error'
 import { useI18n } from '@/lib/i18n/context'
@@ -30,7 +31,7 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
   onDelete:     () => void
   onUpdate:     (p: Partial<Exhibition> & { _isEditing?: boolean }) => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
   const [sendKind, setSendKind] = useState<'loan' | 'consignment'>('loan')
   const [sending, setSending] = useState(false)
@@ -184,7 +185,20 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
                   ].map((field) => (
                     <div key={field.key} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <div style={{ width: 80, flexShrink: 0, color: 'var(--tx3)', fontSize: 12 }}>{field.label}</div>
-                      {exhibition['_isEditing' as keyof Exhibition] ? (
+                      {exhibition['_isEditing' as keyof Exhibition] && field.key === 'type' ? (
+                        // A select, not free text: a type outside the list would drop the exhibition from the tab (TODO B3).
+                        <select
+                          value={field.val ?? 'exposition'}
+                          onChange={(e) => onUpdate({ type: e.target.value })}
+                          style={{ ...inputSt, flex: 1, fontSize: 13, padding: '6px 10px' }}
+                        >
+                          {[...EXHIBITION_LIST_TYPES]
+                            .sort((a, b) => pipelineTypeLabel(a as ProcessType, lang).localeCompare(pipelineTypeLabel(b as ProcessType, lang), lang))
+                            .map((typ) => (
+                            <option key={typ} value={typ}>{pipelineTypeLabel(typ as ProcessType, lang)}</option>
+                          ))}
+                        </select>
+                      ) : exhibition['_isEditing' as keyof Exhibition] ? (
                         <input
                           type={field.type || 'text'}
                           value={field.val ?? ''}
@@ -196,7 +210,9 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
                           {field.key === 'url' && field.val ? (
                             <a href={field.val} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)' }}>{field.val}</a>
                           ) : (
-                            field.type === 'date' ? fmtDate(field.val) : (field.val ?? '—')
+                            field.type === 'date' ? fmtDate(field.val)
+                              : field.key === 'type' && field.val ? pipelineTypeLabel(field.val as ProcessType, lang)
+                              : (field.val ?? '—')
                           )}
                         </div>
                       )}
