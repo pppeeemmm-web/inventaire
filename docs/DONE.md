@@ -2,9 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
-## 2026-11-15 — Exhibitions list shows every exhibition (TODO B3; verified against live code + dev 2026-11-15, What's new 3.1.22)
+## 2026-11-15 — Exhibitions list keeps new and past exhibitions (TODO B3; verified against live code + dev 2026-11-15, What's new 3.1.22 / 3.1.23)
 
-- `listExhibitionsWithSteps` listed only type `exposition` with a start or end date, so a new exhibition (no dates yet) vanished on reload and salons / résidences made in Pipeline never showed. Now every type in `EXHIBITION_LIST_TYPES` (`lib/data.ts`: `EXHIBITION_READY_TYPES` minus `consignment`, an order — R7), dated or not; undated first, then newest end date. « + Nouveau » offers those types (A→Z); list rows and the detail show the type's label; the detail's « Type » is a menu, not free text (a typo would hide the row again). Checked on dev: MOULIN ×2, therapeia, CoG 2026, Salon de Montrouge 2027 listed. The duplicate « MOULIN » waits for Pem's OK (TODO §1).
+- `listExhibitionsWithSteps` listed only type `exposition` with a start or end date, so a new exhibition (no dates yet) vanished on reload and salons / résidences made in Pipeline never showed. Now every type in `EXHIBITION_LIST_TYPES` (`lib/data.ts`: `EXHIBITION_READY_TYPES` minus `consignment`, an order — R7), dated or not; undated first, then newest end date. « + Nouveau » offers those types (A→Z); list rows and the detail show the type's label; the detail's « Type » is a menu, not free text (a typo would hide the row again). Checked on dev: MOULIN ×2, therapeia, CoG 2026, Salon de Montrouge 2027 listed.
+- **Corrected the same day (3.1.23):** listing salons / résidences was a misreading — Pem: the tab is for what is **accepted + involves works**; applications stay in Pipeline (rule → [RETHINK](./RETHINK_2026-11-14.md) R6). `EXHIBITION_LIST_TYPES = ['exposition']`, rejected / cancelled (`perdu`, `annule`) hidden, undated + ended kept. Duplicate « MOULIN » (`dd56cc75…`, empty) deleted at Pem's request. « Supprimer » did nothing in the app's browser pane: the pane answers « no » to native `confirm()` without showing it — works in Chrome / Safari (34 files use `confirm()`; not an app bug).
 
 ## 2026-11-15 — palette = the work's main colours (TODO B9 #6, What's new 3.1.21)
 

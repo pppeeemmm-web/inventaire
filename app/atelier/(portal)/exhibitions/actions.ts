@@ -16,7 +16,7 @@ import {
   toSuiviProcessUpdate,
 } from '@/lib/exhibitions/exhibition-client'
 import { createConsignmentOrder } from '@/app/atelier/consignments/actions'
-import { EXHIBITION_LIST_TYPES } from '@/lib/data'
+import { EXHIBITION_LIST_TYPES, EXHIBITION_HIDDEN_STATUTS } from '@/lib/data'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -260,8 +260,9 @@ export async function listExhibitionsWithSteps(): Promise<
 
   const { data: processes, error: pErr } = await fromSuiviProcess(supabase)
     .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
-    // TODO B3: every exhibition-like type, dated or not — undated (just created) first, then newest end date.
+    // Pem 2026-11-15: accepted exhibitions only, dated or not (undated = just created, first), ended ones kept as history.
     .in('type', EXHIBITION_LIST_TYPES)
+    .not('statut', 'in', `(${EXHIBITION_HIDDEN_STATUTS.join(',')})`)
     .order('date_fin', { ascending: false, nullsFirst: true })
     .order('created_at', { ascending: false })
   if (pErr) return { error: pErr.message }

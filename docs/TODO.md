@@ -14,7 +14,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 1. Waiting on Pem — only you can do these
 
-- [ ] **Duplicate « MOULIN »** in Exhibitions (two identical empty rows, made 12:36 and 12:43 on 2026-11-15): OK to delete the second one?
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).

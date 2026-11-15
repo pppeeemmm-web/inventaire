@@ -9,11 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
-  // 3.1.22 (2026-11-15) — Exhibitions list shows every event (TODO B3).
-  wn_exhibitions_all_t: { fr: 'Expositions : tous les événements restent dans la liste', en: 'Exhibitions: every event stays in the list' },
+  // 3.1.22 → corrected 3.1.23 (2026-11-15) — Exhibitions list keeps new and past exhibitions (TODO B3; applications stay in Pipeline).
+  wn_exhibitions_all_t: { fr: 'Expositions : les nouvelles restent dans la liste', en: 'Exhibitions: new ones stay in the list' },
   wn_exhibitions_all_d: {
-    fr: 'Une exposition créée sans dates disparaissait au rechargement ; les salons et résidences créés dans Suivi n’apparaissaient jamais. La liste montre maintenant expositions, salons, résidences, prix, événements et collaborations, datés ou non (sans date en tête). « + Nouveau » propose ces types ; le type se choisit dans un menu.',
-    en: 'An exhibition created without dates vanished on reload; salons and residencies made in Pipeline never showed. The list now shows exhibitions, salons, residencies, prizes, events and collaborations, dated or not (undated first). « + New » offers these types; the type is picked from a menu.',
+    fr: 'Une exposition créée sans dates disparaissait au rechargement : elle reste maintenant, en tête de liste. L’onglet montre les expositions acceptées, en cours ou passées (l’historique reste) ; les candidatures — résidences, salons, prix, refusées comprises — restent dans Suivi.',
+    en: 'An exhibition created without dates vanished on reload: it now stays, at the top. The tab shows accepted exhibitions, current or past (history stays); applications — residencies, salons, prizes, rejected ones included — stay in Pipeline.',
   },
   // 3.1.21 (2026-11-15) — palette = main colours (TODO B9 #6, docs/TODO_NOTES.md « palette-main-colours »).
   wn_palette_main_colours_t: { fr: 'Palette : les couleurs principales de l’œuvre', en: 'Palette: the work’s main colours' },

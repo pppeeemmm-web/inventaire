@@ -391,5 +391,11 @@ export const EXHIBITION_READY_TYPES = [
   'residence',
 ]
 
-/** Types listed in the Exhibitions tab (TODO B3): the ready types minus consignment, which is an order (R7). Dated or not. */
-export const EXHIBITION_LIST_TYPES = EXHIBITION_READY_TYPES.filter((t) => t !== 'consignment')
+/**
+ * Types listed in the Exhibitions tab. Pem 2026-11-15: an event = accepted + involves works (the exhibition,
+ * essentially). Residencies, salons, prizes are applications → Pipeline; a residency's final show is its own
+ * exhibition linked back to it. A print-series launch type comes with R6.
+ */
+export const EXHIBITION_LIST_TYPES = ['exposition']
+/** Statuses that are not « accepted » — never in the Exhibitions tab (rejected, cancelled). Past ones stay as history. */
+export const EXHIBITION_HIDDEN_STATUTS = ['perdu', 'annule']
