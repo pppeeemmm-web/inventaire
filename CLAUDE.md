@@ -4,7 +4,7 @@ Repo guide. Conflict → ask owner before edit.
 
 ## Hard Rules
 - CAUTION > SPEED. Think first. Surgical edits. Small diffs. No bloat.
-- No edit without GO. Confirm deletes.
+- No edit without GO. Confirm deletes. A GO on a batch list covers every item on it; deletes, SQL and anything off the list still need their own OK (owner 2026-11-16).
 - Before commit: stage modified source; exclude build artifacts. No assume hook unless file exists in checkout.
 - `origin/main` = only release truth. Checkpoint branches/worktrees = scratch; reconcile before final.
 - Done/clean/shipped only when change committed, checks known, commit on `origin/main`.
@@ -16,7 +16,7 @@ Repo guide. Conflict → ask owner before edit.
 - One writing session per checkout. One session at a time → main checkout is fine. Read-only sessions may share.
 - Second code-writing session while another runs → worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. One session inside.
 - Worktree branches stay local. `origin/main` only push target.
-- No git pre-push hook installed. Claude Code PreToolUse hooks (`.claude/settings.json` → `.claude/hooks/commit-guard.ps1`, `pre-push-checks.ps1`) deny: commit with unstaged source, push off `main`, push with dirty tree, force push. They fire on `git commit` / `git push` in Bash or PowerShell tool commands (block = exit 2; tested 2026-11-03). `.claude/` is gitignored; these three files are force-tracked (`git add -f`) so worktrees get them — `settings.local.json` stays local. Git run inside scripts (incl. `commit-push-main.ps1`) bypasses them. Verify manually.
+- No git pre-push hook installed. Claude Code PreToolUse hooks (`.claude/settings.json` → `.claude/hooks/commit-guard.ps1`, `pre-push-checks.ps1`) deny: commit with unstaged source, push off `main`, push with dirty tree, force push. They fire on `git commit` / `git push` in Bash or PowerShell tool commands (block = exit 2; tested 2026-11-03). `.claude/` is gitignored; these three files are force-tracked (`git add -f`) so worktrees get them — `settings.local.json` stays local. Git run inside scripts (incl. `ship.ps1`) bypasses them; `ship.ps1` does its own checks.
 - Reconcile from main checkout: `git merge --ff-only wt-<name>`, then push. Rebase onto main first if FF impossible.
 - Remove worktree only after committing or stashing: `git worktree remove ../app-wt-<name>`. Never `--force` with uncommitted changes.
 - State unclear? `git worktree list` and `pwsh scripts/release-truth.ps1` from inside worktree.
@@ -38,14 +38,16 @@ Repo guide. Conflict → ask owner before edit.
 - UI/copy: `npm run i18n:check` (must pass — 0 blocking hotspots), `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when logged-in dev session available.
 - Type/data flow: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL live, then `npm run typecheck`.
-- Commit + push: `& .\scripts\commit-push-main.ps1 -Message '…' -Paths @('…')` — moves unrelated WIP aside (fast), commits, pushes, restores. Add `-NoPush` for commit-only, `-Verify` for release-truth (slow fetch). Moves WIP aside → never run while another session is editing this checkout. Run in current shell, not nested `pwsh -File`.
-- Before any push claim: run `pwsh scripts/release-truth.ps1` with `-Checks` when checks ran in-session.
+- Commit + push (owner 2026-11-16, lean): `& .\scripts\ship.ps1 -m '…'` — on `main`: four checks → `git add -A` (prints staged list, refuses build artifacts) → commit → push → prints `pushed to origin/main <sha>`. `-NoPush` = commit only (`committed locally`); no args = push the local commits already made; `-NoChecks` for docs-only. One writing session per checkout, so `add -A` is safe; never run it while a session shares this checkout for writing.
+- Batch rhythm: one local commit per item (`-NoPush`), docs (TODO → DONE, What's new + release bump) once at batch end, one push per batch.
+- Parallel batch: side sessions work in their own worktree branch, commit there, never push, never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new.messages.ts` (merge clashes); the main checkout merges each branch (ff or rebase), writes those docs, ships once.
+- `ship.ps1` output is the push evidence (it checks origin/main == HEAD). `pwsh scripts/release-truth.ps1` only when state is unclear.
 
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
 - Before completion wording, run or derive same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks. `deployed`/`online` needs separate production evidence.
-- Push to `origin/main` = production release: auto-deploys https://www.thepemworkshop.com in ~70s. `deployed` only after `curl -sI https://www.thepemworkshop.com` shows `x-build-sha` = pushed HEAD (header set in `next.config.ts`; poll, budget ~2 min).
+- Push to `origin/main` = production release: auto-deploys https://www.thepemworkshop.com in ~70s. No routine deploy poll (owner 2026-11-16): say `pushed to origin/main`. `deployed` only if asked and proven: `curl -sI https://www.thepemworkshop.com` shows `x-build-sha` = pushed HEAD (header set in `next.config.ts`).
 - Push only when owner requested commit/push. `main` ahead but no push request → say `committed locally` or `local draft`. Not on `origin/main` → say local draft.
 - Status words exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, `verified`. No widening beyond evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
