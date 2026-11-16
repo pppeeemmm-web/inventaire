@@ -44,7 +44,8 @@
 // '3.1.26' (2026-11-15): Constellation eraser removes one whole object per click (stroke, text, else link) (TODO B6).
 // '3.1.27' (2026-11-16): labels print the work's image; text cut to one line, never overlapping (TODO B7).
 // '3.1.28' (2026-11-16): parallel batch 1 — Inventory / work card quick fixes (B9), small round GIFs (21), Constellation undo / marquee / arrows / how-to (20).
-export const WHATS_NEW_RELEASE = '3.1.28'
+// '3.1.29' (2026-11-16): batch 2 — work card + Overview open in one read (18), Journal ✦ loupe (B12), Constellation panel (B11).
+export const WHATS_NEW_RELEASE = '3.1.29'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -56,6 +57,8 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'open_one_read', day: '2026-11-16' },
+  { id: 'journal_suggestion_loupe', day: '2026-11-16' },
   { id: 'constellation_tools', day: '2026-11-16' },
   { id: 'slideshow_small_gifs', day: '2026-11-16' },
   { id: 'inventory_card_fixes', day: '2026-11-16' },

@@ -9,6 +9,17 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.29 (2026-11-16) — batch 2: one read on open (TODO 18), Journal ✦ loupe (B12), Constellation panel (B11).
+  wn_open_one_read_t: { fr: 'Fiche et Vue d’ensemble plus rapides', en: 'Faster work card and Overview' },
+  wn_open_one_read_d: {
+    fr: 'La fiche d’une œuvre et la Vue d’ensemble se chargent en une seule requête au lieu de 8 à 14 à la suite : la fiche est prête environ 3 fois plus vite.',
+    en: 'A work’s card and the Overview now load in one request instead of 8 to 14 in a row: the card is ready about 3× faster.',
+  },
+  wn_journal_suggestion_loupe_t: { fr: 'Journal : aperçu sur les suggestions ✦', en: 'Journal: preview on ✦ suggestions' },
+  wn_journal_suggestion_loupe_d: {
+    fr: 'Les œuvres suggérées par l’IA (✦), celles de « Création » et la liste des modifications montrent l’aperçu et la loupe au survol, comme les liens confirmés ; une œuvre sans titre dit « Sans titre ». Dans Constellation, « Tout en groupe » reste dans le panneau et « Effacer tout » devient ⌫.',
+    en: 'Works suggested by the AI (✦), « Création » works and the changes list show the preview and loupe on hover, like confirmed links; a work with no title says « Untitled ». In Constellation, « Tout en groupe » stays inside the panel and « Clear all » becomes ⌫.',
+  },
   // 3.1.28 (2026-11-16) — parallel batch 1: B9 quick fixes, small round GIFs (21), Constellation tools (20).
   wn_constellation_tools_t: { fr: 'Constellation : annuler, sélection au rectangle, flèches', en: 'Constellation: undo, rectangle selection, arrows' },
   wn_constellation_tools_d: {

@@ -6,8 +6,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B12. **Journal ✦ AI suggestion rows have no loupe** (Pem's screenshot 2026-11-16): they are a plain `Link` (`components/atelier/journal/JournalDayExtras.tsx` ~362), not `WorkRef` like the validated links in the same file (~346); Création works (~563) and admin changes (~615) too. Fix = `WorkRef` there + « sans titre » when empty. The rows show no title because #1316, #1323, #2336 have **no title in the DB** (checked 2026-11-16) — data, not code.
-- [ ] B11. **Constellation right panel** (found while building 20, there before): « Tout en groupe » sticks out ~7 px when the panel gets a scrollbar (opening the how-to does it); « Effacer » (clear all) is cut in the tool rail.
 
 ## 1. Waiting on Pem — only you can do these
 
@@ -58,7 +56,7 @@ Public site — next batch
 
 Speed and code health — measure first, change after
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
-- [ ] 18. **First (measured 2026-11-16 → [DONE](./DONE.md) 16b):** server actions run one after another — batch the work-card open (7–9 chained actions, 5.5–7 s to settle) and the Overview (14 actions, 7.5–10 s) into one call each. Then: per-tab lazy Atelier reference fetch · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
+- [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open done 2026-11-16 → [DONE](./DONE.md)); a deep link `?work=347` opens two drawers (Inventory panel + overlay), each reading once · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
 - [ ] 19. Overview stops loading catalogue chunks it doesn't need; Inventory loads its ~500-work chunks in parallel (full catalogue 22–27 s live) · bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
 
 ## 4. To check once, when it happens (no build)
@@ -69,6 +67,8 @@ Speed and code health — measure first, change after
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
 - [ ] Small GIFs (TODO 21, 3.1.28): a real 40 × 40 GIF and a round one, opened on the phone.
+- [ ] Speed (TODO 18, 3.1.29): open 3 work cards and the Overview on the live site as admin — cost section and a sold work's return-window banner fill in; re-measure (was 5.5–7 s / 7.5–10 s).
+- [ ] Journal ✦ suggestions (B12, 3.1.29): hover a « ✦ #1316 » row as admin → preview + loupe.
 - [ ] Constellation tools (TODO 20, 3.1.28): undo of a real link delete on the live site (the link must come back with its note); Shift+drag marquee; arrow tool.
 - [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works; full screen + swipe on a real iPhone; « Renommer »; fade / slide by eye; a full loop.
 - [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; a real export; a real print (300 dpi, Light B&W, labels); admin screens in Chrome (Local jobs, ✦ bar); one Production drag-back; saving a contact from the pop-up.

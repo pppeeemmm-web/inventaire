@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Batch 2: one-read card + Overview, Journal loupe, Constellation panel (What's new 3.1.29)
+
+- **TODO 18, part 1 (side session, landed by the main session):** a work card and the Atelier frame / Overview each open with ONE combined server read (`loadWorkDrawerOpen`, `loadAtelierShellOpen`, `loadOverviewOpen`) that runs the existing read actions in parallel — each keeps its own auth guard; sections take their slice (`lib/atelier/open-reads.ts`, served 30 s untaken / 2 s after first take) and fall back to their own action; reloads after an edit call their action directly. Dev (non-admin, hidden pane): card 8 → 1 POST, settled 3.4–4.1 → 1.1–1.2 s; Overview load 19 → 8 POSTs (7 = catalogue chunks, item 19), 11.2 → 5.7 s. **Not seen:** admin cost slice, sold-work return-window slice → §4.
+- **B12:** Journal ✦ suggestion rows, Création works and admin changes use `WorkRef` (#id preview + loupe); « Sans titre » when a work has none (#1316, #1323, #2336 have no title in the DB). Not seen on dev (suggestions reach admins only) → §4.
+- **B11:** Constellation « Tout en groupe » shrinks with « … » instead of sticking out; clear-all in the 52 px rail (34 px usable) is a ⌫ symbol with its name on hover. Measured on dev.
+
 ## 2026-11-16 — Security: anon write grants removed, storage ledger created (TODO 8, part; Pem OK)
 
 - Checked in the live DB first: of 56 tables granting `anon` writes, only `inquiry` (enquiry form) and `page_view` (visit counting) had a rule letting anonymous visitors write; the 3 views with anon write grants (`exhibition`, `edge_fact`, `entity`) are `security_invoker`, two not writable. So: tidy-up, not an open hole. Revoked insert / update / delete / truncate from `anon` everywhere except `inquiry` / `page_view` INSERT (`supabase/sql/revoke_anon_writes.sql`); SELECT untouched — `/`, `/works`, `/about` answer 200 on dev after.
