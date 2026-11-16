@@ -159,9 +159,14 @@ export function useConstellationPointer({
       return
     }
 
-    if (tool === 'draw') {
+    if (tool === 'draw' || tool === 'arrow') {
+      // Arrow = a freehand stroke with an arrowhead at its end (TODO 20); head sized to the stroke, fixed in world units.
+      const z = vpRef.current.z
       dragRef.current = { mode: 'draw', startX: lx, startY: ly }
-      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: drawWidth / vpRef.current.z })
+      setActiveShape({
+        type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: drawWidth / z,
+        ...(tool === 'arrow' ? { head: (10 + drawWidth * 2.5) / z } : {}),
+      })
       return
     }
 

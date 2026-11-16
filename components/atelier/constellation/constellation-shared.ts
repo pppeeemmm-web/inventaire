@@ -160,10 +160,56 @@ export function filterSavedToMembership(saved: NodeMap, memberOf: Set<number> | 
 // ── Named snapshots ────────────────────────────────────────────────────────
 export const SNAP_KEY = 'pem_const_snapshots'
 export type Shape =
-  | { type: 'line'; points: Pt[]; color: string; width: number }
+  /** `head` (world units) = an arrow annotation: arrowhead at the last point (TODO 20). */
+  | { type: 'line'; points: Pt[]; color: string; width: number; head?: number }
   | { type: 'text'; x: number; y: number; text: string; color: string; size: number }
 
-export type Tool = 'move' | 'draw' | 'line' | 'text' | 'marquee' | 'erase'
+export type Tool = 'move' | 'draw' | 'line' | 'arrow' | 'text' | 'marquee' | 'erase'
+
+/** Filled arrowhead with its tip at (tipX, tipY), pointing along the unit vector (ux, uy). Links + arrow tool. */
+export function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  tipX: number, tipY: number, ux: number, uy: number, size: number,
+) {
+  const spread = size * 0.55
+  ctx.beginPath()
+  ctx.moveTo(tipX, tipY)
+  ctx.lineTo(tipX - ux * size - uy * spread, tipY - uy * size + ux * spread)
+  ctx.lineTo(tipX - ux * size + uy * spread, tipY - uy * size - ux * spread)
+  ctx.closePath()
+  ctx.fill()
+}
+
+/** Draw one annotation (stroke, arrow or text) in world coordinates — canvas and PNG export. */
+export function drawShape(ctx: CanvasRenderingContext2D, s: Shape) {
+  ctx.strokeStyle = s.color
+  ctx.fillStyle   = s.color
+  if (s.type === 'text') {
+    ctx.font = `${s.size}px "Instrument Serif", serif`
+    ctx.fillText(s.text, s.x, s.y)
+    return
+  }
+  if (s.points.length < 2) return
+  ctx.beginPath()
+  ctx.moveTo(s.points[0].x, s.points[0].y)
+  for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
+  ctx.lineWidth = s.width
+  ctx.lineCap   = 'round'
+  ctx.lineJoin  = 'round'
+  ctx.stroke()
+  if (!s.head) return
+  // Direction: from a point about one head-length back along the stroke (steadier than the last segment).
+  const tip = s.points[s.points.length - 1]
+  let back = s.points[0]
+  for (let i = s.points.length - 2; i >= 0; i--) {
+    back = s.points[i]
+    if (Math.hypot(tip.x - back.x, tip.y - back.y) >= s.head) break
+  }
+  const dx = tip.x - back.x, dy = tip.y - back.y
+  const len = Math.hypot(dx, dy)
+  if (len < 1e-6) return
+  drawArrowHead(ctx, tip.x, tip.y, dx / len, dy / len, s.head)
+}
 
 export interface Snapshot {
   id: string

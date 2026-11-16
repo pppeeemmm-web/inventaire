@@ -4,7 +4,7 @@ import {
   NW, NH, NR, RING,
   drawContain, thumbTier,
   type Pt, type NodeMap, type GroupBy, type LinkType, type VP, type Edge, type Shape,
-  LINK_VIS, LINK_DEF, LINK_DIRECTED,
+  LINK_VIS, LINK_DEF, LINK_DIRECTED, drawArrowHead, drawShape,
 } from './constellation-shared'
 
 export type ConstellationDrawFrameRefs = {
@@ -382,15 +382,8 @@ export function drawConstellationFrame(
         // Distance from the card centre to its border along the line.
         const tEdge = Math.min(Math.abs(ux) > 1e-6 ? (NW / 2) / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-6 ? (NH / 2) / Math.abs(uy) : Infinity)
         const tipX = ax - ux * tEdge, tipY = ay - uy * tEdge
-        const size = (isHov ? 12 : 9) / vp.z
-        const spread = size * 0.55
-        ctx.beginPath()
-        ctx.moveTo(tipX, tipY)
-        ctx.lineTo(tipX - ux * size - uy * spread, tipY - uy * size + ux * spread)
-        ctx.lineTo(tipX - ux * size + uy * spread, tipY - uy * size - ux * spread)
-        ctx.closePath()
         ctx.fillStyle = vis.color
-        ctx.fill()
+        drawArrowHead(ctx, tipX, tipY, ux, uy, (isHov ? 12 : 9) / vp.z)
       }
     }
     ctx.globalAlpha = 1
@@ -510,23 +503,7 @@ export function drawConstellationFrame(
 
   // ── Shapes & Active Shape ────────────────────────────────────
   const allShapes = activeShape ? [...shapes, activeShape] : shapes
-  for (const s of allShapes) {
-    ctx.strokeStyle = s.color
-    ctx.fillStyle   = s.color
-    if (s.type === 'line') {
-      if (s.points.length < 2) continue
-      ctx.beginPath()
-      ctx.moveTo(s.points[0].x, s.points[0].y)
-      for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
-      ctx.lineWidth = s.width
-      ctx.lineCap   = 'round'
-      ctx.lineJoin  = 'round'
-      ctx.stroke()
-    } else {
-      ctx.font = `${s.size}px "Instrument Serif", serif`
-      ctx.fillText(s.text, s.x, s.y)
-    }
-  }
+  for (const s of allShapes) drawShape(ctx, s)
 
   ctx.restore() // Viewport transform end
 

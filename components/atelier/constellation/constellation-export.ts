@@ -4,7 +4,7 @@ import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 import {
   NW, NH, NR,
-  cacheConstellationThumb, drawContain,
+  cacheConstellationThumb, drawContain, drawShape,
   type NodeMap, type Edge, type Shape,
   LINK_VIS, LINK_DEF,
 } from './constellation-shared'
@@ -123,22 +123,7 @@ async function buildExportCanvas(deps: ConstellationExportDeps): Promise<HTMLCan
     }
   })
 
-  for (const s of shapes) {
-    ctx.strokeStyle = s.color
-    ctx.fillStyle   = s.color
-    if (s.type === 'line') {
-      if (s.points.length < 2) continue
-      ctx.beginPath()
-      ctx.moveTo(s.points[0].x, s.points[0].y)
-      for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
-      ctx.lineWidth = s.width
-      ctx.lineCap   = 'round'; ctx.lineJoin = 'round'
-      ctx.stroke()
-    } else {
-      ctx.font = `${s.size}px "Instrument Serif", serif`
-      ctx.fillText(s.text, s.x, s.y)
-    }
-  }
+  for (const s of shapes) drawShape(ctx, s)
 
   ctx.restore()
   return off

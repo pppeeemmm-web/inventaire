@@ -213,6 +213,7 @@ export function ConstellationCanvas({
         { id: 'marquee' as const, l: '⬛', tipKey: 'const_tool_marquee' as const },
         { id: 'draw' as const, l: '✏️', tipKey: 'const_tool_draw' as const },
         { id: 'line' as const, l: '📏', tipKey: 'const_tool_line' as const },
+        { id: 'arrow' as const, l: '↗', tipKey: 'ct_tool_arrow' as const },
         { id: 'text' as const, l: 'T', tipKey: 'const_tool_text' as const },
         { id: 'erase' as const, l: '🧹', tipKey: 'const_tool_erase' as const },
       ] as const,
