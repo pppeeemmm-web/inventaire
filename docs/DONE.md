@@ -2,6 +2,17 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Live speed measures (TODO 16b; read only, Pem's signed-in Chrome on the live site)
+
+| Measure (ms) | Cold | Warm |
+|---|---|---|
+| Inventory first rows (50) | — | 2 100 (first paint 1 564) |
+| Inventory full catalogue (1 176) | 27 500 | 21 800 |
+| Work card: form shows / fully settled | — | ~70 / 5 500–7 100 |
+| Overview: first content / complete | 1 700 / 9 800 | 1 700 / 7 500 |
+
+- 24–26 server actions per Inventory load, 14 per Overview, 7–9 per card open — **run strictly one after another**, even tiny ones (a 107 B action took 1.3–1.6 s; Overview's first 473 B action 3.1 s). Catalogue chunks of ~500 works: 440 KB (9.6 KB on the wire), ~1 s each, in sequence. Next steps → TODO 18 (batch card + Overview actions) and 19 (parallel chunks, no catalogue on Overview). Thin: Inventory first paint measured once; card opens warm only.
+
 ## 2026-11-16 — Parallel batch 1 (What's new 3.1.28)
 
 First batch run in parallel (owner 2026-11-16): B9 + 1e in the main checkout, 21 and 20 in their own worktree sessions, landed by the main session with `scripts/land.ps1`.

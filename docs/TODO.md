@@ -56,10 +56,9 @@ Public site — next batch
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Speed and code health — measure first, change after
-- [ ] 16b. Live measures (read only): Inventory first paint + full catalogue, opening a work card, Overview. 2026-11-16: dev-server numbers only (the built-in browser has no live sign-in) — redo on the live site in **Claude in Chrome**, signed in.
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
-- [ ] 18. Per-tab lazy Atelier reference fetch · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
-- [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
+- [ ] 18. **First (measured 2026-11-16 → [DONE](./DONE.md) 16b):** server actions run one after another — batch the work-card open (7–9 chained actions, 5.5–7 s to settle) and the Overview (14 actions, 7.5–10 s) into one call each. Then: per-tab lazy Atelier reference fetch · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
+- [ ] 19. Overview stops loading catalogue chunks it doesn't need; Inventory loads its ~500-work chunks in parallel (full catalogue 22–27 s live) · bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
 
 ## 4. To check once, when it happens (no build)
 
