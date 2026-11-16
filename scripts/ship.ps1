@@ -24,16 +24,19 @@ function G { $out = & git.exe @args 2>&1; if ($LASTEXITCODE -ne 0) { throw "git 
 if ((G branch --show-current) -ne "main") { throw "Refusing: not on main." }
 
 $dirty = G status --porcelain
-if ($dirty) {
-  if (-not $m) { throw "Changes in the tree but no -m message." }
+if ($dirty -and -not $m) { throw "Changes in the tree but no -m message." }
+$willPush = -not $NoPush -and ($dirty -or (G rev-list --count origin/main..HEAD) -ne "0")
 
-  if (-not $NoChecks) {
-    foreach ($c in @("i18n:check", "atelier:chrome:check", "typecheck", "lint")) {
-      $out = & npm run -s $c 2>&1
-      if ($LASTEXITCODE -ne 0) { $out | Select-Object -Last 30 | Write-Host; throw "Check failed: $c" }
-    }
-    Write-Host "Checks: i18n, chrome, typecheck, lint passed"
+# Checks before any commit and before any push (landed worktree commits included), ~10 s.
+if (-not $NoChecks -and ($dirty -or $willPush)) {
+  foreach ($c in @("i18n:check", "atelier:chrome:check", "typecheck", "lint")) {
+    $out = & npm run -s $c 2>&1
+    if ($LASTEXITCODE -ne 0) { $out | Select-Object -Last 30 | Write-Host; throw "Check failed: $c" }
   }
+  Write-Host "Checks: i18n, chrome, typecheck, lint passed"
+}
+
+if ($dirty) {
 
   G add -A | Out-Null
   $staged = @((G diff --cached --name-only) -split "`r?`n" | Where-Object { $_ })
