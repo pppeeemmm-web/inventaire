@@ -148,14 +148,17 @@ export function ConstellationToolRail(props: ConstellationToolRailProps) {
                     minHeight: 44,
                     width: '100%',
                     flexShrink: 0,
-                    padding: '0 4px',
+                    padding: 0,
+                    // 52 px rail leaves 34 px: « Effacer » was cut, so a symbol like the rail's other tools (TODO B11); the name is on hover.
+                    fontSize: 15,
+                    lineHeight: 1,
                     color: 'var(--rust)',
                     borderColor: 'var(--rust)',
                   }}
                   title={t('const_drawLayerClearAllTitle')}
                   aria-label={t('const_drawLayerClearAllTitle')}
                 >
-                  {t('clearSel')}
+                  ⌫
                 </button>
               )}
               <div style={{ flex: 1, minHeight: 4 }} aria-hidden />

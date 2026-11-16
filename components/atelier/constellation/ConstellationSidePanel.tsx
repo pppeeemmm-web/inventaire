@@ -255,7 +255,7 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>{t('clearSel')}</button>
                       {groupBy === 'custom' && posRef.current.size > 0 && (
-                        <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>{t('const_saveAllShort')}</button>
+                        <button className="btn ghost sm" style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t('const_saveAllShort')} onClick={handleSaveAllAsGroup}>{t('const_saveAllShort')}</button>
                       )}
                     </div>
                   </>
