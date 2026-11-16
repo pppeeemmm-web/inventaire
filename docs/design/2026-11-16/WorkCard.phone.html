@@ -37,9 +37,9 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
 .seg{display:flex;border:1px solid var(--bd2);border-radius:3px;overflow:hidden;font-size:12px}
 .seg span{padding:0 9px;height:32px;display:flex;align-items:center;color:var(--tx3)}
 .seg span.on{background:var(--bg3);color:var(--tx)}
-.body{flex:1;overflow:hidden;min-height:0}
+.body{flex:1;overflow-y:hidden;overflow-x:hidden;min-height:0}
 
-.pic{position:relative;background:var(--bg2);height:180px;overflow:hidden}
+.pic{position:relative;background:var(--bg2);height:150px;overflow:hidden}
 .paint{position:absolute;inset:0;background:
   radial-gradient(ellipse 14% 10% at 66% 38%, oklch(0.6 0.2 30) 0 60%, transparent 62%),
   radial-gradient(ellipse 50% 30% at 30% 70%, #2a2a2c 0 55%, transparent 70%),
@@ -48,7 +48,7 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
 .picicons span{width:44px;height:44px;display:grid;place-items:center;background:rgba(8,8,9,.72);border:1px solid rgba(255,255,255,.14);font-size:16px;border-radius:4px}
 .under{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 0}
 .strip{display:flex;gap:6px}
-.strip i{width:44px;height:44px;display:block;background:linear-gradient(160deg,#cfccc4,#5d5b57);border:1px solid transparent}
+.strip i{position:relative;width:44px;height:44px;display:block;background:linear-gradient(160deg,#cfccc4,#5d5b57);border:1px solid transparent}
 .strip i.on{border-color:var(--ac)}
 .strip i.add{display:grid;place-items:center;border:1px dashed var(--bd3);background:transparent;font-style:normal;color:var(--tx3);font-size:20px}
 .sw{display:flex}.sw i{display:block;height:14px}
@@ -59,22 +59,33 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
 .stages{display:flex}
 .stg{flex:1;height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--bd2);border-right:none;color:var(--tx3);font-size:13px}
 .stg:last-child{border-right:1px solid var(--bd2)}
-.stg.done{color:var(--tx2)}
-.stg.on{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac);border-color:var(--ac2)}
+.stg.at{color:var(--rust)}.stg.ca{color:var(--yellow)}
+.stg.at::before,.stg.ca::before{content:'✓\00a0'}
+.stg.av{background:color-mix(in srgb,var(--sage) 18%,transparent);color:var(--sage);border-color:var(--sage)}
+.chip.own{border-color:var(--cyan);color:var(--cyan);height:24px;padding:0 8px;font-size:12px}
+.chip.log{border-color:var(--dust);color:var(--dust)}
+.grip{position:absolute;left:2px;top:2px;font-size:10px;line-height:1;background:rgba(8,8,9,.7);color:var(--tx);padding:1px 2px;border-radius:2px;font-style:normal}
+.hex{font-size:9px;color:var(--tx3);font-family:ui-monospace,Consolas,monospace;display:block;margin-top:2px}
+.modes{display:flex;margin:10px 16px 0;border:1px solid var(--bd2);border-radius:3px;overflow:hidden}
+.modes span{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--tx3);padding:0 4px;line-height:1.15}
+.modes span.on{background:var(--bg3);color:var(--tx)}
+.modehint{margin:6px 16px 0;font-size:11px;color:var(--tx3)}
+.pick{display:flex;gap:10px;align-items:center;margin:10px 16px 0;padding:8px;border:1px solid var(--bd2);border-radius:3px;min-height:60px}
+.pick i{width:44px;height:44px;display:block;background:linear-gradient(160deg,#cfccc4,#5d5b57)}
 .kv{display:grid;grid-template-columns:88px 1fr;gap:0 10px;margin-top:8px}
-.kv>*{min-height:32px;display:flex;align-items:center;border-bottom:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
+.kv>*{min-height:30px;display:flex;align-items:center;border-bottom:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
 .kv .v em{color:var(--tx3);font-style:normal;margin-left:4px}
 .empty{color:var(--mt)!important;border-bottom:1px dashed var(--bd2)}
 .empty::before{content:'+ '}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{height:32px;display:inline-flex;align-items:center;padding:0 10px;border:1px solid var(--bd2);border-radius:999px;font-size:13px;color:var(--tx2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{height:32px;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;padding:0 10px;border:1px solid var(--bd2);border-radius:999px;font-size:13px;color:var(--tx2)}
 .chip.ok{border-color:var(--green);color:var(--sage)}
 .chip.warn{border-color:var(--yellow);color:var(--yellow)}
 
-.drrow{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 16px;border-top:1px solid var(--bd)}
+.drrow{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border-top:1px solid var(--bd)}
 .drrow h3{margin:0;font-family:var(--font-serif);font-weight:400;font-size:22px}
 .drrow .sum{flex:1;color:var(--tx3);font-size:12px}
-.part{padding:10px 16px;border-top:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
+.part{padding:7px 16px;border-top:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
 .part .h{font-size:12px;color:var(--tx2);font-weight:600;margin-bottom:4px}
 .part.mute .h{color:var(--mt)}
 .quote{color:var(--tx2);border-left:2px solid var(--bd2);padding-left:10px;margin:4px 0;font-size:14px}
@@ -122,17 +133,39 @@ Taps ≥ 44 px; the save bar sticks to the bottom with <code>max(10px, env(safe-
 <p>Opened from « + œuvre », a work session, or the Lightroom share target (picture already there). One picture button, no in-app choice.</p>
 <div class="phone">
   <div class="status"><span>9:41</span><span>●●● ▮</span></div>
-  <div class="hdr"><span class="t">Nouvelle œuvre</span><span class="sp"></span><div class="seg"><span class="on">Nouvelle</span><span>Version de…</span></div><span class="ib">×</span></div>
+  <div class="hdr"><span class="t">Enregistrer</span><span class="sp"></span><span class="ib">×</span></div>
   <div class="body">
-    <div class="addpic"><span class="big">Ajouter la photo</span><small>Safari propose ensuite « Photothèque »</small><small>ou Lightroom → Partager → PEM</small></div>
+    <div class="modes"><span class="on">Nouvelle œuvre</span><span>Reprise d'une œuvre</span></div>
+    <div class="addpic" style="height:120px"><span class="big">Ajouter la photo</span><small>Safari propose ensuite « Photothèque »</small><small>ou Lightroom → Partager → PEM</small></div>
     <div class="field"><span class="lbl">Titre</span><div class="in ph">Sans titre</div></div>
-    <div class="field two"><div><span class="lbl">Technique</span><div class="in">Huile ▾</div></div><div><span class="lbl">Support</span><div class="in">Toile ▾</div></div></div>
+    <div class="field two"><div><span class="lbl">Technique</span><div class="in">Huile ▾</div></div><div style="position:relative"><span class="lbl">Support</span><div class="in" style="border-color:var(--ac2)">Toi▾</div><div style="position:absolute;z-index:3;left:0;right:0;top:66px;background:var(--bg2);border:1px solid var(--bd3);border-radius:3px;box-shadow:0 8px 20px rgba(0,0,0,.6)"><div style="min-height:44px;display:flex;align-items:center;padding:0 10px">Toile</div><div style="min-height:44px;display:flex;align-items:center;padding:0 10px">Toile de lin</div><div style="min-height:44px;display:flex;align-items:center;padding:0 10px;color:var(--ac);border-top:1px solid var(--bd)">+ Nouveau support « Toi… »</div></div></div></div>
     <div class="field"><span class="lbl">Dimensions (cm)</span><div class="three"><div class="in">100</div><div class="in">81</div><div class="in ph">P</div></div></div>
-    <div class="field"><span class="lbl">Lieu</span><div class="place"><div class="in">Marseille, atelier</div><span class="gps">● auto</span></div></div>
+    <div class="field"><span class="lbl">Lieu</span><div class="place"><div class="in">Marseille, atelier ▾ <span style="color:var(--ac);font-size:12px;margin-left:auto">+ lieu</span></div><span class="gps">● auto</span></div></div>
     <div class="field"><span class="lbl">Note</span><div class="mic">● Enregistrer une note vocale</div></div>
-    <div class="field"><div class="more">▸ Source · lien vers une œuvre · période</div></div>
+    <div class="field"><div class="more">▸ Source · période · peinte sur l'ancien support de… (lien)</div></div>
   </div>
   <div class="save"><span class="sec">Brouillon</span><span class="pri">Créer #2241</span></div>
+  <div class="home"></div>
+</div>
+</div>
+
+<!-- 1b. REPRISE -->
+<div class="col">
+<h2>1b · Reprise d'une œuvre (même numéro)</h2>
+<p>Pem retravaille une œuvre existante : on ajoute la photo et une ligne « Reprise » à l'historique de création. Pas de nouveau numéro. Repeinte sur un ancien support = une œuvre nouvelle (mode 1), avec un lien « peinte sur #… ».</p>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="hdr"><span class="t">Enregistrer</span><span class="sp"></span><span class="ib">×</span></div>
+  <div class="body">
+    <div class="modes"><span>Nouvelle œuvre</span><span class="on">Reprise d'une œuvre</span></div>
+    <div class="pick"><i></i><div style="flex:1"><b>#2233</b> La Joliette, rouge<br><span style="font-size:12px;color:var(--tx3)">Huile · toile · 100 × 81 · changer…</span></div></div>
+    <div class="addpic" style="height:110px"><span class="big">Ajouter la photo</span><small>s'ajoute à la fin de la bande d'images</small></div>
+    <div class="field"><span class="lbl">Ligne d'historique</span><div class="in">Reprise — 16 nov. 2026</div></div>
+    <div class="field"><span class="lbl">Lieu</span><div class="place"><div class="in">Marseille, atelier rue Mazenod</div><span class="gps">● auto</span></div></div>
+    <div class="field"><span class="lbl">Note</span><div class="mic">● Note vocale sur la reprise</div></div>
+    <div class="modehint">Le stade de production ne change pas tout seul ; si l'œuvre était « Disponible », elle le reste.</div>
+  </div>
+  <div class="save"><span class="sec">Annuler</span><span class="pri">Ajouter à #2233</span></div>
   <div class="home"></div>
 </div>
 </div>
@@ -146,23 +179,23 @@ Taps ≥ 44 px; the save bar sticks to the bottom with <code>max(10px, env(safe-
   <div class="hdr"><span class="num">#2233</span><span class="sp"></span><div class="seg"><span class="on">Replié</span><span>Dév.</span></div><span class="ib">×</span></div>
   <div class="body">
     <div class="pic"><div class="paint"></div><div class="picicons"><span>↓</span><span>⟳</span></div></div>
-    <div class="under"><div class="strip"><i class="on"></i><i style="background:linear-gradient(20deg,#3b3a38,#a7a49c)"></i><i class="add">+</i></div>
-      <div class="sw"><i style="width:56px;background:#b6b3ab"></i><i style="width:26px;background:#2b2b2d"></i><i style="width:12px;background:oklch(0.6 0.2 30)"></i></div></div>
+    <div class="under"><div class="strip"><i class="on"><em class="grip">⠿</em></i><i style="background:linear-gradient(20deg,#3b3a38,#a7a49c)"><em class="grip">⠿</em></i><i class="add">+</i></div>
+      <div class="sw" style="gap:3px"><div><i style="width:52px;background:#b6b3ab"></i><span class="hex">#B6B3AB</span></div><div><i style="width:44px;background:#2b2b2d"></i><span class="hex">#2B2B2D</span></div><div><i style="width:44px;background:#c8452e"></i><span class="hex">#C8452E</span></div></div></div>
     <div class="pad">
       <h2 class="title">La Joliette, rouge</h2>
-      <div class="stages"><div class="stg done">Atelier</div><div class="stg done">Catalogué</div><div class="stg on">Disponible</div></div>
+      <div class="stages"><div class="stg at">Atelier</div><div class="stg ca">Catalogué</div><div class="stg av">Disponible</div></div>
       <div class="kv">
-        <span class="lbl">Propriété</span><span class="v">Artiste <em>· Pem</em></span>
-        <span class="lbl">Gardien</span><span class="v">Atelier <em>· Marseille</em></span>
-        <span class="lbl">Œuvre</span><span class="v">Huile · lin · 100×81</span>
-        <span class="lbl">Période</span><span class="v">Marseille <em>· 2024</em></span>
+        <span class="lbl">Propriété</span><span class="v"><span class="chip own">Artiste</span><em>· Pem ↗</em></span>
+        <span class="lbl">Gardien</span><span class="v">Atelier Pem<em>↗ · Marseille</em></span>
+        <span class="lbl">Œuvre</span><span class="v">Huile · lin · 100×81 <em>· 40 F</em></span>
+        <span class="lbl">Période</span><span class="v">Marseille <em>· juin 25 → nov. 26</em></span>
       </div>
-      <div class="chips" style="margin-top:10px"><span class="chip ok">Public</span><span class="chip warn">1 photo en attente</span></div>
+      <div class="chips" style="margin-top:8px"><span class="chip ok">Publique</span><span class="chip log">→ Encadreur · 20 nov.</span><span class="chip warn">1 photo de session à valider ⓘ</span></div>
     </div>
     <div class="drrow"><h3>Création</h3><span class="sum">historique · 2 comm. · 2 thèmes · IA à juger</span><span>▸</span></div>
     <div class="drrow"><h3>Objet</h3><span class="sum">public · étiquette · 1 groupe</span><span>▸</span></div>
   </div>
-  <div class="save"><span class="sp"></span><span class="pri" style="opacity:.4;flex:none;padding:0 28px">Enregistrer</span></div>
+  <div class="save"><span class="sec" style="opacity:.4">Annuler</span><span class="pri" style="opacity:.4">Enregistrer</span></div>
   <div class="home"></div>
 </div>
 </div>
@@ -176,13 +209,15 @@ Taps ≥ 44 px; the save bar sticks to the bottom with <code>max(10px, env(safe-
   <div class="hdr"><span class="num">#2233</span><span style="color:var(--tx3);font-size:13px;margin-left:4px">La Joliette, rouge</span><span class="sp"></span><span class="ib">×</span></div>
   <div class="body">
     <div class="drrow" style="border-top:none"><h3>Création</h3><span class="sum"></span><span>▾</span></div>
+    <div class="part"><div class="h">Période &amp; sources <span style="font-weight:400;color:var(--tx3)">· gérer ↗</span></div>
+      <div style="font-size:14px;color:var(--tx2)">Marseille 2025– <span style="color:var(--tx3)">(auto)</span> · <span class="empty">source</span></div></div>
     <div class="part"><div class="h">Historique de création</div>
-      <div style="font-size:14px;color:var(--tx2)">12 juin 24 · Commencé — Marseille<br>03 sept. 24 · Reprise, fond gris<br>15 nov. 26 · Terminé, photographié</div></div>
+      <div style="font-size:14px;color:var(--tx2)">12 juin 25 · Commencée — Marseille<br>03 sept. 25 · Reprise, fond gris<br>15 nov. 26 · Terminée, photographiée</div></div>
     <div class="part"><div class="h">Commentaires &amp; notes</div>
       <div class="quote"><span class="voice">● 14 nov. · 0:42</span> « garder le trait noir… »</div>
       <div class="editing">Le rouge vient du conteneur vu au port<span class="cur"></span></div></div>
     <div class="part"><div class="h">Thèmes</div><div class="chips"><span class="chip">Port</span><span class="chip">Marseille</span><span class="chip empty" style="border-style:dashed">thème</span></div></div>
-    <div class="part mute"><div class="h">Liens · sources</div><span class="empty">lien</span>&nbsp; <span class="empty">source</span></div>
+    <div class="part"><div class="h">Liens</div><span style="font-size:14px;color:var(--tx2)">#2190 Étude Joliette — étude pour</span></div>
     <div class="part"><div class="h">Vu par l'IA</div><div class="ai"><b>À juger</b> — Toile grise, traits noirs, tache rouge…</div></div>
     <div class="drrow"><h3>Objet</h3><span class="sum">public · étiquette · 1 groupe</span><span>▸</span></div>
   </div>
