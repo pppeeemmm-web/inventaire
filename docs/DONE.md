@@ -4,7 +4,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 ## 2026-11-16 — Content security policy, report-only (TODO 8, part)
 
-- `next.config.ts` sends `Content-Security-Policy-Report-Only` on every page; sources listed from the code: Supabase (REST + realtime), R2 public images + signed uploads / previews, Google fonts, Leaflet CSS + icons (unpkg) + OpenStreetMap tiles, api-adresse + zippopotam (contact editor), the QR image on `/card`, Vercel analytics. Nothing is blocked. Dev 2026-11-16: no violation on `/`, `/works`, `/card`, `/maps`, Hub → Overview, inventory (+ work card), Carte (12 tiles loaded), Constellation; a probe image from another site was reported, so the check works. Live pass + enforcement stay open (TODO 8).
+- `next.config.ts` sends `Content-Security-Policy-Report-Only` on every page; sources listed from the code: Supabase (REST + realtime), R2 public images + signed uploads / previews, Google fonts, Leaflet CSS + icons (unpkg) + OpenStreetMap tiles, api-adresse + zippopotam (contact editor), the QR image on `/card`, Vercel analytics. Nothing is blocked. Dev 2026-11-16: no violation on `/`, `/works`, `/card`, `/maps`, Hub → Overview, inventory (+ work card), Carte (12 tiles loaded), Constellation; a probe image from another site was reported, so the check works. Live 2026-11-16 (`b2cbca8`, admin in Chrome): no violation on `/`, `/works`, inventory, Carte, Overview, Journal, Vault + PDF preview, Constellation. Upload / address lookup / Google sign-in not yet seen; enforcement open (TODO 8).
 
 ## 2026-11-16 — `system_log` / `studio_task` access reviewed (TODO 8, part)
 
