@@ -17,6 +17,46 @@ const withSerwist = withSerwistInit({
   ],
 })
 
+/** Origin of an env URL, or '' when unset / malformed. */
+function originOf(raw: string | undefined): string {
+  try {
+    return raw ? new URL(raw).origin : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Content security policy, REPORT-ONLY (TODO 8, 2026-11-16): the browser blocks nothing, it only logs
+ * violations in the console. Every source the site loads, listed from the code:
+ * Supabase (REST + realtime), R2 public images + signed uploads/previews, Google fonts (portal / card / selection
+ * export), Leaflet CSS + marker icons (unpkg) + OpenStreetMap tiles (Carte), address lookups (api-adresse,
+ * zippopotam) in the contact editor, the QR image on /card, Vercel analytics (same origin in prod).
+ * Next.js inline scripts need 'unsafe-inline' (no nonce yet); dev also needs 'unsafe-eval'.
+ * Enforce only after the live console stays clean across the site.
+ */
+const supabaseOrigin = originOf(process.env.NEXT_PUBLIC_SUPABASE_URL)
+const r2Origin = originOf(process.env.NEXT_PUBLIC_R2_PUBLIC_URL)
+const isDev = process.env.NODE_ENV === 'development'
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://va.vercel-scripts.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  `img-src 'self' data: blob: ${r2Origin} ${supabaseOrigin} https://*.tile.openstreetmap.org https://unpkg.com https://api.qrserver.com`,
+  `media-src 'self' data: blob: ${r2Origin}`,
+  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, 'wss:')} ${r2Origin} https://*.r2.cloudflarestorage.com https://api-adresse.data.gouv.fr https://api.zippopotam.us https://vitals.vercel-insights.com${isDev ? ' ws: wss:' : ''}`,
+  `frame-src 'self' blob: ${r2Origin} https://*.r2.cloudflarestorage.com`,
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+]
+  .map((d) => d.replace(/\s+/g, ' ').trim())
+  .join('; ')
+
 /** Set by `npm run dev` → scripts/run-dev.mjs (LAN IP for phone testing). */
 const lanDevHost = process.env.DEV_LAN_HOST?.trim()
 
@@ -43,6 +83,7 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy-Report-Only', value: csp },
         ],
       },
     ]

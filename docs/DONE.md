@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Content security policy, report-only (TODO 8, part)
+
+- `next.config.ts` sends `Content-Security-Policy-Report-Only` on every page; sources listed from the code: Supabase (REST + realtime), R2 public images + signed uploads / previews, Google fonts, Leaflet CSS + icons (unpkg) + OpenStreetMap tiles, api-adresse + zippopotam (contact editor), the QR image on `/card`, Vercel analytics. Nothing is blocked. Dev 2026-11-16: no violation on `/`, `/works`, `/card`, `/maps`, Hub → Overview, inventory (+ work card), Carte (12 tiles loaded), Constellation; a probe image from another site was reported, so the check works. Live pass + enforcement stay open (TODO 8).
+
 ## 2026-11-16 — `system_log` / `studio_task` access reviewed (TODO 8, part)
 
 - Live policies: any signed-in account can read `system_log` and read / add / edit `studio_task` (delete admin-only). Owner 2026-11-16: only the team, admins and the dev account can sign in → no change (switching to `is_team()` could shut out the dev account). Revisit if sign-up opens.
