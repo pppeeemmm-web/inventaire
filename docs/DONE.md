@@ -2,6 +2,21 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Labels print the work's image; text never overlaps (TODO B7; checked on dev 2026-11-16, What's new 3.1.27)
+
+- « Image » ticked → each label prints the stored thumbnail, whole, in a square left of the text (PDF + HTML), colour / B&W / light B&W like the export, sized for 300 dpi (`labelImageMap`, `app/atelier/selection/actions.ts`). Status / Notes greyed out in the Labels tab (« Pas imprimé sur les étiquettes »).
+- Pem's screenshot 2026-11-16: on L7651 (and L7160) with image + QR, the text column shrank to ~10 / 15 mm and the PDF lines wrapped onto each other. Fix: `labelLayout` (`lib/export/labels.ts`) keeps image + QR only when the text keeps ≥ 25 mm (L7163, L7165); on L7160 / L7651 with the QR on, the image is left out, the QR keeps its full scannable size, and « Image » is greyed out with the reason on hover. Every PDF text line is cut to the column with « … » (`fitLine`; pdfkit wrapped words wider than `width` despite `lineBreak: false`).
+- Checked on dev (PDF content stream read in the page): L7163 + QR → 3 images, 3 QR, one line per item; L7651 image only → 3 images, no wrap; L7651 + QR → 0 images, QR drawn, titles cut (« Emasciate… »). HTML L7160 image preview seen by eye. **Not seen at print size** — real print → TODO §4.
+
+## 2026-11-16 — Period places set (TODO §1)
+
+- Pem set a place on every period (checked in the DB 2026-11-16): Youth → Marseille Atelier, Rebirth - Waterford → Waterford Atelier, Tooreeney → Tooreeney Atelier, Marseille → Marseille Atelier.
+
+## 2026-11-16 — two live checks closed (TODO §4)
+
+- Phone: opening today's session records place and weather by itself. Checked in the DB 2026-11-16: the latest session (opened 2026-11-16 00:03, Marseille) has `payload.field_context` written 6 s after opening — position (±7 m) + weather (14.4 °C, cloudy, wind 5.6 km/h, 78 %). The phone asked once for location permission. The 7 sessions before it (up to 2026-11-15) have none.
+- Image descriptions: 1 174 written; Pem read a sample and rated some — OK (2026-11-16).
+
 ## 2026-11-15 — Constellation eraser removes one whole object per click (TODO B6; verified on dev 2026-11-15, What's new 3.1.26)
 
 - `useConstellationPointer.ts`: the eraser (left or right click) removes the **topmost** drawing or text under the cursor (`topShapeAt`); with none there, the **link** under the cursor (same delete as right-click, now `removeEdge`). Dragging no longer erases everything it passes over (the `erase` drag branch is gone). Canvas « box » = text, the only other drawn object.

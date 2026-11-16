@@ -4,7 +4,7 @@
 // Called from BatchEditModal and ExportModal via useTransition.
 
 import QRCode from 'qrcode'
-import { clampLabelStart, labelPadding, labelPreset, labelQrSide, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
+import { clampLabelStart, labelLayout, labelPadding, labelPreset, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
 import { workPhysicalBridgeUrl } from '@/lib/atelier/work-physical-bridge-url'
 import {
   LIGHT_TONE,
@@ -548,15 +548,18 @@ export async function generateExport(
   const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
   const STR  = R2
 
-  // Labels: text only, no images (B3 / D2).
+  // Labels (B3 / D2): text, optional QR, and the image when « Image » is ticked (TODO B7).
   if (config.layout === 'labels') {
     const ts = new Date().toISOString().slice(0, 10)
     const untitled = lang === 'fr' ? 'Sans titre' : 'Untitled'
+    const labelImages = labelLayout(labelPreset(config.labelPreset), config.fields.image === true, config.labelQr === true).img > 0
+      ? await labelImageMap(oeuvres, config)
+      : new Map<number, Buffer>()
     if (config.format === 'html') {
-      return { ok: true, content: buildLabelsHtml(oeuvres, config, tM, sM, untitled), filename: `etiquettes_${ts}.html`, mime: 'text/html' }
+      return { ok: true, content: buildLabelsHtml(oeuvres, config, tM, sM, untitled, labelImages), filename: `etiquettes_${ts}.html`, mime: 'text/html' }
     }
     try {
-      return { ok: true, content: await buildLabelsPdf(oeuvres, config, tM, sM, untitled), filename: `etiquettes_${ts}.pdf`, mime: 'application/pdf' }
+      return { ok: true, content: await buildLabelsPdf(oeuvres, config, tM, sM, untitled, labelImages), filename: `etiquettes_${ts}.pdf`, mime: 'application/pdf' }
     } catch (e) {
       return { error: `PDF : ${String(e)}` }
     }
@@ -909,6 +912,51 @@ function buildHtml(
 const MM = 72 / 25.4
 const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+/** Label images (TODO B7): the stored 400 px thumbnail, whole inside a square sized for 300 dpi, on white,
+ *  JPEG (pdfkit takes JPEG / PNG), colour setting kept (B&W / light B&W). Missing image → no picture. */
+async function labelImageMap(oeuvres: Oeuvre[], cfg: ExportConfig): Promise<Map<number, Buffer>> {
+  const p = labelPreset(cfg.labelPreset)
+  const px = Math.round((labelLayout(p, true, cfg.labelQr === true).img / 25.4) * 300)
+  const R2_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || '').replace(/\/$/, '')
+  const colour = colourOf(cfg)
+  const out = new Map<number, Buffer>()
+  const concurrency = 8
+  for (let i = 0; i < oeuvres.length; i += concurrency) {
+    await Promise.all(oeuvres.slice(i, i + concurrency).map(async (o) => {
+      const file = o.txtImageNameLink
+      if (!file || file.startsWith('http')) return
+      try {
+        const res = await fetch(`${R2_URL}/thumbs/${encodeURIComponent(file.replace(/\.[^.]+$/, ''))}.avif`)
+        if (!res.ok) return
+        let img = sharp(Buffer.from(await res.arrayBuffer()))
+          .resize(px, px, { fit: 'inside', withoutEnlargement: true })
+          .flatten({ background: '#ffffff' })
+        if (colour !== 'colour') img = img.grayscale().toColourspace('b-w')
+        if (colour === 'light') img = img.linear(LIGHT_TONE, 255 * (1 - LIGHT_TONE))
+        out.set(o.OeuvreID, await img.jpeg({ quality: 85 }).toBuffer())
+        // eslint-disable-next-line pem-i18n/no-silent-catch -- logged; that label prints without its picture
+      } catch (e) {
+        console.error(`Label image error (#${o.OeuvreID}):`, e)
+      }
+    }))
+  }
+  return out
+}
+
+/** Cut `s` to `width` points in the current pdfkit font, ending with « … » when cut. */
+function fitLine(doc: { widthOfString: (t: string) => number }, s: string, width: number): string {
+  if (width <= 0) return ''
+  if (doc.widthOfString(s) <= width) return s
+  let lo = 0
+  let hi = s.length
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    if (doc.widthOfString(s.slice(0, mid).trimEnd() + '…') <= width) lo = mid
+    else hi = mid - 1
+  }
+  return lo > 0 ? s.slice(0, lo).trimEnd() + '…' : ''
+}
+
 /** Label sheet as print-ready HTML: absolute boxes in mm on A4 pages (print at 100 %, no margins). */
 function buildLabelsHtml(
   oeuvres: Oeuvre[],
@@ -916,21 +964,27 @@ function buildLabelsHtml(
   tM: Record<number, string>,
   sM: Record<number, string>,
   untitled: string,
+  images: Map<number, Buffer> = new Map(),
 ): string {
   const p = labelPreset(cfg.labelPreset)
   const start = clampLabelStart(cfg.labelStart, p) - 1
   const small = p.h < 30
   const pad = labelPadding(p)
   const qr = cfg.labelQr === true
-  const side = labelQrSide(p)
-  // With a QR the text column ends before it (padding-right) and the ref follows.
+  // QR / image squares (image left out on sheets too small for both, `labelLayout`).
+  const { qr: side, img: imgSide } = labelLayout(p, cfg.fields.image === true, qr)
+  const withImage = imgSide > 0
+  // With a QR the text column ends before it (padding-right) and the ref follows; with an image it starts after it.
   const textRight = qr ? pad.x + side + pad.gap : pad.x
+  const textLeft = withImage ? pad.x + imgSide + pad.gap : pad.x
   const sheets: string[][] = []
   oeuvres.forEach((o, i) => {
     const s = labelSlot(start + i, p)
     const tx = labelText(o, cfg.fields, tM, sM, untitled)
+    const img = images.get(o.OeuvreID)
     ;(sheets[s.sheet] ??= []).push(
-      `<div class="lb" style="left:${s.x}mm;top:${s.y}mm;width:${p.w}mm;height:${p.h}mm;padding-right:${textRight}mm">` +
+      `<div class="lb" style="left:${s.x}mm;top:${s.y}mm;width:${p.w}mm;height:${p.h}mm;padding-left:${textLeft}mm;padding-right:${textRight}mm">` +
+        (img ? `<img class="i" alt="" src="data:image/jpeg;base64,${img.toString('base64')}" style="left:${pad.x}mm;top:${(p.h - imgSide) / 2}mm;width:${imgSide}mm;height:${imgSide}mm">` : '') +
         (tx.title ? `<div class="t">${escHtml(tx.title)}</div>` : '') +
         tx.lines.map((l) => `<div class="l">${escHtml(l)}</div>`).join('') +
         (tx.ref ? `<div class="r" style="right:${textRight}mm">${escHtml(tx.ref)}</div>` : '') +
@@ -949,6 +1003,7 @@ body{background:#e9e7e3;font-family:'Helvetica Neue',Arial,sans-serif;color:#111
 .l{font-size:${small ? 6 : 8}pt;line-height:1.3;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .r{position:absolute;bottom:${small ? '1.2mm' : '2.5mm'};font-family:monospace;font-size:${small ? 6 : 7.5}pt;color:#777}
 .q{position:absolute}.q svg{display:block;width:100%;height:100%}
+.i{position:absolute;object-fit:contain}
 @media print{body{background:#fff}.sheet{margin:0}.lb{outline:none}}
 </style></head><body>${pages}</body></html>`
 }
@@ -974,6 +1029,7 @@ async function buildLabelsPdf(
   tM: Record<number, string>,
   sM: Record<number, string>,
   untitled: string,
+  images: Map<number, Buffer> = new Map(),
 ): Promise<string> {
   const PDFDocument = (await import('pdfkit')).default
   const p = labelPreset(cfg.labelPreset)
@@ -983,9 +1039,11 @@ async function buildLabelsPdf(
   const padX = pad.x * MM
   const padY = pad.y * MM
   const qr = cfg.labelQr === true
-  const side = labelQrSide(p)
-  // Space the QR takes off the text column (QR + gap), in points.
+  const { qr: side, img: imgSide } = labelLayout(p, cfg.fields.image === true, qr)
+  const withImage = imgSide > 0
+  // Space the QR takes off the text column (QR + gap), in points; the image takes the left side the same way.
   const qrCut = qr ? (side + pad.gap) * MM : 0
+  const imgCut = withImage ? (imgSide + pad.gap) * MM : 0
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true })
     const chunks: Buffer[] = []
@@ -996,17 +1054,24 @@ async function buildLabelsPdf(
     oeuvres.forEach((o, i) => {
       const s = labelSlot(start + i, p)
       while (sheet < s.sheet) { doc.addPage({ size: 'A4', margin: 0 }); sheet++ }
-      const x = s.x * MM + padX
+      const x = s.x * MM + padX + imgCut
       let y = s.y * MM + padY
-      const w = p.w * MM - padX * 2 - qrCut
+      const w = p.w * MM - padX * 2 - qrCut - imgCut
       const tx = labelText(o, cfg.fields, tM, sM, untitled)
+      const img = images.get(o.OeuvreID)
+      if (img) {
+        const box = imgSide * MM
+        doc.image(img, s.x * MM + padX, (s.y + (p.h - imgSide) / 2) * MM, { fit: [box, box], align: 'center', valign: 'center' })
+      }
+      // One line each, cut to the column with « … » (pdfkit still wraps a word wider than `width`, so the
+      // lines overlapped on narrow labels — owner screenshot 2026-11-16).
       if (tx.title) {
-        doc.font('Helvetica-Bold').fontSize(small ? 7 : 10).fillColor('#111111').text(tx.title, x, y, { width: w, lineBreak: false, ellipsis: true })
+        doc.font('Helvetica-Bold').fontSize(small ? 7 : 10).fillColor('#111111').text(fitLine(doc, tx.title, w), x, y, { lineBreak: false })
         y += (small ? 7 : 10) * 1.3
       }
       doc.font('Helvetica').fontSize(small ? 6 : 8).fillColor('#333333')
       for (const l of tx.lines) {
-        doc.text(l, x, y, { width: w, lineBreak: false, ellipsis: true })
+        doc.text(fitLine(doc, l, w), x, y, { lineBreak: false })
         y += (small ? 6 : 8) * 1.35
       }
       if (tx.ref) {

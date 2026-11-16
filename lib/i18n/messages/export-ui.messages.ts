@@ -22,8 +22,8 @@ export const exportUiMessages = defineMessages({
   },
   ex_label_sheets_fmt: { fr: '{n} étiquettes · {sheets} planche(s)', en: '{n} labels · {sheets} sheet(s)' },
   ex_label_fields_hint: {
-    fr: 'Sur l’étiquette : titre, année · technique · support, dimensions, prix, n°. Image, statut et notes ne s’impriment pas.',
-    en: 'On the label: title, year · technique · support, dimensions, price, no. Image, status and notes are not printed.',
+    fr: 'Sur l’étiquette : image à gauche (pas avec le QR sur L7160 / L7651), titre, année · technique · support, dimensions, prix, n°. Statut et notes ne s’impriment pas.',
+    en: 'On the label: image on the left (not with the QR on L7160 / L7651), title, year · technique · support, dimensions, price, no. Status and notes are not printed.',
   },
   ex_label_qr: { fr: 'QR code (ouvre l’œuvre dans l’Atelier)', en: 'QR code (opens the work in the Atelier)' },
   ex_label_qr_hint: {
@@ -68,5 +68,11 @@ export const exportUiMessages = defineMessages({
   ex_size_hint: {
     fr: 'Estimé d’après les premières œuvres : l’écart peut atteindre ± 40 % selon les images.',
     en: 'Estimated from the first works: it can be off by ± 40 % depending on the images.',
+  },
+  // TODO B7 (2026-11-15): labels print the image now; status / notes are not printed on labels.
+  ex_label_field_unused: { fr: 'Pas imprimé sur les étiquettes', en: 'Not printed on labels' },
+  ex_label_image_no_room: {
+    fr: 'Pas de place pour l’image à côté du QR sur ce format : décochez le QR ou prenez L7163 / L7165.',
+    en: 'No room for the image beside the QR on this sheet: untick the QR or use L7163 / L7165.',
   },
 })

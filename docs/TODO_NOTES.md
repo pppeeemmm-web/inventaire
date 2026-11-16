@@ -16,9 +16,15 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 ## work-or-version
 
-**Owner 2026-11-13:** a partial rework is a new version of the same work (same number) — record it in the work's history (date, new photo, what changed). Full cover / new support = new work + "painted on" / "derived from" link (built 2026-11-13).
+**Three cases, never a link from a work to itself** (owner 2026-11-13; rewritten 2026-11-16 after Pem flagged the old wording as nonsense):
 
-**Work or version.** From the proposal (archived 2026-11-13), still open: **work or version** rule — partial rework (glaze, scumble, pentimento) = new photo + version row on the same number; full cover = new work + "painted on" link; new support = new work + "derived from" link (work ↔ work links: HANDOFF_2026-11-13_OPUS task E).
+| What happened | Same work? | Recorded as |
+|---|---|---|
+| Partial rework (glaze, scumble, pentimento) | Yes, same number | A dated line in the work's own history + a new photo. **No link.** |
+| Whole surface painted over | No — the old picture is gone under it | New number + link « #new **painted on** #old » |
+| Same image on a new support (copy, transfer, print) | No — a second object | New number + link « #new **derived from** #old » |
+
+Links (`painted_on`, `derived_from`, `lib/work-links.ts`) only join two different works — built 2026-11-13. **Open (TODO 6):** the first row. « Historique de création » (`work_creation_step`: dated line, kind, place, note, session) already holds the history; a rework = one more kind of line (« Reprise ») + a photo. Missing: a history line has no photo of its own (only through a linked work session). Checked against live code + DB 2026-11-16.
 
 ## production-start-date
 

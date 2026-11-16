@@ -42,7 +42,8 @@
 // '3.1.24' (2026-11-15): exhibition floor plan — place a work group, moves kept, double-click opens the work (TODO B4).
 // '3.1.25' (2026-11-15): Constellation blank canvas + selection kept for the browser session (TODO B5).
 // '3.1.26' (2026-11-15): Constellation eraser removes one whole object per click (stroke, text, else link) (TODO B6).
-export const WHATS_NEW_RELEASE = '3.1.26'
+// '3.1.27' (2026-11-16): labels print the work's image; text cut to one line, never overlapping (TODO B7).
+export const WHATS_NEW_RELEASE = '3.1.27'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -54,6 +55,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'labels_image', day: '2026-11-16' },
   { id: 'constellation_eraser', day: '2026-11-15' },
   { id: 'constellation_session', day: '2026-11-15' },
   { id: 'floor_plan_groups', day: '2026-11-15' },

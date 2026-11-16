@@ -11,7 +11,7 @@
 import { useState, useTransition, useEffect, useCallback, useMemo, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { interpolateMessage } from '@/lib/i18n/message-core'
-import { LABEL_PRESETS, DEFAULT_LABEL_PRESET, clampLabelStart, labelPreset, labelsPerSheet } from '@/lib/export/labels'
+import { LABEL_PRESETS, DEFAULT_LABEL_PRESET, LABEL_UNUSED_FIELDS, clampLabelStart, labelImageFits, labelPreset, labelsPerSheet } from '@/lib/export/labels'
 import {
   DPI_FOR_DESTINATION,
   EXPORT_DPIS,
@@ -612,14 +612,20 @@ export function ExportModal({
             {/* ── Fields ── */}
             <Block label={t('displayedFields')}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px' }}>
-                {(Object.entries(cfg.fields) as [keyof ExportFields, boolean][]).map(([k, v]) => (
-                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', minWidth: 0 }}>
-                    <input type="checkbox" checked={v} onChange={(e) => setField(k, e.target.checked)} />
-                    <span className="t-mono-sm" style={{ color: v ? 'var(--tx)' : 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {FIELD_LABELS[k]}
-                    </span>
-                  </label>
-                ))}
+                {(Object.entries(cfg.fields) as [keyof ExportFields, boolean][]).map(([k, v]) => {
+                  // Labels never print status / notes (TODO B7), nor the image on a sheet too small for image + QR
+                  // (L7160 / L7651 with the QR on): greyed out, the tick kept for the other layouts.
+                  const noRoom = cfg.layout === 'labels' && k === 'image' && !labelImageFits(labelPreset(cfg.labelPreset), cfg.labelQr === true)
+                  const unused = noRoom || (cfg.layout === 'labels' && (LABEL_UNUSED_FIELDS as readonly string[]).includes(k))
+                  return (
+                    <label key={k} title={noRoom ? t('ex_label_image_no_room') : unused ? t('ex_label_field_unused') : undefined} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: unused ? 'not-allowed' : 'pointer', minWidth: 0, opacity: unused ? 0.4 : 1 }}>
+                      <input type="checkbox" checked={v && !unused} disabled={unused} onChange={(e) => setField(k, e.target.checked)} />
+                      <span className="t-mono-sm" style={{ color: v && !unused ? 'var(--tx)' : 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {FIELD_LABELS[k]}
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             </Block>
 

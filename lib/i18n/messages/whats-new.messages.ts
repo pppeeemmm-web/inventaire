@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.27 (2026-11-16) — labels print the image; text never overlaps (TODO B7, Pem's screenshot).
+  wn_labels_image_t: { fr: 'Étiquettes : l’image de l’œuvre', en: 'Labels: the work’s image' },
+  wn_labels_image_d: {
+    fr: 'Avec « Image » coché, chaque étiquette imprime l’image de l’œuvre à gauche du texte (PDF et HTML, couleur ou noir et blanc comme l’export). Sur les planches L7160 et L7651, l’image et le QR ne tiennent pas ensemble : avec le QR, l’image est grisée. Chaque information tient sur une ligne, coupée avec « … » : le texte ne se chevauche plus. Statut et notes sont grisés : ils ne s’impriment pas sur les étiquettes.',
+    en: 'With « Image » ticked, each label prints the work’s image left of the text (PDF and HTML, colour or black and white like the export). On the L7160 and L7651 sheets the image and the QR do not fit together: with the QR on, the image is greyed out. Each piece of text stays on one line, cut with « … »: no more overlapping. Status and notes are greyed out: they are not printed on labels.',
+  },
   // 3.1.26 (2026-11-15) — Constellation eraser: one whole object per click (TODO B6).
   wn_constellation_eraser_t: { fr: 'Constellation : la gomme efface un objet entier', en: 'Constellation: the eraser removes a whole object' },
   wn_constellation_eraser_d: {

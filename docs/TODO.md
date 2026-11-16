@@ -2,11 +2,10 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-15** (bug batch 1 — B1, B2, B8, B10, 1f — closed → [DONE](./DONE.md); earlier: Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
+**Last refresh: 2026-11-16** (B7 labels image + period places + two §4 checks closed → [DONE](./DONE.md); earlier: bug batch 1 — B1, B2, B8, B10, 1f — closed → [DONE](./DONE.md); earlier: Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B7. **Export → Labels: « Image » stays ticked but no label prints an image.** Pem 2026-11-15: « yes, otherwise it's absurd » → print a small image on the label (left of the text, PDF + HTML, fits beside the QR on L7163 / L7651); grey out the ticks that still do not apply (status, notes).
 - [ ] B9. **Inventory / drawer quick fixes (6)** from Pem's review of 2026-11-15 (status wording for status 1, QR fallback on dev, cut column titles, « Filters + », « Data history », palette accents) → [DESIGN_DRAWER](./DESIGN_DRAWER.md) « Quick fixes ».
 
 ## 1. Waiting on Pem — only you can do these
@@ -14,7 +13,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
-- [ ] **Period places:** Waterford / Rebirth and Youth have no place yet — give the addresses, or set them in Inventory → Périodes & sources.
 - [ ] **Batch scan of expenses / dockets (11e):** GO to read dockets by OCR on the PC (widening OCR needs your explicit GO, `CLAUDE.md`), and which scan path (below).
 
 ## 2. Rethink — design first (Pem 2026-11-14) → [RETHINK](./RETHINK_2026-11-14.md)
@@ -42,7 +40,7 @@ Trace
 - [ ] 1e. Drop `work_place` (nothing reads or writes it since 2026-11-14; rows moved to `work_creation_step`). One-line SQL — show it, apply with Pem's OK.
 
 Links
-- [ ] 6. Versions: a partial rework = a new version of the same work, same number, with its photo → [notes](./TODO_NOTES.md#work-or-version)
+- [ ] 6. Rework on the same work = a « Reprise » line in « Historique de création » + its own photo (no version table, no link) → [notes](./TODO_NOTES.md#work-or-version)
 
 Transmission (safety of what is kept)
 - [ ] 8. Security remaining: anon write grants, `system_log` / `studio_task` access, CSP report-only, `xlsx`, `storage_object_ledger` → [notes](./TODO_NOTES.md#security)
@@ -72,15 +70,13 @@ Speed and code health — measure first, change after
 ## 4. To check once, when it happens (no build)
 
 - [ ] Notes (bug batch 1, What's new 3.1.20), live as admin: « Couleur » shows its ✦ PC transcript; edit, switch note → Save / Discard / Cancel.
-- [ ] Export labels with QR (`00f8085`): scan one printed label with the phone.
+- [ ] Export labels (`00f8085` QR, B7 image): print one real sheet — L7163 with image + QR, L7651 with QR — check the picture and the cut text by eye, scan one QR with the phone.
 - [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a start / end date; a « Nouvelle » work starts production today.
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
 - [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works; full screen + swipe on a real iPhone; « Renommer »; fade / slide by eye; a full loop.
 - [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; a real export; a real print (300 dpi, Light B&W, labels); admin screens in Chrome (Local jobs, ✦ bar); one Production drag-back; saving a contact from the pop-up.
-- [ ] Phone: opening today's session records place and weather by itself.
 - [ ] Constellation: the arrow on the first real "painted on" / "derived from" / "answers" link.
-- [ ] Image descriptions: 1 174 written, none rated yet — read a sample.
 - [ ] Next real field capture: technique / support written; removing an applied photo → [notes](./TODO_NOTES.md#session-write-paths)
 - [ ] First real sale + payment, end to end (see R7) → [notes](./TODO_NOTES.md#money)
 - [ ] Concept documents: click through once → [notes](./TODO_NOTES.md#concept-documents)

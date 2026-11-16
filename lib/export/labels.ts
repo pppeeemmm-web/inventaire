@@ -62,14 +62,35 @@ export function labelPadding(p: LabelPreset): { x: number; y: number; gap: numbe
   return { x: small ? 2 : 4, y: small ? 1.5 : 3, gap: small ? 1.5 : 3 }
 }
 
-/** QR square side, mm (owner 2026-11-15: QR on labels, opens the work). Right of the text, at most
- *  45 % of the label width so the title keeps room; 40 mm cap on the tall L7165. */
-export function labelQrSide(p: LabelPreset): number {
+/** Narrowest text column worth printing beside an image and a QR, mm (owner 2026-11-16, screenshot:
+ *  on L7651 / L7160 the text overlapped once image + QR shared the label). */
+export const LABEL_TEXT_MIN_MM = 25
+
+/** QR and image squares on one label, mm (0 = not drawn). QR right of the text (owner 2026-11-15: opens
+ *  the work), at most 45 % of the width, 40 mm cap on the tall L7165. Image left of the text (TODO B7),
+ *  at most 30 % of the width. Both on: QR ≤ 30 %, image ≤ 25 % — and if the text would get less than
+ *  `LABEL_TEXT_MIN_MM`, the image is left out and the QR keeps its full, scannable size. */
+export function labelLayout(p: LabelPreset, withImage: boolean, withQr: boolean): { qr: number; img: number } {
   const pad = labelPadding(p)
-  return Math.min(p.h - pad.y * 2, p.w * 0.45, 40)
+  const inner = p.h - pad.y * 2
+  const qrAlone = withQr ? Math.min(inner, p.w * 0.45, 40) : 0
+  if (!withImage) return { qr: qrAlone, img: 0 }
+  if (!withQr) return { qr: 0, img: Math.min(inner, p.w * 0.3, 40) }
+  const qr = Math.min(inner, p.w * 0.3, 40)
+  const img = Math.min(inner, p.w * 0.25, 40)
+  const text = p.w - pad.x * 2 - qr - img - pad.gap * 2
+  return text < LABEL_TEXT_MIN_MM ? { qr: qrAlone, img: 0 } : { qr, img }
+}
+
+/** True when this sheet can print the image (false = left out for the QR, greyed out in the dialog). */
+export function labelImageFits(p: LabelPreset, withQr: boolean): boolean {
+  return labelLayout(p, true, withQr).img > 0
 }
 
 export type LabelText = { title: string; lines: string[]; ref: string | null }
+
+/** Export fields that labels never print (greyed out in the dialog, TODO B7). */
+export const LABEL_UNUSED_FIELDS = ['status', 'notes'] as const
 
 type LabelWork = {
   OeuvreID: number
@@ -86,7 +107,7 @@ type LabelWork = {
 
 type LabelFields = { title: boolean; id: boolean; year: boolean; technique: boolean; support: boolean; dims: boolean; price: boolean }
 
-/** What one label says, from the export's field ticks (image / status / notes do not apply). */
+/** What one label says, from the export's field ticks (the image is drawn apart; status / notes do not apply). */
 export function labelText(
   o: LabelWork,
   f: LabelFields,
