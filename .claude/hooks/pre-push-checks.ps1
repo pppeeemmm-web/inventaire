@@ -64,6 +64,15 @@ function Test-IsForcePush {
 }
 
 function Get-RepoRoot {
+  param($InputObject)
+
+  # The hook process starts in the project dir (the main checkout), not the session's folder, so a worktree
+  # session was checked against the main checkout. Claude Code passes the session's cwd in the hook input.
+  $cwd = if ($null -ne $InputObject) { [string]$InputObject.cwd } else { "" }
+  if (-not [string]::IsNullOrWhiteSpace($cwd) -and (Test-Path -LiteralPath $cwd -PathType Container)) {
+    Set-Location -LiteralPath $cwd
+  }
+
   try {
     $root = & git rev-parse --show-toplevel 2>$null
     if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($root)) {
@@ -90,7 +99,7 @@ try {
     exit 0
   }
 
-  Push-Location (Get-RepoRoot)
+  Push-Location (Get-RepoRoot $inputObject)
   try {
     $branch = (& git branch --show-current 2>$null | Select-Object -First 1)
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
