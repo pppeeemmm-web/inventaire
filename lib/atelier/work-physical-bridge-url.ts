@@ -1,6 +1,7 @@
 /** Absolute URL encoded on work QR labels (scan → open in Atelier). */
 
-const DEFAULT_ORIGIN = 'http://localhost:3000'
+/** Never the page's own address (localhost / LAN on dev): a printed label must open the live site (TODO B9, Pem 2026-11-15). */
+const DEFAULT_ORIGIN = 'https://www.thepemworkshop.com'
 
 function publicOrigin(): string {
   const raw = (
@@ -8,9 +9,7 @@ function publicOrigin(): string {
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     ''
   ).replace(/\/$/, '')
-  if (raw) return raw
-  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin
-  return DEFAULT_ORIGIN
+  return raw || DEFAULT_ORIGIN
 }
 
 /** Path shape matched by `parseWorkIdFromScanText` (see `lib/mobile/parse-work-id-from-scan.ts`). */

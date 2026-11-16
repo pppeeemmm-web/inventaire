@@ -1296,7 +1296,10 @@ export function DrawerContent({
       <>
       <section style={{ marginBottom: 12 }} data-testid="work-drawer-status-bar">
         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-          {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
+          {/* Status 1 + « catalogued » = the Inventory's « Catalogué », not the raw « En production » (TODO B9). */}
+          {computeWorkStatusId(ownStage, prodStage) === 1 && prodStage === 'catalogued'
+            ? t('inv_state_catalogued')
+            : statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
         </div>
         {o.fate ? (
           // Destroyed / lost (condition report, supabase/sql/condition_report_fate.sql): kept by trigger.

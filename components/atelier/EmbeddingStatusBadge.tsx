@@ -16,9 +16,11 @@ const LABEL_KEY = {
 interface Props {
   oeuvreId: number
   status: EmbeddingStatus | undefined
+  /** Narrow table cell: the label goes on two lines instead of being cut (TODO B9). */
+  wrap?: boolean
 }
 
-export function EmbeddingStatusBadge({ oeuvreId, status }: Props) {
+export function EmbeddingStatusBadge({ oeuvreId, status, wrap }: Props) {
   const { t } = useI18n()
   if (!status || !shouldShowEmbeddingBadge(status)) return null
 
@@ -37,6 +39,7 @@ export function EmbeddingStatusBadge({ oeuvreId, status }: Props) {
         color: status === 'error' ? 'var(--warn, #b45309)' : 'var(--tx3)',
         borderColor: status === 'error' ? 'var(--warn, #b45309)' : undefined,
         flexShrink: 0,
+        ...(wrap ? { whiteSpace: 'normal', lineHeight: 1.15, textAlign: 'center' as const, maxWidth: 70 } : null),
       }}
     >
       {label}

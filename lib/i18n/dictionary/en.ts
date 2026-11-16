@@ -644,7 +644,7 @@ wf_save_pending_images_skipped_toast:
 wf_save_pending_schema_error:
   'Could not queue your changes: run pending_changes_change_kind.sql on the Supabase project, then retry.',
 wf_image_pending_toast: 'Image submitted for admin review.',
-history_section_title: 'Version history',
+history_section_title: 'Data history',
 history_loading: 'Loading history…',
 history_empty: 'No versions recorded.',
 history_changes_count: 'field(s) changed',

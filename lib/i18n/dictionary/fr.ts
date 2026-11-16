@@ -646,7 +646,7 @@ wf_save_pending_images_skipped_toast:
 wf_save_pending_schema_error:
   'Impossible d’enregistrer la proposition : exécuter pending_changes_change_kind.sql sur le projet Supabase, puis réessayer.',
 wf_image_pending_toast: 'Image envoyée pour validation par l’administrateur.',
-history_section_title: 'Historique des versions',
+history_section_title: 'Historique des données',
 history_loading: 'Chargement de l’historique…',
 history_empty: 'Aucune version enregistrée.',
 history_changes_count: 'champ(s) modifié(s)',

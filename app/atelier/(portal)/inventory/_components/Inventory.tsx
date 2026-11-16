@@ -142,6 +142,12 @@ const OPS_BOOL   = ['= vrai', '= faux'] as const
 const OPS_LOOKUP = ['=', '≠', 'est vide', "n'est pas vide"] as const
 const OPS_YEAR   = ['=', '>', '<', '≥', '≤', 'between'] as const
 
+/** A new filter row filters nothing yet: first text field, « contient », empty value (TODO B9 — the first field is a yes/no one). */
+function blankCriterion(id: number, fields: readonly { k: string; t: string }[]): Criterion {
+  const f = fields.find((x) => x.k === 'Titre') ?? fields.find((x) => x.t === 'text') ?? fields[0]
+  return { id, field: f.k, op: opsForType(f.t)[0], value: '' }
+}
+
 function opsForType(t: string): readonly string[] {
   if (t === 'year')   return OPS_YEAR
   if (t === 'num')    return OPS_NUM
@@ -1128,7 +1134,15 @@ export function Inventory({
 
         {/* Advanced filter toggle */}
         <button
-          onClick={() => setShowAdv((v) => !v)}
+          onClick={() => {
+            // « Filtres + » opens a filter row straight away (Pem 2026-11-15, TODO B9); closing drops « contient » rows left empty (they match everything).
+            if (!showAdv && criteria.length === 0 && allFields.length > 0) {
+              setCriteria([blankCriterion(nextCritId.current++, allFields)])
+            } else if (showAdv) {
+              setCriteria((cs) => cs.filter((c) => !(c.op === 'contient' && String(c.value ?? '').trim() === '')))
+            }
+            setShowAdv((v) => !v)
+          }}
           style={{
             padding: '8px 12px', fontSize: 13,
             color: (showAdv || criteria.length > 0) ? 'var(--bg0)' : 'var(--tx3)',
@@ -1572,7 +1586,7 @@ function CriteriaPanel({
 
   function addCriterion() {
     const id = nextCritId.current++
-    setCriteria([...criteria, { id, field: allFields[0].k, op: 'contient', value: '' }])
+    setCriteria([...criteria, blankCriterion(id, allFields)])
   }
 
   function updateCriterion(id: number, patch: Partial<Criterion>) {
@@ -1943,7 +1957,7 @@ function InvList({
             ) : (
               <>
                 <th style={{ ...headerBase, width: 70 }} title={t('dimensions')}>{t('dimensions')}</th>
-                <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
+                <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 56, cursor: 'pointer' }}>
                   <div style={sortThRow}>
                     <span style={sortThLabel}>{t('year')}</span>
                     <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
@@ -2003,7 +2017,7 @@ function InvList({
             </th>
             <th
               onClick={() => toggleSort('Comm')}
-              style={{ ...headerBase, width: 72, cursor: 'pointer', borderRight: 'none' }}
+              style={{ ...headerBase, width: 104, cursor: 'pointer', borderRight: 'none' }}
               title={t('inv_title_broadcast_col')}
             >
               <div style={sortThRow}>
@@ -2113,7 +2127,9 @@ function InvList({
                   ) : (
                     <>
                       <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
-                      <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }} title={yearOf(o.Année) == null && !o.Catalogué ? t('inv_year_in_progress_title') : undefined}>{yearOf(o.Année) ?? (o.Catalogué ? '—' : t('inv_year_in_progress'))}</td>
+                      <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }} title={yearOf(o.Année) == null && !o.Catalogué ? t('inv_year_in_progress_title') : undefined}>
+                        {yearOf(o.Année) ?? (o.Catalogué ? '—' : <div style={{ ...INV_CLAMP2, fontSize: 12 }}>{t('inv_year_in_progress')}</div>)}
+                      </td>
                     </>
                   )}
                   {(() => {
@@ -2172,6 +2188,7 @@ function InvList({
                       <EmbeddingStatusBadge
                         oeuvreId={o.OeuvreID}
                         status={embeddingStatusMap[o.OeuvreID]}
+                        wrap
                       />
                       {!isNarrow && (() => {
                         const live = bcOverride[o.OeuvreID] ?? !!(o as { broadcast_ready?: boolean }).broadcast_ready
