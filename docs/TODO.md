@@ -57,7 +57,7 @@ Public site — next batch
 Speed and code health — measure first, change after
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
 - [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open done 2026-11-16 → [DONE](./DONE.md)); a deep link `?work=347` opens two drawers (Inventory panel + overlay), each reading once · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
-- [ ] 19. Overview stops loading catalogue chunks it doesn't need; Inventory loads its ~500-work chunks in parallel (full catalogue 22–27 s live) · bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
+- [ ] 19. Overview stops loading the catalogue if it doesn't need it (the rest now comes in one call, 2026-11-16 → [DONE](./DONE.md)) · bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
 
 ## 4. To check once, when it happens (no build)
 
@@ -67,6 +67,7 @@ Speed and code health — measure first, change after
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
 - [ ] Small GIFs (TODO 21, 3.1.28): a real 40 × 40 GIF and a round one, opened on the phone.
+- [ ] Catalogue in one call (TODO 19, 3.1.30): Inventory full catalogue time on the live site (was 22–27 s).
 - [ ] Speed (TODO 18, 3.1.29): open 3 work cards and the Overview on the live site as admin — cost section and a sold work's return-window banner fill in; re-measure (was 5.5–7 s / 7.5–10 s).
 - [ ] Journal ✦ suggestions (B12, 3.1.29): hover a « ✦ #1316 » row as admin → preview + loupe.
 - [ ] Constellation tools (TODO 20, 3.1.28): undo of a real link delete on the live site (the link must come back with its note); Shift+drag marquee; arrow tool.

@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  wn_catalogue_one_call_t: { fr: 'Catalogue complet plus vite', en: 'Full catalogue sooner' },
+  wn_catalogue_one_call_d: {
+    fr: 'Après les premières œuvres, le reste du catalogue arrive en une seule requête au lieu d’une par tranche de 500 : l’Inventaire est complet bien plus tôt.',
+    en: 'After the first works, the rest of the catalogue arrives in one request instead of one per 500 works: the Inventory is complete much sooner.',
+  },
   // 3.1.29 (2026-11-16) — batch 2: one read on open (TODO 18), Journal ✦ loupe (B12), Constellation panel (B11).
   wn_open_one_read_t: { fr: 'Fiche et Vue d’ensemble plus rapides', en: 'Faster work card and Overview' },
   wn_open_one_read_d: {

@@ -37,7 +37,7 @@ import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/Wor
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
-import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById } from '@/app/atelier/works/actions'
+import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById, fetchOeuvresRest } from '@/app/atelier/works/actions'
 import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
@@ -622,7 +622,8 @@ export function TeamPortalClient({
       await afterForeground()
       while (cursor != null && !cancelled) {
         try {
-          const { rows, nextCursor, hasMore } = await fetchOeuvresKeysetPage(cursor, 500)
+          // The whole rest in one call (TODO 19): one round trip instead of one per 500 works.
+          const { rows, nextCursor, hasMore } = await fetchOeuvresRest(cursor)
           if (cancelled) break
           setOeuvres((prev) => {
             const seen = new Set(prev.map((o) => o.OeuvreID))

@@ -1601,6 +1601,23 @@ export async function fetchOeuvresKeysetPage(beforeId: number | null, limit: num
   return { rows, nextCursor, hasMore }
 }
 
+/**
+ * The rest of the catalogue after the first chunk, in ONE Server Action (TODO 19, 2026-11-16). Next runs
+ * client-called actions one at a time and each chunk needed the previous chunk's last id, so the client
+ * loop of 500-row chunks took 22–27 s live. Here the keyset pages run server-side (900 rows: under
+ * PostgREST's 1 000-row cap, so `hasMore` stays right), up to 5 pages; the client loops only past that.
+ */
+export async function fetchOeuvresRest(beforeId: number): Promise<OeuvresKeysetPageResult> {
+  const rows: Oeuvre[] = []
+  let cursor: number | null = beforeId
+  for (let i = 0; i < 5 && cursor != null; i++) {
+    const page: OeuvresKeysetPageResult = await fetchOeuvresKeysetPage(cursor, 900)
+    rows.push(...page.rows)
+    cursor = page.hasMore ? page.nextCursor : null
+  }
+  return { rows, nextCursor: cursor, hasMore: cursor != null }
+}
+
 /** First keyset page. Used for shell deferred catalogue chunk. */
 export async function fetchOeuvresInitialKeysetPage(limit = 50): Promise<OeuvresKeysetPageResult> {
   return fetchOeuvresKeysetPage(null, limit)

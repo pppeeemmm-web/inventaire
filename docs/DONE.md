@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — The rest of the catalogue in one call (TODO 19, part; What's new 3.1.30)
+
+- The Atelier's background catalogue load asked for 500 works at a time, each request waiting for the previous one's last id, and Next runs client-called actions one at a time — 22–27 s live for 1 176 works. `fetchOeuvresRest` (`app/atelier/works/actions.ts`) now runs the keyset pages server-side (900 rows, under PostgREST's 1 000-row cap) and returns the rest in one response; the client loops only past 4 500 works (`TeamPortalClient.tsx`). Junction hydration follows (one call instead of one per chunk). Dev 2026-11-16: 1176/1176 loaded 8.9 s after navigation with 3 POSTs in all, no console error. Live time → §4.
+
 ## 2026-11-16 — Batch 2: one-read card + Overview, Journal loupe, Constellation panel (What's new 3.1.29)
 
 - **TODO 18, part 1 (side session, landed by the main session):** a work card and the Atelier frame / Overview each open with ONE combined server read (`loadWorkDrawerOpen`, `loadAtelierShellOpen`, `loadOverviewOpen`) that runs the existing read actions in parallel — each keeps its own auth guard; sections take their slice (`lib/atelier/open-reads.ts`, served 30 s untaken / 2 s after first take) and fall back to their own action; reloads after an edit call their action directly. Dev (non-admin, hidden pane): card 8 → 1 POST, settled 3.4–4.1 → 1.1–1.2 s; Overview load 19 → 8 POSTs (7 = catalogue chunks, item 19), 11.2 → 5.7 s. **Not seen:** admin cost slice, sold-work return-window slice → §4.
