@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — `xlsx` checked (TODO 8, part)
+
+- `xlsx` 0.18.5 is only used to write exports (Reports, export dialog, pivot: `utils.book_new`, `aoa_to_sheet`, `book_append_sheet`, `writeFile`); nothing parses a spreadsheet with it, so its known parse-time flaws (prototype pollution, slow regex) are not reachable. Rule in TODO_NOTES « security »: upgrade before adding any import.
+
 ## 2026-11-16 — The rest of the catalogue in one call (TODO 19, part; What's new 3.1.30)
 
 - The Atelier's background catalogue load asked for 500 works at a time, each request waiting for the previous one's last id, and Next runs client-called actions one at a time — 22–27 s live for 1 176 works. `fetchOeuvresRest` (`app/atelier/works/actions.ts`) now runs the keyset pages server-side (900 rows, under PostgREST's 1 000-row cap) and returns the rest in one response; the client loops only past 4 500 works (`TeamPortalClient.tsx`). Junction hydration follows (one call instead of one per chunk). Dev 2026-11-16: 1176/1176 loaded 8.9 s after navigation with 3 POSTs in all, no console error. Live time → §4.
