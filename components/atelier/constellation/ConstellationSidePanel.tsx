@@ -6,6 +6,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '../WorkThumb'
 import { ConstellationJournalEntries } from './ConstellationJournalEntries'
+import { ConstellationHowTo } from './ConstellationHowTo'
 import { type GroupBy, type NodeMap, type Snapshot } from './constellation-shared'
 
 export type ConstellationSidePanelProps = {
@@ -124,6 +125,11 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                       >
                         {t('const_addAll')} ({Math.min(filteredForPicker.length, 120)})
                       </button>
+                    )}
+                    {filteredForPicker.length > 0 && (
+                      <div className="t-mono-sm" style={{ marginTop: 4, fontSize: 8, lineHeight: 1.4, color: 'var(--tx3)' }}>
+                        {t('ct_add_all_cap')}
+                      </div>
                     )}
                   </div>
 
@@ -319,6 +325,8 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                     </div>
                   </div>
                 )}
+
+                <ConstellationHowTo t={t} />
               </div>
             </div>
   )
