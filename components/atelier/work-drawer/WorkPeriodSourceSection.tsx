@@ -25,7 +25,8 @@ import { setWorkPeriod, setWorkSourceNote, setWorkSources } from '@/app/atelier/
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 import { WorkCreationHistory } from '@/components/atelier/work-drawer/WorkCreationHistory'
 
-export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
+/** `historyApart`: the work card R3 shows « Historique de création » as its own part. */
+export function WorkPeriodSourceSection({ oeuvreId, when, historyApart = false }: { oeuvreId: number; when: WorkWhen; historyApart?: boolean }) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const data = usePeriodSource()
@@ -178,7 +179,7 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
         ) : null}
       </div>
 
-      <WorkCreationHistory oeuvreId={oeuvreId} when={when} />
+      {historyApart ? null : <WorkCreationHistory oeuvreId={oeuvreId} when={when} />}
 
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_source')}</div>

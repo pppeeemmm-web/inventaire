@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChangeEvent, Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { useState, type ChangeEvent, type CSSProperties, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { usePathname, useRouter } from 'next/navigation'
 import { requestColourFilter } from '@/lib/atelier/colour-filter-handoff'
@@ -45,10 +45,26 @@ export type WorkDrawerImageAreaProps = {
   activeImgIdx: number
   setActiveImgIdx: Dispatch<SetStateAction<number>>
   imageCacheKeys: Record<number, string>
-  drawerNudge: (sortedIndex: number, dir: -1 | 1) => void
-  drawerMakeCover: (sortedIndex: number) => void
+  /** Persist a new order (ids in SeqNo order — the last one is the cover, `tblImage` trigger). */
+  drawerReorder: (ids: number[]) => void
+  isAdmin: boolean
   drawerDeleteImage: (imageId: number) => void | Promise<void>
   drawerStartRetouch: (imageId: number) => void
+}
+
+const picIcon: CSSProperties = {
+  width: 32,
+  height: 32,
+  display: 'grid',
+  placeItems: 'center',
+  background: 'rgba(8,8,9,.72)',
+  border: '1px solid rgba(255,255,255,.14)',
+  borderRadius: 3,
+  color: 'var(--tx)',
+  fontSize: 14,
+  cursor: 'pointer',
+  textDecoration: 'none',
+  padding: 0,
 }
 
 export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
@@ -90,8 +106,8 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
     activeImgIdx,
     setActiveImgIdx,
     imageCacheKeys,
-    drawerNudge,
-    drawerMakeCover,
+    drawerReorder,
+    isAdmin,
     drawerDeleteImage,
     drawerStartRetouch,
   } = p
@@ -104,6 +120,26 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
     : []
   const paletteTotal = activePalette.reduce((sum, s) => sum + s.share, 0) || 1
   const activeDownloadUrl = activeImgPath ? imageUrl(activeImgPath) : null
+  // The cover is the LAST image by SeqNo (`tblImage` trigger); the strip shows it first (Pem R3:
+  // « la 1re = couverture »), so the displayed order is SeqNo reversed and saved back reversed.
+  const display = drawerSorted.map((_, i) => drawerSorted.length - 1 - i)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+  const thumb = narrow ? 48 : 52
+  /** Icons on the picture: 44 px taps on the phone. */
+  const pi: CSSProperties = narrow ? { ...picIcon, width: 44, height: 44, fontSize: 18 } : picIcon
+  const grip = narrow ? 24 : 16
+  function endDrag() {
+    const from = dragFrom
+    const to = dragOver
+    setDragFrom(null)
+    setDragOver(null)
+    if (from == null || to == null || from === to) return
+    const ids = display.map((si) => drawerSorted[si]!.ImageID)
+    const [moved] = ids.splice(from, 1)
+    ids.splice(to, 0, moved!)
+    drawerReorder(ids.reverse())
+  }
 
   return (
     <>
@@ -143,31 +179,10 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
           {t('wf_images_upload_cancel')}
         </button>
       )}
-      {activeImage && activeDownloadUrl && (
-        <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          <a
-            href={activeDownloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn ghost sm"
-            data-testid="work-drawer-download-image"
-          >
-            {t('wf_images_download_original')}
-          </a>
-          <button
-            type="button"
-            className="btn ghost sm"
-            data-testid="work-drawer-retouch-image"
-            disabled={drawerImageBusy}
-            onClick={() => drawerStartRetouch(activeImage.ImageID)}
-          >
-            {drawerImageBusy ? '…' : t('wf_images_replace_retouched')}
-          </button>
-        </div>
-      )}
       <div
         ref={imgContainerRef}
-        style={{ width: '100%', overflow: 'hidden', background: 'var(--bg1)', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
+        title={activeImgPath ? t('wc_pic_zoom_hint') : undefined}
+        style={{ position: 'relative', width: '100%', overflow: 'hidden', background: activeImgPath ? 'var(--bg0)' : 'transparent', cursor: imgZoom > 1 ? 'grab' : 'zoom-in', userSelect: 'none' }}
         onMouseDown={(e) => {
           if (imgZoom > 1) {
             isDragging.current = true
@@ -285,138 +300,184 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
                 </button>
               </div>
             )}
+        {activeImage && activeDownloadUrl ? (
+          <div
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6, zIndex: 2 }}
+          >
+            <a
+              href={activeDownloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="work-drawer-download-image"
+              title={t('wc_pic_download')}
+              aria-label={t('wc_pic_download')}
+              style={pi}
+            >
+              ↓
+            </a>
+            <button
+              type="button"
+              data-testid="work-drawer-retouch-image"
+              disabled={drawerImageBusy}
+              title={t('wc_pic_retouch')}
+              aria-label={t('wc_pic_retouch')}
+              onClick={() => drawerStartRetouch(activeImage.ImageID)}
+              style={pi}
+            >
+              {drawerImageBusy ? '…' : '⟳'}
+            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                data-testid="work-drawer-delete-image"
+                title={t('wc_pic_delete')}
+                aria-label={t('wc_pic_delete')}
+                onClick={() => void drawerDeleteImage(activeImage.ImageID)}
+                style={{ ...pi, color: 'var(--rust)' }}
+              >
+                🗑
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {activePalette.length > 0 && (
-        <div data-testid="work-drawer-palette" title={t('wf_palette_title')} style={{ marginBottom: 10 }}>
-          <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('wf_palette_label')}</div>
-          {/* Widths normalised so the bar is always full; the legend gives the real share of the image. */}
-          <div style={{ display: 'flex', height: 14, border: '1px solid var(--bd)', overflow: 'hidden' }}>
-            {activePalette.map((s) => (
-              <div
+        <div data-testid="work-drawer-palette" title={t('wf_palette_title')} style={{ display: 'flex', gap: 3, marginTop: 8, minWidth: 0 }}>
+          {/* Widths normalised so the row is always full; the label gives the real share of the image. */}
+          {activePalette.map((s) => {
+            const fam = typeof s.family === 'string' && (COLOUR_FAMILIES as readonly string[]).includes(s.family)
+              ? (s.family as ColourFamily)
+              : null
+            const name = fam ? t(`colour_family_${fam}` as Parameters<typeof t>[0]) : s.hex.toUpperCase()
+            const share = s.accent ? t('wf_palette_accent') : `${Math.round(s.share * 100)} %`
+            const inner = (
+              <>
+                <span aria-hidden="true" style={{ display: 'block', height: 14, background: s.hex, border: '1px solid var(--bd)' }} />
+                <span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {t('wc_swatch_fmt').replace('{hex}', s.hex.toUpperCase()).replace('{share}', share)}
+                </span>
+              </>
+            )
+            const cell: CSSProperties = { flex: `${Math.max(s.share / paletteTotal, 0.08)} 1 0`, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }
+            return fam ? (
+              <button
                 key={`${s.family ?? ''}${s.hex}`}
-                title={s.hex.toUpperCase()}
-                style={{ width: `${(s.share / paletteTotal) * 100}%`, minWidth: 6, background: s.hex }}
-              />
-            ))}
-          </div>
-          <div className="t-mono-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 4, fontSize: 10, color: 'var(--tx2)' }}>
-            {activePalette.map((s) => {
-              const fam = typeof s.family === 'string' && (COLOUR_FAMILIES as readonly string[]).includes(s.family)
-                ? (s.family as ColourFamily)
-                : null
-              const name = fam ? t(`colour_family_${fam}` as Parameters<typeof t>[0]) : s.hex.toUpperCase()
-              const inner = (
-                <>
-                  <span aria-hidden="true" style={{ width: 8, height: 8, background: s.hex, border: '1px solid var(--bd)' }} />
-                  {name} {s.accent ? t('wf_palette_accent') : `${Math.round(s.share * 100)}%`}
-                </>
-              )
-              const itemSt = { display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' } as const
-              return fam ? (
-                <button
-                  key={`${s.family ?? ''}${s.hex}`}
-                  type="button"
-                  data-testid={`work-drawer-palette-filter-${fam}`}
-                  title={t('wf_palette_swatch_filter_fmt').replace('{c}', name)}
-                  onClick={() => {
-                    requestColourFilter(fam)
-                    if (pathname !== '/atelier/inventory') router.push('/atelier/inventory')
-                  }}
-                  style={{ ...itemSt, font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', textDecoration: 'underline dotted' }}
-                >
-                  {inner}
-                </button>
-              ) : (
-                <span key={`${s.family ?? ''}${s.hex}`} style={itemSt}>{inner}</span>
-              )
-            })}
-          </div>
+                type="button"
+                data-testid={`work-drawer-palette-filter-${fam}`}
+                title={`${name} — ${t('wf_palette_swatch_filter_fmt').replace('{c}', name)}`}
+                onClick={() => {
+                  requestColourFilter(fam)
+                  if (pathname !== '/atelier/inventory') router.push('/atelier/inventory')
+                }}
+                style={{ ...cell, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+              >
+                {inner}
+              </button>
+            ) : (
+              <span key={`${s.family ?? ''}${s.hex}`} title={name} style={cell}>{inner}</span>
+            )
+          })}
         </div>
       )}
 
       {workImages.length >= 1 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          {drawerSorted.map((img, idx) => (
-            <div key={img.ImageID} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <button
-                type="button"
-                onClick={() => { setActiveImgIdx(idx); setImgZoom(1); setImgPan({ x: 0, y: 0 }) }}
-                style={{ width: 44, height: 44, padding: 0, border: `2px solid ${idx === activeImgIdx ? 'var(--ac)' : 'var(--bd)'}`, overflow: 'hidden', cursor: 'pointer', background: 'var(--bg0)', flexShrink: 0 }}
-                title={
-                  `${t('wf_images_strip_alt').replace('{n}', String(idx + 1))}${
-                    idx === drawerSorted.length - 1 ? t('wf_images_strip_cover_suffix') : ''
-                  }`
-                }
-              >
-                {img.txtImageNameLink && (
-                  <WorkThumb
-                    file={img.txtImageNameLink}
-                    alt={t('wf_images_strip_alt').replace('{n}', String(idx + 1))}
-                    size={64}
-                    displaySize="44px"
-                    cacheKey={imageCacheKeys[img.ImageID]}
-                  />
-                )}
-              </button>
-              {drawerSorted.length > 1 && (
-                <div className="row" style={{ gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            {display.map((sortedIdx, di) => {
+              const img = drawerSorted[sortedIdx]!
+              const isCover = di === 0
+              const over = dragFrom != null && dragOver === di && dragFrom !== di
+              return (
+                <div
+                  key={img.ImageID}
+                  data-strip-idx={di}
+                  style={{
+                    position: 'relative',
+                    width: thumb,
+                    height: thumb,
+                    flexShrink: 0,
+                    boxShadow: over ? '-4px 0 0 var(--ac)' : undefined,
+                    transform: dragFrom === di ? 'translateY(-4px) rotate(-3deg)' : undefined,
+                    opacity: dragFrom === di ? 0.85 : 1,
+                  }}
+                >
                   <button
                     type="button"
-                    disabled={idx === 0}
-                    onClick={() => drawerNudge(idx, -1)}
-                    aria-label={t('wf_images_order_before_aria')}
-                    className="btn ghost sm"
-                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
+                    onClick={() => { setActiveImgIdx(sortedIdx); setImgZoom(1); setImgPan({ x: 0, y: 0 }) }}
+                    style={{ width: thumb, height: thumb, padding: 0, border: `2px solid ${sortedIdx === activeImgIdx ? 'var(--ac)' : 'var(--bd)'}`, overflow: 'hidden', cursor: 'pointer', background: 'var(--bg0)' }}
+                    title={`${t('wf_images_strip_alt').replace('{n}', String(di + 1))}${isCover ? ` · ${t('wc_strip_cover')}` : ''}`}
                   >
-                    ←
+                    {img.txtImageNameLink && (
+                      <WorkThumb
+                        file={img.txtImageNameLink}
+                        alt={t('wf_images_strip_alt').replace('{n}', String(di + 1))}
+                        size={64}
+                        displaySize={`${thumb - 4}px`}
+                        cacheKey={imageCacheKeys[img.ImageID]}
+                      />
+                    )}
                   </button>
-                  <button
-                    type="button"
-                    disabled={idx === drawerSorted.length - 1}
-                    onClick={() => drawerNudge(idx, 1)}
-                    aria-label={t('wf_images_order_after_aria')}
-                    className="btn ghost sm"
-                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
-                  >
-                    →
-                  </button>
-                  <button
-                    type="button"
-                    disabled={idx === drawerSorted.length - 1}
-                    onClick={() => drawerMakeCover(idx)}
-                    aria-label={t('wf_images_order_cover_aria')}
-                    className="btn ghost sm"
-                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
-                  >
-                    ★
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void drawerDeleteImage(img.ImageID)}
-                    aria-label={t('confirm_delete_image')}
-                    className="btn ghost sm"
-                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22, color: 'var(--rust)' }}
-                  >
-                    ×
-                  </button>
+                  {display.length > 1 ? (
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      aria-label={t('wc_strip_grip_aria')}
+                      title={t('wc_strip_grip_aria')}
+                      data-testid="work-drawer-strip-grip"
+                      onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.setPointerCapture(e.pointerId)
+                        setDragFrom(di)
+                        setDragOver(di)
+                      }}
+                      onPointerMove={(e) => {
+                        if (dragFrom == null) return
+                        const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-strip-idx]')
+                        if (el) setDragOver(Number(el.getAttribute('data-strip-idx')))
+                      }}
+                      onPointerUp={endDrag}
+                      onPointerCancel={() => { setDragFrom(null); setDragOver(null) }}
+                      style={{
+                        position: 'absolute',
+                        left: 2,
+                        top: 2,
+                        width: grip,
+                        height: grip,
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontSize: 11,
+                        lineHeight: 1,
+                        color: 'var(--tx)',
+                        background: 'rgba(8,8,9,.72)',
+                        borderRadius: 2,
+                        cursor: dragFrom != null ? 'grabbing' : 'grab',
+                        touchAction: 'none',
+                      }}
+                    >
+                      ⠿
+                    </span>
+                  ) : null}
                 </div>
-              )}
-            </div>
-          ))}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              )
+            })}
             <button
               type="button"
               data-testid="work-drawer-add-another-photo"
               disabled={drawerImageBusy}
               onClick={() => drawerImageFileRef.current?.click()}
               aria-label={t('wf_images_add_aria')}
+              title={t('wf_images_add_aria')}
               className="btn ghost sm"
-              style={{ width: 44, height: 44, padding: 0, border: '1px dashed var(--bd)', fontSize: 18 }}
+              style={{ width: thumb, height: thumb, minWidth: thumb, padding: 0, border: '1px dashed var(--bd3)', fontSize: 18 }}
             >
               {drawerImageBusy ? '…' : '+'}
             </button>
           </div>
+          {display.length > 1 ? (
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{t('wc_strip_hint')}</div>
+          ) : null}
         </div>
       )}
     </>

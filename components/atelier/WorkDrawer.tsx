@@ -107,6 +107,8 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
     performSave: () => guardApiRef.current.performSave(),
   }), [guardApiRef])
 
+  /** Overlay ⤢ (work card R3): 820 px, two columns. */
+  const [overlayWide, setOverlayWide] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   useEffect(() => { panelRef.current?.scrollTo(0, 0) }, [o?.OeuvreID])
 
@@ -233,7 +235,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
         alignSelf: 'stretch',
         borderRadius: isExpanded ? '16px 0 0 16px' : '0',
       }}>
-        <div style={{ padding: 28 }}>
+        <div style={{ padding: '0 18px' }}>
           <DrawerContent
             o={o} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap}
             statusLabelMap={statusLabelMap} selection={selection} setSelection={setSelection}
@@ -244,7 +246,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             initialFormats={initialFormats} initialThemes={initialThemes}
             initialContacts={initialContacts} initialAddresses={initialAddresses} initialGroups={initialGroups}
             initialPresentations={initialPresentations}
-            mode="panel" isExpanded={isExpanded} setExpanded={setExpandedProp}
+            mode="panel" isExpanded={isExpanded} setExpanded={setExpandedProp} wide={expandedProp}
             imgZoom={imgZoom} setImgZoom={setImgZoom}
             imgPan={imgPan} setImgPan={setImgPan}
             naturalSize={naturalSize} setNaturalSize={setNaturalSize}
@@ -284,8 +286,8 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
         data-testid="work-drawer-overlay"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: narrow ? '100vw' : 460,
-          maxWidth: narrow ? '100vw' : '50vw',
+          width: narrow ? '100vw' : overlayWide ? 820 : 460,
+          maxWidth: narrow ? '100vw' : overlayWide ? '92vw' : '50vw',
           maxHeight: '100dvh',
           height: '100dvh',
           minHeight: 0,
@@ -300,7 +302,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
           margin: 0,
         }}
       >
-        <div style={{ padding: narrow ? 'max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))' : 28 }}>
+        <div style={{ padding: narrow ? 'env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left))' : '0 18px' }}>
           <DrawerContent
             o={o} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap}
             statusLabelMap={statusLabelMap} selection={selection} setSelection={setSelection}
@@ -311,7 +313,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             initialFormats={initialFormats} initialThemes={initialThemes}
             initialContacts={initialContacts} initialAddresses={initialAddresses} initialGroups={initialGroups}
             initialPresentations={initialPresentations}
-            mode="overlay" isExpanded={false}
+            mode="overlay" isExpanded={overlayWide} setExpanded={setOverlayWide} wide={overlayWide}
             imgZoom={imgZoom} setImgZoom={setImgZoom}
             imgPan={imgPan} setImgPan={setImgPan}
             naturalSize={naturalSize} setNaturalSize={setNaturalSize}

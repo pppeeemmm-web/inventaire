@@ -1,7 +1,7 @@
 'use client'
 
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
+import { deleteWork, purgeWorkPermanently, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
@@ -41,10 +41,12 @@ import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
 import { SaleReturnWindowBanner } from './SaleReturnWindowBanner'
 import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
-import { DrawerContentIdentitySection } from './DrawerContentIdentitySection'
-import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
 import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
-import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
+import { ContactConfidentialityPart } from './WorkDrawerPipelineSection'
+import { CardDrawer, Chip, Part, PickChips } from './WorkCardParts'
+import { WorkCardIdentity, emptyIdentityLabels } from './WorkCardIdentity'
+import { WorkCreationHistory } from './WorkCreationHistory'
+import { WorkVersionHistory } from '../WorkVersionHistory'
 import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { NewContactModal, EMPTY_CONTACT_DRAFT } from './NewContactModal'
 import { UnsavedChangesModal } from './UnsavedChangesModal'
@@ -62,6 +64,8 @@ import { WorkAiDescriptionSection } from './WorkAiDescriptionSection'
 import { workWhen } from '@/lib/work-periods'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
+
+const WORK_CARD_VIEW_KEY = 'pem.workCard.view'
 
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
@@ -88,7 +92,7 @@ export function DrawerContent({
   locMap: _locMap,
   initialTechniques, initialSupports, initialFormats, initialThemes,
   initialContacts, initialAddresses = [], initialGroups, initialPresentations,
-  mode, isExpanded, setExpanded,
+  mode, isExpanded: _isExpanded, setExpanded, wide = false,
   imgZoom,
   setImgZoom,
   imgPan,
@@ -111,11 +115,29 @@ export function DrawerContent({
   const router = useRouter()
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
-  // Phone field mode (journal step 2, owner 2026-11-12): capture fields first (photo, title,
-  // technique, support, size, notes); status, ownership, price and the rest folded below.
-  const [allFields, setAllFields] = useState(false)
-  const fieldMode = narrow && !allFields
-  const [moreActions, setMoreActions] = useState(false)
+  // Work card R3 (docs/design/2026-11-16/WorkCard.notes.md): « Replié » (default) = top block in
+  // full, Création + Objet closed, empty fields in one grey line; « Développé » = both open, empty
+  // parts greyed in place. The choice is remembered on this browser.
+  const [view, setView] = useState<'folded' | 'open'>('folded')
+  const [creationOpen, setCreationOpen] = useState(false)
+  const [objectOpen, setObjectOpen] = useState(false)
+  const [stagedCount, setStagedCount] = useState(0)
+  useEffect(() => {
+    let v: string | null = null
+    try { v = localStorage.getItem(WORK_CARD_VIEW_KEY) } catch { /* ignore */ }
+    if (v === 'open') {
+      setView('open')
+      setCreationOpen(true)
+      setObjectOpen(true)
+    }
+  }, [])
+  const setViewPersist = useCallback((v: 'folded' | 'open') => {
+    setView(v)
+    setCreationOpen(v === 'open')
+    setObjectOpen(v === 'open')
+    try { localStorage.setItem(WORK_CARD_VIEW_KEY, v) } catch { /* ignore */ }
+  }, [])
+  useEffect(() => { setStagedCount(0) }, [o.OeuvreID])
   /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
   const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
@@ -217,25 +239,6 @@ export function DrawerContent({
     const ni = ids.findIndex((id) => id === currentId)
     setActiveImgIdx(ni >= 0 ? ni : Math.max(0, ids.length - 1))
     router.refresh()
-  }
-
-  function drawerNudge(sortedIndex: number, dir: -1 | 1) {
-    const j = sortedIndex + dir
-    if (j < 0 || j >= drawerSorted.length) return
-    const ids = drawerSorted.map((x) => x.ImageID)
-    const a = ids[sortedIndex]!
-    const b = ids[j]!
-    ids[sortedIndex] = b
-    ids[j] = a
-    void drawerPersistOrder(ids)
-  }
-
-  function drawerMakeCover(sortedIndex: number) {
-    if (sortedIndex < 0 || sortedIndex >= drawerSorted.length) return
-    const ids = drawerSorted.map((x) => x.ImageID)
-    const id = ids.splice(sortedIndex, 1)[0]!
-    ids.push(id)
-    void drawerPersistOrder(ids)
   }
 
   async function drawerDeleteImage(imageId: number) {
@@ -1106,6 +1109,17 @@ export function DrawerContent({
     run?.()
   }
 
+  /** Sticky bar « Annuler »: back to the saved work, the card stays open. */
+  function discardInPlace() {
+    try {
+      sessionStorage.removeItem(draftKey)
+    } catch { /* ignore */ }
+    submittedByOeuvreRef.current.delete(o.OeuvreID)
+    setEditorBaseline(null)
+    syncFormFieldsFromOeuvre()
+    setLongTextReloadNonce((n) => n + 1)
+  }
+
   // ── Delete ─────────────────────────────────────────────
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError,   setDeleteError]   = useState<string | null>(null)
@@ -1158,6 +1172,31 @@ export function DrawerContent({
     })
   }
 
+  /** Objet › Zone admin: permanent delete (`purgeWorkPermanently`, admin only — no undo). */
+  function handlePurge() {
+    if (!window.confirm(t('wc_purge_confirm_fmt').replace('{id}', String(o.OeuvreID)))) return
+    startDelete(async () => {
+      const oid = o.OeuvreID
+      try {
+        const result = await purgeWorkPermanently(oid)
+        if ('error' in result) {
+          const msg = workSaveErrorToastMessage(result.error, t)
+          setDeleteError(msg)
+          toast.error(msg)
+          return
+        }
+        onOeuvreRemoved?.([oid])
+        onClose()
+        router.refresh()
+        toast.success(t('wc_purge_done'))
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        setDeleteError(msg)
+        toast.error(msg)
+      }
+    })
+  }
+
   function handleToggleSel() {
     if (toggleInSel) { toggleInSel(o.OeuvreID); return }
     if (!setSelection) return
@@ -1181,7 +1220,7 @@ export function DrawerContent({
   const fullPreviewSrc = activeImgPath ? withCacheKey(imageUrl(activeImgPath) ?? '', activeImageCacheKey) : ''
   const showFullPreviewLayer = Boolean(activeImgPath && imgZoom > 1)
   /** Overlay rail is narrow: cap hero image so pipeline + fields stay reachable without huge scroll. */
-  const previewMaxHeight = isPanel ? '70vh' : narrow ? '56vh' : 'min(44vh, 400px)'
+  const previewMaxHeight = wide && !narrow ? 'min(62vh, 520px)' : isPanel ? 'min(46vh, 360px)' : narrow ? '56vh' : 'min(44vh, 400px)'
 
   useEffect(() => {
     setFullPreviewReady(false)
@@ -1227,376 +1266,541 @@ export function DrawerContent({
     setNewC(EMPTY_CONTACT_DRAFT)
   }
 
+  const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
+  const folded = view === 'folded'
+  const twoCol = !!wide && !narrow
+  /** Parts stack their label over the content where the card is one narrow column. */
+  const stacked = narrow || (isPanel && !twoCol)
+  const startedLabel = o.production_started_on ? formatPartialDate(o.production_started_on, o.production_started_precision, loc) : ''
+  const completedLabel = o.production_completed_on ? formatPartialDate(o.production_completed_on, o.production_completed_precision, loc) : ''
+  const editedAt = (o as { edited_at?: string | null }).edited_at
+  const editedLabel = editedAt
+    ? new Date(editedAt).toLocaleString(loc, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : ''
+  const when = workWhen({
+    Année: annee,
+    production_started_on: o.production_started_on,
+    production_completed_on: o.production_completed_on,
+    production_started_precision: o.production_started_precision,
+    production_completed_precision: o.production_completed_precision,
+  })
+  const fateText = o.fate
+    ? [
+        (ownStage === 'sold' || ownStage === 'gift' ? `${statusLabelMap[o.statusId ?? 0] ?? ''} · ` : '')
+          + t(o.fate === 'destroyed' ? 'fate_destroyed_fmt' : 'fate_lost_fmt')
+            .replace('{date}', formatPartialDate(o.fate_on, o.fate_precision, loc)),
+        fateLastLocation ? t('fate_last_location_fmt').replace('{loc}', fateLastLocation) : '',
+      ].filter(Boolean).join(' — ')
+    : ''
+  const isGiftStage = ownStage === 'gift'
+  const priceEmpty = prixVal === 0 && !isGiftStage
+  const creationSummary = [
+    yearOf(annee) != null ? t('wc_sum_period_fmt').replace('{p}', String(yearOf(annee))) : '',
+    commentaires.trim() ? t('wc_sum_comments') : '',
+    selThemes.size ? t('wc_sum_themes_fmt').replace('{n}', String(selThemes.size)) : '',
+  ].filter(Boolean).join(' · ') || t('wc_sum_none')
+  const objectSummary = [
+    historique.trim() ? t('wc_sum_provenance') : '',
+    !priceEmpty && !isGiftStage ? t('wc_sum_price_fmt').replace('{p}', `€ ${prixFinalComputed.toLocaleString(loc)}`) : '',
+    paymentDone ? t('wc_sum_paid') : '',
+    selGroups.size ? t('wc_sum_groups_fmt').replace('{n}', String(selGroups.size)) : '',
+    encadree ? t('wc_sum_framed') : '',
+    broadcastReady ? t('wc_sum_broadcast') : '',
+    o.fate ? t('wc_sum_fate') : '',
+    t('wc_sum_label'),
+  ].filter(Boolean).join(' · ')
+  const emptyLabels = [
+    ...(titre.trim() ? [] : [t('untitled').toLowerCase()]),
+    ...emptyIdentityLabels(t, { annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur, hasSpan: !!(startedLabel || completedLabel) }),
+    ...(commentaires.trim() ? [] : [t('wc_p_comments').toLowerCase()]),
+    ...(selThemes.size ? [] : [t('wc_p_themes').toLowerCase()]),
+    ...(historique.trim() ? [] : [t('wc_p_provenance').toLowerCase()]),
+    ...(priceEmpty ? [t('wf_price').toLowerCase()] : []),
+    ...(selGroups.size ? [] : [t('wc_p_groups').toLowerCase()]),
+  ]
+  /** Fields outside the guarded draft (Encadrée, presentation type, caption seed): shown on the bar too. */
+  const extraDirty =
+    encadree !== !!o.Encadree
+    || presentationId !== String((o as { PresentationID?: number | null }).PresentationID ?? '')
+    || (broadcastCaptionSeed ?? '') !== String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? '')
+  const barDirty = isDirty || extraDirty
+  const hdrBtn = { minHeight: narrow ? 44 : 36, minWidth: narrow ? 44 : 36, background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18, padding: 0, fontFamily: 'inherit' } as const
+  const segBtn = (on: boolean) => ({
+    padding: '0 10px',
+    minHeight: narrow ? 44 : 30,
+    border: 'none',
+    background: on ? 'var(--bg3)' : 'transparent',
+    color: on ? 'var(--tx)' : 'var(--tx3)',
+    fontSize: 12,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+  }) as const
+  const textareaSt = { ...FIS, resize: 'vertical' as const, fontSize: 12, padding: 8, minHeight: 56 }
+
   return (
     <>
-      {/* Header */}
-      <div className="row between" style={{ marginBottom: 10 }}>
-        <div className="row gap-sm" style={{ alignItems: 'center' }}>
-          <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
-          <span
-            className="t-mono-sm"
-            title={t('auditAttributedHint')}
-            aria-label={t('auditAttributedHint')}
-            style={{ color: 'var(--ac)', cursor: 'help', fontSize: 11, opacity: 0.85 }}
-          >
-            ◈
-          </span>
-        </div>
-        <div className="row gap-sm" style={{ alignItems: 'center' }}>
-          {imgZoom > 1 && (
-            <span className="t-mono-sm" style={{ color: 'var(--tx3)', marginRight: 8 }}>×{imgZoom.toFixed(1)}</span>
-          )}
-          {isPanel && setExpanded && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!isExpanded)}
-              aria-label={isExpanded ? t('wf_drawer_collapse') : t('wf_drawer_expand')}
-              style={{ background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', cursor: 'pointer', fontSize: 13, padding: '4px 8px', marginRight: 4, minHeight: 44, minWidth: 44 }}
-              title={isExpanded ? t('wf_drawer_collapse') : t('wf_drawer_expand')}
-            >{isExpanded ? '◀' : '▶'}</button>
-          )}
-          <button type="button" onClick={attemptClose} aria-label={t('close')} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px', minHeight: 44, minWidth: 44 }}>×</button>
-        </div>
-      </div>
-
-      <WorkDrawerImageArea
-        o={o}
-        narrow={narrow}
-        imgContainerRef={imgContainerRef}
-        imgZoom={imgZoom}
-        imgPan={imgPan}
-        setImgPan={setImgPan}
-        setImgZoom={setImgZoom}
-        isDragging={isDragging}
-        dragStart={dragStart}
-        latestMouseRef={latestMouseRef}
-        panRafId={panRafId}
-        activeImgPath={activeImgPath}
-        thumbPreviewSrc={thumbPreviewSrc}
-        fullPreviewSrc={fullPreviewSrc}
-        showFullPreviewLayer={showFullPreviewLayer}
-        fullPreviewReady={fullPreviewReady}
-        setFullPreviewReady={setFullPreviewReady}
-        setNaturalSize={setNaturalSize}
-        previewMaxHeight={previewMaxHeight}
-        drawerImageFileRef={drawerImageFileRef}
-        onDrawerImageFileChange={onDrawerImageFileChange}
-        retouchImageFileRef={retouchImageFileRef}
-        onRetouchImageFileChange={onRetouchImageFileChange}
-        drawerImageBusy={drawerImageBusy}
-        drawerUploadPct={drawerUploadPct}
-        drawerUploadName={drawerUploadName}
-        drawerUploadIndex={drawerUploadIndex}
-        drawerUploadTotal={drawerUploadTotal}
-        drawerUploadCancelRef={drawerUploadCancelRef}
-        workImages={workImages}
-        drawerSorted={drawerSorted}
-        activeImgIdx={activeImgIdx}
-        setActiveImgIdx={setActiveImgIdx}
-        imageCacheKeys={imageCacheKeys}
-        drawerNudge={drawerNudge}
-        drawerMakeCover={drawerMakeCover}
-        drawerDeleteImage={drawerDeleteImage}
-        drawerStartRetouch={drawerStartRetouch}
-      />
-
-      {/* Title (inline edit) */}
-      <input
-        value={titre}
-        onChange={e => setTitre(cap(e.target.value))}
-        style={{ ...FIS, fontSize: 24, fontFamily: 'var(--font-serif)', marginBottom: 16, height: 40, border: 'none', borderBottom: '1px solid var(--bd)', background: 'transparent', width: '100%' }}
-        placeholder={t('untitled')}
-      />
-
-      {!fieldMode ? (
-      <>
-      <section style={{ marginBottom: 12 }} data-testid="work-drawer-status-bar">
-        <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-          {/* Status 1 + « catalogued » = the Inventory's « Catalogué », not the raw « En production » (TODO B9). */}
-          {computeWorkStatusId(ownStage, prodStage) === 1 && prodStage === 'catalogued'
-            ? t('inv_state_catalogued')
-            : statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
-        </div>
-        {o.fate ? (
-          // Destroyed / lost (condition report, supabase/sql/condition_report_fate.sql): kept by trigger.
-          <div data-testid="work-drawer-fate" style={{ fontSize: 13, color: 'var(--tx)', marginTop: 4 }}>
-            {[
-              (ownStage === 'sold' || ownStage === 'gift' ? `${statusLabelMap[o.statusId ?? 0] ?? ''} · ` : '')
-                + t(o.fate === 'destroyed' ? 'fate_destroyed_fmt' : 'fate_lost_fmt')
-                  .replace('{date}', formatPartialDate(o.fate_on, o.fate_precision, lang === 'en' ? 'en-GB' : 'fr-FR')),
-              fateLastLocation ? t('fate_last_location_fmt').replace('{loc}', fateLastLocation) : '',
-            ].filter(Boolean).join(' — ')}
-          </div>
-        ) : null}
-        <WorkProductionSpan
-          oeuvreId={o.OeuvreID}
-          editable={isAdmin}
-          startedOn={o.production_started_on}
-          startedPrecision={o.production_started_precision}
-          completedOn={o.production_completed_on}
-          completedPrecision={o.production_completed_precision}
-          origin={o.production_origin}
-          inProduction={!o.Catalogué}
-        />
-      </section>
-
-      {/* Destroyed / lost: stages locked until the constat is closed or removed (DB guard too). */}
-      {o.fate ? <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>{t('fate_locked')}</div> : null}
-      <fieldset
-        disabled={!!o.fate}
-        style={{ border: 0, padding: 0, margin: 0, minWidth: 0, ...(o.fate ? { opacity: 0.55, pointerEvents: 'none' } : null) }}
-      >
-      <WorkDrawerPipelineSection
-        // Kaizen #34: the contact card opens over the drawer; no guard needed, the work stays open.
-        onOpenContact={(cid) => setQuickContactId(cid)}
-        narrow={narrow}
-        prodStage={prodStage}
-        setProdStage={handleProdStageChange}
-        needsPhoto={needsPhoto}
-        setNeedsPhoto={handleNeedsPhotoChange}
-        ownStage={ownStage}
-        setOwnStage={setOwnStage}
-        isOwnershipTransferred={isOwnershipTransferred}
-        isArchived={isArchived}
-        pemContact={pemContact}
-        contactId={contactId}
-        setContactId={setContactId}
-        ownerId={ownerId}
-        setOwnerId={setOwnerId}
-        buyerId={buyerId}
-        setBuyerId={setBuyerId}
-        loadedOwnStage={ownStageFromStatusId(o.statusId)}
-        locationAddresses={locationAddresses}
-        localisationAddressId={localisationAddressId}
-        setLocalisationAddressId={setLocalisationAddressId}
-        sortedContacts={sortedContacts}
-        cName={cName}
-        currentLoc={currentLoc}
-        anonymityLevel={anonymityLevel}
-        setAnonymityLevel={setAnonymityLevel}
-        setShowNewContact={setShowNewContact}
-      />
-      </fieldset>
-
-      {ownStage === 'sold' ? <SaleReturnWindowBanner oeuvreId={o.OeuvreID} /> : null}
-      </>
-      ) : null}
-
-      {/* ═══ EDITABLE FIELDS ═══ */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <DrawerContentIdentitySection
-          t={t}
-          annee={annee}
-          setAnnee={setAnnee}
-          techniqueId={techniqueId}
-          setTechniqueId={setTechniqueId}
-          supportId={supportId}
-          setSupportId={setSupportId}
-          hauteur={hauteur}
-          setHauteur={setHauteur}
-          largeur={largeur}
-          setLargeur={setLargeur}
-          profondeur={profondeur}
-          setProfondeur={setProfondeur}
-          localTechniques={localTechniques}
-          localSupports={localSupports}
-          saveLookup={saveLookup}
-          encadree={encadree}
-          setEncadree={setEncadree}
-          broadcastReady={broadcastReady}
-          setBroadcastReady={setBroadcastReady}
-          broadcastCaptionSeed={broadcastCaptionSeed}
-          setBroadcastCaptionSeed={setBroadcastCaptionSeed}
-          presentationId={presentationId}
-          setPresentationId={setPresentationId}
-          initialPresentations={initialPresentations}
-          initialThemes={initialThemes}
-          selThemes={selThemes}
-          setSelThemes={setSelThemes}
-          compactThemes={narrow}
-        />
-
-        {fieldMode ? (
-          <>
-            <DrawerContentNotesVersionSection
-              oeuvreId={o.OeuvreID}
-              t={t}
-              commentaires={commentaires}
-              setCommentaires={setCommentaires}
-              historique={historique}
-              setHistorique={setHistorique}
-              onVersionRestored={() => router.refresh()}
-            />
-            <button
-              type="button"
-              className="btn ghost"
-              data-testid="work-drawer-all-fields"
-              onClick={() => setAllFields(true)}
-              style={{ minHeight: 44, width: '100%', whiteSpace: 'normal' }}
-            >
-              {t('wf_field_all_fields')}
-            </button>
-            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: -10, textAlign: 'center' }}>{t('wf_field_all_fields_hint')}</div>
-          </>
-        ) : (
-        <>
-        {narrow ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            data-testid="work-drawer-field-mode"
-            onClick={() => setAllFields(false)}
-            style={{ minHeight: 44, width: '100%', whiteSpace: 'normal' }}
-          >
-            {t('wf_field_capture_only')}
-          </button>
-        ) : null}
-
-        <WorkPeriodSourceSection
-          oeuvreId={o.OeuvreID}
-          when={workWhen({
-            Année: annee,
-            production_started_on: o.production_started_on,
-            production_completed_on: o.production_completed_on,
-            production_started_precision: o.production_started_precision,
-            production_completed_precision: o.production_completed_precision,
-          })}
-        />
-
-        <WorkLinksSection oeuvreId={o.OeuvreID} />
-
-        <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
-
-        <DrawerContentFinanceSection
-          narrow={narrow}
-          lang={lang}
-          t={t}
-          prix={prix}
-          setPrix={setPrix}
-          discount={discount}
-          setDiscount={setDiscount}
-          tvaRate={tvaRate}
-          setTvaRate={setTvaRate}
-          prixFinalComputed={prixFinalComputed}
-          paymentDone={paymentDone}
-          setPaymentDone={setPaymentDone}
-          ownStage={ownStage}
-        />
-
-        <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
-
-        <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
-
-        <ConditionReportsSection oeuvreId={o.OeuvreID} onWorkPatched={(patch) => onWorkSaved?.(o.OeuvreID, patch)} />
-
-        <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
-
-        <DrawerWorkSessionsSection oeuvreId={o.OeuvreID} isAdmin={isAdmin} lang={lang} t={t} />
-
-        <WorkAiDescriptionSection oeuvreId={o.OeuvreID} />
-
-        <DrawerContentNotesVersionSection
-          oeuvreId={o.OeuvreID}
-          t={t}
-          commentaires={commentaires}
-          setCommentaires={setCommentaires}
-          historique={historique}
-          setHistorique={setHistorique}
-          onVersionRestored={() => router.refresh()}
-        />
-        </>
-        )}
-      </div>
-
-      {/* ═══ ACTIONS ═══ */}
+      {/* ═══ HEADER ═══ */}
       <div
+        data-testid="work-card-header"
         style={{
-          marginTop: 20,
-          paddingTop: 14,
-          borderTop: '1px solid var(--bd)',
-          // Sticky on every width so Save stays reachable without scrolling the whole drawer.
           position: 'sticky',
-          bottom: 0,
-          zIndex: 4,
+          top: 0,
+          zIndex: 6,
           background: 'var(--bg1)',
-          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          minHeight: 52,
+          borderBottom: '1px solid var(--bd)',
+          marginBottom: 12,
+          minWidth: 0,
         }}
       >
-        <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={handleSubmit} disabled={isSaving} style={{ fontSize: 11, minHeight: 44 }}>
-            {isSaving ? '…' : t('save')}
+        <span style={{ fontSize: 22, fontWeight: 700, flexShrink: 0 }}>#{o.OeuvreID}</span>
+        <span
+          className="t-mono-sm"
+          title={t('auditAttributedHint')}
+          style={{ fontSize: 11, color: 'var(--tx3)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'help' }}
+        >
+          {editedLabel ? t('wc_modified_fmt').replace('{date}', editedLabel) : null}
+          <span style={{ color: 'var(--ac)', marginLeft: 4 }}>◈</span>
+        </span>
+        <span style={{ flex: 1 }} />
+        {imgZoom > 1 && !narrow ? (
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>×{imgZoom.toFixed(1)}</span>
+        ) : null}
+        <div role="group" aria-label={t('wc_view_aria')} style={{ display: 'flex', border: '1px solid var(--bd2)', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
+          <button type="button" data-testid="work-card-view-folded" aria-pressed={folded} title={t('wc_view_folded_tt')} onClick={() => setViewPersist('folded')} style={segBtn(folded)}>
+            {t('wc_view_folded')}
           </button>
-          {narrow && (
-            <>
-              <button
-                type="button"
-                className="btn ghost sm"
-                style={{ minHeight: 44, fontSize: 18 }}
-                aria-label={t('wf_mobile_add_photo')}
-                onClick={() => drawerImageFileRef.current?.click()}
-              >
-                {t('wf_mobile_add_photo')}
-              </button>
-              {/* Phone: Save + 📷 stay; the rest (incl. Delete) sits behind ⋯ (owner review 2026-11-12). */}
-              <button
-                type="button"
-                className={`btn ${moreActions ? 'primary' : 'ghost'} sm`}
-                data-testid="work-drawer-more-actions"
-                aria-expanded={moreActions}
-                aria-label={t('wf_more_actions')}
-                title={t('wf_more_actions')}
-                onClick={() => setMoreActions((v) => !v)}
-                style={{ minHeight: 44, minWidth: 44, fontSize: 18 }}
-              >
-                ⋯
-              </button>
-            </>
-          )}
-          {!narrow || moreActions ? (
-          <>
-          {narrow && (
-              <button
-                type="button"
-                className="btn ghost sm"
-                style={{ minHeight: 44, fontSize: 18 }}
-                aria-label={t('wf_mobile_pipeline_bump_aria')}
-                title={t('wf_mobile_pipeline_bump_aria')}
-                onClick={() => setProdStage(s => s === 'atelier' ? 'catalogued' : s === 'catalogued' ? 'available' : 'atelier')}
-              >
-                {t('wf_mobile_pipeline_bump')}
-              </button>
-          )}
-          <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11, minHeight: 44 }}>
-            {isSel ? t('wf_in_selection_short') : t('wf_add_selection_short')}
+          <button type="button" data-testid="work-card-view-open" aria-pressed={!folded} title={t('wc_view_open_tt')} onClick={() => setViewPersist('open')} style={segBtn(!folded)}>
+            {t('wc_view_open')}
           </button>
-          {/* Direct gift path — disabled when ownership has already moved or work is archived */}
-          {!(ownStage === 'sold' || ownStage === 'gift' || ownStage === 'artist_archive') && (
-            <button
-              className="btn ghost sm"
-              style={{ fontSize: 11, color: 'var(--ac)', borderColor: 'rgba(200,168,110,0.4)', minHeight: 44 }}
-              type="button"
-              onClick={() => setShowGiftModal(true)}
-              title={t('workDrawer_gift_body')}
-            >
-              ⊕ {t('workDrawer_gift_cta')}
-            </button>
+        </div>
+        <button
+          type="button"
+          data-testid="work-card-selection"
+          aria-pressed={isSel}
+          title={isSel ? t('wc_sel_remove') : t('wc_sel_add')}
+          aria-label={isSel ? t('wc_sel_remove') : t('wc_sel_add')}
+          onClick={handleToggleSel}
+          style={{ ...hdrBtn, color: isSel ? 'var(--ac)' : 'var(--tx3)' }}
+        >
+          {isSel ? '★' : '☆'}
+        </button>
+        {setExpanded && !narrow ? (
+          <button
+            type="button"
+            data-testid="work-card-widen"
+            onClick={() => setExpanded(!wide)}
+            title={wide ? t('wc_narrow') : t('wc_widen')}
+            aria-label={wide ? t('wc_narrow') : t('wc_widen')}
+            style={hdrBtn}
+          >
+            {wide ? '⤡' : '⤢'}
+          </button>
+        ) : null}
+        <button type="button" onClick={attemptClose} aria-label={t('close')} title={t('close')} style={{ ...hdrBtn, fontSize: 24 }}>×</button>
+      </div>
+
+      {/* ═══ TOP BLOCK ═══ */}
+      <div
+        key={o.OeuvreID}
+        data-testid="work-card-top"
+        style={{ display: 'grid', gridTemplateColumns: twoCol ? 'minmax(0, 330px) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 16, alignItems: 'start', marginBottom: 12 }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <WorkDrawerImageArea
+            o={o}
+            narrow={narrow}
+            imgContainerRef={imgContainerRef}
+            imgZoom={imgZoom}
+            imgPan={imgPan}
+            setImgPan={setImgPan}
+            setImgZoom={setImgZoom}
+            isDragging={isDragging}
+            dragStart={dragStart}
+            latestMouseRef={latestMouseRef}
+            panRafId={panRafId}
+            activeImgPath={activeImgPath}
+            thumbPreviewSrc={thumbPreviewSrc}
+            fullPreviewSrc={fullPreviewSrc}
+            showFullPreviewLayer={showFullPreviewLayer}
+            fullPreviewReady={fullPreviewReady}
+            setFullPreviewReady={setFullPreviewReady}
+            setNaturalSize={setNaturalSize}
+            previewMaxHeight={previewMaxHeight}
+            drawerImageFileRef={drawerImageFileRef}
+            onDrawerImageFileChange={onDrawerImageFileChange}
+            retouchImageFileRef={retouchImageFileRef}
+            onRetouchImageFileChange={onRetouchImageFileChange}
+            drawerImageBusy={drawerImageBusy}
+            drawerUploadPct={drawerUploadPct}
+            drawerUploadName={drawerUploadName}
+            drawerUploadIndex={drawerUploadIndex}
+            drawerUploadTotal={drawerUploadTotal}
+            drawerUploadCancelRef={drawerUploadCancelRef}
+            workImages={workImages}
+            drawerSorted={drawerSorted}
+            activeImgIdx={activeImgIdx}
+            setActiveImgIdx={setActiveImgIdx}
+            imageCacheKeys={imageCacheKeys}
+            drawerReorder={(ids) => void drawerPersistOrder(ids)}
+            isAdmin={isAdmin}
+            drawerDeleteImage={drawerDeleteImage}
+            drawerStartRetouch={drawerStartRetouch}
+          />
+        </div>
+
+        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            value={titre}
+            onChange={(e) => setTitre(cap(e.target.value))}
+            aria-label={t('wc_tap_edit')}
+            style={{ ...FIS, fontSize: twoCol ? 30 : 26, fontFamily: 'var(--font-serif)', lineHeight: 1.1, height: 'auto', padding: '2px 0', border: 'none', borderBottom: '1px solid transparent', background: 'transparent', color: 'var(--tx)' }}
+            placeholder={t('untitled')}
+          />
+
+          <WorkDrawerPipelineSection
+            // Kaizen #34: the contact card opens over the drawer; no guard needed, the work stays open.
+            onOpenContact={(cid) => setQuickContactId(cid)}
+            narrow={narrow}
+            prodStage={prodStage}
+            setProdStage={handleProdStageChange}
+            needsPhoto={needsPhoto}
+            setNeedsPhoto={handleNeedsPhotoChange}
+            ownStage={ownStage}
+            setOwnStage={setOwnStage}
+            isOwnershipTransferred={isOwnershipTransferred}
+            isArchived={isArchived}
+            pemContact={pemContact}
+            contactId={contactId}
+            setContactId={setContactId}
+            ownerId={ownerId}
+            setOwnerId={setOwnerId}
+            buyerId={buyerId}
+            setBuyerId={setBuyerId}
+            loadedOwnStage={ownStageFromStatusId(o.statusId)}
+            locationAddresses={locationAddresses}
+            localisationAddressId={localisationAddressId}
+            setLocalisationAddressId={setLocalisationAddressId}
+            sortedContacts={sortedContacts}
+            cName={cName}
+            currentLoc={currentLoc}
+            setShowNewContact={setShowNewContact}
+            onGift={() => setShowGiftModal(true)}
+            startedLabel={startedLabel}
+            completedLabel={completedLabel}
+            locked={!!o.fate}
+          />
+
+          <WorkCardIdentity
+            narrow={narrow}
+            folded={folded}
+            annee={annee}
+            setAnnee={setAnnee}
+            techniqueId={techniqueId}
+            setTechniqueId={setTechniqueId}
+            supportId={supportId}
+            setSupportId={setSupportId}
+            formatId={formatId}
+            setFormatId={setFormatId}
+            hauteur={hauteur}
+            setHauteur={setHauteur}
+            largeur={largeur}
+            setLargeur={setLargeur}
+            profondeur={profondeur}
+            setProfondeur={setProfondeur}
+            localTechniques={localTechniques}
+            localSupports={localSupports}
+            localFormats={localFormats}
+            saveLookup={saveLookup}
+            startedLabel={startedLabel}
+            completedLabel={completedLabel}
+          />
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            <Chip narrow={narrow} tone={o.is_public ? 'ok' : 'muted'} title={t('wc_public_tt')} testId="work-card-public">
+              {o.is_public ? t('wc_public_on') : t('wc_public_off')}
+            </Chip>
+            {stagedCount > 0 ? (
+              <Chip
+                narrow={narrow}
+                tone="warn"
+                title={t('wc_session_photos_tt')}
+                testId="work-card-staged"
+                onClick={() => setCreationOpen(true)}
+              >
+                {t('wc_session_photos_fmt').replace('{n}', String(stagedCount))}
+              </Chip>
+            ) : null}
+            {o.fate ? (
+              <Chip narrow={narrow} tone="warn" title={t('fate_locked')} testId="work-drawer-fate">
+                {fateText}
+              </Chip>
+            ) : null}
+          </div>
+          {ownStage === 'sold' ? <SaleReturnWindowBanner oeuvreId={o.OeuvreID} /> : null}
+        </div>
+      </div>
+
+      {/* ═══ CRÉATION ═══ */}
+      <CardDrawer
+        title={t('wc_creation')}
+        summary={creationSummary}
+        open={creationOpen}
+        onToggle={() => setCreationOpen((v) => !v)}
+        narrow={narrow}
+        testId="work-card-creation"
+      >
+        <Part selfTitled stacked={stacked} testId="work-card-period">
+          <WorkPeriodSourceSection oeuvreId={o.OeuvreID} when={when} historyApart />
+        </Part>
+        <Part selfTitled stacked={stacked} testId="work-card-history">
+          <WorkProductionSpan
+            oeuvreId={o.OeuvreID}
+            editable={isAdmin}
+            startedOn={o.production_started_on}
+            startedPrecision={o.production_started_precision}
+            completedOn={o.production_completed_on}
+            completedPrecision={o.production_completed_precision}
+            origin={o.production_origin}
+            inProduction={!o.Catalogué}
+          />
+          <WorkCreationHistory oeuvreId={o.OeuvreID} when={when} />
+        </Part>
+        <Part label={t('wc_p_comments')} stacked={stacked} muted={!commentaires.trim()} testId="work-card-comments">
+          <textarea
+            className="input"
+            value={commentaires}
+            onChange={(e) => setCommentaires(e.target.value)}
+            rows={commentaires.trim() ? 3 : 1}
+            style={textareaSt}
+            placeholder={t('wf_comments_placeholder')}
+          />
+          <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
+        </Part>
+        <Part label={t('wc_p_themes')} stacked={stacked} muted={selThemes.size === 0}>
+          <PickChips
+            items={initialThemes}
+            selected={selThemes}
+            onToggle={(id) => setSelThemes((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })}
+            addLabel={t('wc_add_theme')}
+            narrow={narrow}
+            testId="work-drawer-themes"
+          />
+        </Part>
+        <Part selfTitled stacked={stacked}>
+          <WorkLinksSection oeuvreId={o.OeuvreID} />
+        </Part>
+        <Part selfTitled stacked={stacked}>
+          <DrawerWorkSessionsSection oeuvreId={o.OeuvreID} isAdmin={isAdmin} lang={lang} t={t} defaultOpen={false} onStagedCount={setStagedCount} />
+        </Part>
+        <Part selfTitled stacked={stacked}>
+          <WorkAiDescriptionSection oeuvreId={o.OeuvreID} />
+        </Part>
+      </CardDrawer>
+
+      {/* ═══ OBJET ═══ */}
+      <CardDrawer
+        title={t('wc_object')}
+        summary={objectSummary}
+        open={objectOpen}
+        onToggle={() => setObjectOpen((v) => !v)}
+        narrow={narrow}
+        testId="work-card-object"
+      >
+        <Part label={t('wc_p_provenance')} hint={t('wf_history_hint')} stacked={stacked} muted={!historique.trim()}>
+          <textarea
+            className="input"
+            value={historique}
+            onChange={(e) => setHistorique(e.target.value)}
+            rows={historique.trim() ? 3 : 1}
+            style={{ ...textareaSt, fontSize: 11, fontFamily: 'var(--font-mono)' }}
+            placeholder={t('wf_history_placeholder')}
+          />
+          <WorkVersionHistory oeuvreId={o.OeuvreID} onRestored={() => router.refresh()} />
+        </Part>
+        <Part label={t('wc_p_confidentiality')} hint={t('wc_p_confidentiality_tt')} stacked={stacked}>
+          <ContactConfidentialityPart anonymityLevel={anonymityLevel} setAnonymityLevel={setAnonymityLevel} narrow={narrow} />
+        </Part>
+        <Part label={t('wc_p_presentation')} stacked={stacked} muted={!encadree && !broadcastReady && !presentationId}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: narrow ? 44 : undefined }}>
+            <Chip narrow={narrow} tone="ok" active={encadree} onClick={() => setEncadree(!encadree)} testId="wc-gate-framed">
+              {encadree ? '☑ ' : '☐ '}{t('framed')}
+            </Chip>
+            <Chip narrow={narrow} tone="ok" active={broadcastReady} onClick={() => setBroadcastReady(!broadcastReady)} title={t('wf_broadcast_ready_hint')} testId="wf-broadcast-ready-switch">
+              {broadcastReady ? '☑ ' : '☐ '}{t('wf_broadcast_ready')}
+            </Chip>
+          </div>
+          {broadcastReady ? (
+            <div style={{ marginTop: 6 }}>
+              <textarea
+                data-testid="wf-broadcast-caption-seed"
+                className="input"
+                aria-label={t('bc_caption_seed')}
+                title={t('bc_caption_seed_hint')}
+                value={broadcastCaptionSeed}
+                onChange={(e) => setBroadcastCaptionSeed(e.target.value.slice(0, 2000))}
+                rows={2}
+                style={textareaSt}
+                placeholder={t('bc_caption_seed')}
+              />
+            </div>
+          ) : null}
+          <details style={{ marginTop: 6 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx3)' }}>{t('presentation')}</summary>
+            <select className="input" value={presentationId} onChange={(e) => setPresentationId(e.target.value)} style={{ ...FIS, marginTop: 4, height: narrow ? 44 : 32 }}>
+              <option value="">—</option>
+              {initialPresentations.map((p) => (
+                <option key={p.PresentationID} value={p.PresentationID}>{p.Nom}</option>
+              ))}
+            </select>
+          </details>
+        </Part>
+        <Part selfTitled stacked={stacked} muted={priceEmpty}>
+          <DrawerContentFinanceSection
+            narrow={stacked}
+            lang={lang}
+            t={t}
+            prix={prix}
+            setPrix={setPrix}
+            discount={discount}
+            setDiscount={setDiscount}
+            tvaRate={tvaRate}
+            setTvaRate={setTvaRate}
+            prixFinalComputed={prixFinalComputed}
+            paymentDone={paymentDone}
+            setPaymentDone={setPaymentDone}
+            ownStage={ownStage}
+          />
+          {isAdmin ? (
+            <details style={{ marginTop: 6 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx3)' }}>{t('wc_p_costs')}</summary>
+              <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
+            </details>
+          ) : null}
+        </Part>
+        <Part label={t('wc_p_groups')} stacked={stacked} muted={selGroups.size === 0}>
+          <PickChips
+            items={initialGroups}
+            selected={selGroups}
+            onToggle={(id) => setSelGroups((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })}
+            addLabel={t('wc_add_group')}
+            narrow={narrow}
+            testId="work-card-groups"
+          />
+        </Part>
+        <Part selfTitled stacked={stacked}>
+          <ConditionReportsSection oeuvreId={o.OeuvreID} onWorkPatched={(patch) => onWorkSaved?.(o.OeuvreID, patch)} />
+        </Part>
+        <Part label={t('wc_p_fate')} stacked={stacked} muted={!o.fate}>
+          {o.fate ? (
+            <div style={{ fontSize: 13 }}>
+              {fateText}
+              <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{t('fate_locked')}</div>
+            </div>
+          ) : (
+            <span style={{ fontSize: 12 }}>{t('wc_p_fate_none')}</span>
           )}
+        </Part>
+        <Part selfTitled stacked={stacked}>
+          <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
+        </Part>
+        {/* Soft delete (trash + undo) stays with everyone who had it in the old « ⋯ » menu. */}
+        <Part label={t('wc_p_trash')} stacked={stacked} testId="work-card-trash">
           {!confirmDelete ? (
-            <button className="btn ghost sm" style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 10, minHeight: 44 }} onClick={() => setConfirmDelete(true)}>
-              {t('delete')}
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid="work-card-delete"
+              title={t('wc_trash_work_tt')}
+              style={{ color: 'var(--tx3)', minHeight: narrow ? 44 : 30 }}
+              onClick={() => setConfirmDelete(true)}
+            >
+              {t('wc_trash_work')}
             </button>
           ) : (
-            <div className="row gap-sm" style={{ marginLeft: 'auto', alignItems: 'center' }}>
-              <button className="btn ghost sm" style={{ color: '#c0392b', minHeight: 44 }} disabled={deleting} onClick={handleDelete}>
+            <div className="row gap-sm" style={{ alignItems: 'center' }}>
+              <button type="button" className="btn ghost sm" style={{ color: '#c0392b', minHeight: 44 }} disabled={deleting} onClick={handleDelete}>
                 {deleting ? '…' : t('btn_confirm')}
               </button>
-              <button type="button" className="btn ghost sm" aria-label={t('cancel')} onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
+              <button type="button" className="btn ghost sm" aria-label={t('cancel')} style={{ minHeight: 44 }} onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
             </div>
           )}
-          </>
-          ) : null}
+          {deleteError && <div style={{ color: '#c0392b', fontSize: 11, marginTop: 6 }}>{deleteError}</div>}
+        </Part>
+        {isAdmin ? (
+          <Part label={t('wc_p_admin')} labelColor="var(--rust)" stacked={stacked} testId="work-card-admin">
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid="work-card-purge"
+              title={t('wc_purge_work_tt')}
+              disabled={deleting}
+              style={{ color: 'var(--rust)', minHeight: narrow ? 44 : 30 }}
+              onClick={handlePurge}
+            >
+              {deleting ? '…' : t('wc_purge_work')}
+            </button>
+          </Part>
+        ) : null}
+      </CardDrawer>
+
+      {folded && emptyLabels.length > 0 ? (
+        <div data-testid="work-card-empty-line" style={{ borderTop: '1px solid var(--bd)', padding: '10px 0', fontSize: 12, color: 'var(--mt)', overflowWrap: 'anywhere' }}>
+          {t('wc_empty_fmt').replace('{n}', String(emptyLabels.length)).replace('{list}', emptyLabels.join(', '))}{' '}
+          <button
+            type="button"
+            onClick={() => setViewPersist('open')}
+            style={{ background: 'none', border: 'none', borderBottom: '1px dashed var(--bd3)', padding: 0, color: 'var(--tx3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', minHeight: narrow ? 44 : undefined }}
+          >
+            {t('wc_empty_see')}
+          </button>
         </div>
-        {deleteError && <div style={{ color: '#c0392b', fontSize: 10, marginTop: 6 }}>{deleteError}</div>}
+      ) : null}
+
+      {/* ═══ SAVE BAR — always there, greyed while nothing changed ═══ */}
+      <div
+        data-testid="work-card-save-bar"
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 6,
+          background: 'var(--bg1)',
+          borderTop: '1px solid var(--bd)',
+          marginTop: 12,
+          paddingTop: 10,
+          paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: barDirty ? 'var(--yellow)' : 'var(--tx3)' }}>
+          {barDirty ? t('wc_save_dirty') : t('wc_save_clean')}
+        </span>
+        <button
+          type="button"
+          className="btn ghost"
+          data-testid="work-card-discard"
+          title={t('wc_discard_tt')}
+          disabled={isSaving}
+          onClick={discardInPlace}
+          style={{ minHeight: 44, opacity: barDirty ? 1 : 0.45 }}
+        >
+          {t('cancel')}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          data-testid="work-card-save"
+          onClick={handleSubmit}
+          disabled={isSaving}
+          style={{ minHeight: 44, opacity: barDirty ? 1 : 0.45 }}
+        >
+          {isSaving ? '…' : t('save')}
+        </button>
       </div>
 
       {showNewContact && (
@@ -1647,5 +1851,4 @@ export function DrawerContent({
       )}
     </>
   )
-
 }

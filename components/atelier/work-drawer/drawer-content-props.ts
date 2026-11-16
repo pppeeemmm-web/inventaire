@@ -51,6 +51,8 @@ export type DrawerContentProps = {
   mode: 'panel' | 'overlay'
   isExpanded: boolean
   setExpanded?: (b: boolean) => void
+  /** Work card R3 ⤢: two columns (picture left). The user's choice, not the loupe's auto-widening. */
+  wide?: boolean
   imgZoom: number
   setImgZoom: Dispatch<SetStateAction<number>>
   imgPan: { x: number; y: number }

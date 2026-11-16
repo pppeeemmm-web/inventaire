@@ -33,11 +33,17 @@ export function DrawerWorkSessionsSection({
   isAdmin,
   lang,
   t,
+  defaultOpen = true,
+  onStagedCount,
 }: {
   oeuvreId: number
   isAdmin: boolean
   lang: Lang
   t: TFn
+  /** Work card R3: always folded. */
+  defaultOpen?: boolean
+  /** Photos of this work still staged in sessions — the card's top chip. */
+  onStagedCount?: (n: number) => void
 }) {
   const [rows, setRows] = useState<WorkSessionRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,10 +67,21 @@ export function DrawerWorkSessionsSection({
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
+  useEffect(() => {
+    if (loading || !onStagedCount) return
+    let n = 0
+    for (const row of rows) {
+      const payload = parseWorkSessionPayload(row.payload)
+      n += payload.items.reduce((sum, item) => sum + (item.oeuvre_id === oeuvreId ? item.shots.length : 0), 0)
+        + (row.oeuvre_id === oeuvreId ? payload.shots.length : 0)
+    }
+    onStagedCount(n)
+  }, [loading, rows, oeuvreId, onStagedCount])
+
   return (
     <details
       data-testid="drawer-work-sessions-section"
-      open
+      open={defaultOpen}
       style={{ marginTop: 14, borderTop: '1px solid var(--bd)', paddingTop: 12 }}
     >
       <summary className="t-eyebrow" style={{ cursor: 'pointer', userSelect: 'none' }}>
