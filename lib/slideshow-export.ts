@@ -16,7 +16,8 @@ export const FRAME_PRESETS = {
 } as const
 export type FramePreset = keyof typeof FRAME_PRESETS | 'custom'
 export type FrameFit = 'contain' | 'fill'
-export const FRAME_MIN = 200
+/** Smallest side Pem uses: 40 × 40 / 50 × 60 GIFs (owner 2026-11-16; 20 × 20 is too small). */
+export const FRAME_MIN = 40
 export const FRAME_MAX = 4000
 
 export type ExportOptions = {
@@ -27,6 +28,8 @@ export type ExportOptions = {
   pause: number
   /** 9:16 frames: keep the caption out of Instagram's own top and bottom bands. */
   storySafe: boolean
+  /** Picture shown in a circle (covering it), background colour around. Only with fit `contain`. */
+  round?: boolean
 }
 
 const BG_FILL: Record<SlideshowSettings['background'], { bg: string; fg: string; shadow: string }> = {
@@ -46,7 +49,7 @@ export function loadImage(url: string): Promise<HTMLImageElement | null> {
   })
 }
 
-/** One slide drawn into the frame: background, picture (contain = whole, fill = covers, edges cut), caption. */
+/** One slide drawn into the frame: background, picture (contain = whole, fill = covers, edges cut, round = in a circle), caption. */
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement | null,
@@ -63,7 +66,20 @@ export function drawFrame(
   if (img && img.naturalWidth > 0) {
     const iw = img.naturalWidth
     const ih = img.naturalHeight
-    if (opts.fit === 'fill') {
+    if (opts.round && opts.fit === 'contain') {
+      // Round frame: a circle as large as the frame allows, the picture covers it, background outside.
+      const margin = Math.round(Math.min(W, H) * 0.04)
+      const r = Math.min(W, H) / 2 - margin
+      const s = Math.max((2 * r) / iw, (2 * r) / ih)
+      const dw = iw * s
+      const dh = ih * s
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2)
+      ctx.clip()
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh)
+      ctx.restore()
+    } else if (opts.fit === 'fill') {
       const s = Math.max(W / iw, H / ih)
       const dw = iw * s
       const dh = ih * s
@@ -192,7 +208,7 @@ export async function exportFramesZip(
   const files: { name: string; data: Uint8Array }[] = []
   const ext = format === 'png' ? 'png' : 'jpg'
   const pad = String(works.length).length < 3 ? 3 : String(works.length).length
-  const seq: string[] = [`frame size: ${opts.width} x ${opts.height}`, `seconds per frame: ${opts.pause}`, '']
+  const seq: string[] = [`frame size: ${opts.width} x ${opts.height}${opts.round && opts.fit === 'contain' ? ' (round)' : ''}`, `seconds per frame: ${opts.pause}`, '']
   await renderEach(
     works,
     settings,

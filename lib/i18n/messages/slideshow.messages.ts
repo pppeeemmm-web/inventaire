@@ -86,6 +86,16 @@ export const slideshowMessages = defineMessages({
   ss_ex_fit: { fr: 'Image dans le cadre', en: 'Picture in the frame' },
   ss_ex_contain: { fr: 'Entière (fond autour)', en: 'Whole (background around)' },
   ss_ex_fill: { fr: 'Remplir (bords coupés)', en: 'Fill (edges cut)' },
+  ss_ex_size: { fr: 'Taille (grand côté)', en: 'Size (long side)' },
+  ss_ex_round: { fr: 'Cadre rond', en: 'Round frame' },
+  ss_ex_round_hint: {
+    fr: 'L’image dans un cercle, le fond autour.',
+    en: 'The picture in a circle, background around it.',
+  },
+  ss_ex_round_needs_contain: {
+    fr: 'Cadre rond : choisissez « Entière (fond autour) » — il faut du fond autour du cercle.',
+    en: 'Round frame: choose “Whole (background around)” — the circle needs background around it.',
+  },
   ss_ex_pause: { fr: 'Pause par image', en: 'Pause per frame' },
   ss_ex_make_gif: { fr: 'Créer le GIF', en: 'Make the GIF' },
   ss_ex_make_zip: { fr: 'Créer le ZIP', en: 'Make the ZIP' },
@@ -93,4 +103,5 @@ export const slideshowMessages = defineMessages({
   ss_ex_cancel: { fr: 'Annuler', en: 'Cancel' },
   ss_ex_cancelled: { fr: 'Export annulé.', en: 'Export cancelled.' },
   ss_ex_done_fmt: { fr: 'Téléchargé ({mb} Mo).', en: 'Downloaded ({mb} MB).' },
+  ss_ex_done_kb_fmt: { fr: 'Téléchargé ({kb} Ko).', en: 'Downloaded ({kb} KB).' },
 })
