@@ -2,11 +2,12 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-16** (B7 labels image + period places + two §4 checks closed → [DONE](./DONE.md); earlier: bug batch 1 — B1, B2, B8, B10, 1f — closed → [DONE](./DONE.md); earlier: Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
+**Last refresh: 2026-11-16 pm** (parallel batch 1: B9, 1e, 20, 21 closed → [DONE](./DONE.md); earlier: B7 labels image + period places + two §4 checks closed → [DONE](./DONE.md); earlier: bug batch 1 — B1, B2, B8, B10, 1f — closed → [DONE](./DONE.md); earlier: Pem's screenshots of 2026-11-15 triaged; verified against live code + DB, `origin/main` `2a9c714`). Order: bugs first, then Pem's rethink (design whole screens before building — [RETHINK](./RETHINK_2026-11-14.md)), then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. No open handoff: this file is the current batch.
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B9. **Inventory / drawer quick fixes (6)** from Pem's review of 2026-11-15 (status wording for status 1, QR fallback on dev, cut column titles, « Filters + », « Data history », palette accents) → [DESIGN_DRAWER](./DESIGN_DRAWER.md) « Quick fixes ».
+- [ ] B12. **Journal ✦ AI suggestion rows have no loupe** (Pem's screenshot 2026-11-16): they are a plain `Link` (`components/atelier/journal/JournalDayExtras.tsx` ~362), not `WorkRef` like the validated links in the same file (~346); Création works (~563) and admin changes (~615) too. Fix = `WorkRef` there + « sans titre » when empty. The rows show no title because #1316, #1323, #2336 have **no title in the DB** (checked 2026-11-16) — data, not code.
+- [ ] B11. **Constellation right panel** (found while building 20, there before): « Tout en groupe » sticks out ~7 px when the panel gets a scrollbar (opening the how-to does it); « Effacer » (clear all) is cut in the tool rail.
 
 ## 1. Waiting on Pem — only you can do these
 
@@ -28,16 +29,9 @@ Each one: what the screen is for, a whole-screen design, Pem's say — then buil
 
 ## 3. To build — outside the rethink (needs GO)
 
-Constellation (Pem 2026-11-15)
-- [ ] 20. Undo (drawing, moves, links) · marquee selection with marching ants · arrows as a drawing tool · a real how-to in the right panel (double-click opens a work, shift / drag, space to pan, what each link type means…). « Add all » caps at 120 works on purpose (canvas stays readable; thumbnails load 20 at a time) — say so next to the button.
-
-Slideshow
-- [ ] 21. **Small GIFs** (Pem 2026-11-15, pixels): today a frame must be 200–4 000 px a side (`FRAME_MIN` / `FRAME_MAX`, `lib/slideshow-export.ts`) — lower the minimum to ~40 px (20 × 20 is too small, 40 × 40 / 50 × 60 wanted), a size slider beside the presets; + a **round** frame (only with « Whole (background around) »).
-
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1c. Voice notes longer than one upload (~4 MB) or recorded offline → build only if Pem hits either ≥2× → [notes](./TODO_NOTES.md#voice-limits)
-- [ ] 1e. Drop `work_place` (nothing reads or writes it since 2026-11-14; rows moved to `work_creation_step`). One-line SQL — show it, apply with Pem's OK.
 
 Links
 - [ ] 6. Rework on the same work = a « Reprise » line in « Historique de création » + its own photo (no version table, no link) → [notes](./TODO_NOTES.md#work-or-version)
@@ -62,7 +56,7 @@ Public site — next batch
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Speed and code health — measure first, change after
-- [ ] 16b. Live measures (read only): Inventory first paint + full catalogue, opening a work card, Overview.
+- [ ] 16b. Live measures (read only): Inventory first paint + full catalogue, opening a work card, Overview. 2026-11-16: dev-server numbers only (the built-in browser has no live sign-in) — redo on the live site in **Claude in Chrome**, signed in.
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
 - [ ] 18. Per-tab lazy Atelier reference fetch · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
 - [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites)
@@ -74,6 +68,8 @@ Speed and code health — measure first, change after
 - [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a start / end date; a « Nouvelle » work starts production today.
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
+- [ ] Small GIFs (TODO 21, 3.1.28): a real 40 × 40 GIF and a round one, opened on the phone.
+- [ ] Constellation tools (TODO 20, 3.1.28): undo of a real link delete on the live site (the link must come back with its note); Shift+drag marquee; arrow tool.
 - [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works; full screen + swipe on a real iPhone; « Renommer »; fade / slide by eye; a full loop.
 - [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; a real export; a real print (300 dpi, Light B&W, labels); admin screens in Chrome (Local jobs, ✦ bar); one Production drag-back; saving a contact from the pop-up.
 - [ ] Constellation: the arrow on the first real "painted on" / "derived from" / "answers" link.

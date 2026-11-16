@@ -9,6 +9,22 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.28 (2026-11-16) — parallel batch 1: B9 quick fixes, small round GIFs (21), Constellation tools (20).
+  wn_constellation_tools_t: { fr: 'Constellation : annuler, sélection au rectangle, flèches', en: 'Constellation: undo, rectangle selection, arrows' },
+  wn_constellation_tools_d: {
+    fr: 'Ctrl+Z annule (et Ctrl+Maj+Z rétablit) les dessins, les textes, les déplacements et les liens — un lien supprimé revient avec sa note. Maj+glisser trace un rectangle de sélection animé ; l’outil flèche dessine une flèche à main levée. Un mode d’emploi (fermé par défaut) dans le panneau de droite explique les gestes et les types de liens ; « Tout ajouter » dit qu’il s’arrête à 120 œuvres, exprès.',
+    en: 'Ctrl+Z undoes (and Ctrl+Shift+Z redoes) drawings, texts, moves and links — a deleted link comes back with its note. Shift+drag draws an animated selection rectangle; the arrow tool draws a freehand arrow. A how-to (folded by default) in the right panel explains the gestures and the link types; « Add all » says it stops at 120 works, on purpose.',
+  },
+  wn_slideshow_small_gifs_t: { fr: 'Diaporama : petits GIF et cadre rond', en: 'Slideshow: small GIFs and a round frame' },
+  wn_slideshow_small_gifs_d: {
+    fr: 'Un curseur de taille règle le grand côté du cadre, jusqu’à 40 px (40 × 40, 50 × 60…). Avec « Entière (fond autour) », un cadre rond met l’image dans un cercle. Sous 1 Mo, la taille du fichier s’affiche en Ko.',
+    en: 'A size slider sets the frame’s long side, down to 40 px (40 × 40, 50 × 60…). With « Whole (background around) », a round frame puts the picture in a circle. Under 1 MB the file size shows in KB.',
+  },
+  wn_inventory_card_fixes_t: { fr: 'Inventaire et fiche : petites corrections', en: 'Inventory and work card: small fixes' },
+  wn_inventory_card_fixes_d: {
+    fr: 'La fiche dit « Catalogué », comme l’Inventaire, pour une œuvre cataloguée qui attend sa photo. Le lien du QR mène toujours au site public. Dans le tableau, l’année « en cours » et la colonne Diffusion ne sont plus coupées. « Filtres + » ouvre directement une ligne de filtre (sur le titre, qui ne filtre rien tant qu’elle est vide). « Historique des versions » devient « Historique des données ».',
+    en: 'The work card says « Catalogued », like the Inventory, for a catalogued work waiting for its photo. The QR link always leads to the public site. In the table, the « in progress » year and the Broadcast column are no longer cut. « Filters + » opens a filter row straight away (on the title; it filters nothing while empty). « Version history » becomes « Data history ».',
+  },
   // 3.1.27 (2026-11-16) — labels print the image; text never overlaps (TODO B7, Pem's screenshot).
   wn_labels_image_t: { fr: 'Étiquettes : l’image de l’œuvre', en: 'Labels: the work’s image' },
   wn_labels_image_d: {

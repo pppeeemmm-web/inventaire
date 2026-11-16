@@ -160,7 +160,7 @@ Facts checked the same night are marked *(checked)*.
 - Comments: fine.
 - **« Version history » → rename « Data history »** (« version » suggests a reworked work — TODO 6).
 
-### Quick fixes this review found (bugs, not design — can go before the mockups on Pem's GO)
+### Quick fixes this review found (bugs, not design) — all done 2026-11-16 → [DONE](./DONE.md) « Parallel batch 1 »
 1. Drawer status line says « En production » for a catalogued work waiting for its photo (status 1) — use the Inventory's wording.
 2. QR link falls back to the page's address on dev — fall back to the public address.
 3. Inventory: Year « in progress » overflows; Broadcast column title and « embedding waiting » cut.

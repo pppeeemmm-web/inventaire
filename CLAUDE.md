@@ -40,7 +40,7 @@ Repo guide. Conflict → ask owner before edit.
 - SQL/RLS/storage: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL live, then `npm run typecheck`.
 - Commit + push (owner 2026-11-16, lean): `& .\scripts\ship.ps1 -m '…'` — on `main`: four checks → `git add -A` (prints staged list, refuses build artifacts) → commit → push → prints `pushed to origin/main <sha>`. `-NoPush` = commit only (`committed locally`); no args = push the local commits already made; `-NoChecks` for docs-only. One writing session per checkout, so `add -A` is safe; never run it while a session shares this checkout for writing.
 - Batch rhythm: one local commit per item (`-NoPush`), docs (TODO → DONE, What's new + release bump) once at batch end, one push per batch.
-- Parallel batch: side sessions work in their own worktree branch, commit there, never push, never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new.messages.ts` (merge clashes); the main checkout merges each branch (ff or rebase), writes those docs, ships once.
+- Parallel batch (owner 2026-11-16: the main session controls commits and merges): side sessions edit in their own worktree and **leave the work uncommitted** — no commit, no push, no `git -C` / script around the guards; never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new.messages.ts` (merge clashes). The main checkout lands each one with `& .\scripts\land.ps1 <worktree-name> -m '…'` (commits in the worktree, rebases onto local main, fast-forwards; stops on conflict), writes those docs, ships once.
 - `ship.ps1` output is the push evidence (it checks origin/main == HEAD). `pwsh scripts/release-truth.ps1` only when state is unclear.
 
 ## Final / Git Discipline
