@@ -4,7 +4,7 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 ## security
 
-**Security, remaining.** `system_log` + `studio_task` open to any signed-in account; no content security policy (start report-only). Closed 2026-11-16: `xlsx` 0.18.5 is write-only (`book_new` / `aoa_to_sheet` / `writeFile` in Reports, ExportModal, PivotPanel; no `XLSX.read`) — its known parse-time flaws don't apply; **before any spreadsheet import, upgrade** (SheetJS publishes fixed versions on its own CDN, not npm); anon write grants (only `inquiry` / `page_view` INSERT left, `supabase/sql/revoke_anon_writes.sql`); `storage_object_ledger` created. Note: Supabase's default privileges still give `anon` writes on new tables — grant explicitly per table.
+**Security, remaining.** No content security policy (start report-only). Closed 2026-11-16: `system_log` (read) + `studio_task` (read / insert / update) allow any signed-in account (`auth.uid() is not null`) — left as is: only the team, admins and the dev account can sign in (owner 2026-11-16), and `is_team()` (a `Contact` with `is_team_member`) could shut the dev account out. Revisit if sign-up ever opens beyond the team; `xlsx` 0.18.5 is write-only (`book_new` / `aoa_to_sheet` / `writeFile` in Reports, ExportModal, PivotPanel; no `XLSX.read`) — its known parse-time flaws don't apply; **before any spreadsheet import, upgrade** (SheetJS publishes fixed versions on its own CDN, not npm); anon write grants (only `inquiry` / `page_view` INSERT left, `supabase/sql/revoke_anon_writes.sql`); `storage_object_ledger` created. Note: Supabase's default privileges still give `anon` writes on new tables — grant explicitly per table.
 
 ## restore-drill-and-archive
 

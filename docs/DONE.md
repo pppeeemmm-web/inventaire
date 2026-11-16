@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — `system_log` / `studio_task` access reviewed (TODO 8, part)
+
+- Live policies: any signed-in account can read `system_log` and read / add / edit `studio_task` (delete admin-only). Owner 2026-11-16: only the team, admins and the dev account can sign in → no change (switching to `is_team()` could shut out the dev account). Revisit if sign-up opens.
+
 ## 2026-11-16 — `xlsx` checked (TODO 8, part)
 
 - `xlsx` 0.18.5 is only used to write exports (Reports, export dialog, pivot: `utils.book_new`, `aoa_to_sheet`, `book_append_sheet`, `writeFile`); nothing parses a spreadsheet with it, so its known parse-time flaws (prototype pollution, slow regex) are not reachable. Rule in TODO_NOTES « security »: upgrade before adding any import.
