@@ -26,6 +26,7 @@ import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
+import { fetchOeuvreById } from '@/app/atelier/works/actions'
 import { SelectionImagesDownloadModal } from '@/components/atelier/SelectionImagesDownloadModal'
 import type { RefObject } from 'react'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -308,6 +309,8 @@ export function Inventory({
   onOeuvreRemoved,
   inventoryDrawerGuardRef,
   onInventoryPanelDirtyChange,
+  focusRequest = null,
+  onFocusRequestDone,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -331,6 +334,10 @@ export function Inventory({
   onOeuvreRemoved?: (oeuvreIds: number[]) => void
   inventoryDrawerGuardRef?: RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
+  /** Work id from a ?work= deep link the portal wants shown in the side panel (desktop). */
+  focusRequest?: number | null
+  /** true = shown in the panel; false = the portal opens the overlay card instead. */
+  onFocusRequestDone?: (handled: boolean) => void
 }) {
   /** contact_addresses.id → label, for the custodian · address column. */
   const addrMap = useMemo(() => {
@@ -408,6 +415,8 @@ export function Inventory({
   const [support,     setSupport]     = useState('all')
   const [status,      setStatus]      = useState('all')
   const [view,        setView]        = useState<View>('list')
+  /** The saved view is restored in an effect: a deep-link focus waits for it (grid hides the panel). */
+  const [viewReady,   setViewReady]   = useState(false)
   const [sortKey,     setSortKey]     = useState<string>('OeuvreID')
   const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc')
   const toggleSort = (k: string) => {
@@ -675,6 +684,7 @@ export function Inventory({
       // storage blocked: fall back to the default view
     }
     setView(saved && saved !== 'pivot' ? saved : narrow ? 'grid' : 'list')
+    setViewReady(true)
   }, [viewKey, narrow])
   const chooseView = (next: View) => {
     setView(next)
@@ -973,11 +983,64 @@ export function Inventory({
   }, [oeuvres, statusLabelMap, t])
 
   // Keep focused in sync with filtered results
+  // A deep-linked work stays in the panel even when it is not (yet) in the filtered list — the first
+  // catalogue chunk may not hold it. Cleared as soon as another row is focused.
+  const pinnedFocusRef = useRef<number | null>(null)
   useEffect(() => {
-    if (!focused || !filtered.find((o) => o.OeuvreID === focused.OeuvreID)) {
-      setFocused(filtered[0] ?? null)
-    }
+    if (focused?.OeuvreID !== pinnedFocusRef.current) pinnedFocusRef.current = null
+  }, [focused?.OeuvreID])
+
+  useEffect(() => {
+    // A pending deep link (below) picks the row: don't open the panel on filtered[0] first (one read, not two).
+    if (focusRequest != null) return
+    setFocused((prev) =>
+      prev && (prev.OeuvreID === pinnedFocusRef.current || filtered.some((o) => o.OeuvreID === prev.OeuvreID))
+        ? prev
+        : (filtered[0] ?? null),
+    )
   }, [filtered]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep link ?work=N handed over by the portal (TODO 18): show it in the side panel instead of a
+  // second, overlay card. Grid view or panel closed → handled=false and the portal opens the overlay.
+  // Waits for the restored view (a saved grid hides the panel).
+  useEffect(() => {
+    if (focusRequest == null || !viewReady) return
+    const fallBack = () => {
+      setFocused((prev) => prev ?? filtered[0] ?? null)
+      onFocusRequestDone?.(false)
+    }
+    if (view !== 'list' || !showPreview) {
+      fallBack()
+      return
+    }
+    const show = (row: Oeuvre) => {
+      onFocusRequestDone?.(true)
+      const apply = () => {
+        pinnedFocusRef.current = row.OeuvreID
+        setFocused(row)
+      }
+      // Unsaved edits in the panel prompt first, like a row click (Cancel keeps the current work).
+      const g = panelDrawerGuardRef.current
+      if (g) g.runGuarded(apply)
+      else apply()
+    }
+    const local = oeuvres.find((o) => o.OeuvreID === focusRequest)
+    if (local) {
+      show(local)
+      return
+    }
+    // Not in the loaded chunk yet: fetch that one work (same read the overlay would do).
+    let cancelled = false
+    void fetchOeuvreById(focusRequest).then((row) => {
+      if (cancelled) return
+      if (row) show(row)
+      else fallBack()
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest, viewReady])
 
   function toggleInSel(oid: number) {
     const next = new Set(selection)
@@ -1845,6 +1908,16 @@ function InvList({
   const vItems = virtualizer.getVirtualItems()
   const padTop = vItems.length ? vItems[0].start : 0
   const padBot = vItems.length ? virtualizer.getTotalSize() - vItems[vItems.length - 1].end : 0
+
+  // A row focused from outside (deep link ?work=) may sit far down the list: bring it into view.
+  // 'auto' = no scroll when it is already visible (clicks, arrow keys).
+  const focusedId = focused?.OeuvreID
+  useEffect(() => {
+    if (focusedId == null) return
+    const idx = visible.findIndex((x) => x.OeuvreID === focusedId)
+    if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'auto' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedId])
 
   function focusRowAt(nextIdx: number) {
     const o = visible[nextIdx]

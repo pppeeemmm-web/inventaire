@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — A `?work=` link opens one card, not two (TODO 18, part)
+
+- On the desktop Inventory, a link `/atelier/inventory?work=N` (Journal, Notes, `#1234` refs, scan) opened the overlay card while the side panel loaded the list's first row — two cards, two reads, and the panel on another work. The portal now hands the link to the Inventory (`focusRequest` → `TeamPortalClient` / `team-portal-segment-panel` / `Inventory.tsx`): list view with the panel open → the work shows in the panel (fetched with `fetchOeuvreById` when the first catalogue chunk doesn't hold it, kept there while the rest loads; unsaved panel edits prompt first); grid view, panel closed, phone, or any other tab → the overlay as before. Dev 2026-11-16 at 1400 px: `?work=2336` (outside the 50-work first chunk) → panel on #2336, no overlay, URL cleaned; a row click replaces it; saved grid view → overlay. Not done: the list doesn't scroll to a linked row that arrives with a later chunk.
+
 ## 2026-11-16 — Content security policy, report-only (TODO 8, part)
 
 - `next.config.ts` sends `Content-Security-Policy-Report-Only` on every page; sources listed from the code: Supabase (REST + realtime), R2 public images + signed uploads / previews, Google fonts, Leaflet CSS + icons (unpkg) + OpenStreetMap tiles, api-adresse + zippopotam (contact editor), the QR image on `/card`, Vercel analytics. Nothing is blocked. Dev 2026-11-16: no violation on `/`, `/works`, `/card`, `/maps`, Hub → Overview, inventory (+ work card), Carte (12 tiles loaded), Constellation; a probe image from another site was reported, so the check works. Live 2026-11-16 (`b2cbca8`, admin in Chrome): no violation on `/`, `/works`, inventory, Carte, Overview, Journal, Vault + PDF preview, Constellation. Upload / address lookup / Google sign-in not yet seen; enforcement open (TODO 8).

@@ -721,36 +721,26 @@ export function TeamPortalClient({
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [drawerDirty, inventoryPanelDirty])
 
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return
-    // The portal lives in the (portal) layout, so an in-portal navigation (e.g.
-    // journal → /atelier?work=N) does NOT remount it — `searchParams` is in the
-    // deps solely to re-run this effect then. The real URL stays the source of
-    // truth: strip uses history.replaceState, which searchParams never sees.
-    void searchParams
-    const params = new URLSearchParams(window.location.search)
-    const wid = params.get('work')
-    if (!wid) return
-    const oid = parseInt(wid, 10)
-    if (Number.isNaN(oid)) return
-    const stripWorkFromUrl = () => {
-      const p = new URLSearchParams(window.location.search)
-      p.delete('work')
-      const qs = p.toString()
-      window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
-      deepLinkFetchRef.current = null
-    }
+  const stripWorkFromUrl = useCallback(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (!p.has('work')) return
+    p.delete('work')
+    const qs = p.toString()
+    window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+  }, [])
 
+  /** Open work `oid` in the overlay card; fetched directly when outside the loaded keyset subset. */
+  const openWorkOverlay = useCallback((oid: number) => {
     const openRow = (row: Oeuvre) => {
       const open = () => {
         setInspected(row)
         stripWorkFromUrl()
+        deepLinkFetchRef.current = null
       }
       const g = workDrawerGuardRef.current
       if (g) g.runGuarded(open)
       else open()
     }
-
     const found = oeuvres.find((x) => x.OeuvreID === oid)
     if (found) {
       openRow(found)
@@ -764,9 +754,38 @@ export function TeamPortalClient({
       if (row) openRow(row)
       else {
         stripWorkFromUrl()
+        deepLinkFetchRef.current = null
         toast.error(t('work_link_not_found'))
       }
     })
+  }, [oeuvres, stripWorkFromUrl, t])
+
+  /** ?work= on the desktop Inventory: its side panel shows the work (one card, not panel + overlay — TODO 18). */
+  const [inventoryFocusRequest, setInventoryFocusRequest] = useState<number | null>(null)
+  const onInventoryFocusRequestDone = useCallback((handled: boolean) => {
+    const oid = inventoryFocusRequest
+    setInventoryFocusRequest(null)
+    if (!handled && oid != null) openWorkOverlay(oid)
+  }, [inventoryFocusRequest, openWorkOverlay])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    // The portal lives in the (portal) layout, so an in-portal navigation (e.g.
+    // journal → /atelier?work=N) does NOT remount it — `searchParams` is in the
+    // deps solely to re-run this effect then. The real URL stays the source of
+    // truth: strip uses history.replaceState, which searchParams never sees.
+    void searchParams
+    const params = new URLSearchParams(window.location.search)
+    const wid = params.get('work')
+    if (!wid) return
+    const oid = parseInt(wid, 10)
+    if (Number.isNaN(oid)) return
+    if (activeTab === 'inventory' && !window.matchMedia('(max-width: 767px)').matches) {
+      stripWorkFromUrl()
+      setInventoryFocusRequest(oid)
+      return
+    }
+    openWorkOverlay(oid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oeuvres, searchParams])
 
@@ -1639,6 +1658,8 @@ export function TeamPortalClient({
             inventoryDrawerGuardRef={inventoryDrawerGuardRef}
             notesGuardRef={notesGuardRef}
             onInventoryPanelDirtyChange={setInventoryPanelDirty}
+            inventoryFocusRequest={inventoryFocusRequest}
+            onInventoryFocusRequestDone={onInventoryFocusRequestDone}
           />
         ) : null}
       </div>

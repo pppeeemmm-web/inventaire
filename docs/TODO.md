@@ -6,6 +6,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
+- [ ] B13. **Phone Inventory, long press (admin, live, Pem 2026-11-16):** the long-press preview opens « a bit glitchy »; scrolling down shows the next work's preview but the old one stays on screen with no way to close it, then gets replaced as you keep scrolling. Reproduce in Chrome at 390 px as admin first.
 
 ## 1. Waiting on Pem — only you can do these
 
@@ -56,7 +57,7 @@ Public site — next batch
 
 Speed and code health — measure first, change after
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
-- [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open done 2026-11-16 → [DONE](./DONE.md)); a deep link `?work=347` opens two drawers (Inventory panel + overlay), each reading once · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
+- [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open, deep link = one card done 2026-11-16 → [DONE](./DONE.md)) · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
 - [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites). (Catalogue in one call done 2026-11-16; the Overview does need the catalogue — its counts come from it — so it keeps loading it, one call; counts on the server = item 18 « pipeline pulse ».)
 
 ## 4. To check once, when it happens (no build)

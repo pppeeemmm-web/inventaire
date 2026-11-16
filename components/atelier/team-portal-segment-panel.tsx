@@ -106,6 +106,9 @@ export type SegmentRoutePanelProps = {
   /** Notes tab: unsaved transcript guard (TODO B2). */
   notesGuardRef?: React.RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
+  /** ?work= deep link handed to the Inventory side panel (TODO 18). */
+  inventoryFocusRequest?: number | null
+  onInventoryFocusRequestDone?: (handled: boolean) => void
 }
 
 export function SegmentRoutePanel({
@@ -160,6 +163,8 @@ export function SegmentRoutePanel({
   inventoryDrawerGuardRef,
   notesGuardRef,
   onInventoryPanelDirtyChange,
+  inventoryFocusRequest,
+  onInventoryFocusRequestDone,
 }: SegmentRoutePanelProps) {
   const { t } = useI18n()
   switch (tab) {
@@ -273,6 +278,8 @@ export function SegmentRoutePanel({
           onOeuvreRemoved={onOeuvreRemoved}
           inventoryDrawerGuardRef={inventoryDrawerGuardRef}
           onInventoryPanelDirtyChange={onInventoryPanelDirtyChange}
+          focusRequest={inventoryFocusRequest}
+          onFocusRequestDone={onInventoryFocusRequestDone}
         />
       )
     case 'reports':
