@@ -45,14 +45,16 @@ export const shellOpenKey = {
 export const overviewOpenKey = {
   seeAgain: 'overview.seeAgain',
   reminders: 'overview.reminders',
+  /** Counts over the whole catalogue (TODO 18): right before the background load finishes. */
+  counts: 'overview.counts',
 } as const
 
 export const OVERVIEW_REMINDER_LIMIT = 200
 
 export function shellOpenKeys(since: string, overview: boolean): string[] {
   const keys: string[] = [shellOpenKey.postPaint, shellOpenKey.teamActivity(since), shellOpenKey.kaizen, shellOpenKey.conflicts]
-  if (overview) keys.push(overviewOpenKey.seeAgain, overviewOpenKey.reminders)
+  if (overview) keys.push(overviewOpenKey.seeAgain, overviewOpenKey.reminders, overviewOpenKey.counts)
   return keys
 }
 
-export const overviewOpenKeys = (): string[] => [overviewOpenKey.seeAgain, overviewOpenKey.reminders]
+export const overviewOpenKeys = (): string[] => [overviewOpenKey.seeAgain, overviewOpenKey.reminders, overviewOpenKey.counts]

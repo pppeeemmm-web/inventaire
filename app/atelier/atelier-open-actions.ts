@@ -4,7 +4,7 @@
 // Kaizen badges, contact conflicts) and the Overview's own reads (See again, reminders) went out as
 // separate Server Actions, one after another. These are the single reads they make when the page
 // opens; consumers take their slice via `lib/atelier/open-reads.ts`. Reads only; each action keeps
-// its guard. Catalogue chunks are not here (TODO 19).
+// its guard. Catalogue chunks are not here (TODO 19); the Overview's counts are (one small read, totals only).
 
 import { fetchAtelierShellPostPaint } from '@/app/atelier/atelier-data-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
@@ -12,6 +12,7 @@ import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
 import { listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
+import { getOverviewCatalogueCounts } from '@/app/atelier/overview-stats-actions'
 import {
   OVERVIEW_REMINDER_LIMIT,
   overviewOpenKey,
@@ -23,6 +24,7 @@ import { runOpenReads } from '@/lib/atelier/open-read-server'
 const overviewJobs = (): [string, () => Promise<unknown>][] => [
   [overviewOpenKey.seeAgain, () => getSeeAgain()],
   [overviewOpenKey.reminders, () => listUnreadSuiviReminders(OVERVIEW_REMINDER_LIMIT)],
+  [overviewOpenKey.counts, () => getOverviewCatalogueCounts()],
 ]
 
 /** The frame's reads on page open; with `overview`, the Overview tab's too (page opened on Overview). */

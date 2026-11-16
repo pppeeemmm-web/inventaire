@@ -5,12 +5,14 @@
 // Desktop: header · a row of signal cells in fixed positions (signal first, number second) · four
 // columns of panels filling the window (no page scroll) · status bar. Panels with more to show open
 // in place when the pointer rests on them ("liquid grid"). Phone: signal rows, worst first.
-// Same data as before — no new queries.
+// Counts over the whole catalogue come from one server read while the catalogue is still loading (TODO 18).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { openReadOr, primeOverviewOpen } from '@/lib/atelier/open-reads'
 import { OVERVIEW_REMINDER_LIMIT, overviewOpenKey } from '@/lib/atelier/open-read-keys'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
+import { getOverviewCatalogueCounts } from '@/app/atelier/overview-stats-actions'
+import { computeOverviewCounts, type OverviewCounts } from '@/lib/atelier/overview-counts'
 import Link from 'next/link'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -77,35 +79,25 @@ export function OverviewTab({
   const localeTag = lang === 'en' ? 'en-GB' : 'fr-FR'
   const num = (n: number) => n.toLocaleString(localeTag)
   const thisYear   = new Date().getFullYear()
-  const yearPrefix = String(thisYear)
 
-  // ── Counts (unchanged rules) ──────────────────────────────────────────
-  let byYear = 0, withPrice = 0, available = 0, exposable = 0, catalogued = 0
-  let missingDims = 0, missingImages = 0, missingLoc = 0, missingAddress = 0
-  let missingTech = 0, missingSupport = 0, missingYear = 0, missingTitle = 0
-  /** Photo shot but not yet validated — `addWorkImage` never clears NeedsPhotograph. */
-  let needsPhotoValidation = 0
-  let notCatalogued = 0
-  let totalValue = 0
-  for (const o of oeuvres) {
-    if (o.Année?.startsWith(yearPrefix)) byYear++
-    if (o.Prix && o.Prix > 0) { withPrice++; totalValue += o.Prix }
-    if (o.statusId === 2) {
-      available++
-      if (o.Exposable) exposable++
-    }
-    if (!o.Hauteur || !o.Largeur) missingDims++
-    if (!o.txtImageNameLink) missingImages++
-    if (!o.LocalisationID) missingLoc++
-    else if ((o as { localisation_address_id?: number | null }).localisation_address_id == null) missingAddress++
-    if (o.Technique == null) missingTech++
-    if (o.Support == null) missingSupport++
-    if (!o.Année) missingYear++
-    if (!o.Titre?.trim()) missingTitle++
-    if (o.NeedsPhotograph) needsPhotoValidation++
-    if (o.Catalogué) catalogued++
-    else notCatalogued++
-  }
+  // ── Counts (unchanged rules, `lib/atelier/overview-counts.ts`) ──────────
+  // While the browser holds only part of the catalogue, the server's counts over the whole of it
+  // (TODO 18); once it is all in, the loaded rows (live after edits).
+  const [serverCounts, setServerCounts] = useState<OverviewCounts | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void openReadOr(overviewOpenKey.counts, () => getOverviewCatalogueCounts()).then((c) => {
+      if (!cancelled) setServerCounts(c)
+    })
+    return () => { cancelled = true }
+  }, [])
+  const loadedCounts = useMemo(() => computeOverviewCounts(oeuvres, thisYear), [oeuvres, thisYear])
+  const catalogueIn = oeuvresCatalogueTotal == null || oeuvres.length >= oeuvresCatalogueTotal
+  const counts = !catalogueIn && serverCounts ? serverCounts : loadedCounts
+  const {
+    byYear, withPrice, available, exposable, catalogued, missingDims, missingImages, missingLoc, missingAddress,
+    missingTech, missingSupport, missingYear, missingTitle, needsPhotoValidation, notCatalogued, totalValue,
+  } = counts
   const worksTotal = oeuvresCatalogueTotal ?? oeuvres.length
 
   const backlog = initialOverviewBootstrap.backlog
@@ -197,14 +189,12 @@ export function OverviewTab({
   }, [overviewCalendarEvents])
 
   const techSegments = useMemo(() => {
-    const by = new Map<number | null, number>()
-    for (const o of oeuvres) by.set(o.Technique ?? null, (by.get(o.Technique ?? null) ?? 0) + 1)
-    const sorted = [...by.entries()].sort((a, b) => b[1] - a[1])
+    const sorted = [...counts.byTechnique].sort((a, b) => b[1] - a[1])
     const top = sorted.slice(0, 4).map(([id, n]) => ({ label: id == null ? t('od_unknown_tech') : (tM[id] ?? '—'), n }))
     const rest = sorted.slice(4).reduce((s, [, n]) => s + n, 0)
     if (rest > 0) top.push({ label: t('od_other'), n: rest })
     return top
-  }, [oeuvres, tM, t])
+  }, [counts, tM, t])
 
   const recentWorks = useMemo(() => [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 16), [oeuvres])
 
@@ -615,7 +605,7 @@ export function OverviewTab({
               {cell(t('od_exhibitable'), num(exposable), { last: true })}
               {cell(t('od_priced'), num(withPrice))}
               {cell(fmt('od_made_year', { year: thisYear }), num(byYear))}
-              {cell(t('od_catalogued'), `${Math.round((catalogued / Math.max(1, oeuvres.length)) * 100)} %`, { last: true })}
+              {cell(t('od_catalogued'), `${Math.round((catalogued / Math.max(1, counts.total)) * 100)} %`, { last: true })}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? '6px 12px' : '10px 12px' }}>
               <span style={{ fontSize: 11, color: 'var(--tx2)' }}>{t('byTechnique')}</span>

@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Overview counts over the whole catalogue from first paint (TODO 18, part)
+
+- The Overview counted the works loaded in the browser — the first 50 until the background load finished (~9 s dev, longer live): « Cataloguées 58 % · Disponibles 5 » before « 94 % · 827 ». `getOverviewCatalogueCounts` (`app/atelier/overview-stats-actions.ts`, team guard, 15 small columns in 900-row keyset pages, totals only) rides in the Overview's one-read bundle (`overviewOpenKey.counts`); the rules live in one function both sides use (`lib/atelier/overview-counts.ts`). While the catalogue is partial the Overview shows the server's counts; once it is all in, its own (live after edits). Dev 2026-11-16: with 50 works loaded the Overview already showed 1 176 / 827 available; after the full load its own count gave the same 827.
+
 ## 2026-11-16 — A `?work=` link opens one card, not two (TODO 18, part)
 
 - On the desktop Inventory, a link `/atelier/inventory?work=N` (Journal, Notes, `#1234` refs, scan) opened the overlay card while the side panel loaded the list's first row — two cards, two reads, and the panel on another work. The portal now hands the link to the Inventory (`focusRequest` → `TeamPortalClient` / `team-portal-segment-panel` / `Inventory.tsx`): list view with the panel open → the work shows in the panel (fetched with `fetchOeuvreById` when the first catalogue chunk doesn't hold it, kept there while the rest loads; unsaved panel edits prompt first); grid view, panel closed, phone, or any other tab → the overlay as before. Dev 2026-11-16 at 1400 px: `?work=2336` (outside the 50-work first chunk) → panel on #2336, no overlay, URL cleaned; a row click replaces it; saved grid view → overlay. Not done: the list doesn't scroll to a linked row that arrives with a later chunk.

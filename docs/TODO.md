@@ -57,8 +57,8 @@ Public site — next batch
 
 Speed and code health — measure first, change after
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
-- [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open, deep link = one card done 2026-11-16 → [DONE](./DONE.md)) · Overview pipeline pulse on the server · Reports on keyset totals · one status-label layer
-- [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites). (Catalogue in one call done 2026-11-16; the Overview does need the catalogue — its counts come from it — so it keeps loading it, one call; counts on the server = item 18 « pipeline pulse ».)
+- [ ] 18. Per-tab lazy Atelier reference fetch (work card + Overview one-read open, deep link = one card, Overview counts on the server done 2026-11-16 → [DONE](./DONE.md)) · the background full-catalogue load still runs on every tab (Overview / Journal don't need it once their counts are server-side) · Reports on keyset totals · one status-label layer
+- [ ] 19. Bundle size check (≤ 250 kB) · slim RSC cold start for Audit / Logistics · ratchet `no-silent-catch` (~258 sites). (Catalogue in one call done 2026-11-16; the Overview's counts now come from the server, item 18.)
 
 ## 4. To check once, when it happens (no build)
 
