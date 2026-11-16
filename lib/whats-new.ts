@@ -47,7 +47,8 @@
 // '3.1.29' (2026-11-16): batch 2 — work card + Overview open in one read (18), Journal ✦ loupe (B12), Constellation panel (B11).
 // '3.1.30' (2026-11-16): the rest of the catalogue in one request (TODO 19).
 // '3.1.31' (2026-11-16): a ?work= link opens one card (Inventory panel); Overview counts right from the start (TODO 18).
-export const WHATS_NEW_RELEASE = '3.1.31'
+// '3.1.32' (2026-11-16): R3 step 1 — the work card re-laid out (top block, Création / Objet, Replié / Développé).
+export const WHATS_NEW_RELEASE = '3.1.32'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -59,6 +60,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'work_card_r3', day: '2026-11-16' },
   { id: 'work_link_one_card', day: '2026-11-16' },
   { id: 'overview_counts_server', day: '2026-11-16' },
   { id: 'catalogue_one_call', day: '2026-11-16' },

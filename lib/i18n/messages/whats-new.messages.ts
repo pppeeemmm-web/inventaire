@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.32 (2026-11-16) — R3 step 1: the work card re-laid out.
+  wn_work_card_r3_t: { fr: 'Nouvelle fiche œuvre', en: 'New work card' },
+  wn_work_card_r3_d: {
+    fr: 'La fiche œuvre est réorganisée : en haut l’essentiel (image, étapes en couleur, propriété, gardien, technique, dimensions, période), puis deux tiroirs « Création » et « Objet ». « Replié » montre l’essentiel et regroupe les champs vides ; « Développé » ouvre tout. Les images se réordonnent en les glissant, chaque couleur montre son code hex, et Annuler / Enregistrer restent toujours en bas.',
+    en: 'The work card is reorganised: the essentials on top (picture, coloured stages, ownership, custodian, technique, dimensions, period), then two drawers, « Création » and « Objet ». « Replié » shows the essentials and gathers the empty fields; « Développé » opens everything. Drag pictures to reorder them, each colour shows its hex code, and Cancel / Save always stay at the bottom.',
+  },
   // 3.1.31 (2026-11-16) — one card per work link; Overview counts from the start (TODO 18).
   wn_work_link_one_card_t: { fr: 'Un lien vers une œuvre ouvre une seule fiche', en: 'A work link opens one card' },
   wn_work_link_one_card_d: {
