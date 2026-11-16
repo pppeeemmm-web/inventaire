@@ -6,6 +6,8 @@
 // offers a line (« Ajouter »), never added by itself. Own saves, outside the drawer's dirty baseline.
 
 import { useEffect, useMemo, useState } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
@@ -57,7 +59,7 @@ export function WorkCreationHistory({ oeuvreId, when }: { oeuvreId: number; when
   useEffect(() => {
     let live = true
     setSessionLocs([])
-    void fetchWorkSessionLocations(oeuvreId).then((res) => {
+    void openReadOr(drawerOpenKey.sessionLocations(oeuvreId), () => fetchWorkSessionLocations(oeuvreId)).then((res) => {
       if (live && 'ok' in res) setSessionLocs(res.locations)
     })
     return () => {

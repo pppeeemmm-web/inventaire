@@ -8,6 +8,8 @@
 // Same data as before — no new queries.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { openReadOr, primeOverviewOpen } from '@/lib/atelier/open-reads'
+import { OVERVIEW_REMINDER_LIMIT, overviewOpenKey } from '@/lib/atelier/open-read-keys'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
 import Link from 'next/link'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -139,9 +141,14 @@ export function OverviewTab({
 
   // Reminders — whole unread list, refetched on every visit (the shell snapshot goes stale).
   const [reminderRows, setReminderRows] = useState<SuiviReminderListRow[]>(initialReminders)
+  // One read for the tab (TODO 18), unless the page opened here and the frame's read carries it.
+  // Layout effect = before this tab's and the See again card's effects take their slice.
+  useLayoutEffect(() => {
+    primeOverviewOpen()
+  }, [])
   useEffect(() => {
     let cancelled = false
-    void listUnreadSuiviReminders(200).then((rows) => {
+    void openReadOr(overviewOpenKey.reminders, () => listUnreadSuiviReminders(OVERVIEW_REMINDER_LIMIT)).then((rows) => {
       if (!cancelled) setReminderRows(rows)
     })
     return () => { cancelled = true }
@@ -149,7 +156,7 @@ export function OverviewTab({
   const markReminderDone = async (id: string) => {
     setReminderRows((rows) => rows.filter((r) => r.id !== id))
     const res = await markSuiviReminderRead(id)
-    if (!res.ok) setReminderRows(await listUnreadSuiviReminders(200))
+    if (!res.ok) setReminderRows(await listUnreadSuiviReminders(OVERVIEW_REMINDER_LIMIT))
   }
   const reminders = useMemo(
     () => reminderRows.map(r => ({ r, days: daysUntil(r.remind_at) })).sort((a, b) => a.days - b.days),

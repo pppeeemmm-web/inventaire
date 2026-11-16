@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import { listLinkedVoiceNotes, type LinkedVoiceNote } from '@/app/atelier/(portal)/notes/actions'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { linkedVoiceNotesKey } from '@/lib/atelier/open-read-keys'
 
 export function LinkedVoiceNotes({
   field,
@@ -20,7 +22,7 @@ export function LinkedVoiceNotes({
 
   useEffect(() => {
     let live = true
-    void listLinkedVoiceNotes(field, value).then((r) => {
+    void openReadOr(linkedVoiceNotesKey(field, value), () => listLinkedVoiceNotes(field, value)).then((r) => {
       if (live) setRows(r)
     })
     return () => {

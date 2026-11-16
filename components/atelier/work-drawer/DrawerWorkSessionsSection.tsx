@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { deleteWorkSessionAdmin, listWorkSessionsForOeuvre } from '@/app/atelier/session/actions'
 import type { WorkSessionRow } from '@/lib/types/database'
 import { parseWorkSessionPayload } from '@/lib/work-session-payload'
@@ -41,8 +43,12 @@ export function DrawerWorkSessionsSection({
   const [loading, setLoading] = useState(true)
   const [, startDel] = useTransition()
 
-  const refresh = useCallback(() => {
-    void listWorkSessionsForOeuvre(oeuvreId).then((r) => {
+  /** `open`: first read when the work opens (the card's combined read); reloads after a delete read directly. */
+  const refresh = useCallback((open = false) => {
+    const read = open
+      ? openReadOr(drawerOpenKey.sessions(oeuvreId), () => listWorkSessionsForOeuvre(oeuvreId))
+      : listWorkSessionsForOeuvre(oeuvreId)
+    void read.then((r) => {
       setRows(r)
       setLoading(false)
     })
@@ -50,7 +56,7 @@ export function DrawerWorkSessionsSection({
 
   useEffect(() => {
     setLoading(true)
-    refresh()
+    refresh(true)
   }, [refresh])
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'

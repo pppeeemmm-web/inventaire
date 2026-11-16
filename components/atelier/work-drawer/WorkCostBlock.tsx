@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchWorkCost, type WorkCost } from '@/app/atelier/(portal)/fiscal/cost-actions'
 import { SectionTitle } from './drawer-widgets'
@@ -25,7 +27,7 @@ export function WorkCostBlock({
     if (!isAdmin) return
     let cancelled = false
     setCost(null)
-    void fetchWorkCost(oeuvreId).then((c) => { if (!cancelled) setCost(c) })
+    void openReadOr(drawerOpenKey.cost(oeuvreId), () => fetchWorkCost(oeuvreId)).then((c) => { if (!cancelled) setCost(c) })
     return () => { cancelled = true }
   }, [oeuvreId, isAdmin])
 

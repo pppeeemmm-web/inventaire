@@ -6,6 +6,8 @@
 // Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
 import { afterForeground, holdBackground } from '@/lib/atelier/foreground-gate'
+import { openReadOr, primeAtelierShellOpen } from '@/lib/atelier/open-reads'
+import { shellOpenKey } from '@/lib/atelier/open-read-keys'
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WhatsNewDialog } from '@/components/atelier/WhatsNew'
@@ -58,6 +60,16 @@ import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
+
+/** This device's "last seen" cursor for a badge; starts now on first visit. */
+function readSeenAt(key: string): string {
+  let v = localStorage.getItem(key)
+  if (!v) {
+    v = new Date().toISOString()
+    localStorage.setItem(key, v)
+  }
+  return v
+}
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -351,6 +363,15 @@ export function TeamPortalClient({
     if (effectiveRouteTab === 'journal') holdBackground()
     return null
   })
+  // One read for the frame's open-time loads (TODO 18): lookups, Journal + Kaizen badges, contact
+  // conflicts, and the Overview's reads when the page opens on Overview. Layout effect = before the
+  // effects below, which take their slice (each falls back to its own action).
+  const shellOpenNonceRef = useRef(atelierShellNonce)
+  useLayoutEffect(() => {
+    primeAtelierShellOpen(readSeenAt(TEAM_ACTIVITY_SEEN_KEY), effectiveRouteTab === 'overview')
+    // Once per page open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const junctionHydratedIdsRef = useRef<Set<number>>(new Set())
   const [junction, setJunction] = useState<AtelierJunctionDerived>(() =>
     junctionFromServerInitial({
@@ -387,7 +408,9 @@ export function TeamPortalClient({
     void (async () => {
       await afterForeground()
       if (cancelled) return
-      const p = await fetchAtelierShellPostPaint()
+      const p = atelierShellNonce === shellOpenNonceRef.current
+        ? await openReadOr(shellOpenKey.postPaint, () => fetchAtelierShellPostPaint())
+        : await fetchAtelierShellPostPaint()
       if (cancelled) return
       setContacts(p.contacts)
       setCurationAddresses(p.addresses)
@@ -774,16 +797,8 @@ export function TeamPortalClient({
   // since I last opened each Kaizen entry (per user, `kaizen_seen`), refreshed on tab change.
   useEffect(() => {
     let cancelled = false
-    const readSince = (key: string) => {
-      let v = localStorage.getItem(key)
-      if (!v) {
-        v = new Date().toISOString()
-        localStorage.setItem(key, v)
-      }
-      return v
-    }
-    const since = readSince(TEAM_ACTIVITY_SEEN_KEY)
-    void afterForeground().then(() => countTeamActivitySince(since)).then((r) => {
+    const since = readSeenAt(TEAM_ACTIVITY_SEEN_KEY)
+    void afterForeground().then(() => openReadOr(shellOpenKey.teamActivity(since), () => countTeamActivitySince(since))).then((r) => {
       if (cancelled || 'error' in r) return
       setTeamActivityCount(r.journal)
     }).catch(() => { /* badges stay 0 */ })
@@ -797,7 +812,7 @@ export function TeamPortalClient({
     }
     // Opening a Kaizen entry marks it seen (Kaizen.tsx calls markKaizenSeen); the other one refreshes.
     let cancelled = false
-    void afterForeground().then(() => kaizenUnseenCounts()).then((r) => {
+    void afterForeground().then(() => openReadOr(shellOpenKey.kaizen, () => kaizenUnseenCounts())).then((r) => {
       if (cancelled || 'error' in r) return
       setKaizenUnseen({
         creation: tab === 'kaizen' ? 0 : r.creation,
@@ -936,7 +951,7 @@ export function TeamPortalClient({
   }, [initialIsAdmin])
 
   useEffect(() => {
-    void afterForeground().then(() => fetchContactConflicts()).then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
+    void afterForeground().then(() => openReadOr(shellOpenKey.conflicts, () => fetchContactConflicts())).then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
   }, [])
 
   useEffect(() => {

@@ -6,6 +6,8 @@
 // baseline (like Constats). Folded by default; nothing renders for a work never described.
 
 import { useCallback, useEffect, useState } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { getWorkDescription, rateWorkDescription, type WorkDescription } from '@/app/atelier/works/description-actions'
 import { useI18n } from '@/lib/i18n/context'
 import { interpolateMessage } from '@/lib/i18n/message-core'
@@ -22,13 +24,16 @@ export function WorkAiDescriptionSection({ oeuvreId }: { oeuvreId: number }) {
   const [desc, setDesc] = useState<WorkDescription | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
-    const res = await getWorkDescription(oeuvreId)
+  /** `open`: first read when the work opens (the card's combined read); reloads after a rating read directly. */
+  const load = useCallback(async (open = false) => {
+    const res = open
+      ? await openReadOr(drawerOpenKey.description(oeuvreId), () => getWorkDescription(oeuvreId))
+      : await getWorkDescription(oeuvreId)
     setDesc(res && !('error' in res) ? res : null)
   }, [oeuvreId])
   useEffect(() => {
     setDesc(null)
-    void load()
+    void load(true)
   }, [load])
   useEffect(() => {
     const onRated = (e: Event) => {

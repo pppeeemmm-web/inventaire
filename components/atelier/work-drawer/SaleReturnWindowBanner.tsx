@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/(portal)/sales/actions'
 import { useI18n } from '@/lib/i18n/context'
 
@@ -12,7 +14,7 @@ export function SaleReturnWindowBanner({ oeuvreId }: { oeuvreId: number }) {
     let cancelled = false
     void (async () => {
       try {
-        const h = await getReturnWindowHintForOeuvre(oeuvreId)
+        const h = await openReadOr(drawerOpenKey.returnHint(oeuvreId), () => getReturnWindowHintForOeuvre(oeuvreId))
         if (!cancelled) setHint(h)
       } catch {
         if (!cancelled) setHint(null)

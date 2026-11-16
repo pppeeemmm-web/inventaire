@@ -5,6 +5,8 @@
 // not part of the drawer's dirty baseline. Lists everything in Rapports → Constats too.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
@@ -77,9 +79,12 @@ export function ConditionReportsSection({
   const [draft, setDraft] = useState<Draft>(emptyDraft)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
+  /** `open`: first read when the work opens (the card's combined read); reloads after an edit read directly. */
+  const load = useCallback(async (open = false) => {
     setLoading(true)
-    const res = await listConditionReports(oeuvreId)
+    const res = open
+      ? await openReadOr(drawerOpenKey.conditionReports(oeuvreId), () => listConditionReports(oeuvreId))
+      : await listConditionReports(oeuvreId)
     if ('error' in res) setErr(true)
     else {
       setErr(false)
@@ -92,7 +97,7 @@ export function ConditionReportsSection({
   }, [oeuvreId])
   useEffect(() => {
     setEditing(null)
-    void load()
+    void load(true)
   }, [load])
 
   const errText = (code: string) =>

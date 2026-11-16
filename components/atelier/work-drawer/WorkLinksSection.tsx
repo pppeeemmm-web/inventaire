@@ -4,6 +4,8 @@
 // influence / proximity. Human links in `tblrelations` (same rows the Constellation draws).
 
 import { useCallback, useEffect, useState } from 'react'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { addWorkLink, listWorkLinks, removeWorkLink, type WorkLink } from '@/app/atelier/works/work-link-actions'
 import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 import { WorkRef } from '@/components/atelier/WorkRef'
@@ -19,12 +21,15 @@ export function WorkLinksSection({ oeuvreId }: { oeuvreId: number }) {
   const [other, setOther] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
-    const res = await listWorkLinks(oeuvreId)
+  /** `open`: first read when the work opens (the card's combined read); reloads after an edit read directly. */
+  const load = useCallback(async (open = false) => {
+    const res = open
+      ? await openReadOr(drawerOpenKey.links(oeuvreId), () => listWorkLinks(oeuvreId))
+      : await listWorkLinks(oeuvreId)
     setLinks('error' in res ? [] : res)
   }, [oeuvreId])
   useEffect(() => {
-    void load()
+    void load(true)
   }, [load])
 
   type Key = Parameters<typeof t>[0]

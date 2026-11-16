@@ -8,6 +8,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState, useTransition, type CSSProperties } from 'react'
 import { dismissSeeAgain, getSeeAgain, linkSeeAgainPair, type SeeAgainSlots, type SeeAgainWork } from '@/app/atelier/see-again/actions'
 import { thumbUrl } from '@/lib/data'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { overviewOpenKey } from '@/lib/atelier/open-read-keys'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 import { useI18n } from '@/lib/i18n/context'
@@ -26,13 +28,14 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
   /** Link picker on the close pair: from → to, of a type (owner 2026-11-13: links have a direction). */
   const [linking, setLinking] = useState<{ from: number; to: number; type: WorkLinkType } | null>(null)
 
-  const load = useCallback(async () => {
-    const res = await getSeeAgain()
+  /** `open`: first read on mount (Overview's combined read when there is one); reloads after an action read directly. */
+  const load = useCallback(async (open = false) => {
+    const res = open ? await openReadOr(overviewOpenKey.seeAgain, () => getSeeAgain()) : await getSeeAgain()
     if ('error' in res) return
     setSlots(res)
   }, [])
   useEffect(() => {
-    void load()
+    void load(true)
   }, [load])
 
   function write(text: string) {

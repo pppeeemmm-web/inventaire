@@ -11,6 +11,8 @@ import { toast } from '@/lib/ui/toast'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { openReadOr, primeWorkDrawerOpen } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import {
   downscaleImageFileForMobileIfNeeded,
   startEstimatedUploadProgress,
@@ -567,11 +569,25 @@ export function DrawerContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [o.OeuvreID])
 
+  // One read for the whole card (TODO 18): runs before the sections' effects, which take their slice.
+  useLayoutEffect(() => {
+    primeWorkDrawerOpen(o.OeuvreID, { cost: isAdmin, returnHint: ownStageFromStatusId(o.statusId) === 'sold' })
+    // Only when the open work changes; a later admin flag or stage change makes that section read on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.OeuvreID])
+
+  /** Last (work, reload nonce) the long text was read for: a nonce bump is a reload, not an open. */
+  const longTextReadRef = useRef<{ id: number; nonce: number } | null>(null)
   useEffect(() => {
     let cancelled = false
+    const last = longTextReadRef.current
+    const isOpen = !last || last.id !== o.OeuvreID || last.nonce === longTextReloadNonce
+    longTextReadRef.current = { id: o.OeuvreID, nonce: longTextReloadNonce }
     void (async () => {
       try {
-        const r = await loadOeuvreLongText(o.OeuvreID)
+        const r = isOpen
+          ? await openReadOr(drawerOpenKey.longText(o.OeuvreID), () => loadOeuvreLongText(o.OeuvreID))
+          : await loadOeuvreLongText(o.OeuvreID)
         if (cancelled) return
         if (!('error' in r)) {
           const c = r.Commentaires ?? ''

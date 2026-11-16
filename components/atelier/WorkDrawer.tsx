@@ -1,6 +1,8 @@
 'use client'
 
 import { listWorkDrawerImages } from '@/app/atelier/works/actions'
+import { openReadOr } from '@/lib/atelier/open-reads'
+import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import {
   useEffect,
   useLayoutEffect,
@@ -135,7 +137,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
     if (!o?.OeuvreID) return
     const id = o.OeuvreID
     let cancelled = false
-    void listWorkDrawerImages(id).then((rows) => {
+    void openReadOr(drawerOpenKey.images(id), () => listWorkDrawerImages(id)).then((rows) => {
       if (cancelled) return
       if (rows.length > 0) {
         setWorkImages(rows)
