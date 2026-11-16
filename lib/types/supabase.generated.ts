@@ -3276,42 +3276,6 @@ export type Database = {
           },
         ]
       }
-      work_place: {
-        Row: {
-          oeuvre_id: number
-          place_id: number
-          set_at: string
-          set_by: string | null
-        }
-        Insert: {
-          oeuvre_id: number
-          place_id: number
-          set_at?: string
-          set_by?: string | null
-        }
-        Update: {
-          oeuvre_id?: number
-          place_id?: number
-          set_at?: string
-          set_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "work_place_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: true
-            referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "work_place_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "place"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       work_session: {
         Row: {
           created_at: string
