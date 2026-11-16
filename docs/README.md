@@ -11,10 +11,11 @@
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
 | [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal + his annotated phone mockups for Claude Design (R2), work drawer (R3), timeline / map / previews (R4); slideshow done. Design first, not a GO | 2026-11-15 |
-| [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-15 |
-| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink (design first) / to build / to check once / parked | 2026-11-15 |
-| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-15 |
-| [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-15 |
+| [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |
+| [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-16 |
+| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink (design first) / to build / to check once / parked | 2026-11-16 |
+| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-16 |
+| [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-16 |
 | [`TODO_REFUSED.md`](./TODO_REFUSED.md) | Items dropped on purpose, with the reason | 2026-11-13 |
 | [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md) | Voice / handwriting / image-description scripts (`scripts/transcribe/`), local GPU | 2026-11-13 |
 | [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | Onboarding (admin): encyclopedia, every feature | Accurate to 2026-07 (dated banner 2026-11-13; later changes → Kaizen → Nouveautés) |
