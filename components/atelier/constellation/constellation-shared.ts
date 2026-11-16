@@ -90,6 +90,8 @@ export interface Drag {
   panOrigin?: Pt
   /** Multi-select: drag these ids together (subset of selection with positions). */
   moveIds?:   number[]
+  /** Positions when the drag started — one undo step on release (TODO 20). */
+  before?:    [number, Pt][]
 }
 
 // ── Link styles ────────────────────────────────────────────────────────────

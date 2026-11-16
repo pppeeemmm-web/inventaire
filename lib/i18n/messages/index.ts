@@ -45,6 +45,7 @@ import { overviewDashMessages } from './overview-dash.messages'
 import { workDescriptionMessages } from './work-description.messages'
 import { exportUiMessages } from './export-ui.messages'
 import { voiceCaptureMessages } from './voice-capture.messages'
+import { constellationToolsMessages } from './constellation-tools.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -94,6 +95,7 @@ export const featureMessages = {
   ...workDescriptionMessages,
   ...exportUiMessages,
   ...voiceCaptureMessages,
+  ...constellationToolsMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

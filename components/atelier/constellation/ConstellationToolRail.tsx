@@ -17,7 +17,11 @@ export type ConstellationToolRailProps = {
   drawWidth: number
   setDrawWidth: (w: number) => void
   shapes: Shape[]
-  setShapes: (s: Shape[]) => void
+  clearShapes: () => void
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
   toolShortcutsOpen: boolean
   setToolShortcutsOpen: Dispatch<SetStateAction<boolean>>
   shortcutsPanelId: string
@@ -26,7 +30,8 @@ export type ConstellationToolRailProps = {
 export function ConstellationToolRail(props: ConstellationToolRailProps) {
   const {
     t, toolRailRef, toolbarTools, tool, setTool,
-    drawColor, setDrawColor, drawWidth, setDrawWidth, shapes, setShapes,
+    drawColor, setDrawColor, drawWidth, setDrawWidth, shapes, clearShapes,
+    canUndo, canRedo, onUndo, onRedo,
     toolShortcutsOpen, setToolShortcutsOpen, shortcutsPanelId,
   } = props
 
@@ -80,6 +85,24 @@ export function ConstellationToolRail(props: ConstellationToolRailProps) {
                   {row.l}
                 </button>
               ))}
+              {/* Undo / redo (TODO 20) */}
+              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                {([['undo', '↶', canUndo, onUndo], ['redo', '↷', canRedo, onRedo]] as const).map(([id, glyph, can, run]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn ghost sm"
+                    data-testid={`constellation-${id}`}
+                    disabled={!can}
+                    title={t(id === 'undo' ? 'ct_undo' : 'ct_redo')}
+                    aria-label={t(id === 'undo' ? 'ct_undo' : 'ct_redo')}
+                    onClick={run}
+                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: 0, fontSize: 15, justifyContent: 'center', opacity: can ? 1 : 0.35 }}
+                  >
+                    {glyph}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 44, flexShrink: 0 }}>
                 <input
                   type="color"
@@ -119,7 +142,7 @@ export function ConstellationToolRail(props: ConstellationToolRailProps) {
                   type="button"
                   className="btn ghost sm"
                   onClick={() => {
-                    if (confirm(t('const_drawLayerClearAllConfirm'))) setShapes([])
+                    if (confirm(t('const_drawLayerClearAllConfirm'))) clearShapes()
                   }}
                   style={{
                     minHeight: 44,

@@ -38,6 +38,7 @@ import { ConstellationShortcutsPanel } from './constellation/ConstellationShortc
 import { useConstellationCanvasRedraw } from './constellation/useConstellationCanvasRedraw'
 import { useConstellationPointer } from './constellation/useConstellationPointer'
 import { useConstellationSnapshot } from './constellation/useConstellationSnapshot'
+import { useConstellationHistory } from './constellation/useConstellationHistory'
 import { handleExportPng, handleExportTiledA4 } from './constellation/constellation-export'
 
 
@@ -274,6 +275,41 @@ export function ConstellationCanvas({
     frozenEdges,
   })
   
+  // ── Undo / redo (TODO 20) ───────────────────────────────────
+  const shapesRef = useRef(shapes)
+  shapesRef.current = shapes
+  const viewRef = useRef({ selectedThemeId: null as number | null, selectedGroupId: null as string | null })
+  const persistMoves = useCallback((moves: { id: number; x: number; y: number }[]) => {
+    if (onNodesMoved) { onNodesMoved(moves); return }
+    const g = groupByRef.current
+    savePos(g, posRef.current, g === 'theme' ? viewRef.current.selectedThemeId : g === 'workgroup' ? viewRef.current.selectedGroupId : undefined)
+  }, [onNodesMoved])
+  const history = useConstellationHistory({ setShapes, posRef, edgesRef, hovEdgeRef, persistMoves, redraw })
+  const { push: pushHistory, undo, redo, dropMoves, clear: clearHistory } = history
+  /** One undoable change to the drawing layer. */
+  const commitShapes = useCallback((update: (prev: Shape[]) => Shape[]) => {
+    const before = shapesRef.current
+    const after = update(before)
+    if (after === before) return
+    shapesRef.current = after
+    pushHistory({ kind: 'shapes', before, after })
+    setShapes(after)
+  }, [pushHistory])
+
+  useEffect(() => {
+    if (hideToolbar) return // floor plan: the exhibition page owns the keyboard
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); void undo() }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); void redo() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [hideToolbar, undo, redo])
+
   useEffect(() => {
     if (initialPositions) {
       posRef.current = new Map(initialPositions)
@@ -307,6 +343,12 @@ export function ConstellationCanvas({
     if (groupBy !== 'workgroup') setSelectedGroupId(null)
     if (groupBy === 'theme' || groupBy === 'workgroup') setPanelNode(null)
   }, [groupBy])
+
+  // Moves are per view: a new view (mode / theme / group) leaves them out of undo.
+  useEffect(() => {
+    viewRef.current = { selectedThemeId, selectedGroupId }
+    dropMoves()
+  }, [groupBy, selectedThemeId, selectedGroupId, dropMoves])
 
   // Persist the last view mode + selected theme (helps open “scoped” next time).
   useEffect(() => {
@@ -445,8 +487,8 @@ export function ConstellationCanvas({
     cloudMaps, cloudBusy, cloudSaved,
     snapshots, snapName, setSnapName, snapSaved,
     applyConstellationCloudDoc,
-    handleSaveSnapshot, handleLoadSnapshot, handleDeleteSnapshot,
-    handleSaveCloudMap, handleLoadCloudMap, handleDeleteCloudMap,
+    handleSaveSnapshot, handleLoadSnapshot: loadSnapshotRaw, handleDeleteSnapshot,
+    handleSaveCloudMap, handleLoadCloudMap: loadCloudMapRaw, handleDeleteCloudMap,
     exitFrozenLiveGraph,
   } = useConstellationSnapshot({
     constellationImportPendingRef, vpRef, posRef, edgesRef, groupByRef,
@@ -456,6 +498,10 @@ export function ConstellationCanvas({
     setShapes, setGroupBy, setCustomIds, setSelectedThemeId, setSelectedGroupId,
     reloadGraphData, redraw,
   })
+
+  // A loaded map replaces positions and drawings wholesale: start a fresh undo history.
+  const handleLoadSnapshot = useCallback((id: string) => { clearHistory(); return loadSnapshotRaw(id) }, [clearHistory, loadSnapshotRaw])
+  const handleLoadCloudMap = useCallback((id: string) => { clearHistory(); return loadCloudMapRaw(id) }, [clearHistory, loadCloudMapRaw])
 
   // ── Layout ────────────────────────────────────────────────────
   useEffect(() => {
@@ -553,7 +599,7 @@ export function ConstellationCanvas({
     canvasRef, vpRef, posRef, edgesRef, dragRef, draftRef, hovNodeRef, hovEdgeRef, selRef, groupByRef,
     tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
     selectedThemeId, selectedGroupId, frozenEdges, activeShape, shapes, marquee, customIds, oeuvresById,
-    setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
+    setActiveShape, commitShapes, pushHistory, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
     onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
     redraw, router, t,
   })
@@ -663,7 +709,7 @@ export function ConstellationCanvas({
 
   function handleAddText() {
     if (!textInput || !textVal.trim()) { setTextInput(null); setTextVal(''); return }
-    setShapes(prev => [...prev, {
+    commitShapes(prev => [...prev, {
       type: 'text',
       x: textInput.x,
       y: textInput.y,
@@ -795,7 +841,11 @@ export function ConstellationCanvas({
           drawWidth={drawWidth}
           setDrawWidth={setDrawWidth}
           shapes={shapes}
-          setShapes={setShapes}
+          clearShapes={() => commitShapes(() => [])}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onUndo={() => void undo()}
+          onRedo={() => void redo()}
           toolShortcutsOpen={toolShortcutsOpen}
           setToolShortcutsOpen={setToolShortcutsOpen}
           shortcutsPanelId={shortcutsPanelId}

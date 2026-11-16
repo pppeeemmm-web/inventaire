@@ -113,6 +113,9 @@ export async function insertConstellationRelation(payload: {
   source_id: number
   target_id: number
   relation_type: string | null
+  /** Undo of a deleted link (TODO 20): bring back what the row had. */
+  strength?: number | null
+  description?: string | null
 }): Promise<ConstellationRelationInsertResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
@@ -132,6 +135,8 @@ export async function insertConstellationRelation(payload: {
       source_uid: sourceUid,
       target_uid: targetUid,
       relation_type: payload.relation_type,
+      ...(payload.strength != null ? { strength: payload.strength } : {}),
+      ...(payload.description != null ? { description: payload.description } : {}),
     })
     .select('id, source_id, target_id, source_uid, target_uid, relation_type, strength, description')
     .single()

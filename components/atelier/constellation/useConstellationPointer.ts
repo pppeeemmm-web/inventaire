@@ -15,9 +15,10 @@ import type { Oeuvre } from '@/lib/types/database'
 import {
   NW, NH, MIN_Z, MAX_Z,
   type NodeMap, type GroupBy, type LinkType, type VP,
-  type Edge, type Drag, type Shape, type Tool,
+  type Edge, type Drag, type Shape, type Tool, type Pt,
   savePos, ptSeg, hitNode, hitEdge,
 } from './constellation-shared'
+import type { HistoryEntry } from './useConstellationHistory'
 
 // ── Args ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,9 @@ export interface UseConstellationPointerArgs {
   oeuvresById:     Map<number, Oeuvre>
   // Dispatchers
   setActiveShape: React.Dispatch<React.SetStateAction<Shape | null>>
-  setShapes:      React.Dispatch<React.SetStateAction<Shape[]>>
+  /** Change the drawing layer as one undoable step (TODO 20). */
+  commitShapes:   (update: (prev: Shape[]) => Shape[]) => void
+  pushHistory:    (e: HistoryEntry) => void
   setMarquee:     React.Dispatch<React.SetStateAction<{ x: number; y: number; w: number; h: number } | null>>
   setCustomIds:   React.Dispatch<React.SetStateAction<Set<number>>>
   setPanelNode:   React.Dispatch<React.SetStateAction<Oeuvre | null>>
@@ -90,7 +93,7 @@ export function useConstellationPointer({
   canvasRef, vpRef, posRef, edgesRef, dragRef, draftRef, hovNodeRef, hovEdgeRef, selRef, groupByRef,
   tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
   selectedThemeId, selectedGroupId, frozenEdges, activeShape, shapes, marquee, customIds, oeuvresById,
-  setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
+  setActiveShape, commitShapes, pushHistory, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
   onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
   redraw, router, t,
 }: UseConstellationPointerArgs) {
@@ -125,8 +128,23 @@ export function useConstellationPointer({
     }
     edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
     if (hovEdgeRef.current === edge) hovEdgeRef.current = null
+    pushHistory({ kind: 'linkDelete', edge })
     redraw()
-  }, [redraw])
+  }, [redraw, pushHistory])
+
+  /** Record a finished work drag as one undo step (positions before → after). */
+  const recordMove = useCallback((drag: Drag) => {
+    if (!drag.before?.length) return
+    const after: [number, Pt][] = []
+    let changed = false
+    for (const [id, b] of drag.before) {
+      const p = posRef.current.get(id)
+      if (!p) continue
+      after.push([id, { x: p.x, y: p.y }])
+      if (Math.abs(p.x - b.x) > 0.5 || Math.abs(p.y - b.y) > 0.5) changed = true
+    }
+    if (changed) pushHistory({ kind: 'move', before: drag.before, after })
+  }, [pushHistory])
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -170,7 +188,7 @@ export function useConstellationPointer({
       const k = topShapeAt(shapes, wx, wy, vpRef.current.z)
       if (k >= 0) {
         const target = shapes[k]
-        setShapes(prev => prev.filter(s => s !== target))
+        commitShapes(prev => prev.filter(s => s !== target))
         redraw()
         return
       }
@@ -193,10 +211,14 @@ export function useConstellationPointer({
         sel.size > 1 && sel.has(hit.id)
           ? [...sel].filter(id => posRef.current.has(id))
           : undefined
-      dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds }
+      const before = (moveIds ?? [hit.id]).flatMap((id): [number, Pt][] => {
+        const p = posRef.current.get(id)
+        return p ? [[id, { x: p.x, y: p.y }]] : []
+      })
+      dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds, before }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges, shapes, removeEdge])
+  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges, shapes, removeEdge, commitShapes])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -293,7 +315,7 @@ export function useConstellationPointer({
     const drag = dragRef.current
 
     if ((drag.mode === 'draw' || drag.mode === 'line') && activeShape) {
-      setShapes(prev => [...prev, activeShape])
+      commitShapes(prev => [...prev, activeShape])
       setActiveShape(null)
     } else if (drag.mode === 'marquee' && marquee) {
       const x0 = (Math.min(marquee.x, marquee.x + marquee.w) - vpRef.current.x) / vpRef.current.z
@@ -321,10 +343,12 @@ export function useConstellationPointer({
           console.warn('[constellation] insert relation', ins.error)
         } else {
           const data = ins.row
-          edgesRef.current = [...edgesRef.current, {
+          const edge: Edge = {
             id: data.id, source: data.source_id!, target: data.target_id!,
             relation_type: data.relation_type, strength: data.strength, description: data.description,
-          }]
+          }
+          edgesRef.current = [...edgesRef.current, edge]
+          pushHistory({ kind: 'linkAdd', edge })
         }
       }
       setPanelNode(null)
@@ -338,7 +362,9 @@ export function useConstellationPointer({
         return p ? [{ id, x: p.x, y: p.y }] : []
       })
       if (moves.length > 0) onNodesMoved(moves)
+      recordMove(drag)
     } else if (drag.mode === 'node') {
+      recordMove(drag)
       savePos(
         groupByRef.current,
         posRef.current,
@@ -368,7 +394,7 @@ export function useConstellationPointer({
 
     dragRef.current = { mode: 'idle', startX: 0, startY: 0 }
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-  }, [linkType, oeuvresById, onOpen, onNodesMoved, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee])
+  }, [linkType, oeuvresById, onOpen, onNodesMoved, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee, commitShapes, pushHistory, recordMove])
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -433,7 +459,7 @@ export function useConstellationPointer({
       const k = topShapeAt(shapes, wx, wy, vpRef.current.z)
       if (k >= 0) {
         const target = shapes[k]
-        setShapes(prev => prev.filter(s => s !== target))
+        commitShapes(prev => prev.filter(s => s !== target))
         redraw()
         return
       }
@@ -444,7 +470,7 @@ export function useConstellationPointer({
       : null
     if (!edge) return
     void removeEdge(edge)
-  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges, shapes, removeEdge])
+  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges, shapes, removeEdge, commitShapes])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -475,6 +501,7 @@ export function useConstellationPointer({
 
   const onMouseLeave = useCallback(() => {
     if (dragRef.current.mode === 'node') {
+      recordMove(dragRef.current)
       savePos(
         groupByRef.current,
         posRef.current,
@@ -491,7 +518,7 @@ export function useConstellationPointer({
     dragRef.current    = { mode: 'idle', startX: 0, startY: 0 }
     setPanelNode(null)
     redraw()
-  }, [selectedThemeId, selectedGroupId])
+  }, [selectedThemeId, selectedGroupId, recordMove])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()

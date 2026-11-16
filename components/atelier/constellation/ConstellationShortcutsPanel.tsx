@@ -33,6 +33,7 @@ export const ConstellationShortcutsPanel = forwardRef<HTMLDivElement, Constellat
         }}
       >
         {t('const_toolbar_hint')}
+        <div style={{ marginTop: 6 }}>{t('ct_shortcuts_undo')}</div>
       </div>
     )
   },
