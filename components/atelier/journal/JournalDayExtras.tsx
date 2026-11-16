@@ -359,13 +359,25 @@ export function JournalDayExtras({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {e.proposals.map((p) => (
                       <div key={p.linkId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                        <Link
-                          href={p.workId != null ? workHref(p.workId) : '/atelier/concepts'}
-                          className="t-mono-sm"
-                          style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
-                        >
-                          ✦ {p.workId != null ? `#${p.workId}` : t('je_concept_prefix')} {p.title ?? ''}
-                        </Link>
+                        {p.workId != null ? (
+                          // A work: the shared #id preview + loupe, like the confirmed links above (TODO B12, Pem 2026-11-16).
+                          <WorkRef
+                            id={p.workId}
+                            href={workHref(p.workId)}
+                            className="t-mono-sm"
+                            style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
+                          >
+                            ✦ #{p.workId} {p.title || t('wr_untitled')}
+                          </WorkRef>
+                        ) : (
+                          <Link
+                            href="/atelier/concepts"
+                            className="t-mono-sm"
+                            style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
+                          >
+                            ✦ {t('je_concept_prefix')} {p.title ?? ''}
+                          </Link>
+                        )}
                         {data?.isAdmin ? (
                           <span style={{ display: 'flex', gap: 6 }}>
                             <button type="button" className="btn ghost sm" disabled={pending} onClick={() => decide(p.linkId, true)} style={{ minHeight: 44 }}>
@@ -561,9 +573,9 @@ export function JournalDayExtras({
               ) : null}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
                 {k.works.map((id) => (
-                  <Link key={id} href={workHref(id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                  <WorkRef key={id} id={id} href={workHref(id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                     #{id}
-                  </Link>
+                  </WorkRef>
                 ))}
                 <Link
                   href="/atelier/kaizen"
@@ -612,10 +624,10 @@ export function JournalDayExtras({
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.changes.map((c) => (
               <li key={c.oeuvre_id} className="t-mono-sm" style={{ fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
-                <Link href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                <WorkRef id={c.oeuvre_id} href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                   #{c.oeuvre_id}
                   {c.title ? ` ${c.title}` : ''}
-                </Link>
+                </WorkRef>
                 <span style={{ color: 'var(--tx3)' }}> — {c.fields.join(', ')}</span>
               </li>
             ))}
