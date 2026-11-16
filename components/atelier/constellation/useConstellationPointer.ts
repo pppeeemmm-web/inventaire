@@ -176,7 +176,9 @@ export function useConstellationPointer({
       return
     }
 
-    if (tool === 'marquee') {
+    // Select tool: a drag on a work still moves it (and the selection); anywhere else draws the rectangle.
+    // Hand tool: Shift+drag on empty space draws it too (plain drag keeps panning).
+    if ((tool === 'marquee' && hit?.zone !== 'center') || (tool === 'move' && !hit && e.shiftKey)) {
       dragRef.current = { mode: 'marquee', startX: lx, startY: ly }
       setMarquee({ x: lx, y: ly, w: 0, h: 0 })
       return

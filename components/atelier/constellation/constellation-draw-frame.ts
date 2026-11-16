@@ -532,13 +532,18 @@ export function drawConstellationFrame(
 
   // ── Marquee (Screen Space - CSS Pixels with DPR) ────────────
   if (marquee) {
-    ctx.strokeStyle = 'rgba(200,168,110,0.8)'
-    ctx.setLineDash([4, 4])
-    ctx.lineWidth   = 1
-    ctx.strokeRect(marquee.x, marquee.y, marquee.w, marquee.h)
     ctx.fillStyle   = 'rgba(200,168,110,0.1)'
     ctx.fillRect(marquee.x, marquee.y, marquee.w, marquee.h)
+    ctx.lineWidth   = 1
+    // Marching ants (TODO 20): dark base + gold dashes whose offset moves with the clock.
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'
+    ctx.strokeRect(marquee.x, marquee.y, marquee.w, marquee.h)
+    ctx.strokeStyle = 'rgba(200,168,110,0.95)'
+    ctx.setLineDash([5, 4])
+    ctx.lineDashOffset = -((Date.now() / 60) % 9)
+    ctx.strokeRect(marquee.x, marquee.y, marquee.w, marquee.h)
     ctx.setLineDash([])
+    ctx.lineDashOffset = 0
   }
 
   ctx.restore()

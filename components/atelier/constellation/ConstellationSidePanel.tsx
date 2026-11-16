@@ -255,7 +255,7 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                   </>
                 ) : (
                   <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
-                    {t('const_shiftMarqueeHint')}
+                    {t('ct_select_hint')}
                   </div>
                 )}
 

@@ -604,6 +604,14 @@ export function ConstellationCanvas({
     redraw, router, t,
   })
 
+  // Marching ants: keep the rectangle's dashes moving while it is drawn (timer, not rAF — runs in a hidden pane too).
+  const marqueeOn = marquee !== null
+  useEffect(() => {
+    if (!marqueeOn) return
+    const id = window.setInterval(redraw, 80)
+    return () => window.clearInterval(id)
+  }, [marqueeOn, redraw])
+
   // ── Resize + space key ────────────────────────────────────────
   useEffect(() => {
     const obs = new ResizeObserver(() => redraw())
