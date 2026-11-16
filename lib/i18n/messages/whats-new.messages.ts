@@ -10,6 +10,17 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.31 (2026-11-16) — one card per work link; Overview counts from the start (TODO 18).
+  wn_work_link_one_card_t: { fr: 'Un lien vers une œuvre ouvre une seule fiche', en: 'A work link opens one card' },
+  wn_work_link_one_card_d: {
+    fr: 'Sur ordinateur, un lien #1234 vers l’Inventaire (Journal, Notes, scan) montre l’œuvre dans le panneau latéral, au lieu d’ouvrir une seconde fiche par-dessus.',
+    en: 'On a computer, a #1234 link to the Inventory (Journal, Notes, scan) shows the work in the side panel instead of opening a second card on top.',
+  },
+  wn_overview_counts_server_t: { fr: 'Vue d’ensemble juste dès l’ouverture', en: 'Overview right from the start' },
+  wn_overview_counts_server_d: {
+    fr: 'Les chiffres de la Vue d’ensemble comptent tout le catalogue dès l’ouverture, sans attendre qu’il soit chargé.',
+    en: 'The Overview’s numbers count the whole catalogue as soon as it opens, without waiting for it to load.',
+  },
   wn_catalogue_one_call_t: { fr: 'Catalogue complet plus vite', en: 'Full catalogue sooner' },
   wn_catalogue_one_call_d: {
     fr: 'Après les premières œuvres, le reste du catalogue arrive en une seule requête au lieu d’une par tranche de 500 : l’Inventaire est complet bien plus tôt.',
