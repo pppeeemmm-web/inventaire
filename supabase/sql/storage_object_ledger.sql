@@ -96,3 +96,5 @@ create policy "storage_object_ledger_admin_delete"
   using (is_admin());
 
 grant select, insert, update, delete on public.storage_object_ledger to authenticated;
+
+-- Applied 2026-11-16 (TODO 8, Pem OK) with one addition: revoke all on public.storage_object_ledger from anon;

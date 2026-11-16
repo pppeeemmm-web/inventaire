@@ -2352,6 +2352,69 @@ export type Database = {
           },
         ]
       }
+      storage_object_ledger: {
+        Row: {
+          bucket: string
+          classification: string
+          content_type: string | null
+          created_at: string
+          etag: string | null
+          first_seen_at: string
+          id: string
+          last_modified_at: string | null
+          last_seen_at: string
+          linked_refs: Json
+          metadata: Json
+          object_key: string
+          provider: string
+          size_bytes: number | null
+          source: string
+          status: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          bucket: string
+          classification?: string
+          content_type?: string | null
+          created_at?: string
+          etag?: string | null
+          first_seen_at?: string
+          id?: string
+          last_modified_at?: string | null
+          last_seen_at?: string
+          linked_refs?: Json
+          metadata?: Json
+          object_key: string
+          provider?: string
+          size_bytes?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          bucket?: string
+          classification?: string
+          content_type?: string | null
+          created_at?: string
+          etag?: string | null
+          first_seen_at?: string
+          id?: string
+          last_modified_at?: string | null
+          last_seen_at?: string
+          linked_refs?: Json
+          metadata?: Json
+          object_key?: string
+          provider?: string
+          size_bytes?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       studio_task: {
         Row: {
           action: string

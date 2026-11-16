@@ -38,7 +38,7 @@ Links
 - [ ] 6. Rework on the same work = a « Reprise » line in « Historique de création » + its own photo (no version table, no link) → [notes](./TODO_NOTES.md#work-or-version)
 
 Transmission (safety of what is kept)
-- [ ] 8. Security remaining: anon write grants, `system_log` / `studio_task` access, CSP report-only, `xlsx`, `storage_object_ledger` → [notes](./TODO_NOTES.md#security)
+- [ ] 8. Security remaining: `system_log` / `studio_task` access, CSP report-only, `xlsx` → [notes](./TODO_NOTES.md#security) (anon grants + ledger closed 2026-11-16 → [DONE](./DONE.md))
 
 Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)

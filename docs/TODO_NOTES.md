@@ -4,7 +4,7 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 ## security
 
-**Security, remaining.** Security, remaining: `anon` write grants on most tables (RLS only); `system_log` + `studio_task` open to any signed-in account; no content security policy (start report-only); `xlsx` 0.18.5 usage to check; `storage_object_ledger` table does not exist (`lib/storage-object-ledger.ts` writes to it).
+**Security, remaining.** `system_log` + `studio_task` open to any signed-in account; no content security policy (start report-only); `xlsx` 0.18.5 usage to check. Closed 2026-11-16: anon write grants (only `inquiry` / `page_view` INSERT left, `supabase/sql/revoke_anon_writes.sql`); `storage_object_ledger` created. Note: Supabase's default privileges still give `anon` writes on new tables — grant explicitly per table.
 
 ## restore-drill-and-archive
 

@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-16 — Security: anon write grants removed, storage ledger created (TODO 8, part; Pem OK)
+
+- Checked in the live DB first: of 56 tables granting `anon` writes, only `inquiry` (enquiry form) and `page_view` (visit counting) had a rule letting anonymous visitors write; the 3 views with anon write grants (`exhibition`, `edge_fact`, `entity`) are `security_invoker`, two not writable. So: tidy-up, not an open hole. Revoked insert / update / delete / truncate from `anon` everywhere except `inquiry` / `page_view` INSERT (`supabase/sql/revoke_anon_writes.sql`); SELECT untouched — `/`, `/works`, `/about` answer 200 on dev after.
+- `storage_object_ledger` created from the never-applied `supabase/sql/storage_object_ledger.sql` (team read, admin write, RLS on, no anon): the 9 upload / delete paths that wrote to it (`lib/storage-object-ledger.ts`) were logging an error on every upload. Nothing reads it yet. Types regenerated.
+
 ## 2026-11-16 — Live speed measures (TODO 16b; read only, Pem's signed-in Chrome on the live site)
 
 | Measure (ms) | Cold | Warm |
