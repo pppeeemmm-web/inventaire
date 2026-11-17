@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.47 (2026-11-17) — one language per page; R8 first batch.
+  wn_lighter_pages_site_t: { fr: 'Pages plus légères, site public retouché', en: 'Lighter pages, public site touched up' },
+  wn_lighter_pages_site_d: {
+    fr: 'Chaque page n’envoie plus que la langue choisie : le téléphone charge environ un cinquième de moins. Sur le site public : la légende d’une œuvre donne son support, le formulaire de contact propose Acquérir une œuvre, Commande, Exposition ou Presse, et un lien partagé montre une grande image de l’œuvre.',
+    en: 'Each page now sends only the chosen language: the phone loads about a fifth less. On the public site: a work’s caption gives its medium, the contact form offers Buy a work, Commission, Exhibition or Press, and a shared link shows a large image of the work.',
+  },
   // 3.1.46 (2026-11-17) — R7 build step 1.
   wn_orders_papers_t: { fr: 'Commandes : une œuvre qui sort, un papier', en: 'Orders: a work goes out, a paper' },
   wn_orders_papers_d: {
