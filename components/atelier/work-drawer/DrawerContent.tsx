@@ -66,6 +66,7 @@ import { WorkAiDescriptionSection } from './WorkAiDescriptionSection'
 import { workWhen } from '@/lib/work-periods'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
+import { useConfirmStep } from '@/hooks/useConfirmStep'
 import { findOrderForWork, type ProcessOrderLink, type WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
 
 const WORK_CARD_VIEW_KEY = 'pem.workCard.view'
@@ -232,6 +233,10 @@ export function DrawerContent({
     return () => { live = false }
   }, [o.OeuvreID, o.statusId])
   const [noteBaseline, setNoteBaseline] = useState({ c: '', h: '' })
+  /** False after a session draft is restored: its Historique was edited from an older text, so the
+   *  server must keep every stored line (no base sent → union). docs/WORK_RULES.md rule 14. */
+  const historiqueBaseKnownRef = useRef(true)
+  const { confirmStep, confirmDialog } = useConfirmStep()
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
   const draftRestoreHandledKeyRef = useRef<string | null>(null)
@@ -670,6 +675,7 @@ export function DrawerContent({
           setCommentaires(c)
           setHistorique(h)
           setNoteBaseline({ c, h })
+          historiqueBaseKnownRef.current = true
           setEditorBaseline((prev) =>
             prev ? normalizeWorkFormDraftContent({ ...prev, commentaires: c, historique: h }) : prev,
           )
@@ -757,13 +763,30 @@ export function DrawerContent({
   // effect versions replayed programmatic writes (row sync, restores, other
   // effects) as if the user had clicked, mutating prodStage with zero input —
   // the source of the recurring false "Unsaved changes" dialog.
+  // Validating the photo of a studio work makes it Disponible and public (WORK_RULES §5, decided
+  // 2026-11-17): ask first, unless the work is already Disponible.
+  const loadedReady = prodStageFromOeuvre(o) === 'available'
+  const askPhotoGo = useCallback(
+    async (next: ProdStageId): Promise<boolean> => {
+      if (next !== 'available' || prodStage === 'available' || ownStage !== 'artist' || loadedReady) return true
+      return confirmStep({
+        title: t('wr_photo_go_title'),
+        body: t('wr_photo_go_body'),
+        confirmLabel: t('wr_photo_go_ok'),
+        cancelLabel: t('wr_photo_go_cancel'),
+      })
+    },
+    [prodStage, ownStage, loadedReady, confirmStep, t],
+  )
+
   const handleProdStageChange = useCallback((next: ProdStageId) => {
-    setProdStage(next)
-  }, [])
+    void askPhotoGo(next).then((ok) => { if (ok) setProdStage(next) })
+  }, [askPhotoGo])
 
   const handleNeedsPhotoChange = useCallback((v: boolean) => {
-    setProdStage(v ? 'catalogued' : 'available')
-  }, [])
+    const next: ProdStageId = v ? 'catalogued' : 'available'
+    void askPhotoGo(next).then((ok) => { if (ok) setProdStage(next) })
+  }, [askPhotoGo])
 
   useEffect(() => {
     if (ownStage === 'gift') {
@@ -949,6 +972,8 @@ export function DrawerContent({
     fd.append('is_paid', paymentDone ? '1' : '0')
     fd.append('commentaires', commentaires)
     fd.append('historique', historique)
+    // The text this card loaded: the server keeps any line the database wrote since (rule 14).
+    if (historiqueBaseKnownRef.current) fd.append('historique_base', noteBaseline.h)
     fd.append('catalogued', prodStage !== 'atelier' ? '1' : '0')
     fd.append('needs_photograph', needsPhoto ? '1' : '0')
     fd.append('anonymity_level', String(anonymityLevel))
@@ -1071,6 +1096,7 @@ export function DrawerContent({
     paymentDone,
     commentaires,
     historique,
+    noteBaseline,
     anonymityLevel,
     selThemes,
     selGroups,
@@ -1159,6 +1185,7 @@ export function DrawerContent({
       return
     }
     applyDraftContentToForm(d)
+    historiqueBaseKnownRef.current = false
   }, [longTextReady, draftKey, draftSnapshot, editorBaseline, applyDraftContentToForm, t])
 
   useEffect(() => {
@@ -1452,6 +1479,7 @@ export function DrawerContent({
   return (
     // `wc-card`: phone hit areas (app/globals.css); display: contents keeps the sticky header / bar.
     <div className="wc-card" style={{ display: 'contents' }}>
+      {confirmDialog}
       {/* ═══ HEADER ═══ */}
       <div
         data-testid="work-card-header"

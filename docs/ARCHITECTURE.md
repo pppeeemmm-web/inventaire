@@ -78,16 +78,16 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 
 | Writer | Writes | Notes |
 |---|---|---|
-| `saveWork` (`app/atelier/works/actions.ts`) | Most `Oeuvres` fields incl. `statusId` (one stage, no separate photo switch since 2026-11-17); no history line / status event / task sync of its own | Non-admin edits on existing works → `pending_changes` (keys in `lib/work-pending-keys.ts`); approval replays `saveWork` |
+| `saveWork` (`app/atelier/works/actions.ts`) | Most `Oeuvres` fields incl. `statusId` (one stage, no separate photo switch since 2026-11-17); no history line / status event / task sync of its own. `Historique` only when edited, merged with lines the database wrote since the card loaded it (`historique_base`, [`lib/historique-merge.ts`](../lib/historique-merge.ts), WORK_RULES batch 2) | Non-admin edits on existing works → `pending_changes` (keys in `lib/work-pending-keys.ts`); approval replays `saveWork` |
 | Drawer pipeline stages | Status 1/2/3/4/7/8/6/11 via orders | 9/10 not offered |
 | Production board (`Production.tsx` → server `production-board-actions.ts` since 2026-11-17; shows a refusal) | `Catalogué`, `NeedsPhotograph`, other tasks' fields; status and stage tasks follow in the database; drag-back (desktop, 2026-11-13) deletes the pending source row, adds the target row; onto Catalogue: `Catalogué=false`, `statusId=1` | Columns: not catalogued → Catalogue only; Photography needs catalogued; handling columns stack; forward onto Photography only by ✓ |
 | Image descriptions (`describe_batch.py`, service role) | `work_description` (AI, unverified); feeds `oeuvre_search_text` → node pending | Never writes `Commentaires`; one row per work + cover + engine + prompt |
 | Work drawer links (`WorkLinksSection`), See again **Link** | `tblrelations` (source = this work, target = other; `lib/work-links.ts` types: painted_on, derived_from, answers, series, diptych, influence, proximity) via `insertConstellationRelation` | Human links only; the Constellation draws unknown types with its default edge |
 | Orders: sales, consignments, gifts, exhibitions | `statusId`, `ContactID`, `LocalisationID` | Through the holder check |
-| Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address (no « gift » flag since 2026-11-17) | Archive: checks first and names the works not catalogued; nothing changes if one blocks (2026-11-17) |
+| Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address (no « gift » flag since 2026-11-17) | Archive: checks first and names the works not catalogued; « Catalogué »: names the works with no photo (WORK_RULES rule 2); nothing changes if one blocks (2026-11-17) |
 | Field session apply (`app/atelier/session/actions.ts`) | New work (`Titre`, size, `Technique`, `Support`, `statusId` 1, `NeedsPhotograph`, `production_started_on`, `Historique`); images via `addWorkImage` | Existing works: size/technique/support display-only, never written back |
 | Condition reports | `condition_report` → fate via §1 | Admin for destroyed/lost |
-| Version restore (`restoreOeuvreVersion`, admin) | Snapshot row minus `OeuvreID`, `is_public`, `txtImageNameLink`, `created_at`, `fate*`, `status_before_fate` | Refused while a fate is open (`fate_open`); a snapshot with status 9/10 and no fate is refused by the guard |
+| Version restore (`restoreOeuvreVersion`, admin) | Snapshot row minus `OeuvreID`, `is_public`, `txtImageNameLink`, `created_at`, `fate*`, `status_before_fate`; `Historique` = the snapshot's text + every line written since | Refused while a fate is open (`fate_open`); a snapshot with status 9/10 and no fate is refused by the guard |
 
 ## 6. Derived values (display only, nothing stored)
 

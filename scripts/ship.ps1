@@ -36,6 +36,27 @@ if (-not $NoChecks -and ($dirty -or $willPush)) {
   Write-Host "Checks: i18n, chrome, typecheck, lint passed"
 }
 
+# Work rule checks (docs/WORK_RULES.md §6, Pem's GO 2026-11-17): before a push, read only, only when a
+# DB URL is set locally (env or .env.local SUPABASE_DB_URL) and psql is installed. Breaks are a warning,
+# never a block; a missing URL or psql never blocks a push.
+if ($willPush) {
+  $dbUrl = $env:SUPABASE_DB_URL
+  if (-not $dbUrl -and (Test-Path .env.local)) {
+    $line = Get-Content .env.local | Where-Object { $_ -match '^\s*SUPABASE_DB_URL\s*=' } | Select-Object -First 1
+    if ($line) { $dbUrl = ($line -replace '^\s*SUPABASE_DB_URL\s*=\s*', '').Trim().Trim('"').Trim("'") }
+  }
+  $psql = Get-Command psql -ErrorAction SilentlyContinue
+  if (-not $dbUrl) { Write-Host "rule checks skipped (no DB URL)" }
+  elseif (-not $psql) { Write-Host "rule checks skipped (no psql)" }
+  else {
+    $sql = "begin;`nset transaction read only;`nset local statement_timeout = '120s';`n" + (Get-Content -Raw supabase/sql/work_rules_checks.sql) + "`nrollback;`n"
+    $rows = @($sql | & $psql.Source $dbUrl -X -q -A -t -F ' | ' -v ON_ERROR_STOP=1 -f - 2>&1 | Where-Object { "$_".Trim() })
+    if ($LASTEXITCODE -ne 0) { Write-Host "rule checks could not run (psql exit $LASTEXITCODE) — not blocking"; $rows | Select-Object -First 5 | Write-Host }
+    elseif ($rows.Count) { Write-Host "WARNING rule checks: $($rows.Count) break(s) — rule | work | title | detail:"; $rows | Write-Host }
+    else { Write-Host "Rule checks: all rules hold" }
+  }
+}
+
 if ($dirty) {
 
   G add -A | Out-Null

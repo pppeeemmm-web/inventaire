@@ -17,6 +17,7 @@ import {
 import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
+import { historiqueToStore } from '@/lib/historique-merge'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
@@ -503,7 +504,12 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // User-edited text. The status / owner / custodian lines are written by the database on the
     // same update (oeuvre_history, docs/WORK_RULES.md rule 14), so no screen can forget them.
-    const finalHistorique = historique ?? current?.Historique ?? ''
+    // The card sends the text it loaded (`historique_base`): a line the database added after the
+    // card opened is kept, and an untouched Historique is not written at all (batch 2).
+    const historiqueBase = formData.has('historique_base')
+      ? String(formData.get('historique_base') ?? '')
+      : null
+    const finalHistorique = historiqueToStore(historique, historiqueBase, current?.Historique)
 
     // Upload new image if provided via form (separate from ImageManager flow)
     let formUploadedNewImage = false
@@ -538,7 +544,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       statusId:     sid,
       ContactID:    contactId,
       Commentaires:      commentaires,
-      Historique:        finalHistorique,
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
       localisation_address_id: localisationAddressId,
@@ -581,6 +586,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     for (const [column, formKey] of Object.entries(OPTIONAL_UPDATE_COLUMNS)) {
       if (!formData.has(formKey)) delete updatePayload[column]
     }
+
+    if (finalHistorique !== undefined) updatePayload.Historique = finalHistorique
 
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName

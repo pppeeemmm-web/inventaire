@@ -184,6 +184,32 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     }
   }
 
+  // Catalogué needs at least one photo (docs/WORK_RULES.md rule 2 — same gate as the work card and
+  // the Production board). Check the works not yet catalogued; nothing changes if one has none.
+  if (update['Catalogué'] === true) {
+    const { data: toCatalogue, error: tcErr } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID')
+      .in('OeuvreID', ids)
+      .is('deleted_at', null)
+      .not('Catalogué', 'is', true)
+    if (tcErr) return { error: tcErr.message }
+    const candidates = (toCatalogue ?? []).map((r) => r.OeuvreID as number)
+    if (candidates.length) {
+      const { data: imgs, error: imgErr } = await supabase
+        .from('tblImage')
+        .select('OeuvreID')
+        .in('OeuvreID', candidates)
+      if (imgErr) return { error: imgErr.message }
+      const withPhoto = new Set((imgs ?? []).map((r) => r.OeuvreID as number))
+      const noPhoto = candidates.filter((id) => !withPhoto.has(id)).sort((a, b) => a - b)
+      if (noPhoto.length) {
+        const list = noPhoto.slice(0, 20).map((id) => `#${id}`).join(', ')
+        return { error: `catalogue_requires_photo_ids:${list}${noPhoto.length > 20 ? ` (+${noPhoto.length - 20})` : ''}` }
+      }
+    }
+  }
+
   const commentToAdd      = changes.Commentaires?.trim() || ''
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasComment        = commentToAdd.length > 0

@@ -42,6 +42,10 @@ export const batchEditMessages = defineMessages({
   bm_chip_themes: { fr: 'Thèmes', en: 'Themes' },
   bm_chip_groups: { fr: 'Groupes', en: 'Groups' },
   bm_chip_note: { fr: 'Note ajoutée', en: 'Note appended' },
+  bm_err_catalogue_requires_photo_ids: {
+    fr: 'Catalogué : ces œuvres n’ont aucune photo — {ids}. Ajoutez au moins une photo à chacune. Rien n’a été modifié.',
+    en: 'Catalogued: these works have no photo — {ids}. Add at least one photo to each. Nothing was changed.',
+  },
   bm_admin_only_hint: {
     fr: 'Statut, prix, emplacement, attributs et notes : réservés à l’admin (relecture des modifications).',
     en: 'Status, price, location, flags and notes: admin only (edits go through review).',

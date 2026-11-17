@@ -19,6 +19,7 @@ import { imageUrl, thumbUrl, yearOf, statusOf } from '@/lib/data'
 import { isInProduction } from '@/lib/production-scope'
 import { addBoardTask, completeBoardTask, moveBoardTask, type BoardResult } from '@/app/atelier/works/production-board-actions'
 import { gateErrorKey } from '@/lib/work-save-error'
+import { useConfirmStep } from '@/hooks/useConfirmStep'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { MissingThumb, WorkThumb, SuggestionThumb } from '@/components/atelier/WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
@@ -86,6 +87,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const [actions,     setActions]     = useState<WorkAction[]>([])
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [localOeuvres, setLocalOeuvres] = useState<Oeuvre[]>(oeuvres)
+  const { confirmStep, confirmDialog } = useConfirmStep()
   const [loading,     setLoading]     = useState(true)
   const [editingTypes, setEditingTypes] = useState(false)
 
@@ -180,6 +182,17 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   }
 
   async function markDone(oeuvreId: number, actionTypeId: number) {
+    // Photo validated on a studio work → Disponible + public (WORK_RULES §5, decided 2026-11-17): ask first.
+    const w = oeuvresById.get(oeuvreId)
+    if (actionTypeId === 6 && (w?.statusId === 1 || w?.statusId === 2) && w?.Catalogué) {
+      const ok = await confirmStep({
+        title: t('wr_photo_go_title'),
+        body: t('wr_photo_go_body'),
+        confirmLabel: t('wr_photo_go_ok'),
+        cancelLabel: t('wr_photo_go_cancel'),
+      })
+      if (!ok) return
+    }
     applyBoardResult(oeuvreId, await completeBoardTask(oeuvreId, actionTypeId))
   }
 
@@ -229,6 +242,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 
   return (
     <div style={{ padding: narrow ? '12px 16px 0' : '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: 'auto', width: '100%', flex: 1 }}>
+      {confirmDialog}
 
       {/* Header — Ring A.3: stack on narrow (field terminal) */}
       <div

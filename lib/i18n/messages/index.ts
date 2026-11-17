@@ -58,6 +58,7 @@ import { exportUiMessages } from './export-ui.messages'
 import { voiceCaptureMessages } from './voice-capture.messages'
 import { constellationToolsMessages } from './constellation-tools.messages'
 import { versionFieldsMessages } from './version-fields.messages'
+import { workRulesMessages } from './work-rules.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -120,6 +121,7 @@ export const featureMessages = {
   ...voiceCaptureMessages,
   ...constellationToolsMessages,
   ...versionFieldsMessages,
+  ...workRulesMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

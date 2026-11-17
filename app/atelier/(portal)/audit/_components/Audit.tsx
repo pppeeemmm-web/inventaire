@@ -11,10 +11,11 @@ import {
 import { PendingQueue } from '@/components/atelier/PendingQueue'
 import { PendingWorkSessions } from '@/components/atelier/PendingWorkSessions'
 import { FilLog } from '@/components/atelier/FilLog'
+import { WorkRulesPanel } from '@/components/atelier/WorkRulesPanel'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { toast } from '@/lib/ui/toast'
 
-type AuditView = 'ledger' | 'pending' | 'fil'
+type AuditView = 'ledger' | 'pending' | 'fil' | 'rules'
 
 /** Ledger · Pending · Retirés du Fil (R1 step 6: Audit is the system ledger, discards included). */
 function AuditSubtabs({ view, setView }: { view: AuditView; setView: (v: AuditView) => void }) {
@@ -23,6 +24,8 @@ function AuditSubtabs({ view, setView }: { view: AuditView; setView: (v: AuditVi
     { id: 'ledger', label: t('audit_view_ledger') },
     { id: 'pending', label: t('audit_view_pending') },
     { id: 'fil', label: t('fil_log_title') },
+    // Work rule checks (WORK_RULES batch 2), read only, admin only (the action refuses others).
+    { id: 'rules', label: t('wr_tab') },
   ] as const
   return (
     <div style={{ display: 'flex', gap: 8 }}>
@@ -74,7 +77,7 @@ export function Audit() {
     setCheckedIds(new Set())
   }, [filter])
 
-  if (view === 'pending' || view === 'fil') {
+  if (view === 'pending' || view === 'fil' || view === 'rules') {
     return (
       <div data-testid="audit-tab-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)' }}>
@@ -83,6 +86,8 @@ export function Audit() {
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           {view === 'fil' ? (
             <FilLog />
+          ) : view === 'rules' ? (
+            <WorkRulesPanel />
           ) : (
             <>
               <PendingQueue />

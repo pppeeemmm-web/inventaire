@@ -52,6 +52,7 @@ import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkRecordPhone } from '@/components/atelier/WorkRecordPhone'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
+import { useConfirmStep } from '@/hooks/useConfirmStep'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,9 @@ export function WorkForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
+  /** False once a session draft is restored (its Historique may predate lines the database wrote). */
+  const historiqueBaseKnownRef = useRef(true)
+  const { confirmStep, confirmDialog } = useConfirmStep()
   const undoBaselineRef = useRef<WorkRevertSnapshot | null>(null)
   const draftKey = useMemo(() => draftStorageKey(oeuvre?.OeuvreID ?? null), [oeuvre?.OeuvreID])
   const draftPromptedForKey = useRef<string | null>(null)
@@ -338,6 +342,7 @@ export function WorkForm({
     setBroadcastReady(!!d.broadcastReady)
     setCommentaires(d.commentaires ?? '')
     setHistorique(d.historique ?? '')
+    historiqueBaseKnownRef.current = false
     setSelThemes(new Set(d.selThemes ?? []))
     setSelGroups(new Set(d.selGroups ?? []))
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore per draftKey; setters stable
@@ -456,6 +461,10 @@ export function WorkForm({
     fd.set('is_paid', paymentDone ? '1' : '0')
     fd.set('commentaires', commentaires)
     fd.set('historique', historique)
+    // Edit: the text this form loaded, so the server keeps lines the database wrote since (rule 14).
+    if (oeuvre && historiqueBaseKnownRef.current && typeof (oeuvre as { Historique?: unknown }).Historique === 'string') {
+      fd.set('historique_base', (oeuvre as { Historique: string }).Historique)
+    }
     // A new work starts at Pem: Pem owns and holds it; for Reserved the picked contact is the
     // buyer (docs/WORK_CUSTODY_MODEL.md). Consignment / loan / sale / gift come later, by order.
     const pemId = pemContact ? String(pemContact.ContactID) : String(PEM_CONTACT_ID)
@@ -613,8 +622,22 @@ export function WorkForm({
     )
   }
 
+  // Validating the photo of a studio work makes it Disponible and public (WORK_RULES §5, decided
+  // 2026-11-17): ask first, unless the work is already Disponible.
+  async function askPhotoGo(next: ProdStageId): Promise<boolean> {
+    const loadedReady = oeuvre ? prodStageFromOeuvre(oeuvre) === 'available' : false
+    if (next !== 'available' || prodStage === 'available' || ownStage !== 'artist' || loadedReady) return true
+    return confirmStep({
+      title: t('wr_photo_go_title'),
+      body: t('wr_photo_go_body'),
+      confirmLabel: t('wr_photo_go_ok'),
+      cancelLabel: t('wr_photo_go_cancel'),
+    })
+  }
+
   return (
     <div data-testid="work-form-root" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>
+      {confirmDialog}
       {/* Header */}
       <div style={{ flexShrink: 0, padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="row gap-md">
@@ -793,13 +816,14 @@ export function WorkForm({
               <SectionHeader title={t('wf_section_production')} />
               <PipeProgress stages={PRODUCTION_STAGES} current={prodStage} onSelect={(id) => {
                 if (isOwnershipTransferred || isArchived) return
-                setProdStage(id as ProdStageId)
+                void askPhotoGo(id as ProdStageId).then((ok) => { if (ok) setProdStage(id as ProdStageId) })
               }} color={PROD_STAGE_COLOR[prodStage]} />
               <div style={{ display: 'flex', gap: 32, marginTop: 20 }}>
                 <Switch label={t('wf_photo_required')} checked={needsPhoto} onChange={v => {
                   // The photo switch moves between the Catalogué step and Disponible; at the Atelier step it waits.
                   if (isOwnershipTransferred || isArchived || prodStage === 'atelier') return
-                  setProdStage(v ? 'catalogued' : 'available')
+                  const next: ProdStageId = v ? 'catalogued' : 'available'
+                  void askPhotoGo(next).then((ok) => { if (ok) setProdStage(next) })
                 }} />
                 <Switch label={t('wf_exposable')} checked={exposable} onChange={setExposable} />
               </div>

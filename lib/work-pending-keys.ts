@@ -20,6 +20,8 @@ export const PENDING_SCALAR_FORM_KEYS = [
   'contact_id',
   'commentaires',
   'historique',
+  /** The Historique text the editor loaded — saveWork keeps lines the database wrote since. */
+  'historique_base',
   'localisation_id',
   'localisation_detail',
   'localisation_address_id',
@@ -232,7 +234,7 @@ export const PENDING_REF_KEYS = [
 ] as const
 
 /** Never shown in the review diff: routing, image bookkeeping, internal flags. */
-const PENDING_DIFF_SKIP_KEYS = new Set<string>(['oeuvre_id', 'image_existing', ...PENDING_INTERNAL_KEYS])
+const PENDING_DIFF_SKIP_KEYS = new Set<string>(['oeuvre_id', 'image_existing', 'historique_base', ...PENDING_INTERNAL_KEYS])
 
 const CHECKBOX_KEY_SET = new Set<string>(PENDING_CHECKBOX_KEYS)
 

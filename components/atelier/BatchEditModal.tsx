@@ -267,6 +267,9 @@ export function BatchEditModal({
           // Archive needs a catalogued work (archive_shelf.sql): name the works that block it.
           const notCatalogued = r.error.match(/^archive_requires_catalogue_ids:(.+)$/)
           if (notCatalogued) { setError(t('err_archive_requires_catalogue_ids_fmt').replace('{ids}', notCatalogued[1])); return }
+          // Catalogué needs a photo (WORK_RULES rule 2): name the works without one.
+          const noPhoto = r.error.match(/^catalogue_requires_photo_ids:(.+)$/)
+          if (noPhoto) { setError(t('bm_err_catalogue_requires_photo_ids').replace('{ids}', noPhoto[1])); return }
           const gate = gateErrorKey(r.error); setError(gate ? t(gate) : r.error); return
         }
         onDone(r.updated)

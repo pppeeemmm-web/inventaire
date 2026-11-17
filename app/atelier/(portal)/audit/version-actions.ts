@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { unionHistorique } from '@/lib/historique-merge'
 
 export interface OeuvreVersion {
   id:          number
@@ -90,6 +91,18 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
   for (const [k, v] of Object.entries(snap)) {
     if (skip.has(k)) continue
     payload[k] = v
+  }
+
+  // Historique is the work's log, written by the database (docs/WORK_RULES.md rule 14): a restore
+  // brings back the snapshot's text and keeps every line written since, never drops one.
+  if ('Historique' in payload) {
+    const { data: cur, error: curErr } = await supabase
+      .from('Oeuvres').select('Historique').eq('OeuvreID', oeuvreId).maybeSingle()
+    if (curErr) return { error: curErr.message }
+    payload.Historique = unionHistorique(
+      typeof payload.Historique === 'string' ? payload.Historique : null,
+      cur?.Historique ?? null,
+    )
   }
 
   const { error: uErr } = await svc
