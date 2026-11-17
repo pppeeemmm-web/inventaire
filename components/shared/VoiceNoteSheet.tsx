@@ -23,6 +23,7 @@ import {
   type MicFailure,
 } from '@/lib/voice/mic-permission'
 import { toast } from '@/lib/ui/toast'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
 /**
@@ -31,6 +32,12 @@ import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
  * started); title, kind, work, text and follow-up are optional and added after. Every outcome
  * is shown: live timer + level + bytes while recording, « Saved · 0:42 » with a replay, or a
  * red « Not saved » with Retry while the audio is still held in memory.
+ *
+ * R2 phone 3 (2026-11-17): live words show while recording when the browser can (Web Speech,
+ * same engine as « Dicter »); they are saved with the audio as the note's first text
+ * (`voice_note.transcript`). The PC transcript still comes later as its own Journal entry and
+ * never touches that text. On the phone the kind / project chips are gone (a voice note is a
+ * Journal entry; defaults memo · general are still saved).
  */
 
 type NextActionKey = 'today' | 'tomorrow' | 'week' | 'waiting' | 'none'
@@ -44,6 +51,16 @@ const AUDIO_BITS_PER_SECOND = 32_000
 /** A Server Action body is capped at 4.5 MB on Vercel; stop and save before that. */
 const MAX_UPLOAD_BYTES = 4_200_000
 const LEVEL_BARS = 24
+/** Per-device switch for live words (on by default); the audio is kept either way. */
+const LIVE_WORDS_KEY = 'pem.voice-note.live-words.v1'
+
+function readLiveWordsPref(): boolean {
+  try {
+    return window.localStorage.getItem(LIVE_WORDS_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
 
 type Details = {
   subject: string
@@ -63,7 +80,7 @@ const emptyDetails = (oeuvreId: string): Details => ({
   nextAction: 'none',
 })
 
-type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date }
+type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date; transcript: string }
 type SavedNote = { id: string; durationMs: number | null; recordedAt: Date }
 
 function nextActionLabelKey(k: NextActionKey): DictKey {
@@ -219,6 +236,12 @@ export function VoiceNoteSheet({
   const [interim, setInterim] = useState('')
   const [dictationAvailability, setDictationAvailability] =
     useState<ReturnType<typeof getLiveDictationAvailability>>('unsupported')
+  const narrow = useMediaQuery('(max-width: 767px)')
+  // Live words while recording: on/off per device; `liveFailed` = the engine stopped (mic shared, no network…).
+  const [liveWordsOn, setLiveWordsOn] = useState(true)
+  const [liveFailed, setLiveFailed] = useState(false)
+  const [liveText, setLiveText] = useState('')
+  const [liveInterim, setLiveInterim] = useState('')
 
   const phaseRef = useRef<Phase>('starting')
   phaseRef.current = phase
@@ -234,6 +257,9 @@ export function VoiceNoteSheet({
   const stopAndSaveRef = useRef<(reason: StopReason) => void>(() => {})
   const dictStopRef = useRef<(() => void) | null>(null)
   const interimRef = useRef('')
+  const liveStopRef = useRef<(() => void) | null>(null)
+  const liveTextRef = useRef('')
+  const liveInterimRef = useRef('')
   const primaryRef = useRef<HTMLButtonElement>(null)
   const detailsRef = useRef(details)
   detailsRef.current = details
@@ -272,6 +298,49 @@ export function VoiceNoteSheet({
     if (tail) setDetails((d) => ({ ...d, transcript: appendText(d.transcript, tail) }))
   }, [])
 
+  /** Ends live words; returns what was heard (finals + the last interim phrase). */
+  const stopLiveWords = useCallback((): string => {
+    liveStopRef.current?.()
+    liveStopRef.current = null
+    const text = appendText(liveTextRef.current, liveInterimRef.current)
+    liveInterimRef.current = ''
+    setLiveInterim('')
+    return text
+  }, [])
+
+  const startLiveWords = useCallback(
+    async (gen: number) => {
+      if (getLiveDictationAvailability() !== 'ready') return
+      const session = await startLiveDictation(speechLang, {
+        onInterim: (txt) => {
+          if (gen !== genRef.current) return
+          liveInterimRef.current = txt
+          setLiveInterim(txt)
+        },
+        onFinal: (txt) => {
+          if (gen !== genRef.current) return
+          liveInterimRef.current = ''
+          setLiveInterim('')
+          liveTextRef.current = appendText(liveTextRef.current, txt)
+          setLiveText(liveTextRef.current)
+        },
+        // Silent: the recording goes on; the panel just says the live words stopped.
+        onError: () => {
+          if (gen !== genRef.current) return
+          liveStopRef.current = null
+          setLiveFailed(true)
+        },
+      })
+      if (!session.ok) return
+      if (gen !== genRef.current || phaseRef.current !== 'recording') {
+        session.stop()
+        return
+      }
+      liveStopRef.current = session.stop
+    },
+    [speechLang],
+  )
+
   /** `background`: the sheet was closed while recording — report by toast only. */
   const upload = useCallback(async (background = false) => {
     const p = pendingRef.current
@@ -302,7 +371,7 @@ export function VoiceNoteSheet({
     fd.append('kind', d.kind)
     fd.append('bucket', d.bucket)
     fd.append('subject', '')
-    fd.append('transcript', '')
+    fd.append('transcript', p.transcript)
     if (d.oeuvreId.trim()) fd.append('oeuvre_id', d.oeuvreId.trim())
     const ext = p.mime.includes('mp4') ? 'm4a' : p.mime.includes('ogg') ? 'ogg' : 'webm'
     fd.append('audio', p.blob, `note.${ext}`)
@@ -335,7 +404,7 @@ export function VoiceNoteSheet({
       toast.success(t('vc_saved_fmt').replace('{d}', formatVoiceDuration(p.durationMs)))
       return
     }
-    const savedDetails = { ...detailsRef.current, subject: '', transcript: '', nextAction: 'none' as NextActionKey }
+    const savedDetails = { ...detailsRef.current, subject: '', transcript: p.transcript, nextAction: 'none' as NextActionKey }
     setSaved({ id: res.id, durationMs: p.durationMs, recordedAt: p.recordedAt })
     setBaseline(savedDetails)
     setDetails(savedDetails)
@@ -349,6 +418,7 @@ export function VoiceNoteSheet({
       sessionRef.current = null
       const started = startedAtRef.current
       const durationMs = started ? Date.now() - started.ms : 0
+      const heard = stopLiveWords()
       teardownMeters()
       setStopReason(reason)
       setConfirmDiscard(false)
@@ -371,7 +441,7 @@ export function VoiceNoteSheet({
         } else toast.error(`${t('vc_failed_title')} — ${t('vc_err_empty')}`)
         return
       }
-      pendingRef.current = { blob, mime, durationMs, recordedAt: started?.at ?? new Date() }
+      pendingRef.current = { blob, mime, durationMs, recordedAt: started?.at ?? new Date(), transcript: heard }
       setHasPending(true)
       if (reason !== 'closed') {
         revokeAudioUrl()
@@ -379,13 +449,17 @@ export function VoiceNoteSheet({
       }
       await upload(reason === 'closed')
     },
-    [revokeAudioUrl, t, teardownMeters, upload],
+    [revokeAudioUrl, stopLiveWords, t, teardownMeters, upload],
   )
   stopAndSaveRef.current = (reason) => void stopAndSave(reason)
 
   const startRecording = useCallback(async () => {
     const gen = ++genRef.current
     stopDictation()
+    stopLiveWords()
+    liveTextRef.current = ''
+    setLiveText('')
+    setLiveFailed(false)
     revokeAudioUrl()
     pendingRef.current = null
     setHasPending(false)
@@ -436,7 +510,9 @@ export function VoiceNoteSheet({
     sessionRef.current = session
     const startMs = Date.now()
     startedAtRef.current = { ms: startMs, at: new Date(startMs) }
+    phaseRef.current = 'recording'
     setPhase('recording')
+    if (readLiveWordsPref()) void startLiveWords(gen)
     tickRef.current = window.setInterval(() => setElapsedMs(Date.now() - startMs), 250)
 
     try {
@@ -472,10 +548,28 @@ export function VoiceNoteSheet({
     } catch {
       /* not granted / not supported */
     }
-  }, [defaultWork, revokeAudioUrl, stopDictation])
+  }, [defaultWork, revokeAudioUrl, startLiveWords, stopDictation, stopLiveWords])
+
+  const toggleLiveWords = useCallback(() => {
+    const next = !liveWordsOn
+    setLiveWordsOn(next)
+    try {
+      window.localStorage.setItem(LIVE_WORDS_KEY, next ? 'on' : 'off')
+    } catch {
+      /* private mode */
+    }
+    if (!next) {
+      liveTextRef.current = stopLiveWords()
+      setLiveText(liveTextRef.current)
+    } else if (phaseRef.current === 'recording' && !liveStopRef.current) {
+      setLiveFailed(false)
+      void startLiveWords(genRef.current)
+    }
+  }, [liveWordsOn, startLiveWords, stopLiveWords])
 
   const discardRecording = useCallback(() => {
     genRef.current++
+    stopLiveWords()
     const session = sessionRef.current
     sessionRef.current = null
     teardownMeters()
@@ -483,13 +577,14 @@ export function VoiceNoteSheet({
     pendingRef.current = null
     setHasPending(false)
     onClose()
-  }, [onClose, teardownMeters])
+  }, [onClose, stopLiveWords, teardownMeters])
 
   // ── Open / close lifecycle ───────────────────────────────────────────────────
 
   useEffect(() => {
     if (!open) return
     setDictationAvailability(getLiveDictationAvailability())
+    setLiveWordsOn(readLiveWordsPref())
     void startRecording()
     // startRecording reads defaultWork; reopening is what should restart, not prop churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -620,6 +715,7 @@ export function VoiceNoteSheet({
 
   const enterTextMode = useCallback(() => {
     genRef.current++
+    stopLiveWords()
     const session = sessionRef.current
     sessionRef.current = null
     teardownMeters()
@@ -646,7 +742,7 @@ export function VoiceNoteSheet({
     setBaseline(emptyDetails(defaultWork))
     setDetails(d)
     setPhase('text')
-  }, [defaultWork, teardownMeters])
+  }, [defaultWork, stopLiveWords, teardownMeters])
 
   const guard = useUnsavedActionGuard({
     isDirty: dirty,
@@ -813,6 +909,11 @@ export function VoiceNoteSheet({
               onKeep={() => setConfirmDiscard(false)}
               onDiscard={discardRecording}
               stopRef={primaryRef}
+              live={
+                recording && dictationAvailability === 'ready'
+                  ? { on: liveWordsOn, failed: liveFailed, text: appendText(liveText, liveInterim), onToggle: toggleLiveWords }
+                  : null
+              }
             />
           ) : null}
 
@@ -890,6 +991,7 @@ export function VoiceNoteSheet({
                 setInterim('')
               }}
               oeuvreOptions={oeuvreOptions}
+              showKindBucket={!narrow}
             />
           ) : null}
         </div>
@@ -1005,6 +1107,7 @@ function RecordingPanel({
   onKeep,
   onDiscard,
   stopRef,
+  live,
 }: {
   t: TFn
   recording: boolean
@@ -1018,6 +1121,8 @@ function RecordingPanel({
   onKeep: () => void
   onDiscard: () => void
   stopRef: RefObject<HTMLButtonElement | null>
+  /** Live words while recording; null when the browser can't. */
+  live: { on: boolean; failed: boolean; text: string; onToggle: () => void } | null
 }) {
   const noData = recording && elapsedMs > 2000 && bytes === 0
   return (
@@ -1091,6 +1196,32 @@ function RecordingPanel({
       {permHint ? (
         <div style={{ fontSize: 14, lineHeight: 1.5, textAlign: 'center', padding: '0 8px', fontWeight: 600 }}>{t('vc_perm_hint')}</div>
       ) : null}
+      {live ? (
+        <div data-testid="ring-b-voice-live" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {live.on ? (
+            <div
+              aria-live="polite"
+              aria-label={t('vc_live_aria')}
+              style={{ minHeight: 56, maxHeight: 120, overflowY: 'auto', border: '1px dashed var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 15, lineHeight: 1.45, color: live.text ? 'var(--tx)' : 'var(--tx3)', overflowWrap: 'anywhere' }}
+            >
+              {live.text || (live.failed ? t('vc_live_stopped') : t('vc_live_listening'))}
+            </div>
+          ) : null}
+          {live.on && live.failed && live.text ? (
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('vc_live_stopped')}</div>
+          ) : null}
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="ring-b-voice-live-toggle"
+            aria-pressed={live.on}
+            onClick={live.onToggle}
+            style={{ minHeight: 44, alignSelf: 'center' }}
+          >
+            {live.on ? t('vc_live_off') : t('vc_live_on')}
+          </button>
+        </div>
+      ) : null}
       {recording ? (
         <div className="t-mono-sm" style={{ fontSize: 11, lineHeight: 1.45, color: 'var(--tx3)', textAlign: 'center', padding: '0 8px' }}>
           {t('vc_lock_hint')}
@@ -1128,6 +1259,7 @@ function DetailsFields({
   onToggleDictation,
   onTranscriptTyped,
   oeuvreOptions,
+  showKindBucket,
 }: {
   t: TFn
   heading: string | null
@@ -1139,6 +1271,8 @@ function DetailsFields({
   onToggleDictation: () => void
   onTranscriptTyped: () => void
   oeuvreOptions: { OeuvreID: number; Titre: string | null }[]
+  /** Desktop only: on the phone a voice note is a Journal entry, sorted later (R2 phone 3). */
+  showKindBucket: boolean
 }) {
   const set = <K extends keyof Details>(k: K, v: Details[K]) => setDetails((d) => ({ ...d, [k]: v }))
   const chip = (active: boolean) => ({
@@ -1188,23 +1322,27 @@ function DetailsFields({
         {dictating ? t('voice_dictate_stop') : t('voice_dictate_start')}
       </button>
 
-      <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_kind_label')}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-        {VOICE_NOTE_KINDS.map((k) => (
-          <button key={k} type="button" className="btn sm" aria-pressed={details.kind === k} onClick={() => set('kind', k)} style={chip(details.kind === k)}>
-            {t(kindKey(k))}
-          </button>
-        ))}
-      </div>
+      {showKindBucket ? (
+        <>
+          <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_kind_label')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {VOICE_NOTE_KINDS.map((k) => (
+              <button key={k} type="button" className="btn sm" aria-pressed={details.kind === k} onClick={() => set('kind', k)} style={chip(details.kind === k)}>
+                {t(kindKey(k))}
+              </button>
+            ))}
+          </div>
 
-      <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_bucket_label')}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-        {VOICE_NOTE_BUCKETS.map((b) => (
-          <button key={b} type="button" className="btn sm" aria-pressed={details.bucket === b} onClick={() => set('bucket', b)} style={chip(details.bucket === b)}>
-            {t(bucketKey(b))}
-          </button>
-        ))}
-      </div>
+          <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_bucket_label')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {VOICE_NOTE_BUCKETS.map((b) => (
+              <button key={b} type="button" className="btn sm" aria-pressed={details.bucket === b} onClick={() => set('bucket', b)} style={chip(details.bucket === b)}>
+                {t(bucketKey(b))}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {oeuvreOptions.length > 0 ? (
         <>

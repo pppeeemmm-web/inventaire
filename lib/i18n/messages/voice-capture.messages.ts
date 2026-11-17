@@ -9,6 +9,13 @@ export const voiceCaptureMessages = defineMessages({
   vc_title: { fr: 'Note vocale', en: 'Voice note' },
   vc_close: { fr: 'Fermer', en: 'Close' },
 
+  // Live words while recording (R2 phone 3 — « Dicter » folded into Vocal)
+  vc_live_aria: { fr: 'Mots entendus en direct', en: 'Words heard live' },
+  vc_live_listening: { fr: 'Les mots s’écrivent ici pendant que vous parlez…', en: 'Words appear here as you speak…' },
+  vc_live_stopped: { fr: 'Mots en direct arrêtés — l’audio continue d’enregistrer.', en: 'Live words stopped — the audio is still recording.' },
+  vc_live_off: { fr: 'Masquer les mots', en: 'Hide live words' },
+  vc_live_on: { fr: 'Afficher les mots en direct', en: 'Show live words' },
+
   // Starting / permission
   vc_starting: { fr: 'Ouverture du micro…', en: 'Opening the microphone…' },
   vc_perm_hint: {

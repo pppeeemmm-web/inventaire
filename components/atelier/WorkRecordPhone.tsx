@@ -59,6 +59,8 @@ export type WorkRecordPhoneProps = {
   pemContactId?: number | null
   /** « Tous les champs » → the full WorkForm. */
   onAllFields: () => void
+  /** First mode shown (`/atelier/works/new?record=reprise` → « Reprise »). */
+  initialMode?: Mode
 }
 
 /** Select ending with « + Nouveau … » (inline add kept on the phone, Pem v3). */
@@ -152,13 +154,13 @@ function WorkPicker({ value, onPick, label, testId }: { value: RecordWorkHit | n
   )
 }
 
-export function WorkRecordPhone({ techniques, supports, formats, action, shareInboxPrefill = null, pemContactId, onAllFields }: WorkRecordPhoneProps) {
+export function WorkRecordPhone({ techniques, supports, formats, action, shareInboxPrefill = null, pemContactId, onAllFields, initialMode = 'new' }: WorkRecordPhoneProps) {
   const { t } = useI18n()
   const router = useRouter()
   const ps = usePeriodSource()
   const [pending, startTransition] = useTransition()
 
-  const [mode, setMode] = useState<Mode>('new')
+  const [mode, setMode] = useState<Mode>(initialMode)
   const [files, setFiles] = useState<File[]>([])
   const fileRef = useRef<HTMLInputElement | null>(null)
   const sharedCount = shareInboxPrefill?.imageFiles?.length ?? 0

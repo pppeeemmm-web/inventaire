@@ -6,6 +6,7 @@
 import Link from 'next/link'
 import { useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 
@@ -15,9 +16,61 @@ const DOC_CHOICES = [
   { href: '/atelier/scan', icon: '🔍', label: 'today_doc_qr', sub: 'today_doc_qr_sub' },
 ] as const
 
+/** Today's session capture (Lightroom → Share). Callers pass it as `workHref` for admins only. */
+const SESSION_CAPTURE_HREF = '/atelier/session/new'
+
+// R2 phone 5 — the Œuvre sheet starts with the choice, so « Nouvelle / Ancienne » can't be skipped.
+// Nouvelle / Reprise open the R3 phone recording screen (`WorkRecordPhone`) on that mode.
+const WORK_CHOICES = [
+  { href: '/atelier/works/new', icon: '✨', label: 'today_work_new', sub: 'today_work_new_sub', testId: 'phone-work-new' },
+  { href: '/atelier/works/new?record=reprise', icon: '⟳', label: 'today_work_reprise', sub: 'today_work_reprise_sub', testId: 'phone-work-reprise' },
+  { href: SESSION_CAPTURE_HREF, icon: '📷', label: 'today_work_session', sub: 'today_work_session_sub', testId: 'phone-work-session' },
+] as const
+
+type Choice = { href: string; icon: string; label: DictKey; sub: DictKey; testId?: string }
+
+/** Bottom sheet of choices (Photo · doc, Œuvre). */
+function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choices: readonly Choice[]; onClose: () => void; testId: string }) {
+  const { t } = useI18n()
+  return (
+    <PemModalOverlay
+      onClose={onClose}
+      panelStyle={{
+        alignSelf: 'flex-end', width: '100%', borderRadius: '14px 14px 0 0',
+        padding: '12px 16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+      }}
+    >
+      <div data-testid={testId}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+          <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}>{title}</h2>
+          <button type="button" onClick={onClose} className="btn ghost sm" style={{ minHeight: 44 }}>{t('today_doc_close')}</button>
+        </div>
+        {choices.map((c) => (
+          <Link
+            key={c.href}
+            href={c.href}
+            onClick={onClose}
+            data-testid={c.testId}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, borderTop: '1px solid var(--bd)', color: 'var(--tx)', textDecoration: 'none' }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 20, width: 24, textAlign: 'center', flexShrink: 0 }}>{c.icon}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 15 }}>{t(c.label)}</span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t(c.sub)}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </PemModalOverlay>
+  )
+}
+
 export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; workHref: string }) {
   const { t } = useI18n()
   const [docOpen, setDocOpen] = useState(false)
+  const [workOpen, setWorkOpen] = useState(false)
+  // Capture is admin-only: only the session-capture href gets the sheet; anyone else keeps the plain link.
+  const workSheet = workHref === SESSION_CAPTURE_HREF
 
   const btn: CSSProperties = {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
@@ -44,38 +97,16 @@ export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; work
       >
         <Link href="/atelier/journal?today=1&write=1" data-testid="phone-bar-write" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</Link>
         <button type="button" onClick={onVoice} data-testid="phone-bar-voice" style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
-        <Link href={workHref} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</Link>
+        {workSheet ? (
+          <button type="button" onClick={() => setWorkOpen(true)} aria-expanded={workOpen} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</button>
+        ) : (
+          <Link href={workHref} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</Link>
+        )}
         <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>
       </nav>
 
-      {docOpen ? (
-        <PemModalOverlay
-          onClose={() => setDocOpen(false)}
-          panelStyle={{
-            alignSelf: 'flex-end', width: '100%', borderRadius: '14px 14px 0 0',
-            padding: '12px 16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-            <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}>{t('today_doc_title')}</h2>
-            <button type="button" onClick={() => setDocOpen(false)} className="btn ghost sm" style={{ minHeight: 44 }}>{t('today_doc_close')}</button>
-          </div>
-          {DOC_CHOICES.map((c) => (
-            <Link
-              key={c.href}
-              href={c.href}
-              onClick={() => setDocOpen(false)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, borderTop: '1px solid var(--bd)', color: 'var(--tx)', textDecoration: 'none' }}
-            >
-              <span aria-hidden="true" style={{ fontSize: 20 }}>{c.icon}</span>
-              <span>
-                <span style={{ display: 'block', fontSize: 15 }}>{t(c.label)}</span>
-                <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t(c.sub)}</span>
-              </span>
-            </Link>
-          ))}
-        </PemModalOverlay>
-      ) : null}
+      {docOpen ? <ChoiceSheet title={t('today_doc_title')} choices={DOC_CHOICES} onClose={() => setDocOpen(false)} testId="phone-doc-sheet" /> : null}
+      {workOpen ? <ChoiceSheet title={t('today_work_title')} choices={WORK_CHOICES} onClose={() => setWorkOpen(false)} testId="phone-work-sheet" /> : null}
     </>
   )
 }

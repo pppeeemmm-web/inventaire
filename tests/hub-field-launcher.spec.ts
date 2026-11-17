@@ -78,6 +78,16 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await expect(page).toHaveURL(/\/atelier\/capture\?.*mode=doc/, { timeout: 45_000 })
   })
 
+  test('Œuvre starts with the choice; Reprise opens the recording screen on Reprise', async ({ page }) => {
+    await openHub(page)
+    await page.getByTestId('phone-bar-work').click()
+    await expect(page.getByTestId('phone-work-sheet')).toBeVisible()
+    for (const id of ['new', 'reprise', 'session']) await expect(page.getByTestId(`phone-work-${id}`)).toBeVisible()
+    await page.getByTestId('phone-work-reprise').click()
+    await expect(page).toHaveURL(/\/atelier\/works\/new\?record=reprise/, { timeout: 45_000 })
+    await expect(page.getByTestId('work-record-mode-reprise')).toHaveAttribute('aria-pressed', 'true', { timeout: 45_000 })
+  })
+
   test('journal day opens the voice note sheet', async ({ page }) => {
     await page.goto('/atelier/journal?today=1')
     await page.getByTestId('phone-bar-voice').click({ timeout: 45_000 })

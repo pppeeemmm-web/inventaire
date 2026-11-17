@@ -70,6 +70,8 @@ interface Props {
   activeConsignment?: any
   action:          (fd: FormData) => Promise<SaveResult>
   shareInboxPrefill?: ShareInboxWorkPrefill | null
+  /** Phone recording screen's first mode (new work only). */
+  recordMode?: 'new' | 'reprise'
 }
 
 export function WorkForm({
@@ -84,6 +86,7 @@ export function WorkForm({
   activeConsignment,
   action,
   shareInboxPrefill = null,
+  recordMode = 'new',
 }: Props) {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -622,6 +625,7 @@ export function WorkForm({
         shareInboxPrefill={shareInboxPrefill}
         pemContactId={pemContact?.ContactID ?? null}
         onAllFields={() => setAllFields(true)}
+        initialMode={recordMode}
       />
     )
   }

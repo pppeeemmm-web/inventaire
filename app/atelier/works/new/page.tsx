@@ -9,10 +9,12 @@ import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 export default async function NewWorkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ shareInbox?: string }>
+  searchParams: Promise<{ shareInbox?: string; record?: string }>
 }) {
   const sp = await searchParams
   const shareInboxId = sp.shareInbox?.trim() || null
+  // R2 Œuvre sheet: `?record=reprise` opens the phone recording screen on « Reprise ».
+  const recordMode = sp.record === 'reprise' ? 'reprise' : 'new'
 
   const supabase = await createClient()
 
@@ -61,6 +63,7 @@ export default async function NewWorkPage({
         activeConsignment={null}
         action={saveWork}
         shareInboxPrefill={shareInboxPrefill}
+        recordMode={recordMode}
       />
     </NewWorkPageShell>
   )
