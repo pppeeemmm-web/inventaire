@@ -23,6 +23,7 @@ import {
 import { toast } from '@/lib/ui/toast'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
+import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -371,7 +372,7 @@ export function TodayFolds({ day, showChanges }: { day: string; showChanges: boo
                       #{c.oeuvre_id}
                       {c.title ? ` ${c.title}` : ''}
                     </Link>
-                    <span style={{ color: 'var(--tx3)' }}> — {c.fields.join(', ')}</span>
+                    <span style={{ color: 'var(--tx3)' }}> — {c.fields.map((f) => versionFieldLabel(f, t)).join(', ')}</span>
                   </li>
                 ))}
               </ul>

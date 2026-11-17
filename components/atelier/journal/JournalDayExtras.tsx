@@ -15,6 +15,7 @@ import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
+import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import {
@@ -635,7 +636,7 @@ export function JournalDayExtras({
                   #{c.oeuvre_id}
                   {c.title ? ` ${c.title}` : ''}
                 </WorkRef>
-                <span style={{ color: 'var(--tx3)' }}> — {c.fields.join(', ')}</span>
+                <span style={{ color: 'var(--tx3)' }}> — {c.fields.map((f) => versionFieldLabel(f, t)).join(', ')}</span>
               </li>
             ))}
           </ul>

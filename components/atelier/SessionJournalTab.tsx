@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { imageUrl, thumbUrl } from '@/lib/data'
@@ -190,7 +191,7 @@ function VersionCompare({ compare }: { compare: WorkSessionVersionCompare }) {
         <ul className="t-mono-sm" style={{ margin: 0, paddingLeft: 16, fontSize: 10, color: 'var(--tx2)', lineHeight: 1.5 }}>
           {compare.changes.slice(0, 8).map((change) => (
             <li key={change.field}>
-              <span style={{ color: 'var(--tx3)' }}>{change.field}</span>
+              <span style={{ color: 'var(--tx3)' }}>{versionFieldLabel(change.field, t)}</span>
               {' → '}
               <span style={{ color: 'var(--ac)' }}>{change.after == null || change.after === '' ? '—' : String(change.after)}</span>
             </li>

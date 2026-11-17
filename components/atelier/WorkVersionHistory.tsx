@@ -8,7 +8,7 @@ import {
   restoreOeuvreVersion,
   type OeuvreVersion,
 } from '@/app/atelier/(portal)/audit/version-actions'
-import { OEUVRE_VERSION_FIELDS as SHOW_FIELDS } from '@/lib/oeuvre-version-fields'
+import { OEUVRE_VERSION_FIELDS as SHOW_FIELDS, versionFieldLabel } from '@/lib/oeuvre-version-fields'
 
 function diffSnapshots(prev: Record<string, unknown> | null, cur: Record<string, unknown>) {
   if (!prev) return SHOW_FIELDS.filter((k) => cur[k] != null).map((k) => [k, null, cur[k]] as const)
@@ -124,7 +124,7 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
                       )}
                       {changes.map(([k, before, after]) => (
                         <tr key={k}>
-                          <td style={{ fontFamily: 'var(--mono)', color: 'var(--tx2)' }}>{k}</td>
+                          <td style={{ color: 'var(--tx2)' }}>{versionFieldLabel(k, t)}</td>
                           <td style={{ color: 'var(--tx3)' }}>{before == null ? '—' : String(before)}</td>
                           <td style={{ color: 'var(--ac)' }}>{after == null ? '—' : String(after)}</td>
                         </tr>
