@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.41 (2026-11-17) — R1: Idées for the team.
+  wn_ideas_team_t: { fr: 'Idées : proposer, discuter', en: 'Ideas: propose, discuss' },
+  wn_ideas_team_d: {
+    fr: 'Les « Concepts » deviennent « Idées ». Chacun peut lire les idées de Pem et y ajouter une ligne : une idée devient une discussion. Pour une idée nouvelle, « Proposer une idée » (un texte, un numéro d’œuvre si besoin) l’envoie directement à Pem. Pem classe chaque idée : petite ou recherche, et graine, pousse ou mûre.',
+    en: '« Concepts » become « Ideas ». Everyone can read Pem’s ideas and add a line to them: an idea becomes a discussion. For a new idea, « Propose an idea » (a text, a work number if needed) sends it straight to Pem. Pem sorts each idea: small or research, and seed, sprout or ripe.',
+  },
   // 3.1.40 (2026-11-17) — R2: Œuvre + Vocal sheets on the phone bar (the Fil is admin-only: admin guide, not here).
   wn_phone_work_voice_sheets_t: { fr: 'Au téléphone : Œuvre et Vocal', en: 'On the phone: Work and Voice' },
   wn_phone_work_voice_sheets_d: {
