@@ -540,13 +540,19 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_public: boolean | null
       anonymity_level: string | null
       admin_override_anonymity: boolean | null
+      fate: string | null
     }
 
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, ContactID, LocalisationID, Prix, PrixFinal, txtImageNameLink, Historique, "Catalogué", "NeedsPhotograph", is_public, anonymity_level, admin_override_anonymity')
+      .select('statusId, ContactID, LocalisationID, Prix, PrixFinal, txtImageNameLink, Historique, "Catalogué", "NeedsPhotograph", is_public, anonymity_level, admin_override_anonymity, fate')
       .eq('OeuvreID', oid)
       .single<CurrentOeuvre>()
+
+    // Destroyed / lost: the status belongs to the open constat (condition_report_fate.sql). The
+    // card's locked stage row still posts a stage, so keep the stored status — no false
+    // « statut 9 → En production » history line, no status-change event.
+    const sid = current?.fate ? current.statusId : statusId
 
     // User-edited base; server appends ownership / location lines when those fields change.
     let finalHistorique = historique ?? current?.Historique ?? ''
@@ -559,7 +565,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
           LocalisationID: current.LocalisationID,
         },
         {
-          statusId: statusId ?? null,
+          statusId: sid ?? null,
           contactId: contactId ?? null,
           localisationId: localisationId ?? null,
         },
@@ -583,7 +589,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // is_public is managed by DB trigger sync_is_public_from_status() — not set manually.
     const willBePublic =
-      statusId != null && STATUS_IDS_PUBLIC.includes(statusId)
+      sid != null && STATUS_IDS_PUBLIC.includes(sid)
 
     // Build update payload.
     const updatePayload: Record<string, unknown> = {
@@ -598,7 +604,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Prix:         prix,
       Discount:     discount,
       PrixFinal:    prixFinal,
-      statusId:     statusId,
+      statusId:     sid,
       ContactID:    contactId,
       Commentaires:      commentaires,
       Historique:        finalHistorique,
@@ -679,18 +685,18 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         tableName: 'Oeuvres',
         rowId: oid,
         newValue: 'PUBLIC',
-        metadata: { titre, statusId }
+        metadata: { titre, statusId: sid }
       })
     }
 
     // ── Log Significant Event: Status Change ──
-    if (current && statusId !== current.statusId) {
+    if (current && sid !== current.statusId) {
       await logSystemEvent({
         eventType: 'STATUS_CHANGE',
         tableName: 'Oeuvres',
         rowId: oid,
         oldValue: current.statusId,
-        newValue: statusId,
+        newValue: sid,
         metadata: { titre }
       })
     }

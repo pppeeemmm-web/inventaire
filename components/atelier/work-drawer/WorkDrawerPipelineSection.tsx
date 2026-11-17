@@ -54,6 +54,8 @@ export type WorkDrawerPipelineSectionProps = {
   completedLabel: string
   /** Destroyed / lost: stages locked until the constat is closed (DB guard too). */
   locked: boolean
+  /** Destroyed / lost line (« Détruite · 15 oct. 2026 »): shown in place of the stage row. */
+  fateText?: string
   /** Admin may change an archive work's custodian (set to the artist automatically). */
   isAdmin?: boolean
 }
@@ -88,6 +90,7 @@ export function WorkDrawerPipelineSection({
   startedLabel,
   completedLabel,
   locked,
+  fateText,
   isAdmin = false,
 }: WorkDrawerPipelineSectionProps) {
   const { t } = useI18n()
@@ -205,6 +208,25 @@ export function WorkDrawerPipelineSection({
     <div data-testid="work-drawer-status-bar" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       <div>
         <TopLabel title={t('wc_prod_label_tt')}>{t('wc_prod_label')}</TopLabel>
+        {locked && fateText ? (
+          // A destroyed / lost work has no production stage: the lit « En production » read as live.
+          <div
+            data-testid="work-drawer-stage-fate"
+            style={{
+              marginTop: 5,
+              minHeight: narrow ? 44 : 36,
+              padding: '6px 10px',
+              border: '1px solid var(--yellow)',
+              background: 'color-mix(in srgb, var(--yellow) 14%, transparent)',
+              fontSize: 12,
+              lineHeight: 1.3,
+              minWidth: 0,
+            }}
+          >
+            <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{fateText}</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{t('fate_locked')}</div>
+          </div>
+        ) : (
         <div style={{ display: 'flex', marginTop: 5, minWidth: 0 }}>
           {PRODUCTION_STAGES.map((s, i) => {
             const on = s.id === shownStage
@@ -271,6 +293,7 @@ export function WorkDrawerPipelineSection({
             )
           })}
         </div>
+        )}
       </div>
 
       <div>

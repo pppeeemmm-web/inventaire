@@ -76,6 +76,40 @@ export function formatStatusTransitionHistoriqueLine(
   return `[${date}] ${from} → ${to}`
 }
 
+/** « 2026-10-15 » at day / month / year precision → « 2026/10/15 » / « 2026/10 » / « 2026 ». */
+function historiquePartialDate(iso: string, precision: string | null | undefined): string {
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  if (precision === 'year') return y
+  if (precision === 'month') return `${y}/${m}`
+  return `${y}/${m}/${d}`
+}
+
+/**
+ * Destroyed / lost condition report → provenance line (owner 2026-11-17: the report must show in
+ * the history). Dated at the event; the report date follows when it differs.
+ */
+export function formatFateHistoriqueLine(r: {
+  kind: string
+  event_on: string | null
+  event_precision: string | null
+  examined_on: string
+}): string | null {
+  if (r.kind !== 'destroyed' && r.kind !== 'lost') return null
+  const word = r.kind === 'destroyed' ? 'Détruite' : 'Perdue'
+  const on = r.event_on ?? r.examined_on
+  const when = historiquePartialDate(on, r.event_on ? r.event_precision : 'day')
+  const report = r.event_on && r.event_on !== r.examined_on ? ` — constat du ${historiquePartialDate(r.examined_on, 'day')}` : ''
+  return `[${when}] ${word}${report}`
+}
+
+export function formatFoundHistoriqueLine(resolvedOn: string): string {
+  return `[${historiquePartialDate(resolvedOn, 'day')}] Retrouvée`
+}
+
+export function formatFateReportRemovedHistoriqueLine(kind: string, date = historiqueDateStr()): string {
+  return `[${date}] Constat de ${kind === 'destroyed' ? 'destruction' : 'perte'} supprimé`
+}
+
 /** Merge new lines; skip exact duplicates already present. */
 export function mergeHistoriqueLines(base: string | null | undefined, lines: string[]): string {
   const existing = (base ?? '').trim()

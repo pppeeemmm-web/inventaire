@@ -63,7 +63,8 @@
 // '3.1.45' (2026-11-17): R1 step 7 — voice notes in the Journal (« Relier… »), Notes screen gone, quieter ✦.
 // '3.1.46' (2026-11-17): R7 — « Commandes » in Sales, one paper per order in the Vault.
 // '3.1.47' (2026-11-17): lighter pages (one language sent), public site first fixes.
-export const WHATS_NEW_RELEASE = '3.1.47'
+// '3.1.48' (2026-11-17): a destroyed / lost work — card shows the fate, report writes the history.
+export const WHATS_NEW_RELEASE = '3.1.48'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -75,6 +76,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'fate_card_history', day: '2026-11-17' },
   { id: 'lighter_pages_site', day: '2026-11-17' },
   { id: 'orders_papers', day: '2026-11-17' },
   { id: 'voice_in_journal', day: '2026-11-17' },

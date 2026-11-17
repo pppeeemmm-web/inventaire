@@ -1597,6 +1597,7 @@ export function DrawerContent({
             startedLabel={startedLabel}
             completedLabel={completedLabel}
             locked={!!o.fate}
+            fateText={fateText}
             isAdmin={isAdmin}
           />
 
@@ -1853,7 +1854,16 @@ export function DrawerContent({
           />
         </Part>
         <Part selfTitled stacked={stacked}>
-          <ConditionReportsSection oeuvreId={o.OeuvreID} onWorkPatched={(patch) => onWorkSaved?.(o.OeuvreID, patch)} />
+          <ConditionReportsSection
+            oeuvreId={o.OeuvreID}
+            onWorkPatched={(patch) => {
+              onWorkSaved?.(o.OeuvreID, patch)
+              // A destruction / loss report adds a history line server-side: re-read it, or the
+              // next Save would send the old text back. Only when the fate moved (a plain
+              // examination writes no line, and the reload would drop unsaved history edits).
+              if (patch.fate !== (o.fate ?? null)) setLongTextReloadNonce((n) => n + 1)
+            }}
+          />
         </Part>
         <Part label={t('wc_p_fate')} stacked={stacked} muted={!o.fate}>
           {o.fate ? (

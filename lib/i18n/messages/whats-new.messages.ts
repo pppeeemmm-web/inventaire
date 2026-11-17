@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.48 (2026-11-17) — destroyed / lost works on the card and in the history.
+  wn_fate_card_history_t: { fr: 'Œuvre détruite ou perdue : la fiche le dit', en: 'Destroyed or lost work: the card says so' },
+  wn_fate_card_history_d: {
+    fr: 'Sur la fiche d’une œuvre détruite ou perdue, la ligne Production affiche « Détruite · date » au lieu d’« En production ». Le constat de destruction ou de perte écrit sa ligne dans Historique / provenance (et « Retrouvée » quand on clôt une perte). Enregistrer la fiche n’ajoute plus de fausse ligne « statut 9 → En production ».',
+    en: 'On the card of a destroyed or lost work, the Production row shows « Destroyed · date » instead of « In production ». The destruction or loss report writes its line in History / provenance (and « Found » when a loss is closed). Saving the card no longer adds a false « statut 9 → En production » line.',
+  },
   // 3.1.47 (2026-11-17) — one language per page; R8 first batch.
   wn_lighter_pages_site_t: { fr: 'Pages plus légères, site public retouché', en: 'Lighter pages, public site touched up' },
   wn_lighter_pages_site_d: {
