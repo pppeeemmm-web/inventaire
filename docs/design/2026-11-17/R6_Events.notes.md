@@ -39,7 +39,11 @@ Design only, nothing built, no SQL run (reads only). Inputs: TODO R6 (Pem 2026-1
   4. **Décrochage** — tick « Décrochée », « Constat ↙ » (the phone shows the departure photos next to the camera to compare), then one button « Marquer rentrées — n œuvres » closes the lines on the order. A sold work shows « vendue — reste chez X » and is skipped.
   Creating an event or an order stays on the desktop.
 
+**Pem 2026-11-17 on Q10 and Q11: « We'll go with that for now, until I see what it looks like. »** Both suggestions stand as the v1 to build; revisit once seen on screen.
+
 ### Speed of the tab (Pem: « kind of clunky … there could be improvement »)
+
+This is about **today's Exhibitions tab** (the code live on `main`), not the new design.
 
 Read in the code (not yet measured — a build starts by measuring, per STRATEGY / usage-driven priorities), _verified against live code 2026-11-17_:
 
