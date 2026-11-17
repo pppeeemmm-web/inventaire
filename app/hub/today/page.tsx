@@ -8,6 +8,7 @@ import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
 import { getJournalDayExtras } from '@/app/atelier/(portal)/journal/entry-actions'
 import { listWorkSessionJournal, type WorkSessionJournalRow } from '@/app/atelier/session/actions'
+import { countFil } from '@/app/atelier/fil/actions'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import {
   TodayEntries,
@@ -44,8 +45,10 @@ function worksOfDay(rows: WorkSessionJournalRow[], day: string): TodayWork[] {
 
 export default function TodayPage() {
   const day = todayCalendarDayInParis()
-  // All four reads start now, together; no section waits on another.
+  // All reads start now, together; no section waits on another.
   const pulse = settle(getFieldPulseData())
+  // The Fil count (R1 step 6): null for a non-admin or a failed read — left off the pulse line.
+  const fil = countFil().catch(() => null)
   const seeAgain = settle(getSeeAgain())
   const extras = settle(getJournalDayExtras(day))
   const sessions = settle(listWorkSessionJournal(20, { skipReconcile: true }))
@@ -56,7 +59,7 @@ export default function TodayPage() {
         <SummarySection extras={extras} sessions={sessions} day={day} />
       </Suspense>
       <Suspense fallback={<TodaySkeleton rows={1} />}>
-        <PulseSection pulse={pulse} />
+        <PulseSection pulse={pulse} fil={fil} />
       </Suspense>
       <Suspense fallback={<TodaySkeleton rows={2} />}>
         <SeeAgainSection seeAgain={seeAgain} />
@@ -86,9 +89,15 @@ async function SummarySection({ extras, sessions, day }: { extras: Promise<Extra
   )
 }
 
-async function PulseSection({ pulse }: { pulse: Promise<Awaited<ReturnType<typeof getFieldPulseData>> | { error: string }> }) {
-  const p = await pulse
-  return 'error' in p ? null : <TodayPulse metrics={p.metrics} />
+async function PulseSection({
+  pulse,
+  fil,
+}: {
+  pulse: Promise<Awaited<ReturnType<typeof getFieldPulseData>> | { error: string }>
+  fil: Promise<number | null>
+}) {
+  const [p, f] = await Promise.all([pulse, fil])
+  return 'error' in p ? null : <TodayPulse metrics={p.metrics} fil={f} />
 }
 
 async function SeeAgainSection({ seeAgain }: { seeAgain: Promise<Awaited<ReturnType<typeof getSeeAgain>> | { error: string }> }) {
