@@ -1,23 +1,27 @@
 'use server'
 
+// Phone sale (`/atelier/sale/new`) — R7 step 2: a sale order (`work_order`, V-YYYY-NNN) through
+// the order code. Nothing paid → a draft (nothing moves; it is signed in Commandes). Money taken
+// on the spot → the order is signed and the payment recorded (« Encaisser »): part of the price
+// → « Acompte » (works reserved), all of it → « Soldée » (the buyer becomes the owner).
+
 import { revalidatePath } from 'next/cache'
 import {
-  addPayment,
-  createSaleOrder,
-  updateOrderStatut,
-  type SaleOrderRow,
-} from '@/app/atelier/(portal)/sales/actions'
+  advanceWorkOrder,
+  createWorkOrder,
+  recordOrderPayment,
+} from '@/app/atelier/(portal)/sales/orders-actions'
 
-export type MobileSaleStatus = 'confirmed' | 'deposit_paid' | 'completed'
+export type MobileSaleStatus = 'draft' | 'signed' | 'deposit_paid' | 'paid'
 
 export type CompleteMobileSaleResult =
-  | { ok: true; order: SaleOrderRow; status: MobileSaleStatus; totalPaid: number }
+  | { ok: true; order: { id: string; ref: string | null }; status: MobileSaleStatus; totalPaid: number }
   | { error: string }
 
 function numberFromFormData(fd: FormData, key: string): number {
   const raw = fd.get(key)
   if (typeof raw !== 'string' || raw.trim() === '') return 0
-  const n = Number(raw)
+  const n = Number(raw.replace(',', '.'))
   return Number.isFinite(n) ? n : 0
 }
 
@@ -26,47 +30,38 @@ export async function completeMobileSale(formData: FormData): Promise<CompleteMo
   const paymentAmount = numberFromFormData(formData, 'payment_amount')
   const paymentMethod = String(formData.get('payment_method') || '').trim() || 'Paiement externe'
 
-  if (formData.getAll('oeuvre_ids').length === 0) {
-    return { error: 'Sélectionnez au moins une œuvre.' }
-  }
-  if (finalPrice <= 0) {
-    return { error: 'Indiquez un prix final supérieur à zéro.' }
-  }
-  if (paymentAmount < 0) {
-    return { error: 'Le montant réglé ne peut pas être négatif.' }
+  if (formData.getAll('oeuvre_ids').length === 0) return { error: 'ord_err_no_work' }
+  if (finalPrice <= 0) return { error: 'ord_err_price' }
+  if (paymentAmount < 0) return { error: 'ord_err_amount' }
+
+  const fd = new FormData()
+  fd.append('kind', 'sale')
+  formData.getAll('oeuvre_ids').forEach((id) => fd.append('oeuvre_ids', String(id)))
+  fd.append('party_id', String(formData.get('buyer_id') ?? ''))
+  for (const [from, to] of [['prix_catalogue', 'price_catalogue'], ['discount_pct', 'discount_pct'], ['prix_final', 'price_final'], ['deposit_pct', 'deposit_pct'], ['notes', 'notes']] as const) {
+    const v = formData.get(from)
+    if (typeof v === 'string' && v.trim() !== '') fd.append(to, v)
   }
 
-  const orderResult = await createSaleOrder(formData)
-  if ('error' in orderResult) return { error: orderResult.error }
+  const created = await createWorkOrder(fd)
+  if ('error' in created) return { error: created.error }
+  const order = { id: created.id, ref: created.ref }
 
-  const order = orderResult.order
+  let status: MobileSaleStatus = 'draft'
   if (paymentAmount > 0) {
-    const paymentResult = await addPayment(order.id, paymentAmount, paymentMethod, 'Mobile sale flow')
-    if ('error' in paymentResult) return { error: paymentResult.error }
-  }
-
-  let status: MobileSaleStatus = 'confirmed'
-  const paidInFull = paymentAmount >= finalPrice
-
-  if (paidInFull) {
-    if (paymentAmount > 0) {
-      const depositResult = await updateOrderStatut(order.id, 'deposit_paid', 'deposit_paid')
-      if ('error' in depositResult) return { error: depositResult.error }
-    }
-    const completeResult = await updateOrderStatut(order.id, 'completed', 'balance_paid')
-    if ('error' in completeResult) return { error: completeResult.error }
-    status = 'completed'
-  } else if (paymentAmount > 0) {
-    const depositResult = await updateOrderStatut(order.id, 'deposit_paid', 'deposit_paid')
-    if ('error' in depositResult) return { error: depositResult.error }
-    status = 'deposit_paid'
-  } else {
-    const confirmResult = await updateOrderStatut(order.id, 'confirmed')
-    if ('error' in confirmResult) return { error: confirmResult.error }
+    const signed = await advanceWorkOrder(order.id, 'signed')
+    if ('error' in signed) return { error: signed.error }
+    status = 'signed'
+    const pay = new FormData()
+    pay.append('order_id', order.id)
+    pay.append('amount', String(paymentAmount))
+    pay.append('method', paymentMethod)
+    const paid = await recordOrderPayment(pay)
+    if ('error' in paid) return { error: paid.error }
+    status = paid.status as MobileSaleStatus
   }
 
   revalidatePath('/atelier')
   revalidatePath('/atelier/sale/new')
-
-  return { ok: true, order: { ...order, statut: status }, status, totalPaid: paymentAmount }
+  return { ok: true, order, status, totalPaid: paymentAmount }
 }

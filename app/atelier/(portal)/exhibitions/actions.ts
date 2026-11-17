@@ -15,7 +15,7 @@ import {
   toSuiviEtapeUpdate,
   toSuiviProcessUpdate,
 } from '@/lib/exhibitions/exhibition-client'
-import { createConsignmentOrder } from '@/app/atelier/consignments/actions'
+import { createWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { EXHIBITION_LIST_TYPES, EXHIBITION_HIDDEN_STATUTS } from '@/lib/data'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -354,14 +354,15 @@ export async function updateExhibitionProcess(payload: {
 
 /**
  * Send works to the exhibition venue. Owner 2026-11-03: a work leaves Pem only through an order,
- * and a venue is a custodian, never the owner — this opens a loan (or consignment) order to the
- * venue for the exhibition dates (docs/WORK_CUSTODY_MODEL.md). Was: venue written as owner.
+ * and a venue is a custodian, never the owner (docs/WORK_CUSTODY_MODEL.md). R7 step 2: this makes
+ * a draft loan (or consignment) order to the venue for the exhibition dates, linked to the
+ * exhibition; the works move when it is signed and marked « out » in Commandes.
  */
 export async function sendWorksToExhibition(payload: {
   oeuvreIds: number[]
   exhibitionId: string
   kind: 'loan' | 'consignment'
-}): Promise<SimpleResult> {
+}): Promise<{ ok: true; id: string; ref: string | null } | { error: string }> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
   const { data: exh, error: exhErr } = await fromSuiviProcess(supabase)
@@ -369,17 +370,16 @@ export async function sendWorksToExhibition(payload: {
     .eq('id', payload.exhibitionId)
     .single()
   if (exhErr || !exh) return { error: exhErr?.message ?? 'Exhibition not found' }
-  const row = exh as { nom: string | null; contact_id: number | null; date_debut: string | null; date_fin: string | null }
+  const row = exh as { id: string; nom: string | null; contact_id: number | null; date_debut: string | null; date_fin: string | null }
   if (!row.contact_id) return { error: 'holder_required' }
 
   const fd = new FormData()
+  fd.append('kind', payload.kind === 'consignment' ? 'consignment' : 'loan')
   payload.oeuvreIds.forEach((id) => fd.append('oeuvre_ids', String(id)))
-  fd.append('partner_id', String(row.contact_id))
-  fd.append('kind', payload.kind)
+  fd.append('party_id', String(row.contact_id))
+  fd.append('process_id', row.id)
   if (row.date_debut) fd.append('start_date', row.date_debut)
   if (row.date_fin) fd.append('end_date', row.date_fin)
   if (row.nom) fd.append('notes', row.nom)
-  const res = await createConsignmentOrder(fd)
-  if ('error' in res) return { error: res.error }
-  return { ok: true }
+  return createWorkOrder(fd)
 }

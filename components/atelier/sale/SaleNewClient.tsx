@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { statusOf } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
+import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { completeMobileSale, type CompleteMobileSaleResult } from '@/app/atelier/sale/new/actions'
 
 export type MobileSaleWork = {
@@ -226,7 +227,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
     startTransition(() => {
       void completeMobileSale(fd).then((response) => {
         setResult(response)
-        if ('error' in response) setError(response.error)
+        if ('error' in response) setError(orderErrorText(response.error, t))
       })
     })
   }
@@ -238,11 +239,11 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
           <div className="t-label" style={{ color: 'var(--sage)' }}>{t('sale_mobile_done_kicker')}</div>
           <h1 className="serif" style={titleStyle}>{t('sale_mobile_done_title')}</h1>
           <p style={mutedStyle}>
-            {t(result.status === 'completed' ? 'sale_mobile_done_completed' : 'sale_mobile_done_pending')}
+            {t(result.status === 'paid' ? 'sale_mobile_done_completed' : result.status === 'draft' ? 'sale_mobile_done_draft' : 'sale_mobile_done_pending')}
           </p>
           <div style={summaryGridStyle}>
             <span>{t('sale_mobile_summary_order')}</span>
-            <strong>{result.order.order_ref ?? result.order.id}</strong>
+            <strong>{result.order.ref ?? result.order.id}</strong>
             <span>{t('sale_mobile_summary_paid')}</span>
             <strong>{formatEur(result.totalPaid)}</strong>
           </div>
@@ -250,7 +251,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
             <Link className="btn primary" href="/hub" style={actionButtonStyle}>
               {t('sale_mobile_done_hub')}
             </Link>
-            <Link className="btn ghost" href="/atelier/sales" style={actionButtonStyle}>
+            <Link className="btn ghost" href={`/atelier/sales?order=${result.order.id}`} style={actionButtonStyle}>
               {t('sale_mobile_done_sales')}
             </Link>
           </div>

@@ -1,108 +1,59 @@
 'use client'
 
+// Work card « Don… » (TODO R7 step 2): a gift is an order like the other three. The chip opens
+// the new-order form on Don with this work; it creates a draft G-YYYY-NNN with its deed
+// (« Acte de don », Vault Commandes/Dons). Nothing moves here: « Acte signé » and « Remise »
+// are steps of the order in Commandes. Was: an immediate status change + a separate slip.
+
 import { useState } from 'react'
-import { markAsGift } from '@/app/atelier/works/gift-actions'
-import { PEM_CONTACT_ID } from '@/lib/data'
-import { gateErrorKey } from '@/lib/work-save-error'
-import { FIS } from './drawer-widgets'
-import type { DrawerContactRow } from './drawer-content-props'
+import Link from 'next/link'
+import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { NewOrderForm, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 
 export function GiftTransferModal({
   oeuvreId,
   recipients,
-  cName,
-  t,
   onClose,
   onGifted,
 }: {
   oeuvreId: number
-  recipients: DrawerContactRow[]
-  cName: (c: DrawerContactRow) => string
-  t: (k: import('@/lib/i18n/dictionary').DictKey) => string
+  recipients: OrderContact[]
   onClose: () => void
+  /** A draft order now holds the work (the card reloads to show it). */
   onGifted: () => void
 }) {
-  const [recipientId, setRecipientId] = useState('')
-  const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [notes, setNotes] = useState('')
-  const [handedOver, setHandedOver] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const [created, setCreated] = useState<{ id: string; ref: string | null } | null>(null)
+
+  if (!created) {
+    return (
+      <NewOrderForm
+        narrow={narrow}
+        contacts={recipients}
+        initial={{ kind: 'gift', lockKind: true, workIds: [oeuvreId] }}
+        intro={t('ord_gift_intro')}
+        onClose={onClose}
+        onCreated={(id, ref) => setCreated({ id, ref })}
+      />
+    )
+  }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={() => !busy && onClose()}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg1)', border: '1px solid var(--ac)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ac)' }}>{t('workDrawer_gift_title')}</div>
-          <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4 }}>
-            {t('workDrawer_gift_body')}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_recipient')} *</label>
-          <select className="input" value={recipientId} onChange={e => setRecipientId(e.target.value)} style={FIS} autoFocus>
-            <option value="">{t('workDrawer_gift_recipient_ph')}</option>
-            {recipients.filter((c) => c.ContactID !== PEM_CONTACT_ID).map((c) => (
-              <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_delivery')}</label>
-          <input type="date" className="input" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={FIS} />
-        </div>
-
-        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 11, color: 'var(--tx2)', cursor: 'pointer', minHeight: 44 }}>
-          <input type="checkbox" checked={handedOver} onChange={(e) => setHandedOver(e.target.checked)} style={{ marginTop: 2 }} />
-          <span>
-            {t('gift_handed_over')}
-            <span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>{t('gift_handed_over_help')}</span>
-          </span>
-        </label>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_comments')}</label>
-          <textarea className="input" value={notes} onChange={e => setNotes(e.target.value)} style={{ ...FIS, height: 72, resize: 'vertical' }} placeholder={t('workDrawer_gift_notes_ph')} />
-        </div>
-
-        {error && <div style={{ color: '#c0392b', fontSize: 10 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn ghost sm" disabled={busy} onClick={onClose} style={{ fontSize: 11 }}>{t('workDrawer_gift_cancel')}</button>
-          <button
-            type="button"
-            className="btn primary sm"
-            disabled={busy || !recipientId}
-            onClick={async () => {
-              setBusy(true); setError(null)
-              try {
-                const fd = new FormData()
-                fd.append('oeuvre_id', String(oeuvreId))
-                fd.append('recipient_id', recipientId)
-                if (deliveryDate) fd.append('delivery_date', deliveryDate)
-                if (notes.trim())  fd.append('notes', notes.trim())
-                fd.append('handed_over', handedOver ? '1' : '0')
-                const res = await markAsGift(fd)
-                if ('error' in res) {
-                  const gate = gateErrorKey(res.error)
-                  setError(gate ? t(gate) : res.error)
-                } else {
-                  onGifted()
-                }
-              } catch (err) {
-                setError(err instanceof Error ? err.message : String(err))
-              } finally {
-                setBusy(false)
-              }
-            }}
-            style={{ fontSize: 11 }}
-          >
-            {busy ? '…' : t('workDrawer_gift_confirm')}
-          </button>
+    <div role="dialog" aria-modal="true" aria-label={t('ord_kind_gift')} onClick={onGifted} style={{
+      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: 'var(--bg1)', border: '1px solid var(--ac)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 440, boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', gap: 14,
+      }}>
+        <div style={{ fontSize: 14, color: 'var(--tx2)' }}>{t('ord_created_draft').replace('{ref}', created.ref ?? '')}</div>
+        <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn ghost" onClick={onGifted} style={{ minHeight: 44 }}>{t('ord_new_cancel')}</button>
+          <Link className="btn primary" href={`/atelier/sales?order=${created.id}`} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            {t('ord_open_order')}
+          </Link>
         </div>
       </div>
     </div>

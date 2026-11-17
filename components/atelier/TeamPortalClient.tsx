@@ -1029,7 +1029,7 @@ export function TeamPortalClient({
       ['constellation', t('constellation')],
       ['production',    t('production')],
       ['logistics',     t('logistics')],
-      ['sales',         t('sales')],
+      ['sales',         t('nav_tab_orders')],
       ['exhibitions',   t('exhibitions')],
       ['vault',         t('vault')],
       ['contacts',      t('contacts'), contacts.length],
@@ -1107,7 +1107,7 @@ export function TeamPortalClient({
     label: t('nav_group_studio'),
     tabs: (atelierNarrow ? ['overview', 'pipeline', 'exhibitions', 'stock'] : ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock']) as Tab[],
   }
-  const commercialGroup = { label: t('nav_group_commercial'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] as Tab[] }
+  const commercialGroup = { label: t('nav_group_business'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] as Tab[] }
   const publicGroup = { label: t('nav_group_public_tab'), tabs: publicTabs }
   // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
   // Phone (R2 phone 6, 2026-11-17): a top block Aujourd'hui · Fil · Idées (rendered below, before

@@ -1,12 +1,14 @@
 import { fromPayments, fromSaleOrder } from '@/lib/sales/sales-client'
+import { asTypedSupabase } from '@/lib/pipeline/suivi-client'
 
 /**
- * Sales income for a calendar year — `sale_order` is the source of truth (not `Oeuvres`).
+ * Sales income for a calendar year — the orders are the source of truth (not `Oeuvres`):
+ * `work_order` sales (R7) and the former `sale_order` (0 rows, read until it is dropped).
  *
  * Cash basis (BNC recettes encaissées):
- *   - every `payments` row whose `payment_date` falls in the year;
- *   - plus completed orders closed in the year that have no payment rows at all
- *     (`prix_final`), so a sale closed without recording payments still counts once.
+ *   - every `payments` row whose `payment_date` falls in the year (either kind of order);
+ *   - plus sales paid in the year that have no payment rows at all (`price_final` /
+ *     `prix_final`), so a sale closed without recording payments still counts once.
  *
  * Works with the browser or the server Supabase client.
  */
@@ -22,13 +24,29 @@ function yearBounds(year: number) {
   return { from: `${year}-01-01T00:00:00+01:00`, to: `${year + 1}-01-01T00:00:00+01:00` }
 }
 
+/** Sale orders (R7) paid, with no payment row: their price counts on the day they were paid. */
+async function paidWorkOrdersWithoutPayments(supabase: unknown, from?: string, to?: string) {
+  const sb = asTypedSupabase(supabase)
+  let q = sb.from('work_order').select('id, price_final, paid_at').eq('kind', 'sale').in('status', ['paid', 'delivered']).not('paid_at', 'is', null).limit(10000)
+  if (from && to) q = q.gte('paid_at', from).lt('paid_at', to)
+  const { data, error } = await q
+  if (error) return { rows: [] as { price_final: number | null; paid_at: string | null }[], error: error.message }
+  const orders = data ?? []
+  if (orders.length === 0) return { rows: [], error: null }
+  const { data: linked, error: linkErr } = await sb.from('payments').select('work_order_id').in('work_order_id', orders.map((o) => o.id))
+  if (linkErr) return { rows: [], error: linkErr.message }
+  const withPayments = new Set((linked ?? []).map((p) => p.work_order_id))
+  return { rows: orders.filter((o) => !withPayments.has(o.id)), error: null }
+}
+
 export async function fetchSalesIncome(supabase: unknown, year: number): Promise<SalesIncome> {
   const { from, to } = yearBounds(year)
-  const [payRes, ordRes] = await Promise.all([
+  const [payRes, ordRes, woRes] = await Promise.all([
     fromPayments(supabase).select('amount').gte('payment_date', `${year}-01-01`).lt('payment_date', `${year + 1}-01-01`),
     fromSaleOrder(supabase).select('id, prix_final').eq('statut', 'completed').gte('completed_at', from).lt('completed_at', to),
+    paidWorkOrdersWithoutPayments(supabase, from, to),
   ])
-  const error = payRes.error?.message ?? ordRes.error?.message ?? null
+  const error = payRes.error?.message ?? ordRes.error?.message ?? woRes.error ?? null
 
   const paid = (payRes.data ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0)
 
@@ -44,6 +62,8 @@ export async function fetchSalesIncome(supabase: unknown, year: number): Promise
       .filter((o) => !withPayments.has(o.id))
       .reduce((s, o) => s + Number(o.prix_final ?? 0), 0)
   }
+
+  unpaidCompleted += woRes.rows.reduce((s, o) => s + Number(o.price_final ?? 0), 0)
 
   return { total: paid + unpaidCompleted, fromPayments: paid, fromUnpaidCompletedOrders: unpaidCompleted, error }
 }
@@ -62,12 +82,13 @@ function parisDay(ts: string): string {
  * orders with no payment rows on their completion day. Summing a year gives `fetchSalesIncome(year)`.
  */
 export async function fetchIncomeEntries(supabase: unknown): Promise<{ entries: IncomeEntry[]; error: string | null }> {
-  const [payRes, ordRes, linkRes] = await Promise.all([
+  const [payRes, ordRes, linkRes, woRes] = await Promise.all([
     fromPayments(supabase).select('amount, payment_date').not('payment_date', 'is', null).limit(10000),
     fromSaleOrder(supabase).select('id, prix_final, completed_at').eq('statut', 'completed').not('completed_at', 'is', null).limit(10000),
     fromPayments(supabase).select('order_id').not('order_id', 'is', null).limit(10000),
+    paidWorkOrdersWithoutPayments(supabase),
   ])
-  const error = payRes.error?.message ?? ordRes.error?.message ?? linkRes.error?.message ?? null
+  const error = payRes.error?.message ?? ordRes.error?.message ?? linkRes.error?.message ?? woRes.error ?? null
 
   const entries: IncomeEntry[] = []
   for (const p of payRes.data ?? []) {
@@ -78,6 +99,9 @@ export async function fetchIncomeEntries(supabase: unknown): Promise<{ entries: 
   for (const o of ordRes.data ?? []) {
     if (withPayments.has(o.id) || !o.completed_at) continue
     entries.push({ date: parisDay(String(o.completed_at)), amount: Number(o.prix_final ?? 0), source: 'order' })
+  }
+  for (const o of woRes.rows) {
+    if (o.paid_at) entries.push({ date: parisDay(String(o.paid_at)), amount: Number(o.price_final ?? 0), source: 'order' })
   }
   return { entries, error }
 }

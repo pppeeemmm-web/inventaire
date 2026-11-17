@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/lib/ui/toast'
-import { createConsignmentOrder } from '@/app/atelier/consignments/actions'
-import { createSaleOrder } from '@/app/atelier/(portal)/sales/actions'
-import { gateErrorKey } from '@/lib/work-save-error'
+import { createWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
+import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -213,6 +212,12 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
   async function handleSave(): Promise<boolean> {
     if(!nom.trim()){ setErr(t('pm_err_name_required')); return false }
+    // A new sale / consignment process opens its draft order (R7): check what the order needs
+    // before the process is written.
+    const makesOrder = !process?.id && (type === 'consignment' || type === 'vente') && oeuvreIds.length > 0
+    if (makesOrder && type === 'consignment' && (!debut || !fin)) { setErr(t('ord_err_dates')); return false }
+    if (makesOrder && type === 'consignment' && fin < debut) { setErr(t('ord_err_dates_order')); return false }
+    if (makesOrder && type === 'vente' && !(parseFloat(prixFinal) > 0)) { setErr(t('ord_err_price')); return false }
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
@@ -254,33 +259,26 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
         if(error) throw new Error(error.message)
         pid = data?.id ?? null
 
-        if (type === 'consignment' && oeuvreIds.length > 0 && effectiveContactId) {
+        // R7: the process links to a draft order (« Commandes »), it no longer makes its own paper.
+        if ((type === 'consignment' || type === 'vente') && oeuvreIds.length > 0 && effectiveContactId) {
           const fd = new FormData()
+          fd.append('kind', type === 'vente' ? 'sale' : 'consignment')
           oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
-          fd.append('partner_id', String(effectiveContactId))
-          fd.append('start_date', debut)
-          fd.append('end_date', fin)
-          fd.append('notes', notes)
-          if (commissionPct) fd.append('commission_pct', commissionPct)
-          const res = await createConsignmentOrder(fd)
-          if ('error' in res) { const gate = gateErrorKey(res.error); throw new Error(gate ? t(gate) : res.error) }
-          if ('ok' in res && res.order.pdf_path) {
-            await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
+          fd.append('party_id', String(effectiveContactId))
+          fd.append('process_id', pid!)
+          if (notes) fd.append('notes', notes)
+          if (type === 'consignment') {
+            fd.append('start_date', debut)
+            fd.append('end_date', fin)
+            if (commissionPct) fd.append('commission_pct', commissionPct)
+          } else {
+            fd.append('price_catalogue', catalogPrice)
+            fd.append('discount_pct', discount)
+            fd.append('price_final', prixFinal)
           }
-        }
-        if (type === 'vente' && oeuvreIds.length > 0 && effectiveContactId) {
-          const fd = new FormData()
-          oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
-          fd.append('buyer_id', String(effectiveContactId))
-          fd.append('prix_catalogue', catalogPrice)
-          fd.append('discount_pct', discount)
-          fd.append('prix_final', prixFinal)
-          fd.append('notes', notes)
-          const res = await createSaleOrder(fd)
-          if ('error' in res) { const gate = gateErrorKey(res.error); throw new Error(gate ? t(gate) : res.error) }
-          if ('ok' in res && res.order.pdf_path) {
-            await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
-          }
+          const res = await createWorkOrder(fd)
+          if ('error' in res) throw new Error(orderErrorText(res.error, t))
+          toast.success(t('ord_created_draft').replace('{ref}', res.ref ?? ''))
         }
       } else {
         const {error} = await fromSuiviProcess(sb).update(payload).eq('id',pid)

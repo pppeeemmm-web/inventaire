@@ -10,8 +10,8 @@ export const mobileSaleMessages = defineMessages({
     en: 'Complete a sale',
   },
   sale_mobile_intro: {
-    fr: 'Enregistrez un paiement externe, créez la commande et passez l’œuvre en vendu sans ouvrir l’onglet Ventes.',
-    en: 'Record an external payment, create the order, and mark the work sold without opening the Sales tab.',
+    fr: 'Crée une commande de vente. Sans paiement : un brouillon, à signer dans Commandes. Paiement reçu : la commande est signée, l’acompte réserve l’œuvre, le prix entier la passe en vendu.',
+    en: 'Creates a sale order. No payment: a draft, signed later in Orders. Money received: the order is signed, a deposit reserves the work, the full price marks it sold.',
   },
   sale_mobile_steps_aria: {
     fr: 'Étapes de la vente mobile',
@@ -138,16 +138,20 @@ export const mobileSaleMessages = defineMessages({
     en: 'Full payment recorded: the work is now sold.',
   },
   sale_mobile_done_pending: {
-    fr: 'Commande créée avec paiement partiel ou en attente.',
-    en: 'Order created with a partial or pending payment.',
+    fr: 'Acompte enregistré : la commande est signée et l’œuvre réservée pour l’acheteur.',
+    en: 'Deposit recorded: the order is signed and the work reserved for the buyer.',
+  },
+  sale_mobile_done_draft: {
+    fr: 'Brouillon de vente créé, avec son bon de commande. Rien ne bouge tant qu’il n’est pas signé dans Commandes.',
+    en: 'Draft sale created, with its order form. Nothing moves until it is signed in Orders.',
   },
   sale_mobile_done_hub: {
     fr: 'Retour au Hub',
     en: 'Back to Hub',
   },
   sale_mobile_done_sales: {
-    fr: 'Voir les ventes',
-    en: 'View Sales',
+    fr: 'Voir la commande',
+    en: 'View the order',
   },
   sale_mobile_remove_work: {
     fr: 'Retirer l’œuvre',

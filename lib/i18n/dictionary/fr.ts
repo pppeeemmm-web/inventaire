@@ -225,7 +225,7 @@ workDrawerStatusLegendEffective: 'État affiché (catalogue / photo)',
 workDrawerStatusLegendCommercial: 'Statut commercial enregistré',
 workDrawer_gift_title: 'Marquer comme don',
 workDrawer_gift_body:
-  'Transfert de propriété sans contrepartie financière. Génère un bordereau de don dans le coffre.',
+  'Ouvre une commande de don (brouillon + acte de don, coffre Commandes/Dons). L’acte se signe dans Commandes.',
 workDrawer_gift_recipient: 'Bénéficiaire',
 workDrawer_gift_delivery: 'Date de remise',
 workDrawer_gift_notes_ph: 'Contexte, occasion, conditions…',

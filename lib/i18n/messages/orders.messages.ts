@@ -138,4 +138,42 @@ export const ordersMessages = defineMessages({
   ord_err_file: { fr: 'Choisissez un fichier.', en: 'Choose a file.' },
   ord_err_file_type: { fr: 'PDF ou photo (JPEG, PNG, WebP, HEIC) seulement.', en: 'PDF or photo (JPEG, PNG, WebP, HEIC) only.' },
   ord_err_file_size: { fr: 'Fichier trop lourd (4 Mo au plus).', en: 'File too large (4 MB at most).' },
+
+  // ── Step 2: entry points, money in, menu ──
+  nav_group_business: { fr: 'Business', en: 'Business' },
+  nav_tab_orders: { fr: 'Commandes', en: 'Orders' },
+  ord_err_price: { fr: 'Une vente a besoin de son prix final.', en: 'A sale needs its final price.' },
+  ord_err_process: { fr: 'Lien Pipeline invalide.', en: 'Invalid Pipeline link.' },
+  ord_err_amount: { fr: 'Indiquez un montant et une date valides.', en: 'Enter a valid amount and date.' },
+  ord_err_payment: {
+    fr: 'L’étape est passée mais le paiement n’a pas été enregistré :',
+    en: 'The step moved but the payment was not recorded:',
+  },
+  ord_pay: { fr: 'Encaisser', en: 'Record a payment' },
+  ord_pay_amount: { fr: 'Montant reçu', en: 'Amount received' },
+  ord_pay_method: { fr: 'Moyen', en: 'Method' },
+  ord_pay_date: { fr: 'Date', en: 'Date' },
+  ord_pay_save: { fr: 'Enregistrer le paiement', en: 'Save the payment' },
+  ord_pay_hint: {
+    fr: 'Une partie du prix → « Acompte » (œuvres réservées). Tout le prix → « Soldée » : l’acheteur devient propriétaire. Compté dans Revenus & dépenses.',
+    en: 'Part of the price → « Deposit » (works reserved). The whole price → « Paid »: the buyer becomes the owner. Counted in Revenue & expenses.',
+  },
+  ord_payments: { fr: 'Paiements', en: 'Payments' },
+  ord_paid_total: { fr: 'Reçu', en: 'Received' },
+  ord_remaining: { fr: 'Reste', en: 'Left to pay' },
+  ord_open_order: { fr: 'Ouvrir la commande', en: 'Open the order' },
+  ord_created_draft: {
+    fr: 'Brouillon {ref} créé. Il se signe et avance dans Commandes ; rien ne bouge avant.',
+    en: 'Draft {ref} created. It is signed and moved on in Orders; nothing moves before.',
+  },
+  ord_from_process: { fr: 'Commandes liées', en: 'Linked orders' },
+  ord_from_process_none: {
+    fr: 'Aucune commande liée. Une vente ou un dépôt se fait dans Commandes, prérempli depuis ce suivi.',
+    en: 'No linked order. A sale or consignment is made in Orders, prefilled from this process.',
+  },
+  ord_from_process_create: { fr: 'Créer la commande', en: 'Create the order' },
+  ord_gift_intro: {
+    fr: 'Un don est une commande : brouillon et acte de don d’abord, puis « Acte signé » et « Remise » dans Commandes.',
+    en: 'A gift is an order: a draft and its deed first, then « Deed signed » and « Handed over » in Orders.',
+  },
 })

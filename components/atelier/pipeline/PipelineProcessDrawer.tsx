@@ -1,10 +1,9 @@
 'use client'
 
-import { useCallback, useTransition } from 'react'
-import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
-import { regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
-import { AsyncButton } from '@/components/ui/AsyncButton'
-import { toast } from '@/lib/ui/toast'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import type { DictKey } from '@/lib/i18n/dictionary'
+import { findOrdersForProcess, type ProcessOrderLink } from '@/app/atelier/(portal)/sales/orders-actions'
 import {
   ETAPE_STATUT_COLORS,
   TYPE_COLORS,
@@ -37,9 +36,6 @@ export function PipelineProcessDrawer({ process, onClose, onEdit, onRefresh, onC
   const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
   const dateLocale = lang === 'en' ? 'en' : 'fr'
   const color = TYPE_COLORS[process.type as ProcessType]??'#888'
-  const [regenPending, startRegen] = useTransition()
-  const [closePending, startClose] = useTransition()
-  const [downloadPending, startDownload] = useTransition()
 
   const openExhibitionProject = useCallback(() => {
     const id = process.exhibition_process_id
@@ -141,94 +137,7 @@ export function PipelineProcessDrawer({ process, onClose, onEdit, onRefresh, onC
       )}
       {process.asset_notes && <Row label={t('pd_asset_notes')} value={process.asset_notes} />}
 
-      {process.pdf_path && (
-        <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>
-          <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>{t('pd_commercial_bond_pdf')}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <AsyncButton
-              pending={regenPending}
-              pendingText={t('pd_operation_in_progress')}
-              onClick={() => {
-                if (!confirm(t('pd_confirm_regenerate_pdf'))) return
-                startRegen(() => {
-                  void (async () => {
-                    try {
-                      const res = await regenerateConsignmentPdf(process.id)
-                      if (res.ok) {
-                        toast.success(t('pd_pdf_updated_reload'))
-                        await onRefresh()
-                          } else toast.error(res.error ?? t('error'))
-                    } catch (err) {
-                      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                    }
-                  })()
-                })
-              }}
-              className="btn ghost sm"
-              style={{ flex: 1, fontSize: 12, border: '1px solid rgba(34,211,238,0.3)' }}
-            >
-              {t('pd_regenerate_pdf_btn')}
-            </AsyncButton>
-            <AsyncButton
-              pending={downloadPending}
-              pendingText={t('pd_operation_in_progress')}
-              onClick={() => {
-                startDownload(() => {
-                  void (async () => {
-                    try {
-                      const res = await getSignedUrl(process.pdf_path!)
-                      if ('url' in res) window.open(res.url, '_blank')
-                      else toast.error(res.error ?? t('error'))
-                    } catch (err) {
-                      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                    }
-                  })()
-                })
-              }}
-              className="btn primary sm"
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 12px' }}
-            >
-              <span style={{ fontSize: 20 }}>↓</span>
-              <span style={{ fontSize: 14 }}>{t('pd_download_pdf_btn')}</span>
-            </AsyncButton>
-          </div>
-          {process.type === 'consignment' && (
-            <div style={{ marginTop: 10 }}>
-              <AsyncButton
-                pending={closePending}
-                pendingText={t('pd_operation_in_progress')}
-                onClick={() => {
-                  if (!confirm(t('pd_confirm_close_consignment'))) return
-                  startClose(() => {
-                    void (async () => {
-                      try {
-                        const res = await closeConsignmentByPdfPath(process.pdf_path!)
-                        if ('ok' in res) {
-                          let msg = t('pd_close_consignment_intro')
-                          if (res.reverted.length > 0) {
-                            msg += ` ${t('pd_consignment_reverted_line').replace(/\{n\}/g, String(res.reverted.length))}`
-                          }
-                          if (res.skipped.length > 0) {
-                            msg += ` ${t('pd_consignment_skipped_line').replace(/\{n\}/g, String(res.skipped.length))}`
-                          }
-                          toast.success(msg.trim())
-                          await onRefresh()
-                        } else toast.error('error' in res ? res.error : t('error'))
-                      } catch (err) {
-                        toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                      }
-                    })()
-                  })
-                }}
-                className="btn ghost sm"
-                style={{ width: '100%', fontSize: 12, color: 'var(--rust)', border: '1px solid rgba(202,89,73,0.4)' }}
-              >
-                {t('pd_close_consignment_btn')}
-              </AsyncButton>
-            </div>
-          )}
-        </div>
-      )}
+      <ProcessOrders process={process} />
 
       {process.etapes.length > 0 && (
         <div style={{ marginTop:16 }}>
@@ -297,6 +206,55 @@ export function PipelineProcessDrawer({ process, onClose, onEdit, onRefresh, onC
       )}
 
       <LinkedVoiceNotes field="process_id" value={process.id} />
+    </div>
+  )
+}
+
+const ORDER_LETTER: Record<string, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G' }
+
+/**
+ * R7: a sale / consignment process links to its order(s) in « Commandes »; the papers and the
+ * steps live there (was: a « Bon commercial » PDF regenerated here — found issue 1).
+ */
+function ProcessOrders({ process }: { process: Process }) {
+  const { t } = useSuiviLabels()
+  const [orders, setOrders] = useState<ProcessOrderLink[] | null>(null)
+  useEffect(() => {
+    let live = true
+    void findOrdersForProcess(process.id).then((list) => { if (live) setOrders(list) })
+    return () => { live = false }
+  }, [process.id])
+
+  const commercial = process.type === 'consignment' || process.type === 'vente'
+  if (orders === null || (!commercial && orders.length === 0)) return null
+
+  const q = new URLSearchParams({ new: process.type === 'vente' ? 'sale' : 'consignment', process: process.id })
+  if (process.oeuvre_id) q.set('works', String(process.oeuvre_id))
+  if (process.contact_id) q.set('party', String(process.contact_id))
+  if (process.type === 'consignment' && process.date_debut) q.set('start', process.date_debut)
+  if (process.type === 'consignment' && process.date_fin) q.set('end', process.date_fin)
+
+  return (
+    <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>
+      <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>{t('ord_from_process')}</div>
+      {orders.map((o) => (
+        <Link key={o.id} href={`/atelier/sales?order=${o.id}`} style={{
+          display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, borderTop: '1px solid var(--bd)', color: 'var(--tx)', textDecoration: 'none', fontSize: 13,
+        }}>
+          <span style={{ width: 22, height: 22, display: 'inline-grid', placeItems: 'center', border: '1px solid var(--cyan)', color: 'var(--cyan)', borderRadius: 3, fontSize: 11, fontWeight: 700 }}>{ORDER_LETTER[o.kind] ?? '?'}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--ac)' }}>{o.ref}</span>
+          <span style={{ flex: 1, color: 'var(--tx3)' }}>{t(`ord_st_${o.status}` as DictKey)}</span>
+          <span style={{ color: 'var(--ac)' }}>{t('ord_open_order')}</span>
+        </Link>
+      ))}
+      {orders.length === 0 && (
+        <>
+          <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 8 }}>{t('ord_from_process_none')}</div>
+          <Link className="btn ghost sm" href={`/atelier/sales?${q.toString()}`} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+            {t('ord_from_process_create')}
+          </Link>
+        </>
+      )}
     </div>
   )
 }

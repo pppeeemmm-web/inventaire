@@ -285,6 +285,7 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
     { table: 'document', col: 'contact_id' },
     { table: 'sale_order', col: 'buyer_id' },
     { table: 'consignment_order', col: 'partner_id' },
+    { table: 'work_order', col: 'party_id' },
     { table: 'expense', col: 'contact_id' },
     { table: 'shipment', col: 'to_contact_id' },
     { table: 'stock_item', col: 'supplier_id' },

@@ -12,6 +12,7 @@ import { gateErrorKey } from '@/lib/work-save-error'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import {
   createWorkOrder,
+  getWorksForOrder,
   listPartyAddresses,
   searchWorksForOrder,
   type OrderWorkHit,
@@ -35,36 +36,79 @@ const nameOf = (c: OrderContact) => c.NomInstitution || `${c.Prénom ?? ''} ${c.
 /** Server error token → readable text. */
 export function orderErrorText(err: string, t: (k: DictKey) => string): string {
   if (err.startsWith('ord_err_busy:')) return `${t('ord_err_busy')} ${err.slice('ord_err_busy:'.length)}`
+  if (err.startsWith('ord_err_payment:')) return `${t('ord_err_payment')} ${err.slice('ord_err_payment:'.length)}`
   if (err.startsWith('ord_err_')) return t(err as DictKey)
   const gate = gateErrorKey(err)
   return gate ? t(gate as DictKey) : `${t('error_prefix')} ${err}`
+}
+
+/** A form opened from elsewhere (work card, Pipeline, Exhibitions) starts filled in. */
+export interface NewOrderInitial {
+  kind?: WorkOrderKind
+  /** Fixes the kind (the work card « Don… » opens a gift only). */
+  lockKind?: boolean
+  workIds?: number[]
+  partyId?: number
+  terms?: Record<string, string>
+  notes?: string
+  /** Pipeline process or exhibition the order comes from. */
+  processId?: string
 }
 
 interface Props {
   narrow: boolean
   contacts: OrderContact[]
   onClose: () => void
-  onCreated: (id: string) => void
+  onCreated: (id: string, ref: string | null) => void
+  initial?: NewOrderInitial
+  /** One line under the title (e.g. what a gift order means, from the work card). */
+  intro?: string
 }
 
-export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
+export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, intro }: Props) {
   const { t } = useI18n()
-  const [kind, setKind] = useState<WorkOrderKind | null>(null)
+  const [kind, setKind] = useState<WorkOrderKind | null>(initial?.kind ?? null)
   const [works, setWorks] = useState<OrderWorkHit[]>([])
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<OrderWorkHit[]>([])
   const [partyQ, setPartyQ] = useState('')
-  const [party, setParty] = useState<OrderContact | null>(null)
+  const [party, setParty] = useState<OrderContact | null>(
+    () => (initial?.partyId && initial.partyId !== PEM ? contacts.find((c) => c.ContactID === initial.partyId) ?? null : null),
+  )
   const [addresses, setAddresses] = useState<PartyAddress[]>([])
   const [addressId, setAddressId] = useState('')
-  const [terms, setTerms] = useState<Record<string, string>>({})
-  const [notes, setNotes] = useState('')
+  const [terms, setTerms] = useState<Record<string, string>>(initial?.terms ?? {})
+  const [notes, setNotes] = useState(initial?.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const dirty = kind !== null || works.length > 0 || party !== null || notes !== '' || Object.values(terms).some(Boolean)
+  // Dirty = changed from what the form opened with (a prefilled form closes without asking).
+  const snap = (k: WorkOrderKind | null, ids: number[], p: number | null, tm: Record<string, string>, n: string) =>
+    JSON.stringify([k, [...ids].sort((x, y) => x - y), p, Object.entries(tm).filter(([, v]) => v).sort(), n])
+  const [baseline] = useState(() => snap(initial?.kind ?? null, initial?.workIds ?? [], party?.ContactID ?? null, initial?.terms ?? {}, initial?.notes ?? ''))
+  const dirty = snap(kind, works.map((w) => w.id), party?.ContactID ?? null, terms, notes) !== baseline
   const dirtyRef = useRef(dirty)
   dirtyRef.current = dirty
+
+  // Prefilled works (by number) are looked up once.
+  const initialWorkKey = (initial?.workIds ?? []).join(',')
+  // Retried: the Atelier shell refreshes after first paint, which can abort a call made at mount.
+  useEffect(() => {
+    const ids = initialWorkKey ? initialWorkKey.split(',').map(Number) : []
+    if (ids.length === 0) return
+    let live = true
+    const attempt = (left: number) => {
+      getWorksForOrder(ids)
+        .then((found) => { if (live) setWorks((cur) => (cur.length ? cur : found)) })
+        .catch((e: unknown) => {
+          if (live && left > 0) setTimeout(() => attempt(left - 1), 800)
+          else if (live) setErr(`${t('error_prefix')} ${e instanceof Error ? e.message : String(e)}`)
+        })
+    }
+    attempt(3)
+    return () => { live = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per prefilled list
+  }, [initialWorkKey])
 
   // Work search (debounced).
   useEffect(() => {
@@ -98,6 +142,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
     if (!kind) { setErr(t('ord_err_kind')); return false }
     if (works.length === 0) { setErr(t('ord_err_no_work')); return false }
     if (!party) { setErr(t('ord_err_party')); return false }
+    if (kind === 'sale' && !(Number(String(terms.price_final ?? '').replace(',', '.')) > 0)) { setErr(t('ord_err_price')); return false }
     if (kind === 'consignment' || kind === 'loan') {
       if (!terms.start_date || !terms.end_date) { setErr(t('ord_err_dates')); return false }
       if (terms.end_date < terms.start_date) { setErr(t('ord_err_dates_order')); return false }
@@ -109,11 +154,12 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
     if (addressId) fd.append('address_id', addressId)
     for (const [k, v] of Object.entries(terms)) if (v) fd.append(k, v)
     if (notes) fd.append('notes', notes)
+    if (initial?.processId) fd.append('process_id', initial.processId)
     setBusy(true)
     try {
       const res = await createWorkOrder(fd)
       if ('error' in res) { setErr(orderErrorText(res.error, t)); return false }
-      onCreated(res.id)
+      onCreated(res.id, res.ref)
       return true
     } finally {
       setBusy(false)
@@ -142,7 +188,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
     <>
       {sectionLabel('ord_new_kind')}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 8 }}>
-        {KINDS.map((k) => (
+        {KINDS.filter((k) => !initial?.lockKind || k === initial.kind).map((k) => (
           <button key={k} type="button" onClick={() => { setKind(k); setTerms({}) }} aria-pressed={kind === k} style={{
             minHeight: 52, border: `1px solid ${kind === k ? 'var(--ac)' : 'var(--bd2)'}`, borderRadius: 4,
             background: kind === k ? 'color-mix(in srgb, var(--ac) 10%, transparent)' : 'none',
@@ -212,7 +258,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
             {kind === 'sale' && <>
               {field('price_catalogue', 'ord_new_price_catalogue')}
               {field('discount_pct', 'ord_new_discount')}
-              {field('price_final', 'ord_new_price_final')}
+              {field('price_final', 'ord_new_price_final', 'number', true)}
               {field('deposit_pct', 'ord_new_deposit_pct')}
             </>}
             {kind === 'consignment' && field('commission_pct', 'ord_new_commission')}
@@ -261,6 +307,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated }: Props) {
           <div className="serif" style={{ fontSize: 24, flex: 1 }}>{t('ord_new_title')}</div>
           <button type="button" onClick={attemptClose} aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, minHeight: 44, minWidth: 44 }}>×</button>
         </div>
+        {intro && <div style={{ fontSize: 13, color: 'var(--tx2)', marginTop: 4 }}>{intro}</div>}
         {narrow && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('ord_new_draft_hint')}</div>}
         {body}
         {actions}

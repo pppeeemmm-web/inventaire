@@ -224,7 +224,7 @@ workDrawerStatusLegendEffective: 'Shown state (catalogue / photo gates)',
 workDrawerStatusLegendCommercial: 'Saved commercial status',
 workDrawer_gift_title: 'Mark as gift',
 workDrawer_gift_body:
-  'Ownership transfer with no payment. Generates a gift receipt in the vault.',
+  'Opens a gift order (draft + deed of gift, vault Commandes/Dons). The deed is signed in Orders.',
 workDrawer_gift_recipient: 'Recipient',
 workDrawer_gift_delivery: 'Handover date',
 workDrawer_gift_notes_ph: 'Context, occasion, conditions…',

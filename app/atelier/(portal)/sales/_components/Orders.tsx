@@ -9,9 +9,9 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { thumbUrl } from '@/lib/data'
-import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
-import { NewOrderForm, orderErrorText, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
+import { NewOrderForm, orderErrorText, type NewOrderInitial, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
 
 const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift']
@@ -69,6 +69,39 @@ function actionKey(kind: WorkOrderKind, to: string): DictKey {
   return `ord_do_cons_${to}` as DictKey
 }
 
+/** Same list as the phone sale (`SaleNewClient`), stored as written. */
+const PAY_METHODS: [string, DictKey][] = [
+  ['Virement bancaire', 'sale_mobile_method_bank'],
+  ['Card terminal', 'sale_mobile_method_card'],
+  ['Espèces', 'sale_mobile_method_cash'],
+  ['Chèque', 'sale_mobile_method_cheque'],
+  ['PayPal', 'sale_mobile_method_paypal'],
+]
+
+/** `?order=<id>` selects an order; `?new=<kind>&works=1,2&party=<id>&process=<id>&start=&end=` opens the form filled in. */
+function readUrlIntent(): { orderId: string | null; initial: NewOrderInitial | null } {
+  const sp = new URLSearchParams(window.location.search)
+  const orderId = sp.get('order')
+  const k = sp.get('new') as WorkOrderKind | null
+  if (!k || !KINDS.includes(k)) return { orderId, initial: null }
+  const terms: Record<string, string> = {}
+  for (const [param, key] of [['start', 'start_date'], ['end', 'end_date'], ['price', 'price_final'], ['commission', 'commission_pct']] as const) {
+    const v = sp.get(param)
+    if (v) terms[key] = v
+  }
+  return {
+    orderId,
+    initial: {
+      kind: k,
+      workIds: (sp.get('works') ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n !== 0),
+      partyId: Number(sp.get('party')) || undefined,
+      processId: sp.get('process') ?? undefined,
+      notes: sp.get('notes') ?? undefined,
+      terms,
+    },
+  }
+}
+
 const LINE_LABEL: Record<string, DictKey> = {
   returned: 'ord_line_returned', sold: 'ord_line_sold', given: 'ord_line_given', removed: 'ord_line_removed',
 }
@@ -97,10 +130,21 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
+  const [formInitial, setFormInitial] = useState<NewOrderInitial | undefined>(undefined)
+  const [payOpen, setPayOpen] = useState(false)
+  const [pay, setPay] = useState({ amount: '', method: PAY_METHODS[0][0], date: '' })
   const [stepBusy, setStepBusy] = useState(false)
   const [stepErr, setStepErr] = useState<string | null>(null)
   const [paperBusy, setPaperBusy] = useState(false)
   const signedInput = useRef<HTMLInputElement>(null)
+  /** An order opened by link (`?order=`): if it is closed, the list shows closed orders too. */
+  const linkedOrder = useRef<string | null>(null)
+  useEffect(() => {
+    const o = linkedOrder.current && orders?.find((x) => x.id === linkedOrder.current)
+    if (!o) return
+    linkedOrder.current = null
+    if (FINISHED.has(o.status)) setShowClosed(true)
+  }, [orders])
 
   async function redoPaper(o: WorkOrderView) {
     setPaperBusy(true); setStepErr(null)
@@ -142,7 +186,46 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
     }
   }
 
-  useEffect(() => { void load() }, [])
+  useEffect(() => {
+    void load()
+    // Opened from elsewhere (work card, Pipeline, Exhibitions, phone): select or prefill, once.
+    const intent = readUrlIntent()
+    if (intent.orderId) { setSelectedId(intent.orderId); linkedOrder.current = intent.orderId }
+    if (intent.initial) { setFormInitial(intent.initial); setFormOpen(true) }
+    // The Atelier mobile bar's « Vente » (TeamPortalClient `openNewSaleOrder`) asks for a new sale.
+    try {
+      if (!intent.initial && sessionStorage.getItem('pem_sales_open_new_order') === '1') {
+        sessionStorage.removeItem('pem_sales_open_new_order')
+        setFormInitial({ kind: 'sale' }); setFormOpen(true)
+      }
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- storage may be blocked; the form just stays closed
+    } catch { /* storage unavailable */ }
+  }, [])
+
+  function openPay(o: WorkOrderView) {
+    const left = Math.max(0, (o.price_final ?? 0) - o.paid_total)
+    const deposit = o.status === 'signed' && o.deposit_pct && o.price_final ? Math.round(o.price_final * o.deposit_pct) / 100 : null
+    setPay({ amount: String(deposit ?? left), method: PAY_METHODS[0][0], date: new Date().toISOString().slice(0, 10) })
+    setPayOpen(true); setStepErr(null)
+  }
+
+  async function savePay(o: WorkOrderView) {
+    if (!confirm(t('ord_confirm_step'))) return
+    setStepBusy(true); setStepErr(null)
+    try {
+      const fd = new FormData()
+      fd.append('order_id', o.id)
+      fd.append('amount', pay.amount)
+      fd.append('method', pay.method)
+      fd.append('payment_date', pay.date)
+      const res = await recordOrderPayment(fd)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      else setPayOpen(false)
+      await load()
+    } finally {
+      setStepBusy(false)
+    }
+  }
 
   async function runStep(o: WorkOrderView, to: string | 'cancel') {
     if (!confirm(t(to === 'cancel' ? 'ord_confirm_cancel' : 'ord_confirm_step'))) return
@@ -307,7 +390,12 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
           </div>
           {((NEXT[o.kind][o.status] ?? []).length > 0 || CANCEL_FROM[o.kind].includes(o.status)) && (
             <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-              {(NEXT[o.kind][o.status] ?? []).map((to, i) => (
+              {canPay(o) && (
+                <button type="button" disabled={stepBusy} onClick={() => openPay(o)} className="btn primary" style={{ minHeight: 44 }}>
+                  {t('ord_pay')}
+                </button>
+              )}
+              {(NEXT[o.kind][o.status] ?? []).filter((to) => !(o.kind === 'sale' && (to === 'deposit_paid' || to === 'paid'))).map((to, i) => (
                 <button key={to} type="button" disabled={stepBusy} onClick={() => { void runStep(o, to) }}
                   className={i === 0 ? 'btn primary' : 'btn ghost'} style={{ minHeight: 44 }}>
                   {stepBusy ? t('ord_working') : t(actionKey(o.kind, to))}
@@ -318,6 +406,31 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
                   {t('ord_do_cancel')}
                 </button>
               )}
+            </div>
+          )}
+          {payOpen && canPay(o) && (
+            <div style={{ marginTop: 12, padding: 12, border: '1px solid var(--bd2)', borderRadius: 4, display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 8 }}>
+              <label style={payLabel}>
+                {t('ord_pay_amount')}
+                <input className="input" type="number" inputMode="decimal" value={pay.amount} onChange={(e) => setPay((p) => ({ ...p, amount: e.target.value }))} style={payInput} />
+              </label>
+              <label style={payLabel}>
+                {t('ord_pay_date')}
+                <input className="input" type="date" value={pay.date} onChange={(e) => setPay((p) => ({ ...p, date: e.target.value }))} style={payInput} />
+              </label>
+              <label style={{ ...payLabel, gridColumn: '1 / -1' }}>
+                {t('ord_pay_method')}
+                <select className="input" value={pay.method} onChange={(e) => setPay((p) => ({ ...p, method: e.target.value }))} style={payInput}>
+                  {PAY_METHODS.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
+                </select>
+              </label>
+              <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--tx3)' }}>{t('ord_pay_hint')}</div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row' }}>
+                <button type="button" className="btn primary" disabled={stepBusy} onClick={() => { void savePay(o) }} style={{ minHeight: 44 }}>
+                  {stepBusy ? t('ord_working') : t('ord_pay_save')}
+                </button>
+                <button type="button" className="btn ghost" disabled={stepBusy} onClick={() => setPayOpen(false)} style={{ minHeight: 44 }}>{t('ord_new_cancel')}</button>
+              </div>
             </div>
           )}
           {stepErr && <div role="alert" style={{ fontSize: 13, color: 'var(--rust)', marginTop: 8 }}>{stepErr}</div>}
@@ -339,7 +452,7 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
               )}
             </div>
           ))}
-          <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: 8, marginTop: 10 }}>
+          <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
             <button type="button" className="btn ghost" disabled={paperBusy} onClick={() => { void redoPaper(o) }} style={{ minHeight: 44 }}>
               {paperBusy ? t('ord_working') : o.paper_path ? t('ord_paper_redo') : t('ord_paper_make')}
             </button>
@@ -356,12 +469,30 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
           {o.status === 'draft' && o.paper_path && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_paper_draft_hint')}</div>}
         </Section>
 
-        {(o.price_final != null || o.commission_pct != null) && (
+        {(o.price_final != null || o.commission_pct != null || o.payments.length > 0) && (
           <Section label={t('ord_money')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: 13 }}>
               {o.price_final != null && <><span style={{ color: 'var(--tx3)' }}>{t('ord_price_final')}</span><span>{fmtMoney(o.price_final, o.currency)}</span></>}
               {o.commission_pct != null && <><span style={{ color: 'var(--tx3)' }}>{t('ord_commission')}</span><span>{`${o.commission_pct} %`}</span></>}
+              {o.kind === 'sale' && o.price_final != null && (
+                <>
+                  <span style={{ color: 'var(--tx3)' }}>{t('ord_paid_total')}</span><span>{fmtMoney(o.paid_total, o.currency)}</span>
+                  <span style={{ color: 'var(--tx3)' }}>{t('ord_remaining')}</span><span>{fmtMoney(Math.max(0, o.price_final - o.paid_total), o.currency)}</span>
+                </>
+              )}
             </div>
+            {o.payments.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>{t('ord_payments')}</div>
+                {o.payments.map((p) => (
+                  <div key={p.id} style={{ display: 'flex', gap: 8, fontSize: 12, borderTop: '1px solid var(--bd)', padding: '4px 0' }}>
+                    <span style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{fmtDate(p.payment_date)}</span>
+                    <span style={{ flex: 1, minWidth: 0, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.method ?? ''}</span>
+                    <span>{fmtMoney(p.amount, o.currency)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Section>
         )}
 
@@ -416,8 +547,9 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
     <NewOrderForm
       narrow={narrow}
       contacts={contacts}
-      onClose={() => setFormOpen(false)}
-      onCreated={(id) => { setFormOpen(false); setSelectedId(id); void load() }}
+      initial={formInitial}
+      onClose={() => { setFormOpen(false); setFormInitial(undefined); clearUrlIntent() }}
+      onCreated={(id) => { setFormOpen(false); setFormInitial(undefined); clearUrlIntent(); setSelectedId(id); void load() }}
     />
   ) : null
 
@@ -448,7 +580,7 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
         {chips}
         {status}
         {[...openRows, ...closedRows].map((o) => (
-          <button key={o.id} type="button" onClick={() => { setSelectedId(o.id); setStepErr(null) }} style={{
+          <button key={o.id} type="button" onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false) }} style={{
             display: 'block', width: 'calc(100% - 32px)', margin: '10px 16px 0', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
             border: '1px solid var(--bd2)', borderRadius: 4, background: 'var(--bg2)', padding: 10, color: 'var(--tx)',
             opacity: FINISHED.has(o.status) ? 0.75 : 1,
@@ -474,7 +606,7 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
   const row = (o: WorkOrderView) => {
     const on = o.id === selectedId
     return (
-      <tr key={o.id} onClick={() => { setSelectedId(o.id); setStepErr(null) }} style={{ cursor: 'pointer', background: on ? 'color-mix(in srgb, var(--ac) 7%, transparent)' : undefined, color: FINISHED.has(o.status) ? 'var(--tx3)' : undefined }}>
+      <tr key={o.id} onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false) }} style={{ cursor: 'pointer', background: on ? 'color-mix(in srgb, var(--ac) 7%, transparent)' : undefined, color: FINISHED.has(o.status) ? 'var(--tx3)' : undefined }}>
         <td style={{ ...CELL, width: 34 }}>{kindChip(o.kind)}</td>
         <td style={{ ...CELL, whiteSpace: 'nowrap' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ac)' }}>{o.ref}</span></td>
         <td style={CELL}>{thumbs(o, 28, 4)}</td>
@@ -529,6 +661,16 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
     </div>
   )
 }
+
+/** Drop `?new=…` once the form is done, so a reload does not open it again. Not at mount: the
+ *  router reacts to the URL change and aborts the server actions still in flight. */
+function clearUrlIntent() {
+  if (new URLSearchParams(window.location.search).has('new')) window.history.replaceState(null, '', window.location.pathname)
+}
+
+const canPay = (o: WorkOrderView) => o.kind === 'sale' && (o.status === 'signed' || o.status === 'deposit_paid')
+const payLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', minWidth: 0 } as const
+const payInput = { minHeight: 44, fontSize: 15, width: '100%', boxSizing: 'border-box' } as const
 
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (

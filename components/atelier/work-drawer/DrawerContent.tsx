@@ -1999,8 +1999,6 @@ export function DrawerContent({
         <GiftTransferModal
           oeuvreId={o.OeuvreID}
           recipients={sortedContacts}
-          cName={cName}
-          t={t}
           onClose={() => setShowGiftModal(false)}
           onGifted={() => { setShowGiftModal(false); setLongTextReloadNonce((n) => n + 1); router.refresh() }}
         />

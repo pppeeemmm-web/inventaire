@@ -88,15 +88,8 @@ export function Sales({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Pro
 
   useEffect(() => { loadOrders() }, [loadOrders])
 
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem('pem_sales_open_new_order') !== '1') return
-      sessionStorage.removeItem('pem_sales_open_new_order')
-      setShowForm(true)
-    } catch {
-      /* ignore storage availability */
-    }
-  }, [])
+  // R7 step 2: « + Nouvelle commande » (and the mobile bar's « Vente ») open the Orders form
+  // (`Orders.tsx`); this former form makes `sale_order` rows and is no longer offered.
 
   const { soldWorks, consignedCount, totalRevenue, avgPrice, byYear } = useMemo(() => {
     const sold: Oeuvre[] = []
@@ -210,9 +203,6 @@ export function Sales({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Pro
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <ReportLinkButton source="sales" />
-          <button className="btn primary sm" onClick={() => setShowForm(true)}>
-            + Nouvelle commande
-          </button>
         </div>
       </div>
 

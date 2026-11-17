@@ -6,7 +6,7 @@ import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl, EXHIBITION_LIST_TYPES } from '@/lib/data'
 import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { sendWorksToExhibition } from '@/app/atelier/(portal)/exhibitions/actions'
-import { gateErrorKey } from '@/lib/work-save-error'
+import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { useI18n } from '@/lib/i18n/context'
 import { ExhibitionStepsPanel } from './ExhibitionStepsPanel'
 import { ExhibitionFloorPlanEditor } from './ExhibitionFloorPlanEditor'
@@ -317,12 +317,11 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
                       const result = await sendWorksToExhibition({ oeuvreIds: ids, exhibitionId: exhibition.id, kind: sendKind })
                       setSending(false)
                       if ('error' in result) {
-                        const gate = gateErrorKey(result.error)
-                        alert(gate ? t(gate) : result.error)
+                        alert(orderErrorText(result.error, t))
                         return
                       }
-                      alert(t('exhib_works_linked_count_fmt').replace('{n}', String(ids.length)))
-                      window.location.reload()
+                      // R7: a draft order, signed and sent out in Commandes.
+                      window.location.assign(`/atelier/sales?order=${result.id}`)
                     }}
                   >
                     {sending ? '…' : t('exh_send_selection_fmt').replace('{n}', String(selection.size))}

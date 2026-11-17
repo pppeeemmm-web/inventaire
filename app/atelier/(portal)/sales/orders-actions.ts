@@ -31,6 +31,13 @@ export interface WorkOrderPaperView {
   folder: string | null
 }
 
+export interface WorkOrderPaymentView {
+  id: string
+  amount: number
+  payment_date: string
+  method: string | null
+}
+
 export interface WorkOrderView {
   id: string
   ref: string | null
@@ -50,11 +57,17 @@ export interface WorkOrderView {
   cancelled_at: string | null
   currency: string
   price_final: number | null
+  deposit_pct: number | null
   commission_pct: number | null
   notes: string | null
   paper_path: string | null
+  /** The Pipeline process or exhibition the order came from. */
+  process_id: string | null
   works: WorkOrderLineView[]
   papers: WorkOrderPaperView[]
+  /** Money received (sale), newest first; counted in Revenue & expenses. */
+  payments: WorkOrderPaymentView[]
+  paid_total: number
 }
 
 export type FetchWorkOrdersResult = { ok: true; orders: WorkOrderView[] } | { error: string }
@@ -68,7 +81,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const { data: orders, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, commission_pct, notes, paper_path')
+    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id')
     .order('created_at', { ascending: false })
   if (error) return { error: error.message }
   if (!orders || orders.length === 0) return { ok: true, orders: [] }
@@ -76,14 +89,16 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const orderIds = orders.map((o) => o.id)
   const partyIds = [...new Set(orders.map((o) => o.party_id))]
 
-  const [linesRes, partiesRes, papersRes] = await Promise.all([
+  const [linesRes, partiesRes, papersRes, paymentsRes] = await Promise.all([
     supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position').in('order_id', orderIds),
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', partyIds),
     supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', orderIds),
+    supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', orderIds).order('payment_date', { ascending: false }),
   ])
   if (linesRes.error) return { error: linesRes.error.message }
   if (partiesRes.error) return { error: partiesRes.error.message }
   if (papersRes.error) return { error: papersRes.error.message }
+  if (paymentsRes.error) return { error: paymentsRes.error.message }
 
   const lines = linesRes.data ?? []
   const oeuvreIds = [...new Set(lines.map((l) => l.oeuvre_id))]
@@ -111,6 +126,9 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
     const papers = (papersRes.data ?? [])
       .filter((d) => d.work_order_id === o.id)
       .map((d) => ({ id: d.id, name: d.name, storage_path: d.storage_path, folder: d.folder }))
+    const payments = (paymentsRes.data ?? [])
+      .filter((p) => p.work_order_id === o.id)
+      .map((p) => ({ id: p.id, amount: Number(p.amount), payment_date: p.payment_date, method: p.method }))
     return {
       ...o,
       kind: o.kind as WorkOrderKind,
@@ -118,6 +136,8 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       party_place: place,
       works,
       papers,
+      payments,
+      paid_total: payments.reduce((sum, p) => sum + p.amount, 0),
     }
   })
 
@@ -131,6 +151,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
 
 const PEM = 13
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 type Supa = Awaited<ReturnType<typeof createClient>>
 export type OrderWriteResult = { ok: true; id: string; ref: string | null } | { error: string }
 export type SimpleOrderResult = { ok: true } | { error: string }
@@ -206,6 +227,13 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
     if (endDate < startDate) return { error: 'ord_err_dates_order' }
   }
 
+  // A sale states its price: « Encaisser » compares the money received with it.
+  const priceFinal = kind === 'sale' ? numOrNull(formData.get('price_final')) : null
+  if (kind === 'sale' && !(priceFinal && priceFinal > 0)) return { error: 'ord_err_price' }
+  // The Pipeline process or exhibition the order comes from (kept as a link, not a copy).
+  const processId = strOrNull(formData.get('process_id'))
+  if (processId && !UUID_RE.test(processId)) return { error: 'ord_err_process' }
+
   const allowed = kind === 'sale' ? SALE_ORDER_FROM : kind === 'gift' ? GIFT_FROM : CONSIGN_FROM
   const circ = await circulationError(supabase, oeuvreIds, allowed)
   if (circ) return { error: circ }
@@ -227,10 +255,11 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
       end_date: endDate,
       price_catalogue: kind === 'sale' ? numOrNull(formData.get('price_catalogue')) : null,
       discount_pct: kind === 'sale' ? numOrNull(formData.get('discount_pct')) : null,
-      price_final: kind === 'sale' ? numOrNull(formData.get('price_final')) : null,
+      price_final: priceFinal,
       deposit_pct: kind === 'sale' ? numOrNull(formData.get('deposit_pct')) : null,
       commission_pct: kind === 'consignment' ? numOrNull(formData.get('commission_pct')) : null,
       notes: strOrNull(formData.get('notes')),
+      process_id: processId,
     })
     .select('id, ref')
     .single()
@@ -252,6 +281,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
     await logError('Order paper failed at creation', paper.error, { source: 'orders.createWorkOrder', metadata: { orderId: order.id, ref: order.ref } })
   }
   revalidatePath('/atelier/sales')
+  if (processId) revalidatePath('/atelier/pipeline')
   return { ok: true, id: order.id, ref: order.ref }
 }
 
@@ -416,6 +446,81 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: 'cancelled', metadata: { ref: order.ref, kind: order.kind } })
   revalidatePath('/atelier/sales')
   return { ok: true }
+}
+
+// ── Money in (R7 step 2) ─────────────────────────────────────────────────────────────────
+// « Encaisser » on a sale: one `payments` row linked to the order (Revenue & expenses counts every
+// payment on its day). The step follows the money: part of the price → « Acompte », all of it →
+// « Soldée » (the buyer becomes the owner). The step is moved first, so a refused move writes no
+// payment; a payment that fails after the move is reported (the step stays).
+
+export type PaymentResult = { ok: true; status: string } | { error: string }
+
+export async function recordOrderPayment(formData: FormData): Promise<PaymentResult> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { supabase } = g
+  const orderId = String(formData.get('order_id') ?? '')
+  const amount = numOrNull(formData.get('amount'))
+  if (!amount || amount <= 0) return { error: 'ord_err_amount' }
+  const method = strOrNull(formData.get('method'))
+  const date = strOrNull(formData.get('payment_date')) ?? new Date().toISOString().slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: 'ord_err_amount' }
+
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, price_final, ref').eq('id', orderId).single()
+  if (error || !o) return { error: error?.message ?? 'Order not found' }
+  if (o.kind !== 'sale' || !['signed', 'deposit_paid'].includes(o.status)) return { error: 'ord_err_step' }
+  if (!(o.price_final && o.price_final > 0)) return { error: 'ord_err_price' }
+
+  const { data: before, error: sumErr } = await supabase.from('payments').select('amount').eq('work_order_id', o.id)
+  if (sumErr) return { error: sumErr.message }
+  const paid = (before ?? []).reduce((sum, p) => sum + Number(p.amount), 0)
+  const full = paid + amount >= Number(o.price_final) - 0.005
+  const to = full ? 'paid' : o.status === 'signed' ? 'deposit_paid' : null
+  if (to) {
+    const step = await advanceWorkOrder(o.id, to)
+    if ('error' in step) return step
+  }
+
+  const { error: payErr } = await supabase.from('payments').insert({
+    work_order_id: o.id,
+    amount,
+    method,
+    payment_date: date,
+    notes: o.ref,
+  })
+  if (payErr) {
+    await logError('Order payment not written after its step', payErr.message, { source: 'orders.recordOrderPayment', metadata: { orderId: o.id, amount, to } })
+    return { error: `ord_err_payment:${payErr.message}` }
+  }
+  await logSystemEvent({ eventType: 'PAYMENT_GRAIN', tableName: 'work_order', rowId: o.id, metadata: { ref: o.ref, amount, method, date } })
+  revalidatePath('/atelier/sales')
+  revalidatePath('/atelier/fiscal')
+  return { ok: true, status: to ?? o.status }
+}
+
+/** Works by number, for a form opened prefilled from elsewhere (work card, Pipeline, phone). */
+export async function getWorksForOrder(ids: number[]): Promise<OrderWorkHit[]> {
+  const g = await guardTeam()
+  if ('error' in g) return []
+  const clean = [...new Set(ids.filter((n) => Number.isInteger(n) && n !== 0))].slice(0, 50)
+  if (clean.length === 0) return []
+  const { data } = await g.supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink').in('OeuvreID', clean).is('deleted_at', null)
+  const byId = new Map((data ?? []).map((w) => [w.OeuvreID, w]))
+  return clean.flatMap((id) => {
+    const w = byId.get(id)
+    return w ? [{ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink }] : []
+  })
+}
+
+export type ProcessOrderLink = { id: string; ref: string | null; kind: WorkOrderKind; status: string }
+
+/** Orders made from a Pipeline process or an exhibition (the process keeps a link, not a paper). */
+export async function findOrdersForProcess(processId: string): Promise<ProcessOrderLink[]> {
+  const g = await guardTeam()
+  if ('error' in g || !UUID_RE.test(processId)) return []
+  const { data } = await g.supabase.from('work_order').select('id, ref, kind, status').eq('process_id', processId).order('created_at', { ascending: false })
+  return (data ?? []).map((o) => ({ id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status }))
 }
 
 export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null }

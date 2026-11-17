@@ -122,6 +122,7 @@ export async function fetchWorkCost(oeuvreId: number): Promise<WorkCost | null> 
     .order('completed_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+  const salePrice = sale?.prix_final != null ? Number(sale.prix_final) : await workOrderSalePrice(supabase, oeuvreId)
 
   return {
     total: Math.round(lines.reduce((s, l) => s + l.amount, 0) * 100) / 100,
@@ -129,6 +130,25 @@ export async function fetchWorkCost(oeuvreId: number): Promise<WorkCost | null> 
       .map(([category, amount]) => ({ category, amount: Math.round(amount * 100) / 100 }))
       .sort((a, b) => b.amount - a.amount),
     lines,
-    salePrice: sale?.prix_final != null ? Number(sale.prix_final) : null,
+    salePrice,
   }
+}
+
+/**
+ * The work's price on its latest paid sale order (R7 `work_order`): the line's own price, or the
+ * order's final price when the work was sold alone.
+ */
+async function workOrderSalePrice(supabase: Awaited<ReturnType<typeof createClient>>, oeuvreId: number): Promise<number | null> {
+  const { data } = await supabase
+    .from('work_order_work')
+    .select('order_id, price, work_order!work_order_work_order_id_fkey(kind, status, price_final, paid_at)')
+    .eq('oeuvre_id', oeuvreId)
+  const sold = (data ?? [])
+    .map((l) => ({ ...l, o: l.work_order as unknown as { kind: string; status: string; price_final: number | null; paid_at: string | null } | null }))
+    .filter((l) => l.o && l.o.kind === 'sale' && (l.o.status === 'paid' || l.o.status === 'delivered'))
+    .sort((a, b) => String(b.o?.paid_at ?? '').localeCompare(String(a.o?.paid_at ?? '')))[0]
+  if (!sold) return null
+  if (sold.price != null) return Number(sold.price)
+  const { count } = await supabase.from('work_order_work').select('id', { count: 'exact', head: true }).eq('order_id', sold.order_id)
+  return count === 1 && sold.o?.price_final != null ? Number(sold.o.price_final) : null
 }
