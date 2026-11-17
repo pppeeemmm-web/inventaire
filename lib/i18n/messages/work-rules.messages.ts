@@ -30,6 +30,7 @@ export const workRulesMessages = defineMessages({
   wr_r10: { fr: 'Une œuvre ne quitte Pem que par un ordre', en: 'A work leaves Pem only through an order' },
   wr_r12: { fr: 'Détruite / perdue : constat, tâches, ordres', en: 'Destroyed / lost: report, tasks, orders' },
   wr_r13: { fr: 'Publique = statut public, sans sort', en: 'Public = public status, no fate' },
+  wr_r17: { fr: 'Détruite / perdue : jamais « Exposable »', en: 'Destroyed / lost: never « Showable »' },
   wr_r14: { fr: 'Chaque changement de statut a sa ligne datée', en: 'Every status change has its dated line' },
   wr_b_no_photo: { fr: 'cataloguée, aucune photo', en: 'catalogued, no photo' },
   wr_b_not_ready: { fr: 'Disponible sans photo validée', en: 'Available without a validated photo' },
@@ -62,5 +63,6 @@ export const workRulesMessages = defineMessages({
   wr_photo_go_body: { fr: 'Elle passera Disponible et sera visible sur le site.', en: 'It will become Available and show on the website.' },
   wr_photo_go_ok: { fr: 'Valider', en: 'Validate' },
   wr_photo_go_cancel: { fr: 'Annuler', en: 'Cancel' },
+  wr_b_fate_showable: { fr: 'détruite / perdue mais « Exposable »', en: 'destroyed / lost but « Showable »' },
   wr_b_status_no_line: { fr: 'changement de statut du {x} sans ligne datée dans Historique', en: 'status change on {x} with no dated line in History' },
 })

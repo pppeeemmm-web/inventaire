@@ -184,6 +184,10 @@ export const workCardMessages = defineMessages({
     fr: 'Physiquement prête à montrer : montée, encadrée, vernie. ≠ Disponible, qui veut dire la fiche prête (cataloguée + photo).',
     en: 'Physically ready to show: mounted, framed, varnished. ≠ Available, which means the record is ready (catalogued + photo).',
   },
+  wc_gate_exposable_fate_tt: {
+    fr: 'Fermé : une œuvre détruite ou perdue n’est jamais exposable (règle de la base).',
+    en: 'Closed: a destroyed or lost work is never showable (database rule).',
+  },
   wc_gate_exposable_archive_tt: {
     fr: 'Fermé : une œuvre de l’archive de l’artiste n’est pas exposable. Changer d’abord la propriété.',
     en: 'Closed: a work in the artist’s archive is not showable. Change the ownership first.',

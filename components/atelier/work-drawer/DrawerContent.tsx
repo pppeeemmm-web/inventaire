@@ -1802,10 +1802,11 @@ export function DrawerContent({
             <Chip
               narrow={narrow}
               tone="ok"
-              active={exposable}
-              disabled={ownStage === 'artist_archive'}
-              onClick={() => { if (ownStage !== 'artist_archive') setExposable(!exposable) }}
-              title={ownStage === 'artist_archive' ? t('wc_gate_exposable_archive_tt') : t('wc_gate_exposable_tt')}
+              // Destroyed / lost: never « Exposable » (fate_not_showable.sql, WORK_RULES rule 17).
+              active={exposable && !o.fate}
+              disabled={ownStage === 'artist_archive' || !!o.fate}
+              onClick={() => { if (ownStage !== 'artist_archive' && !o.fate) setExposable(!exposable) }}
+              title={o.fate ? t('wc_gate_exposable_fate_tt') : ownStage === 'artist_archive' ? t('wc_gate_exposable_archive_tt') : t('wc_gate_exposable_tt')}
               testId="wc-gate-exposable"
             >
               {exposable ? '✓ ' : ''}{t('wc_gate_exposable')}

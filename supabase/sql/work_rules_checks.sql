@@ -1,4 +1,4 @@
--- Work rule checks — docs/WORK_RULES.md §2, one query per rule. READ ONLY: every statement is a
+-- Work rule checks — docs/WORK_RULES.md §2, one query per rule (2–10, 12–14, 17). READ ONLY: every statement is a
 -- SELECT; nothing here writes, creates or grants. Each query returns the works that break its rule
 -- (columns: rule, oeuvre_id, titre, detail) and must come back EMPTY.
 --
@@ -195,4 +195,11 @@ select '14' as rule, o."OeuvreID", o."Titre",
    and coalesce(e.old_value::text, '') not in ('9', '10') and coalesce(e.new_value::text, '') not in ('9', '10')
    and position(to_char((e.created_at at time zone 'Europe/Paris')::date, 'YYYY/MM/DD')
                 in coalesce(o."Historique", '')) = 0
+ order by 2;
+
+-- ── Rule 17: a destroyed / lost work is never « Exposable » (Pem 2026-11-17) ─────────────────
+-- Enforced by trg_oeuvre_fate_not_showable (fate_not_showable.sql).
+select '17' as rule, o."OeuvreID", o."Titre", 'détruite / perdue mais « Exposable »'
+  from public."Oeuvres" o
+ where o.deleted_at is null and o.fate is not null and coalesce(o."Exposable", false)
  order by 2;

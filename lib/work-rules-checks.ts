@@ -14,7 +14,7 @@ export const RULES_LIVE_SINCE = '2026-11-17T00:00:00+01:00'
 export const HISTORY_CHECK_SINCE = '2026-11-18T00:00:00+01:00'
 
 /** Rules that hold state the checks can read. 1, 11, 15, 16 have none (see the SQL file). */
-export const CHECKED_RULES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '12', '13', '14'] as const
+export const CHECKED_RULES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '12', '13', '14', '17'] as const
 export type CheckedRule = (typeof CHECKED_RULES)[number]
 
 export type RuleBreak = {
@@ -35,6 +35,7 @@ export type CheckWork = {
   fate: string | null
   ContactID: number | null
   LocalisationID: number | null
+  Exposable: boolean | null
   localisation_address_id: number | null
   production_completed_on: string | null
   is_public: boolean | null
@@ -153,6 +154,8 @@ export function evaluateWorkRules(input: CheckInput): RuleBreak[] {
     // 13 — public = 2, 4, 6, 7, 8, 11 with no fate
     const shouldBePublic = s != null && [2, 4, 6, 7, 8, 11].includes(s) && w.fate == null
     if (!!w.is_public !== shouldBePublic) add('13', w, w.is_public ? 'wr_b_public_wrongly' : 'wr_b_not_public')
+    // 17 — a destroyed / lost work is never « Exposable »
+    if (w.fate != null && w.Exposable) add('17', w, 'wr_b_fate_showable')
   }
 
   // 7 — a ticked task keeps its day (tasks created since the rule went live)
