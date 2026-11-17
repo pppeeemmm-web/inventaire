@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.45 (2026-11-17) — R1 step 7.
+  wn_voice_in_journal_t: { fr: 'Les notes vocales vivent dans le Journal', en: 'Voice notes live in the Journal' },
+  wn_voice_in_journal_d: {
+    fr: 'Une note vocale apparaît sur son jour dans le Journal, parmi les entrées. « Relier… » la rattache à une œuvre, une idée, un projet, un constat ou un rappel daté. L’écran « Notes » disparaît : son ancien lien ouvre le Journal. L’enregistrement ne demande plus de type ni de projet. Les suggestions ✦ sont plus rares : au plus l’œuvre et l’idée les plus proches par entrée.',
+    en: 'A voice note shows on its day in the Journal, among the entries. « Link… » ties it to a work, an idea, a project, a condition report or a dated reminder. The « Notes » screen is gone: its old link opens the Journal. Recording no longer asks for a kind or a project. ✦ suggestions are rarer: at most the closest work and the closest idea per entry.',
+  },
   // 3.1.44 (2026-11-17) — R2 speed safeguards.
   wn_today_cached_copy_t: { fr: 'Aujourd’hui s’ouvre tout de suite', en: 'Today opens at once' },
   wn_today_cached_copy_d: {
