@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.44 (2026-11-17) — R2 speed safeguards.
+  wn_today_cached_copy_t: { fr: 'Aujourd’hui s’ouvre tout de suite', en: 'Today opens at once' },
+  wn_today_cached_copy_d: {
+    fr: 'Au téléphone, « Aujourd’hui » s’affiche depuis la dernière copie gardée par le téléphone, puis se met à jour ; si la copie a plus d’une minute, « Mis à jour il y a N min » le dit. Se déconnecter efface ces copies. Les volets repliés s’ouvrent aussi plus vite.',
+    en: 'On the phone, « Today » shows the last copy the phone kept, then refreshes; if that copy is more than a minute old, « Updated N min ago » says so. Signing out wipes these copies. The folded sections also open faster.',
+  },
   // 3.1.43 (2026-11-17) — R1 6.4b: work notes as lines, « Pour vous » (the Fil on Overview is admin-only: not here); readable field names.
   wn_work_note_lines_t: { fr: 'Notes d’œuvre : une ligne par personne', en: 'Work notes: one line per person' },
   wn_work_note_lines_d: {
