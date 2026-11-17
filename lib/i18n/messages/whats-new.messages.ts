@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.46 (2026-11-17) — R7 build step 1.
+  wn_orders_papers_t: { fr: 'Commandes : une œuvre qui sort, un papier', en: 'Orders: a work goes out, a paper' },
+  wn_orders_papers_d: {
+    fr: 'Dans Ventes, « Commandes » réunit tout ce qui sort de l’atelier : vente, dépôt-vente, prêt, don, avec ses étapes. Chaque commande a son papier (bon de commande, bordereau de dépôt-vente, contrat de prêt, acte de don), rangé dans le Coffre sous Commandes ; la copie signée se range à côté. Un dépôt ou un prêt demande ses dates de sortie et de retour.',
+    en: 'In Sales, « Orders » gathers everything that leaves the studio: sale, consignment, loan, gift, with its steps. Each order has its paper (order form, consignment slip, loan contract, deed of gift), filed in the Vault under Orders; the signed copy goes beside it. A consignment or loan needs its out and back dates.',
+  },
   // 3.1.45 (2026-11-17) — R1 step 7.
   wn_voice_in_journal_t: { fr: 'Les notes vocales vivent dans le Journal', en: 'Voice notes live in the Journal' },
   wn_voice_in_journal_d: {

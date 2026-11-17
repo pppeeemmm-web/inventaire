@@ -61,7 +61,8 @@
 // '3.1.43' (2026-11-17): work notes as lines (author + date), « Pour vous » on Overview; readable names for changed fields.
 // '3.1.44' (2026-11-17): R2 speed — Aujourd'hui opens from the phone's last copy, then refreshes.
 // '3.1.45' (2026-11-17): R1 step 7 — voice notes in the Journal (« Relier… »), Notes screen gone, quieter ✦.
-export const WHATS_NEW_RELEASE = '3.1.45'
+// '3.1.46' (2026-11-17): R7 — « Commandes » in Sales, one paper per order in the Vault.
+export const WHATS_NEW_RELEASE = '3.1.46'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -73,6 +74,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'orders_papers', day: '2026-11-17' },
   { id: 'voice_in_journal', day: '2026-11-17' },
   { id: 'today_cached_copy', day: '2026-11-17' },
   { id: 'work_note_lines', day: '2026-11-17' },
