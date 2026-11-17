@@ -29,7 +29,8 @@ import { routeTabFromPathname } from '@/lib/atelier/route-tab-from-pathname'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { useAtelierNarrow } from '@/lib/atelier/use-atelier-narrow'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-import { BottomStack, BottomStackLayer, PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { BottomStack, BottomStackLayer } from '@/components/shared/BottomStack'
+import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SegmentRoutePanel } from '@/components/atelier/team-portal-segment-panel'
 import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
@@ -92,7 +93,7 @@ function TabPanelFallback() {
 
 type Tab = SegmentedAtelierTab
 
-/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
+/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: on the phone, new work stays in the menu (not on `PhoneInputBar`), hidden here when `hideNewWork`. */
 function AtelierHeaderChrome({
   variant,
   lang,
@@ -239,86 +240,6 @@ function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): Ateli
     themeToGroups: { ...init.themeToGroups },
     groupToThemes: { ...init.groupToThemes },
   }
-}
-
-/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). New work (+) left the bar (Pem 2026-11-14: "not useful anymore"); it stays in the menu. */
-function MobileActionBar({
-  t,
-  onCapture,
-  onScan,
-  onNote,
-  onReminders,
-}: {
-  t: (k: string) => string
-  onCapture: () => void
-  onScan: () => void
-  onNote: () => void
-  onReminders: () => void
-}) {
-  return (
-    <div
-      data-testid="atelier-mobile-action-bar"
-      role="toolbar"
-      aria-label={t('ring_b_bar_toolbar_aria')}
-      style={{
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: PEM_Z_INDEX.mobileActionBar,
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 4,
-        paddingTop: 8,
-        paddingLeft: 'max(6px, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(6px, env(safe-area-inset-right, 0px))',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
-        background: 'var(--bg1)',
-        borderTop: '1px solid var(--bd)',
-      }}
-    >
-      <button
-        type="button"
-        className="btn ghost sm"
-        aria-label={t('ring_b_bar_capture_aria')}
-        title={t('ring_b_bar_capture_aria')}
-        onClick={onCapture}
-        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
-      >
-        📷
-      </button>
-      <button
-        type="button"
-        className="btn ghost sm"
-        aria-label={t('ring_b_bar_scan_aria')}
-        title={t('ring_b_bar_scan_aria')}
-        onClick={onScan}
-        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
-      >
-        🔍
-      </button>
-      <button
-        type="button"
-        className="btn ghost sm"
-        aria-label={t('ring_b_bar_note_aria')}
-        title={t('ring_b_bar_note_aria')}
-        onClick={onNote}
-        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
-      >
-        🎤
-      </button>
-      <button
-        type="button"
-        className="btn ghost sm"
-        aria-label={t('ring_b_bar_reminders_aria')}
-        title={t('ring_b_bar_reminders_aria')}
-        onClick={onReminders}
-        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
-      >
-        ⏰
-      </button>
-    </div>
-  )
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -1742,12 +1663,9 @@ export function TeamPortalClient({
         </BottomStackLayer>
 
         <BottomStackLayer layer="mobileActionBar" visible={showMobileActionBar}>
-          <MobileActionBar
-            t={t as (k: string) => string}
-            onCapture={() => void router.push(isAdmin ? '/atelier/session/new' : atelierTabHref('journal'))}
-            onScan={() => void router.push('/atelier/scan')}
-            onNote={() => setVoiceNoteSheetOpen(true)}
-            onReminders={openFieldReminders}
+          <PhoneInputBar
+            onVoice={() => setVoiceNoteSheetOpen(true)}
+            workHref={isAdmin ? '/atelier/session/new' : atelierTabHref('journal')}
           />
         </BottomStackLayer>
       </BottomStack>

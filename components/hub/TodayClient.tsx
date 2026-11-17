@@ -10,6 +10,7 @@ import type { SeeAgainSlots, SeeAgainWork } from '@/app/atelier/see-again/action
 import type { JournalDayEntry } from '@/app/atelier/(portal)/journal/entry-actions'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
+import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
 const VoiceNoteSheet = dynamic(
@@ -80,13 +81,8 @@ export function TodayClient({
     .replace('{v}', String(voiceCount))
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
-  const barBtn: CSSProperties = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-    minHeight: 56, fontSize: 12, color: 'var(--tx)', textDecoration: 'none', background: 'none', border: 0, cursor: 'pointer',
-  }
-
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', paddingBottom: 'calc(56px + max(8px, env(safe-area-inset-bottom)))' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px 4px' }}>
         <Link href="/atelier" aria-label={t('today_menu')} style={{ minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 20 }}>☰</Link>
         <h1 style={{ fontSize: 22, margin: 0, flex: 1, textTransform: 'capitalize' }}>{date}</h1>
@@ -160,17 +156,7 @@ export function TodayClient({
         </Link>
       </section>
 
-      <nav
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          background: 'var(--bg1)', borderTop: '1px solid var(--bd2)', paddingBottom: 'max(8px, env(safe-area-inset-bottom))', zIndex: 20,
-        }}
-      >
-        <Link href="/atelier/journal?today=1" style={barBtn}><span aria-hidden="true">✍️</span>{t('today_bar_write')}</Link>
-        <button type="button" onClick={() => setVoiceOpen(true)} style={barBtn}><span aria-hidden="true">🎙️</span>{t('today_bar_voice')}</button>
-        <Link href="/atelier/session/new" style={barBtn}><span aria-hidden="true">🖼️</span>{t('today_bar_work')}</Link>
-        <Link href="/atelier/capture?mode=doc" style={barBtn}><span aria-hidden="true">📄</span>{t('today_bar_doc')}</Link>
-      </nav>
+      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" />
 
       {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
     </div>

@@ -181,7 +181,9 @@ export function JournalDayExtras({
     const url = new URL(window.location.href)
     const w = url.searchParams.get('write')
     if (w) {
-      prefill(w)
+      // `?write=1` (the phone input bar's « Écrire »): open the empty form; otherwise a `#id` mention.
+      if (w === '1') openComposerRef.current()
+      else prefill(w)
       url.searchParams.delete('write')
       window.history.replaceState(null, '', url.toString())
     }
