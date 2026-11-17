@@ -167,9 +167,11 @@ export type Database = {
           category: string
           created_at: string
           description: string | null
+          discussion_closed_at: string | null
           energie: number | null
           id: string
           image_note: string | null
+          maturity: string
           medium: string | null
           notes: string | null
           oeuvre_id: number | null
@@ -177,14 +179,17 @@ export type Database = {
           themes: string[] | null
           titre: string
           updated_at: string
+          weight: string
         }
         Insert: {
           category?: string
           created_at?: string
           description?: string | null
+          discussion_closed_at?: string | null
           energie?: number | null
           id?: string
           image_note?: string | null
+          maturity?: string
           medium?: string | null
           notes?: string | null
           oeuvre_id?: number | null
@@ -192,14 +197,17 @@ export type Database = {
           themes?: string[] | null
           titre?: string
           updated_at?: string
+          weight?: string
         }
         Update: {
           category?: string
           created_at?: string
           description?: string | null
+          discussion_closed_at?: string | null
           energie?: number | null
           id?: string
           image_note?: string | null
+          maturity?: string
           medium?: string | null
           notes?: string | null
           oeuvre_id?: number | null
@@ -207,6 +215,7 @@ export type Database = {
           themes?: string[] | null
           titre?: string
           updated_at?: string
+          weight?: string
         }
         Relationships: [
           {
@@ -963,6 +972,33 @@ export type Database = {
           },
         ]
       }
+      feed_item_state: {
+        Row: {
+          at: string
+          item_id: string
+          item_kind: string
+          recalled_at: string | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          at?: string
+          item_id: string
+          item_kind: string
+          recalled_at?: string | null
+          state: string
+          user_id?: string
+        }
+        Update: {
+          at?: string
+          item_id?: string
+          item_kind?: string
+          recalled_at?: string | null
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       forest_pins: {
         Row: {
           created_at: string
@@ -1322,6 +1358,63 @@ export type Database = {
           source_pk?: string
         }
         Relationships: []
+      }
+      note_line: {
+        Row: {
+          author_id: string | null
+          body: string
+          concept_id: string | null
+          created_at: string
+          discarded_at: string | null
+          discarded_by: string | null
+          flagged_for_pem: boolean
+          id: number
+          image_key: string | null
+          oeuvre_id: number | null
+          target_kind: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          concept_id?: string | null
+          created_at?: string
+          discarded_at?: string | null
+          discarded_by?: string | null
+          flagged_for_pem?: boolean
+          id?: never
+          image_key?: string | null
+          oeuvre_id?: number | null
+          target_kind: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          concept_id?: string | null
+          created_at?: string
+          discarded_at?: string | null
+          discarded_by?: string | null
+          flagged_for_pem?: boolean
+          id?: never
+          image_key?: string | null
+          oeuvre_id?: number | null
+          target_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_line_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_line_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
       }
       oeuvre_broadcasts: {
         Row: {
