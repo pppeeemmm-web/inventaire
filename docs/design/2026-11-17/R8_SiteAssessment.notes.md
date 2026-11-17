@@ -46,6 +46,30 @@ Effort: S ≤ half a day · M 1–2 days · L more.
 - **Controls nothing reads** in `KnobsPanel`: `type.scale_pct` (« taille du texte ») and `motion.parallax_mult` are read by no public file (grep of `components`, `lib`, `app`). Several `light` / `mat` fields are labelled « future » in `lib/site-blocks/knob-types.ts`. Either wire or hide — S.
 - The module is large (11 layouts, ~40 knobs, 3 block systems: `site_blocks`, `pages`, legacy fields). Most of R8 is not « add a control » — it is choosing a default look and removing choices that don't serve it.
 
+## The presentation knobs (Pem 2026-11-17: « crazy… looks like the 70s »)
+
+Count, from code: `KnobsPanel` has **28 controls** (light kelvin / direction / intensity, shadow on / distance / blur / opacity, bevel px / profile, grain, voile, vignette, sky tint top / bottom / opacity, work glow, sway, parallax, text size / weight, circadian auto + minute + 4 « drives », a11y size / contrast…), each settable site-wide and again per page (landing / works / about). On top: the landing gradient (2–6 stops, blend position, hardness), hero gloss (blend, strength, position, falloff), hero bevel, a background editor per page (About, Practice, Works), 11 `/works` layouts and a map pin editor. Roughly **45 dials, times 3 pages**.
+
+What actually reaches the site (grep of `components/public`, `app/page.tsx`, `app/works`, `lib/public-site-theme*`):
+
+| Group | Read by the public site? |
+|---|---|
+| light, shadow, frame (bevel), mat (grain / voile / vignette), atm (sky tint, glow), sway, circadian | Yes — `WorksModeGallery` (carousel / grid) only |
+| `bg` family in the knobs (stops, blend, angle, opacity) | **No** — page backgrounds come from the separate landing gradient + per-page background editors |
+| `type.scale_pct`, `type.weight`, `motion.parallax_mult` | **No** |
+| Per-sequence light / shadow (`works_modes[].light_*`, `cast_shadow_*`) | **Still read** by the salon / procession / timeline / letter layouts, but **no longer editable** in the module — they keep whatever was saved before the knob panel replaced them |
+
+So: two sets of light controls for the same thing, some dials wired to nothing, and the look they produce — grey voile, heavy cast shadow, gloss on a disc, coloured sky tint — is exactly what the review says dulls the paintings (item 1).
+
+**Pem 2026-11-17:** no decision yet — the final look is open. The site can be a creative work in itself (light, motion, atmosphere), not only a neutral catalogue. Direction he is weighing: big images of **details**, moving images, very simple, minimal writing. He doesn't want to throw away what the knobs can do.
+
+**Way to keep both (proposal, decision G, ties to A):** split the two jobs instead of choosing one.
+- **Reference view** (one page per work, captions, previews, search): the painting as it is — no tint, voile, glow or gloss. This is what a buyer, a curator or Google needs.
+- **The stage** (landing, sequences on `/works`): Pem's creative layer — light, sky, motion, details. Keeps the knobs, but cleaned: remove the ones wired to nothing, merge the two light systems, so every dial left does something visible.
+Nothing is deleted either way. Effort: S to drop the dead dials, M to merge the duplicate light values. Neither needs A to be decided first.
+
+**Looks drawn 2026-11-17** → [`R8_SiteLooks.html`](./R8_SiteLooks.html) (images load from the live `r2.dev` URLs; private viewing copy with embedded images: https://claude.ai/artifact/2m1S6PNfBmscCCYJD4wgBR). Three stages with real works at 1440 px and 375 px, plus the shared work page: **1 Détail** (big details of the paint, slow motion, almost no words — Pem's idea; needs a detail picker on the work card, M–L) · **2 Plein cadre** (whole work big on a plain wall, review's proposal, M) · **3 Scène** (today's lit wall and sky, works ~3× bigger, dials cut from ~45 to ~10, S–M) · **work page** (same for all, M — can be built first). Mixing is allowed (e.g. Détail on the landing, Plein cadre for browsing, Scène as « Accrochage »). Only the landing and the default works view need choosing first.
+
 ## Look decisions Pem takes first, in order
 
 1. **A. Big painting vs true-scale wall** — what a visitor sees first on `/works`: the work filling ~75 % of the screen height on a plain ground (review), or today's lit wall at true relative scale. Proposal from the review: big by default, the wall kept as an « Accrochage » view. This sets #1 and the frame for #2 and #4.
@@ -53,7 +77,8 @@ Effort: S ≤ half a day · M 1–2 days · L more.
 3. **C. Landing** — keep the circle disc or show a full uncropped work; keep the clock / Hz counter or drop it; which nav items show (Works · Journal · About · Contact). The circadian sky can stay either way.
 4. **D. One name** — « Pierre Emmanuel Moulin (Pem) », « Pem », or « the pem workshop » as the main form.
 5. **E. Practice** — fold into About or keep its own page.
-6. **F. Carnet (journal) page** — later, after A–C; needs its own screen design + SQL GO.
+6. **G. How much look-tweaking stays** — with A: which few dials survive (see « The presentation knobs »); the rest leave the panel.
+7. **F. Carnet (journal) page** — later, after A–C; needs its own screen design + SQL GO.
 
 Items 5, 7, 10 and the bugs above need no look decision.
 

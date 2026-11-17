@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R8 Site Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one row per direction — desktop frame + phone frame side by side, notes underneath; frames scale with container units (cqw). Shell is a quiet dark studio so the light site mockups read as screens. */
+:root{
+  --shell:#141312; --shell2:#1d1b19; --line:#34302b;
+  --tx:#f3efe7; --tx2:#b9b1a3; --tx3:#8a8277;
+  --ochre:#d4b886;
+  --serif:'Instrument Serif', Didot, Georgia, serif;
+  --sans:'Sofia Sans', ui-sans-serif, system-ui, sans-serif;
+  color-scheme:dark;
+  --i238:url("https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_0238_01_20240908-_PE14004_-_pe_moulin.avif");
+  --i242:url("https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_0242_01_20240915-_PE14113_-_pe_moulin-HDR.avif");
+  --i249:url("https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_0249_01_20240915-_PE14140_-_pe_moulin-HDR.avif");
+  --i254:url("https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_0254_01_20240915-_PE14155_-_pe_moulin-HDR.avif");
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--shell);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 72px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:64px}
+header.top{display:flex;flex-direction:column;gap:12px;max-width:68ch}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tx3)}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(34px,5vw,52px);line-height:1.05;margin:0;text-wrap:balance}
+header.top p{margin:0;color:var(--tx2)}
+header.top p b{color:var(--tx);font-weight:500}
+
+section.dir{display:flex;flex-direction:column;gap:18px;border-top:1px solid var(--line);padding-top:28px}
+.dir-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.dir-head h2{font-family:var(--serif);font-weight:400;font-size:clamp(26px,3.4vw,36px);margin:0}
+.dir-head .tag{font-size:12px;color:var(--tx3)}
+.dir-head .quote{font-size:12px;color:var(--ochre);border:1px solid #5b4d36;border-radius:999px;padding:2px 10px}
+.screens{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:24px;align-items:start}
+.screen-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:8px}
+@media (max-width:760px){.screens{grid-template-columns:minmax(0,1fr)}.phone-col{width:min(240px,70%)}}
+
+/* frames */
+.frame{container-type:inline-size;position:relative;overflow:hidden;border-radius:6px;outline:1px solid #2b2824;max-width:100%}
+.desk{aspect-ratio:16/10}
+.phone{aspect-ratio:375/812;border-radius:22px;outline:6px solid #0b0a09;margin:6px}
+.abs{position:absolute}
+
+/* notes grid */
+.notes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.notes div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.notes h3{margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);font-weight:500}
+.notes p{margin:0;color:var(--tx2);font-size:14px}
+@media (max-width:760px){.notes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.notes{grid-template-columns:minmax(0,1fr)}}
+
+/* ── site type inside mockups (all in cqw) ── */
+.s-name{font-family:var(--serif);letter-spacing:.01em}
+.s-nav{font-family:var(--sans);text-transform:uppercase;letter-spacing:.18em}
+
+/* ── 1 · Détail ── */
+.d1{background:#1c1712}
+.layer{position:absolute;inset:0;opacity:0;animation:fade 21s linear infinite}
+.layer:first-of-type{opacity:1}
+.layer.b{animation-delay:-14s}.layer.c{animation-delay:-7s}
+@keyframes fade{0%{opacity:1}29%{opacity:1}34%{opacity:0}95%{opacity:0}100%{opacity:1}}
+.kb{position:absolute;inset:0;background-image:var(--img);background-size:cover;background-position:center;transform-origin:var(--o);transform:scale(var(--s));animation:drift 21s ease-in-out infinite alternate}
+@keyframes drift{from{transform:scale(var(--s)) translate(0,0)}to{transform:scale(calc(var(--s) * 1.12)) translate(-2.5%,1.5%)}}
+.d1 .veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,8,6,.55),rgba(10,8,6,0) 38%,rgba(10,8,6,0) 80%,rgba(10,8,6,.35))}
+.d1 .cap{position:absolute;left:4cqw;bottom:4.5cqw;color:#f6f1e8;display:flex;flex-direction:column;gap:.5cqw}
+.d1 .cap .t{font-family:var(--serif);font-size:2.6cqw;line-height:1}
+.d1 .cap .m{font-size:1.05cqw;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+.d1 .cap .go{font-size:1.05cqw;letter-spacing:.14em;text-transform:uppercase;border-bottom:1px solid rgba(246,241,232,.5);align-self:flex-start;padding-bottom:.2cqw;margin-top:.6cqw}
+.d1 .bar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:2.6cqw 4cqw;color:#f6f1e8}
+.d1 .bar .s-name{font-size:1.9cqw}
+.d1 .bar .s-nav{font-size:.95cqw;display:flex;gap:2.4cqw}
+.d1 .count{position:absolute;right:4cqw;bottom:4.5cqw;color:#f6f1e8;font-size:1cqw;letter-spacing:.14em}
+.phone.d1 .cap{left:7cqw;bottom:9cqw;gap:1.6cqw}
+.phone.d1 .cap .t{font-size:8cqw}
+.phone.d1 .cap .m,.phone.d1 .cap .go{font-size:3cqw}
+.phone.d1 .bar{padding:12cqw 7cqw 5cqw}
+.phone.d1 .bar .s-name{font-size:5.4cqw}
+.phone.d1 .bar .s-nav{font-size:3cqw}
+.phone.d1 .count{right:7cqw;bottom:9cqw;font-size:3cqw}
+
+/* ── 2 · Plein cadre ── */
+.d2{background:#ecebe7;color:#1d1b18}
+.d2 .bar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:baseline;padding:2.4cqw 4cqw}
+.d2 .bar .s-name{font-size:1.7cqw}
+.d2 .bar .s-nav{font-size:.9cqw;display:flex;gap:2.4cqw;color:#5d5850}
+.d2 .work{position:absolute;background-image:var(--img);background-size:100% 100%;box-shadow:0 .25cqw .9cqw rgba(30,25,18,.14)}
+.d2 .cap{position:absolute;font-size:1.05cqw;color:#4a463f;display:flex;gap:1.4cqw;align-items:baseline;flex-wrap:wrap}
+.d2 .cap .t{font-family:var(--serif);font-size:1.7cqw;color:#1d1b18}
+.dot{display:inline-block;width:.75em;height:.75em;border-radius:50%;background:#5e8b5a;margin-right:.4em;vertical-align:-.05em}
+.d2 .arrow{position:absolute;top:50%;font-size:2.4cqw;color:#8b857b;transform:translateY(-50%)}
+.d2 .count{position:absolute;right:4cqw;bottom:3cqw;font-size:.95cqw;color:#8b857b;letter-spacing:.1em}
+.phone.d2 .bar{padding:12cqw 6cqw 4cqw}
+.phone.d2 .bar .s-name{font-size:5cqw}
+.phone.d2 .bar .s-nav{font-size:3cqw}
+.phone.d2 .cap{flex-direction:column;gap:1.4cqw;font-size:3.4cqw}
+.phone.d2 .cap .t{font-size:6.4cqw}
+.d2 .btn{position:absolute;left:6cqw;right:6cqw;border:1px solid #1d1b18;text-align:center;font-size:3.2cqw;letter-spacing:.14em;text-transform:uppercase;padding:3.4cqw 0}
+
+/* ── 3 · Scène ── */
+.d3{background:linear-gradient(#a9bfd2 0%,#d9d3c9 46%,#ede1cf 100%);color:#2b2620}
+.d3 .pool{position:absolute;inset:0;background:radial-gradient(ellipse 34% 46% at 50% 44%,rgba(255,244,222,.55),rgba(255,244,222,0) 70%)}
+.d3 .bar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:baseline;padding:2.4cqw 4cqw}
+.d3 .bar .s-name{font-size:1.7cqw}
+.d3 .bar .s-nav{font-size:.9cqw;display:flex;gap:2.4cqw;color:#4e483f}
+.d3 .work{position:absolute;background-image:var(--img);background-size:100% 100%;box-shadow:.7cqw .9cqw 1.4cqw rgba(52,40,26,.30),.1cqw .1cqw .2cqw rgba(52,40,26,.25)}
+.d3 .cap{position:absolute;font-size:1cqw;color:#4e483f;text-align:center;display:flex;flex-direction:column;gap:.3cqw}
+.d3 .cap .t{font-family:var(--serif);font-size:1.6cqw;color:#2b2620}
+.d3 .hint{position:absolute;left:4cqw;bottom:3cqw;font-size:.9cqw;letter-spacing:.12em;text-transform:uppercase;color:#6b6358}
+.phone.d3 .bar{padding:12cqw 6cqw 4cqw}
+.phone.d3 .bar .s-name{font-size:5cqw}
+.phone.d3 .bar .s-nav{font-size:3cqw}
+.phone.d3 .cap{font-size:3.2cqw;gap:1cqw}
+.phone.d3 .cap .t{font-size:6cqw}
+
+/* ── Reference work page ── */
+.d4{background:#f4f3f0;color:#1d1b18}
+.d4 .bar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:baseline;padding:2.4cqw 4cqw}
+.d4 .bar .s-name{font-size:1.7cqw}
+.d4 .bar .s-nav{font-size:.9cqw;display:flex;gap:2.4cqw;color:#5d5850}
+.d4 .work{position:absolute;background-image:var(--img);background-size:100% 100%;box-shadow:0 .2cqw .8cqw rgba(30,25,18,.12)}
+.d4 .info{position:absolute;display:flex;flex-direction:column;gap:.9cqw;font-size:1.05cqw;color:#4a463f}
+.d4 .info .crumb{font-size:.9cqw;letter-spacing:.14em;text-transform:uppercase;color:#8b857b}
+.d4 .info .t{font-family:var(--serif);font-size:2.8cqw;line-height:1.05;color:#1d1b18}
+.d4 .info dl{display:grid;grid-template-columns:auto 1fr;gap:.35cqw 1.4cqw;margin:0}
+.d4 .info dt{color:#8b857b}.d4 .info dd{margin:0}
+.thumbs{display:flex;gap:.8cqw}
+.thumbs span{width:6.4cqw;aspect-ratio:1;background-image:var(--img);background-size:var(--z);background-position:var(--p)}
+.d4 .cta{border:1px solid #1d1b18;padding:.9cqw 1.6cqw;font-size:.95cqw;letter-spacing:.14em;text-transform:uppercase;align-self:flex-start;color:#1d1b18}
+.d4 .share{font-size:.9cqw;color:#8b857b;letter-spacing:.1em}
+.phone.d4 .bar{padding:12cqw 6cqw 4cqw}
+.phone.d4 .bar .s-name{font-size:5cqw}
+.phone.d4 .bar .s-nav{font-size:3cqw}
+.phone.d4 .info{font-size:3.3cqw;gap:2.6cqw}
+.phone.d4 .info .crumb{font-size:2.8cqw}
+.phone.d4 .info .t{font-size:7.4cqw}
+.phone.d4 .info dl{gap:1cqw 4cqw}
+.phone.d4 .thumbs{gap:2cqw}.phone.d4 .thumbs span{width:18cqw}
+.phone.d4 .cta{font-size:3cqw;padding:3cqw 0;align-self:stretch;text-align:center}
+
+.mix{background:var(--shell2);border:1px solid var(--line);border-radius:8px;padding:22px 24px;display:flex;flex-direction:column;gap:10px}
+.mix h2{font-family:var(--serif);font-weight:400;font-size:28px;margin:0}
+.mix p{margin:0;color:var(--tx2);max-width:72ch}
+.mix p b{color:var(--tx);font-weight:500}
+.foot{color:var(--tx3);font-size:13px;max-width:72ch}
+
+@media (prefers-reduced-motion: reduce){.layer,.kb{animation:none}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">R8 · public site · drawn 2026-11-17 · nothing built</div>
+  <h1>Three looks for thepemworkshop.com</h1>
+  <p>Real works from the catalogue, shown three ways. Each row is the first screen a visitor sees on a computer and on a phone. The fourth row is <b>one work's own page</b>, the same whichever look you pick: there the painting appears as it is, with its facts and an « Enquire » button.</p>
+  <p>The site has two jobs. <b>The stage</b> (landing, sequences) can be a creative work with light, sky and motion. <b>The reference</b> (one page per work, link previews, search) shows the painting plainly. The three looks are three possible stages, and you can mix them.</p>
+</header>
+
+<!-- 1 · DÉTAIL -->
+<section class="dir">
+  <div class="dir-head">
+    <h2>1 · Détail</h2>
+    <span class="tag">Big details, slow motion, almost no words</span>
+    <span class="quote">your idea</span>
+  </div>
+  <div class="screens">
+    <div>
+      <div class="screen-label">Computer · landing</div>
+      <div class="frame desk d1">
+        <div class="layer a"><div class="kb" style="--img:var(--i254);--o:42% 26%;--s:2.3"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">Autoportrait en lumière réverbérée</span><span class="m">2024 · détail</span><span class="go">Voir l'œuvre entière →</span></div></div>
+        <div class="layer b"><div class="kb" style="--img:var(--i249);--o:52% 46%;--s:2.6"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">Étude pour l'homme en feu</span><span class="m">2024 · détail</span><span class="go">Voir l'œuvre entière →</span></div></div>
+        <div class="layer c"><div class="kb" style="--img:var(--i238);--o:46% 34%;--s:2.4"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">La perruche</span><span class="m">2024 · détail</span><span class="go">Voir l'œuvre entière →</span></div></div>
+        <div class="bar"><span class="s-name">Pierre Emmanuel Moulin</span><span class="s-nav"><span>Œuvres</span><span>Carnet</span><span>Contact</span></span></div>
+      </div>
+    </div>
+    <div class="phone-col">
+      <div class="screen-label">Phone</div>
+      <div class="frame phone d1">
+        <div class="layer a"><div class="kb" style="--img:var(--i254);--o:44% 28%;--s:1.9"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">Autoportrait en lumière réverbérée</span><span class="m">2024 · détail</span><span class="go">L'œuvre entière →</span></div></div>
+        <div class="layer b"><div class="kb" style="--img:var(--i249);--o:52% 46%;--s:2.1"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">Étude pour l'homme en feu</span><span class="m">2024 · détail</span><span class="go">L'œuvre entière →</span></div></div>
+        <div class="layer c"><div class="kb" style="--img:var(--i238);--o:46% 34%;--s:1.9"></div>
+          <div class="veil"></div>
+          <div class="cap"><span class="t">La perruche</span><span class="m">2024 · détail</span><span class="go">L'œuvre entière →</span></div></div>
+        <div class="bar"><span class="s-name">Pem</span><span class="s-nav">Menu</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h3>Keeps</h3><p>The paint itself, close up: brushwork the true-scale wall hides. Motion and mood with no dials to tune.</p></div>
+    <div><h3>Gives up</h3><p>Seeing the whole work first. The detail is a zoom into the real image, not a recrop; one tap shows the whole work.</p></div>
+    <div><h3>Dials left</h3><p>Motion speed and which details play. You choose 1–3 details per work in the Atelier.</p></div>
+    <div><h3>Effort</h3><p>M–L. New: a detail picker on the work card (where to zoom). The sequence player is simple.</p></div>
+  </div>
+</section>
+
+<!-- 2 · PLEIN CADRE -->
+<section class="dir">
+  <div class="dir-head">
+    <h2>2 · Plein cadre</h2>
+    <span class="tag">The whole work, big, on a plain wall</span>
+    <span class="quote">the 2026-11-16 review</span>
+  </div>
+  <div class="screens">
+    <div>
+      <div class="screen-label">Computer · works</div>
+      <div class="frame desk d2">
+        <div class="bar"><span class="s-name">Pierre Emmanuel Moulin</span><span class="s-nav"><span>Œuvres</span><span>Carnet</span><span>À propos</span><span>Contact</span></span></div>
+        <span class="arrow" style="left:4cqw">‹</span><span class="arrow" style="right:4cqw">›</span>
+        <div class="work" style="--img:var(--i254);left:32.9cqw;top:8.5cqw;width:34.2cqw;height:45cqw"></div>
+        <div class="cap" style="left:32.9cqw;top:55.2cqw;width:56cqw"><span class="t">Autoportrait en lumière réverbérée</span><span>2024</span><span>Huile sur toile</span><span>100 × 75 cm</span><span><span class="dot"></span>Disponible</span></div>
+        <div class="count">12 / 214</div>
+      </div>
+    </div>
+    <div class="phone-col">
+      <div class="screen-label">Phone</div>
+      <div class="frame phone d2">
+        <div class="bar"><span class="s-name">Pem</span><span class="s-nav">Menu</span></div>
+        <div class="work" style="--img:var(--i254);left:6cqw;top:26cqw;width:88cqw;height:115.8cqw"></div>
+        <div class="cap" style="left:6cqw;top:148cqw;right:6cqw"><span class="t">Autoportrait en lumière réverbérée</span><span>2024 · Huile sur toile · 100 × 75 cm</span><span><span class="dot"></span>Disponible</span></div>
+        <div class="btn" style="top:186cqw">Demander cette œuvre</div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h3>Keeps</h3><p>True colours, the whole composition, every fact a buyer or curator needs. Fastest page.</p></div>
+    <div><h3>Gives up</h3><p>The atmosphere: no sky, no light play. Small and large works show at the same height.</p></div>
+    <div><h3>Dials left</h3><p>Wall colour (light / dark) and shadow on / off.</p></div>
+    <div><h3>Effort</h3><p>M. A new « grand » view; the current wall becomes an optional « Accrochage » view.</p></div>
+  </div>
+</section>
+
+<!-- 3 · SCÈNE -->
+<section class="dir">
+  <div class="dir-head">
+    <h2>3 · Scène</h2>
+    <span class="tag">Today's lit wall and sky, cleaned up</span>
+    <span class="quote">what exists</span>
+  </div>
+  <div class="screens">
+    <div>
+      <div class="screen-label">Computer · works</div>
+      <div class="frame desk d3">
+        <div class="pool"></div>
+        <div class="bar"><span class="s-name">Pierre Emmanuel Moulin</span><span class="s-nav"><span>Œuvres</span><span>Carnet</span><span>À propos</span><span>Contact</span></span></div>
+        <div class="work" style="--img:var(--i242);left:2cqw;top:13cqw;width:28.8cqw;height:34cqw"></div>
+        <div class="work" style="--img:var(--i254);left:37.1cqw;top:13cqw;width:25.8cqw;height:34cqw"></div>
+        <div class="work" style="--img:var(--i238);left:76cqw;top:25.7cqw;width:6.5cqw;height:8.5cqw"></div>
+        <div class="cap" style="left:30cqw;width:40cqw;top:50cqw"><span class="t">Autoportrait en lumière réverbérée</span><span>2024 · 100 × 75 cm</span></div>
+        <div class="hint">True relative scale · sky follows the visitor's time of day</div>
+      </div>
+    </div>
+    <div class="phone-col">
+      <div class="screen-label">Phone</div>
+      <div class="frame phone d3">
+        <div class="pool"></div>
+        <div class="bar"><span class="s-name">Pem</span><span class="s-nav">Menu</span></div>
+        <div class="work" style="--img:var(--i242);left:-61cqw;top:52cqw;width:69cqw;height:81.6cqw"></div>
+        <div class="work" style="--img:var(--i254);left:19cqw;top:52cqw;width:62cqw;height:81.6cqw"></div>
+        <div class="work" style="--img:var(--i238);left:92cqw;top:82cqw;width:15.5cqw;height:20.4cqw"></div>
+        <div class="cap" style="left:8cqw;right:8cqw;top:144cqw"><span class="t">Autoportrait en lumière réverbérée</span><span>2024 · 100 × 75 cm</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h3>Keeps</h3><p>Your current mood, the daily sky, the light and shadows, the sense of a room. Works hang about 3× bigger than today.</p></div>
+    <div><h3>Gives up</h3><p>Small works stay small (here, La perruche at 25 cm). The light still changes how the colours read.</p></div>
+    <div><h3>Dials left</h3><p>Light, sky, shadow, motion. About 10 instead of 45; the ones wired to nothing go.</p></div>
+    <div><h3>Effort</h3><p>S–M. A bigger work box, then removing dead and duplicate dials.</p></div>
+  </div>
+</section>
+
+<!-- REFERENCE -->
+<section class="dir">
+  <div class="dir-head">
+    <h2>Every look · one work's page</h2>
+    <span class="tag">/works/254-autoportrait-en-lumiere-reverberee</span>
+    <span class="quote">the reference</span>
+  </div>
+  <div class="screens">
+    <div>
+      <div class="screen-label">Computer</div>
+      <div class="frame desk d4">
+        <div class="bar"><span class="s-name">Pierre Emmanuel Moulin</span><span class="s-nav"><span>Œuvres</span><span>Carnet</span><span>À propos</span><span>Contact</span></span></div>
+        <div class="work" style="--img:var(--i254);left:12cqw;top:8.5cqw;width:36.5cqw;height:48cqw"></div>
+        <div class="info" style="left:58cqw;top:11cqw;width:36cqw">
+          <span class="crumb">Œuvres / Autoportraits</span>
+          <span class="t">Autoportrait en lumière réverbérée</span>
+          <dl><dt>Année</dt><dd>2024</dd><dt>Technique</dt><dd>Huile sur toile</dd><dt>Format</dt><dd>100 × 75 cm</dd><dt>Statut</dt><dd><span class="dot"></span>Disponible</dd></dl>
+          <div class="thumbs"><span style="--img:var(--i254);--z:300%;--p:42% 22%"></span><span style="--img:var(--i254);--z:260%;--p:55% 60%"></span><span style="--img:var(--i254);--z:100% 100%;--p:center"></span></div>
+          <span class="cta">Demander cette œuvre</span>
+          <span class="share">Partager · lien · Instagram</span>
+        </div>
+      </div>
+    </div>
+    <div class="phone-col">
+      <div class="screen-label">Phone</div>
+      <div class="frame phone d4">
+        <div class="bar"><span class="s-name">Pem</span><span class="s-nav">Menu</span></div>
+        <div class="work" style="--img:var(--i254);left:6cqw;top:24cqw;width:88cqw;height:115.8cqw"></div>
+        <div class="info" style="left:6cqw;right:6cqw;top:145cqw">
+          <span class="t">Autoportrait en lumière réverbérée</span>
+          <dl><dt>Année</dt><dd>2024</dd><dt>Format</dt><dd>100 × 75 cm</dd><dt>Statut</dt><dd><span class="dot"></span>Disponible</dd></dl>
+          <span class="cta">Demander cette œuvre</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h3>Gives</h3><p>A link you can send, that Google indexes and that previews with the painting in WhatsApp or Instagram.</p></div>
+    <div><h3>Shows</h3><p>The work as it is: no tint, haze or gloss. Detail shots, facts, availability.</p></div>
+    <div><h3>Leads to</h3><p>« Demander » opens the enquiry form with the work attached; that part already works.</p></div>
+    <div><h3>Effort</h3><p>M. Needed whichever stage you choose, so it can be built first.</p></div>
+  </div>
+</section>
+
+<div class="mix">
+  <h2>Mixing is allowed</h2>
+  <p>For example: <b>Détail</b> on the landing (the first impression, moving), <b>Plein cadre</b> when someone browses the works, <b>Scène</b> kept as an « Accrochage » view for the room and the sky, and the plain <b>work page</b> behind every image.</p>
+  <p>What has to be chosen first is only the <b>landing</b> and the <b>default view of the works</b>. The rest can stay as it is until you decide.</p>
+</div>
+
+<p class="foot">Mockups only. Images are the catalogue's real files; the medium (« Huile sur toile »), series and « Disponible » shown here are examples, not catalogue data. Name shown as « Pierre Emmanuel Moulin » / « Pem » as a placeholder for the one-name decision.</p>
+
+</div>
+
+</body>
+</html>
