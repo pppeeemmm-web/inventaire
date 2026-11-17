@@ -186,6 +186,23 @@ Legend: **B** = the default (shared PDF, signed copy back). **B+** = B, but the 
 
 For every order, the Vault keeps together: the paper as sent, the **signed copy** (and any second copy), the **email / message thread** that carried it (save as PDF), the **payment proof** for sales, and the **condition report / photos** at departure and return (loans, deposits, Confié). Together they prove more than any single signature.
 
+### 2.5 Chronologie d'une vente / Sale timeline (Pem's question, 2026-11-17)
+
+The **bon de commande** opens the sale; the **facture** records it. The 14-day window sits between them and starts at **handover, not payment**.
+
+| Step | Paper | What it means |
+|---|---|---|
+| Signed | **Bon de commande** | the agreement; the work is reserved for that buyer |
+| Deposit, then balance paid | payment receipts | the buyer owns the work once fully paid (reservation of title — the sale paper's condition) |
+| **Handed over** (« livré ») | a signed handover note would help (proposal) | **the 14 days start here** |
+| Day 14 passes, no return | — | the sale is final; per decision 6 the money stops being « kept aside » |
+| **Facture** | the invoice | when to issue it is the accountant's call (§4 q. 13): a business buyer usually gets it at the sale / delivery; a private buyer can ask for one; issuing it once the 14 days are over is an option [R] |
+
+- **The window runs from handover, not payment.** The legal clock starts the day the buyer, or a person they name (not the carrier), takes physical possession of the work (Directive 2011/83/EU art. 9(2)(b); C. conso. L221-18 [R]). The buyer may withdraw from the day the contract is concluded, before the work arrives (L221-18 [R]). On withdrawal, Pem refunds within 14 days, and may wait until the work is back or the buyer shows it was sent (L221-24 [R]). The house rule (decision 6) follows the same clock.
+- **Handover before full payment:** the 14 days still run from handover; Pem stays owner until paid, but the window does not wait for the balance. A simple habit avoids the overlap: take the balance before handing over. Lawyer to confirm the wording.
+- **Tax year:** if Pem's income is counted when received (likely for an artiste-auteur in BNC — to confirm), a payment may count in the year received even inside the 14 days, and a refund comes off later. Accountant (§4 q. 13).
+- **The app already does this** (verified in code 2026-11-17): marking a sale order « delivered » records `return_window_starts_at` and sets a reminder for the day the window ends (`app/atelier/(portal)/sales/orders-actions.ts`); the sale paper prints « N jours après la livraison » (`lib/orders/order-paper.ts`).
+
 ---
 
 ## 3. Dons / Gifts
@@ -242,6 +259,7 @@ Nothing here is decided. The papers print **no VAT mention** today and the « in
 10. **E-invoicing:** does the September 2027 obligation reach Pem, and what does it mean for PDFs made by the app?
 11. **Records:** how long Pem must keep each piece (§5) under Pem's regime.
 12. **Expenses paid to craftsmen (Confié):** what proof to keep; VAT recovery if registered.
+13. **Invoice timing and the 14 days (§2.5):** issue the invoice at payment, at handover, or once the 14 days are over? In which year does a payment count when the window is still open, and how is a refund recorded?
 
 ---
 
@@ -326,6 +344,7 @@ Status as read on 2026-11-17: four papers exist in [`lib/orders/order-paper.ts`]
 8. Revenus de licences, de commandes et de cessions de droits : régime, taux de TVA.
 9. Durée de conservation de chaque pièce (factures, contrats, papiers de vente, preuves de paiement).
 10. Dépenses chez les artisans (encadreur, photographe, imprimeur) : justificatifs à garder, TVA récupérable.
+11. Facture et délai de 14 jours (je l'accorde sur toutes mes ventes, à compter de la remise de l'œuvre) : émettre la facture au paiement, à la remise ou à la fin du délai ? Sur quelle année compte un paiement reçu pendant le délai, et comment enregistrer un remboursement ?
 
 ---
 
@@ -343,7 +362,7 @@ Status as read on 2026-11-17: four papers exist in [`lib/orders/order-paper.ts`]
 
 **To confirm on the official text [R]:**
 - EU: Rome I — [Reg. 593/2008](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32008R0593) arts. 3, 4, 6; Brussels I bis — [Reg. 1215/2012](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32012R1215) arts. 7, 17–19, 25, 36, 39; Consumer Rights Directive — [Dir. 2011/83/EU](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32011L0083) arts. 2, 4, 6, 8, 9, 10, 16; eIDAS — [Reg. 910/2014](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32014R0910) art. 25, as amended by Reg. 2024/1183; resale right — [Dir. 2001/84/EC](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32001L0084); small claims Reg. 861/2007 (+ 2015/2421); order for payment Reg. 1896/2006; cultural goods export Reg. 116/2009.
-- France ([Légifrance](https://www.legifrance.gouv.fr)): Code civil 9, 894, 931, 953 s., 1359–1362, 1366–1367, 1375, 1379, 1582–1583, 1641 s., 1787 s., 1789, 1984 s., 1993, 2224, 2286; décret n° 80-533 du 15 juillet 1980; décret n° 2017-1416; Code de procédure civile 42, 46, 48; Code de commerce L110-3, L110-4, L123-22, L624-9; Code de la consommation article préliminaire, L216-4, L217-3 s., L221-5, L221-13, L221-18, L221-28, L612-1; CPI L111-1, L111-3, L112-2, L121-1, L121-2, L122-4, L122-8, L123-1, L131-2, L131-3, L131-4, L132-1 s.; CGI 200, 238 bis, 257, 293 B, 750 ter, 757, 779, 784, 794, 795, annexe III art. 98 A; LPF L102 B; décret n° 81-255 du 3 mars 1981; loi n° 94-665 (Toubon).
+- France ([Légifrance](https://www.legifrance.gouv.fr)): Code civil 9, 894, 931, 953 s., 1359–1362, 1366–1367, 1375, 1379, 1582–1583, 1641 s., 1787 s., 1789, 1984 s., 1993, 2224, 2286; décret n° 80-533 du 15 juillet 1980; décret n° 2017-1416; Code de procédure civile 42, 46, 48; Code de commerce L110-3, L110-4, L123-22, L624-9; Code de la consommation article préliminaire, L216-4, L217-3 s., L221-5, L221-13, L221-18, L221-24, L221-28, L612-1; CPI L111-1, L111-3, L112-2, L121-1, L121-2, L122-4, L122-8, L123-1, L131-2, L131-3, L131-4, L132-1 s.; CGI 200, 238 bis, 257, 293 B, 750 ter, 757, 779, 784, 794, 795, annexe III art. 98 A; LPF L102 B; décret n° 81-255 du 3 mars 1981; loi n° 94-665 (Toubon).
 - Ireland ([irishstatutebook.ie](https://www.irishstatutebook.ie)): Sale of Goods Act 1893 s. 4; Consumer Rights Act 2022; Copyright and Related Rights Act 2000 s. 120; Electronic Commerce Act 2000; Capital Acquisitions Tax Consolidation Act 2003 ss. 6, 107.
 - UK ([legislation.gov.uk](https://www.legislation.gov.uk)): retained Rome I; Consumer Contracts Regulations 2013; CDPA 1988 s. 90; Artist's Resale Right Regulations 2006; Hague Choice of Court Convention 2005.
 - US: UCC §§ 1-301, 2-201; Restatement (Second) Conflict of Laws § 187; 15 U.S.C. § 7001 (ESIGN); 17 U.S.C. §§ 106A, 202, 204; 16 CFR part 429; New York Arts and Cultural Affairs Law art. 12; Uniform Foreign-Country Money Judgments Recognition Act; HTS 9701.
