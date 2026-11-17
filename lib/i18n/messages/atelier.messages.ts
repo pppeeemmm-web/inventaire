@@ -533,9 +533,9 @@ export const atelierMessages = defineMessages({
     fr: '{work} · {step}',
     en: '{work} · {step}',
   },
-  material_overview_work_only: {
-    fr: 'Œuvre #{id} · étape à choisir',
-    en: 'Work #{id} · choose a step',
+  material_overview_choose_step: {
+    fr: 'étape à choisir',
+    en: 'choose a step',
   },
   material_overview_needs_triage: {
     fr: 'À trier : lier à une œuvre ou traiter comme tâche atelier.',

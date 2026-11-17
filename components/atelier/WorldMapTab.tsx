@@ -17,6 +17,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { loadTimePlaceData, type TimePlaceData } from '@/app/atelier/time-place-actions'
 import { nearestPlace } from '@/lib/work-periods'
+import { untitledLine } from '@/lib/work-preview-cache'
 import { FIELD_PLACE_COLOR, inSpan, monthKey, parseMonthKey, placeColor, studioOrder } from '@/lib/time-place'
 
 interface ContactRow {
@@ -663,7 +664,8 @@ export function WorldMapTab({
         label: near
           ? interpolateMessage(t('map_creation_gps_fmt'), { day: s.day, place: near.name })
           : interpolateMessage(t('map_creation_gps_none_fmt'), { day: s.day }),
-        sub: ws.map((w) => `#${w.id}${w.title ? ` ${w.title}` : ''}`).join(' · '),
+        // R4: never the number alone — an untitled work reads « Sans titre · year · technique ».
+        sub: ws.map((w) => `#${w.id} ${w.title?.trim() || untitledLine({ year: w.year != null ? String(w.year) : null, technique: w.technique != null ? (tM[w.technique] ?? null) : null }, t('wr_untitled'))}`).join(' · '),
         color: FIELD_PLACE_COLOR,
         count: ws.length,
         radius: 5,
@@ -680,7 +682,7 @@ export function WorldMapTab({
       if (pl?.latitude != null && pl.longitude != null) route.push([pl.latitude, pl.longitude])
     }
     return { pins: result, route, placed: precise + byPeriod, precise, byPeriod, none, total: works.length, periods: periodsInOrder }
-  }, [tp, periodFilter, span, t])
+  }, [tp, periodFilter, span, t, tM])
 
   const shownPins = mode === 'creation' ? (creation?.pins ?? []) : pins
 

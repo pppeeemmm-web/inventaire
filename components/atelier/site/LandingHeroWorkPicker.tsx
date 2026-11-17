@@ -6,6 +6,8 @@ import type { Oeuvre } from '@/lib/types/database'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { WorkChip } from '@/components/atelier/WorkChip'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import {
   listWorkDrawerImages,
   type WorkDrawerImageRow,
@@ -167,7 +169,7 @@ export function LandingHeroWorkPicker({ oeuvres, landing, onApply }: Props) {
           >
             <span className="t-mono-xs" style={{ opacity: 0.7 }}>
               {t('site_hero_linked_prefix')}:{' '}
-              <span style={{ color: 'var(--tx1)' }}>{linkedWork.Titre ?? `#${linkedWork.OeuvreID}`}</span>
+              <WorkChip id={linkedWork.OeuvreID} size="chip" title={linkedWork.Titre} image={linkedWork.txtImageNameLink ?? null} style={{ verticalAlign: 'middle' }} />
             </span>
             <button type="button" className="btn sm ghost" onClick={openPicker}>
               {t('site_hero_change_link_btn')}
@@ -244,22 +246,9 @@ export function LandingHeroWorkPicker({ oeuvres, landing, onApply }: Props) {
                         }}
                         data-testid={`landing-hero-work-${o.OeuvreID}`}
                       >
-                        {o.txtImageNameLink ? (
-                          <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, overflow: 'hidden' }}>
-                            <WorkThumb file={o.txtImageNameLink} size={80} alt="" />
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              width: 40,
-                              height: 40,
-                              flexShrink: 0,
-                              border: '1px dashed var(--bd)',
-                              borderRadius: 2,
-                            }}
-                          />
-                        )}
-                        <span style={{ fontSize: 11 }}>{o.Titre ?? `#${o.OeuvreID}`}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, fontSize: 11 }}>
+                          <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink ?? null} px={40} idStyle={{ fontWeight: 400, color: 'var(--tx3)' }} />
+                        </span>
                       </button>
                     ))
                   )}

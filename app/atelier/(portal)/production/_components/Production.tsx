@@ -21,7 +21,11 @@ import { addBoardTask, completeBoardTask, moveBoardTask, type BoardResult } from
 import { gateErrorKey } from '@/lib/work-save-error'
 import { useConfirmStep } from '@/hooks/useConfirmStep'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
-import { MissingThumb, WorkThumb, SuggestionThumb } from '@/components/atelier/WorkThumb'
+import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
+import { WorkCaption } from '@/components/atelier/WorkChip'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
+import { untitledLine } from '@/lib/work-preview-cache'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────
@@ -532,13 +536,7 @@ function ActionColumn({
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              <div style={{ width: 16, height: 16, background: 'var(--bg0)', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
-                {o.txtImageNameLink && <SuggestionThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {o.Titre ?? '—'}
-              </div>
-              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>#{o.OeuvreID}</span>
+              <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink} px={24} idStyle={{ fontSize: 11, color: 'var(--tx3)' }} />
             </div>
           ))}
           {addQ.trim() && suggestions.length === 0 && (
@@ -611,7 +609,12 @@ function WorkCard({ o, tM, onMarkDone, onOpen, draggable = false, onDragStart, o
           position: 'relative',
         }}>
           {o.txtImageNameLink
-            ? <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} />
+            ? (
+              // R4: hover / hold the thumbnail → the picture large with its caption; a click still opens the drawer.
+              <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? `#${o.OeuvreID}`} caption={<WorkCaption id={o.OeuvreID} />} style={{ width: '100%', height: '100%' }}>
+                <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} />
+              </ImageLoupe>
+            )
             : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
         </div>
 
@@ -625,7 +628,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen, draggable = false, onDragStart, o
             overflow: 'hidden', textOverflow: 'ellipsis',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           }}>
-            {o.Titre ?? '—'}
+            {o.Titre?.trim() || <span style={{ color: 'var(--tx3)' }}>{untitledLine({ year: year ? String(year) : null, technique: techLabel ?? null }, t('wr_untitled'))}</span>}
           </div>
           {techLabel && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{techLabel}</div>}
         </div>
@@ -763,13 +766,16 @@ function MaterialOverview({
               : undefined
             const typeKey = issue.type ? FIELD_ISSUE_TYPE_KEYS[issue.type] : undefined
             const photoSrc = issue.photo_r2_key ? thumbUrl(issue.photo_r2_key) ?? imageUrl(issue.photo_r2_key) : null
-            const linkedLabel = work && actionType
-              ? t('material_overview_linked')
-                  .replace('{work}', `#${work.OeuvreID}${work.Titre ? ` · ${work.Titre}` : ''}`)
-                  .replace('{step}', workActionTypeDisplayLabel(actionType.id, actionType.label, t))
-              : issue.oeuvre_id
-                ? t('material_overview_work_only').replace('{id}', String(issue.oeuvre_id))
-                : t('material_overview_needs_triage')
+            // R4: the work shows as thumbnail (loupe) + `#id` title, never the number alone.
+            const linkedLabel = issue.oeuvre_id
+              ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <WorkThumbLabel id={issue.oeuvre_id} title={work ? work.Titre : undefined} image={work ? work.txtImageNameLink : undefined} px={20}
+                    idStyle={{ color: 'inherit' }}
+                    sub={work && actionType ? workActionTypeDisplayLabel(actionType.id, actionType.label, t) : t('material_overview_choose_step')} />
+                </span>
+              )
+              : t('material_overview_needs_triage')
 
             return (
               <article

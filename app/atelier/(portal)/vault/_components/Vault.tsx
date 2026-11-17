@@ -16,6 +16,8 @@ import {
 import { stringifyError } from '@/lib/error'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 import type { Oeuvre } from '@/lib/types/database'
+import { WorkChip } from '@/components/atelier/WorkChip'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -842,10 +844,17 @@ export function Vault({ oeuvres, tM }: Props) {
             {selected.oeuvre_ids && selected.oeuvre_ids.length > 0 ? (
               <Row 
                 label={selected.oeuvre_ids.length > 1 ? "Œuvres" : "Œuvre"} 
-                value={selected.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')} 
+                value={
+                  <span style={{ display: 'flex', flexDirection: 'column' }}>
+                    {selected.oeuvre_ids.map(id => {
+                      const o = oeuvres.find(x => x.OeuvreID === id)
+                      return <WorkChip key={id} id={id} size="chip" title={o ? o.Titre : undefined} image={o ? o.txtImageNameLink : undefined} />
+                    })}
+                  </span>
+                }
               />
             ) : linkedWork && (
-              <Row label="Œuvre" value={linkedWork.Titre ?? `#${linkedWork.OeuvreID}`} />
+              <Row label="Œuvre" value={<WorkChip id={linkedWork.OeuvreID} size="chip" title={linkedWork.Titre} image={linkedWork.txtImageNameLink} />} />
             )}
             {selected.doc_date && (
               <Row label="Date" value={new Date(selected.doc_date).toLocaleDateString('fr-FR')} />
@@ -1611,16 +1620,10 @@ function UploadModal({
             {filtered.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
-                  <button 
-                    key={o.OeuvreID}
-                    type="button"
-                    onClick={() => toggleId(o.OeuvreID)}
-                    style={{ 
-                      textAlign: 'left', padding: '6px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none',
-                      color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer'
-                    }}
-                  >
-                    {selIds.includes(o.OeuvreID) ? '✓ ' : '+ '} {o.Titre ?? `#${o.OeuvreID}`}
+                  <button key={o.OeuvreID} type="button" onClick={() => toggleId(o.OeuvreID)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, textAlign: 'left', padding: '2px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <span style={{ flex: 'none', width: 12 }}>{selIds.includes(o.OeuvreID) ? '✓' : '+'}</span>
+                    <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink} px={28} />
                   </button>
                 ))}
               </div>
@@ -1631,8 +1634,8 @@ function UploadModal({
               {selIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {o?.Titre ?? `#${id}`}
+                  <span key={id} style={{ padding: '2px 4px 2px 2px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6, maxWidth: 260, minWidth: 0 }}>
+                    <WorkThumbLabel id={id} title={o ? o.Titre : undefined} image={o ? o.txtImageNameLink : undefined} px={20} />
                     <button type="button" onClick={() => toggleId(id)} aria-label={t('delete')} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )
@@ -1725,6 +1728,7 @@ function CoaModal({
             padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13,
           }}>
             <div className="t-label" style={{ marginBottom: 4 }}>{t('vault_coa_preview_heading')}</div>
+            <WorkChip id={work.OeuvreID} title={work.Titre} image={work.txtImageNameLink} />
             <Row label="Titre"    value={work.Titre ?? 'Sans titre'} />
             <Row label="Année"    value={work.Année?.slice(0, 4) ?? '—'} />
             {work.Technique != null && <Row label="Technique" value={tM[work.Technique] ?? '—'} />}
@@ -1871,8 +1875,9 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
                   <button key={o.OeuvreID} type="button" onClick={() => toggleId(o.OeuvreID)}
-                    style={{ textAlign: 'left', padding: '6px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}>
-                    {selIds.includes(o.OeuvreID) ? '✓ ' : '+ '} {o.Titre ?? `#${o.OeuvreID}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, textAlign: 'left', padding: '2px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <span style={{ flex: 'none', width: 12 }}>{selIds.includes(o.OeuvreID) ? '✓' : '+'}</span>
+                    <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink} px={28} />
                   </button>
                 ))}
               </div>
@@ -1881,8 +1886,8 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               {selIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {o?.Titre ?? `#${id}`}
+                  <span key={id} style={{ padding: '2px 4px 2px 2px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6, maxWidth: 260, minWidth: 0 }}>
+                    <WorkThumbLabel id={id} title={o ? o.Titre : undefined} image={o ? o.txtImageNameLink : undefined} px={20} />
                     <button type="button" onClick={() => toggleId(id)} aria-label={t('delete')} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )

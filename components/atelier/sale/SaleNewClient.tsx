@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { statusOf } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
+import { WorkCaption } from '@/components/atelier/WorkChip'
+import { untitledLine } from '@/lib/work-preview-cache'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { completeMobileSale, searchSaleWorks, type CompleteMobileSaleResult } from '@/app/atelier/sale/new/actions'
@@ -428,14 +431,20 @@ function StepTitle({ label }: { label: string }) {
 }
 
 function WorkMini({ work, technique }: { work: MobileSaleWork; technique: string | null | undefined }) {
+  const { t } = useI18n()
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
       <span style={{ width: 44, height: 44, position: 'relative', flexShrink: 0, overflow: 'hidden', background: 'var(--bg0)' }}>
-        {work.txtImageNameLink ? <WorkThumb file={work.txtImageNameLink} size={88} alt="" /> : null}
+        {work.txtImageNameLink ? (
+          // R4: hover / hold the thumbnail → the picture large with its caption.
+          <ImageLoupe file={work.txtImageNameLink} alt={work.Titre ?? `#${work.OeuvreID}`} caption={<WorkCaption id={work.OeuvreID} />} style={{ width: '100%', height: '100%' }}>
+            <WorkThumb file={work.txtImageNameLink} size={88} alt="" />
+          </ImageLoupe>
+        ) : null}
       </span>
       <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
         <strong style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          #{work.OeuvreID} · {work.Titre || 'S/T'}
+          #{work.OeuvreID} · {work.Titre || <span style={{ fontWeight: 400, color: 'var(--tx3)' }}>{untitledLine({ year: work.Année?.slice(0, 4) ?? null, technique: technique ?? null }, t('wr_untitled'))}</span>}
         </strong>
         <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{technique || work.Année || '—'}</span>
       </span>

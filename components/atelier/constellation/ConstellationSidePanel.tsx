@@ -5,6 +5,11 @@ import type { ConstellationMapRow } from '@/app/atelier/(portal)/constellation/a
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '../WorkThumb'
+import { WorkThumbLabel } from '../WorkThumbLabel'
+import { ImageLoupe } from '../ImageLoupe'
+import { WorkCaption } from '../WorkChip'
+import { WorkRef } from '../WorkRef'
+import { untitledLine } from '@/lib/work-preview-cache'
 import { ConstellationJournalEntries } from './ConstellationJournalEntries'
 import { ConstellationHowTo } from './ConstellationHowTo'
 import { type GroupBy, type NodeMap, type Snapshot } from './constellation-shared'
@@ -68,12 +73,17 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                   <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('const_workEyebrow')}</div>
                   <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden', position: 'relative' }}>
                     {panelNode.txtImageNameLink
-                      ? <WorkThumb file={panelNode.txtImageNameLink} size={384} style={{ objectFit: 'contain' }} alt="" />
+                      ? (
+                        <ImageLoupe file={panelNode.txtImageNameLink} alt={panelNode.Titre ?? `#${panelNode.OeuvreID}`} caption={<WorkCaption id={panelNode.OeuvreID} />} style={{ width: '100%', height: '100%' }}>
+                          <WorkThumb file={panelNode.txtImageNameLink} size={384} style={{ objectFit: 'contain' }} alt="" />
+                        </ImageLoupe>
+                      )
                       : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />
                     }
                   </div>
                   <div style={{ fontSize: 14, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif", lineHeight: 1.2, marginBottom: 4 }}>
-                    {panelNode.Titre || '—'}
+                    <WorkRef id={panelNode.OeuvreID} thumb={false} style={{ color: 'var(--tx3)', fontSize: 12, fontFamily: 'var(--font-mono)', textDecoration: 'none' }}>#{panelNode.OeuvreID}</WorkRef>{' '}
+                    {panelNode.Titre?.trim() || <span style={{ color: 'var(--tx3)' }}>{untitledLine({ year: panelNode.Année?.slice(0, 4) ?? null, technique: panelNode.Technique != null ? (tM[panelNode.Technique] ?? null) : null }, t('wr_untitled'))}</span>}
                   </div>
                   <div className="t-mono-sm">{panelNode.Année?.slice(0, 4) ?? '—'} · {(panelNode.Technique != null && tM[panelNode.Technique]) || '—'}</div>
                   <ConstellationJournalEntries oeuvreId={panelNode.OeuvreID} />
@@ -147,20 +157,11 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                         onClick={() => addToCustom(o.OeuvreID)}
                         title={t('const_addToCanvasTitle')}
                       >
-                        {o.txtImageNameLink
-                          ? <div style={{ width: 24, height: 24, position: 'relative', flexShrink: 0, borderRadius: '50%', overflow: 'hidden' }}>
-                              <WorkThumb file={o.txtImageNameLink} size={48} alt="" />
-                            </div>
-                          : <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg2)', flexShrink: 0 }} />
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 9, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {o.Titre || `#${o.OeuvreID}`}
-                          </div>
-                          <div style={{ fontSize: 8, color: 'var(--tx3)' }}>
-                            {o.Année?.slice(0, 4) ?? '—'} · {tM[o.Technique ?? 0] ?? '—'}
-                          </div>
-                        </div>
+                        {/* R4: hover the thumbnail → large with its caption; `#id` title, never the number alone. */}
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--tx)' }}>
+                          <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink ?? null} px={24} idStyle={{ color: 'var(--tx3)', fontWeight: 400 }}
+                            sub={<span style={{ fontSize: 8 }}>{o.Année?.slice(0, 4) ?? '—'} · {tM[o.Technique ?? 0] ?? '—'}</span>} />
+                        </span>
                         <span style={{ fontSize: 11, color: 'var(--ac)', flexShrink: 0 }}>+</span>
                       </div>
                     ))}
@@ -181,9 +182,9 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                           if (!o) return null
                           return (
                             <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 10px' }}>
-                              <div style={{ flex: 1, fontSize: 9, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {o.Titre || `#${id}`}
-                              </div>
+                              <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--tx2)' }}>
+                                <WorkThumbLabel id={id} title={o.Titre} image={o.txtImageNameLink ?? null} px={16} idStyle={{ color: 'var(--tx3)', fontWeight: 400 }} />
+                              </span>
                               <button
                                 onClick={() => removeFromCustom(id)}
                                 style={{ fontSize: 9, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}
@@ -226,9 +227,9 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                             style={{ width: 44, height: 33, background: 'var(--bg0)', border: '1px solid var(--bd)', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
                           >
                             {o.txtImageNameLink && (
-                              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                              <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? `#${id}`} caption={<WorkCaption id={id} />} style={{ width: '100%', height: '100%', position: 'relative' }}>
                                 <WorkThumb file={o.txtImageNameLink} size={96} alt="" />
-                              </div>
+                              </ImageLoupe>
                             )}
                           </div>
                         ) : null

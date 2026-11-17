@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type CSSProperties } f
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
-import { thumbUrl } from '@/lib/data'
+import { WorkLoupeThumb } from '@/components/atelier/WorkThumbLabel'
 import {
   attachShareInboxToConcept,
   attachShareInboxToContact,
@@ -172,27 +172,8 @@ export function ShareAttachPanel(props: {
                       }}
                       onClick={() => setSelected(h)}
                     >
-                      {h.thumb ? (
-                        <img
-                          src={thumbUrl(h.thumb, 144) ?? ''}
-                          alt=""
-                          width={72}
-                          height={72}
-                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
-                        />
-                      ) : (
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            width: 72,
-                            height: 72,
-                            flexShrink: 0,
-                            borderRadius: 4,
-                            border: '1px solid var(--bd)',
-                            background: 'var(--bg0)',
-                          }}
-                        />
-                      )}
+                      {/* R4: hover / hold the thumbnail → the picture large with its caption (the row still selects). */}
+                      <WorkLoupeThumb id={h.id} image={h.thumb ?? null} title={h.label} px={72} style={{ borderRadius: 4, border: '1px solid var(--bd)' }} />
                       <span
                         style={{
                           display: '-webkit-box',

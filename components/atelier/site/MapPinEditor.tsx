@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { Slider } from '@/components/atelier/portfolio/shared/Slider'
 import {
   listForestPins,
@@ -288,12 +289,8 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 16, collections = [
                     border: '1px solid ' + (isArmed || isSel ? '#fff' : 'var(--bd)'),
                   }}
                 />
-                {work.txtImageNameLink && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumbUrl(work.txtImageNameLink) ?? ''} alt="" style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
-                )}
-                <span style={{ flex: 1, fontSize: 9, color: isArmed ? '#fff' : 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {work.Titre ?? `#${work.OeuvreID}`}
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: isArmed ? '#fff' : 'var(--tx)' }}>
+                  <WorkThumbLabel id={work.OeuvreID} title={work.Titre} image={work.txtImageNameLink ?? null} px={20} idStyle={{ fontWeight: 400, color: 'inherit', opacity: 0.6 }} />
                 </span>
                 {pin && (
                   <span style={{ fontSize: 7, opacity: 0.45, flexShrink: 0, color: isArmed ? '#fff' : 'var(--tx2)' }}>

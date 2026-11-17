@@ -10,7 +10,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useSearchParams } from 'next/navigation'
 import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
-import { thumbUrl } from '@/lib/data'
+import { WorkLoupeThumb, WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, returnSaleOrder, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
 import { returnDaysLeft, returnLastDay, saleMoneyState } from '@/lib/sales/sale-money'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
@@ -324,16 +324,12 @@ export function Orders({ openWork, contacts }: Props) {
     return n != null ? t('ord_card_days_left').replace('{n}', String(n)) : saleMoneyState(o) === 'definitive' ? t('ord_card_definitive') : null
   }
 
+  // R4 preview rule: each thumbnail opens the loupe with its caption; a lone work shows its title too.
   const thumbs = (o: WorkOrderView, size: number, max: number) => (
-    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', minWidth: 0 }}>
-      {o.works.slice(0, max).map((w) => {
-        const src = thumbUrl(w.image)
-        return src
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img key={w.oeuvre_id} src={src} alt={w.title ?? ''} width={size} height={size} style={{ objectFit: 'cover', borderRadius: 2, flex: 'none' }} />
-          : <span key={w.oeuvre_id} style={{ width: size, height: size, background: 'var(--bg3)', borderRadius: 2, flex: 'none' }} />
-      })}
-      {o.works.length === 1 && <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--tx2)', marginLeft: 4 }}>{`#${o.works[0].oeuvre_id}`}</span>}
+    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', minWidth: 0, maxWidth: 'min(100%, 260px)', fontSize: 12 }}>
+      {o.works.length === 1
+        ? <WorkThumbLabel id={o.works[0].oeuvre_id} title={o.works[0].title} image={o.works[0].image} px={size} idStyle={{ fontSize: 12 }} />
+        : o.works.slice(0, max).map((w) => <WorkLoupeThumb key={w.oeuvre_id} id={w.oeuvre_id} image={w.image} title={w.title} px={size} />)}
       {o.works.length > max && <span style={{ fontSize: 11, color: 'var(--tx3)', marginLeft: 4 }}>{`+${o.works.length - max}`}</span>}
     </span>
   )
@@ -382,18 +378,12 @@ export function Orders({ openWork, contacts }: Props) {
           {o.reconstituted && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_reconstituted_hint')}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
             {o.works.map((w) => {
-              const src = thumbUrl(w.image)
               return (
                 <button key={w.oeuvre_id} type="button" onClick={() => openWork(w.oeuvre_id)} style={{
                   display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: 'none', border: 'none', padding: 0,
                   color: 'var(--tx)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
                 }}>
-                  {src
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={src} alt="" width={36} height={36} style={{ objectFit: 'cover', borderRadius: 2, flex: 'none' }} />
-                    : <span style={{ width: 36, height: 36, background: 'var(--bg3)', borderRadius: 2, flex: 'none' }} />}
-                  <span style={{ fontWeight: 700, color: 'var(--tx2)' }}>{`#${w.oeuvre_id}`}</span>
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title ?? ''}</span>
+                  <WorkThumbLabel id={w.oeuvre_id} title={w.title} image={w.image} px={36} />
                   {w.line_status !== 'active' && LINE_LABEL[w.line_status] && (
                     <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(LINE_LABEL[w.line_status])}</span>
                   )}

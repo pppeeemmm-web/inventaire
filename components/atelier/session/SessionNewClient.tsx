@@ -2,6 +2,8 @@
 
 import { isOutOfProduction, stageUnfinished } from '@/lib/production-scope'
 import { WorkRef } from '@/components/atelier/WorkRef'
+import { WorkLoupeThumb } from '@/components/atelier/WorkThumbLabel'
+import { untitledLine } from '@/lib/work-preview-cache'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
@@ -1155,22 +1157,11 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
                     data-testid="session-work-search-result"
                     style={{ minHeight: 84, textAlign: 'left', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10 }}
                   >
-                    {work.txtImageNameLink ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumbUrl(work.txtImageNameLink, 144) ?? ''}
-                        alt=""
-                        style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        style={{ width: 72, height: 72, borderRadius: 4, border: '1px solid var(--bd)', background: 'var(--bg2)', flexShrink: 0 }}
-                      />
-                    )}
+                    {/* R4: hover / hold the thumbnail → the picture large with its caption (the row still links the work). */}
+                    <WorkLoupeThumb id={work.OeuvreID} image={work.txtImageNameLink ?? null} title={work.Titre} px={72} style={{ borderRadius: 4, border: '1px solid var(--bd)' }} />
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                       <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        <span style={{ fontWeight: 700 }}>#{work.OeuvreID}</span> · {work.Titre || t('untitled')}
+                        <span style={{ fontWeight: 700 }}>#{work.OeuvreID}</span> · {work.Titre || untitledLine({ year: work.Année?.slice(0, 4) ?? null, technique: null }, t('untitled'))}
                       </span>
                       <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
                         {work.Largeur || work.Hauteur ? `${work.Largeur ?? '?'} × ${work.Hauteur ?? '?'} cm` : work.Année?.slice(0, 4) ?? '—'}

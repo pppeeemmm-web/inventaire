@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { searchSemanticAtelier, type SemanticSearchHit } from '@/app/atelier/search/actions'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
@@ -37,6 +38,8 @@ interface Item {
   label: string
   group: string
   action: () => void
+  /** R4: a work row shows thumbnail (loupe) + `#id` title, never the title or number alone. */
+  work?: { id: number; title?: string | null; image?: string | null }
 }
 
 export function CommandPalette({
@@ -140,7 +143,7 @@ export function CommandPalette({
       let wCount = 0
       for (const o of oeuvres) {
         if ((o.Titre ?? '').toLowerCase().includes(qLow)) {
-          result.push({ id: `work:${o.OeuvreID}`, label: o.Titre ?? `#${o.OeuvreID}`, group: t('cmd_palette_group_works'), action: () => { onGoWork(o.OeuvreID); onClose() } })
+          result.push({ id: `work:${o.OeuvreID}`, label: o.Titre ?? `#${o.OeuvreID}`, work: { id: o.OeuvreID, title: o.Titre, image: o.txtImageNameLink ?? null }, group: t('cmd_palette_group_works'), action: () => { onGoWork(o.OeuvreID); onClose() } })
           if (++wCount >= 6) break
         }
       }
@@ -187,6 +190,7 @@ export function CommandPalette({
             hit.nodeType === 'journal_entry'
               ? `📓 ${hit.day ?? ''} · ${hit.label.replace(/[#*`|_>]+/g, ' ').replace(/\s+/g, ' ').trim()}`
               : `${hit.label} (${hit.nodeType})`,
+          work: hit.nodeType === 'oeuvre' && hit.legacyIntId != null ? { id: hit.legacyIntId } : undefined,
           group: tk('search_semantic_group'),
           action: () => {
             if (hit.nodeType === 'journal_entry') {
@@ -273,14 +277,14 @@ export function CommandPalette({
                       onClick={item.action}
                       onMouseEnter={() => setIdx(itemIdx)}
                       style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        padding: '9px 16px', fontSize: 13, cursor: 'pointer',
+                        display: item.work ? 'flex' : 'block', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+                        padding: item.work ? '5px 16px' : '9px 16px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                         background: itemIdx === clampedIdx ? 'var(--bg2)' : 'transparent',
                         color: 'var(--tx)',
                         border: 'none',
                       }}
                     >
-                      {item.label}
+                      {item.work ? <WorkThumbLabel id={item.work.id} title={item.work.title} image={item.work.image} px={28} /> : item.label}
                     </button>
                   )
                 })}

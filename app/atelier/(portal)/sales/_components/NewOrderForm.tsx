@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { thumbUrl } from '@/lib/data'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { gateErrorKey } from '@/lib/work-save-error'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
@@ -219,9 +219,9 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
           {works.length === 0 && <div style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 6 }}>{t('ord_new_works_none')}</div>}
           {works.map((w) => (
             <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
-              <Thumb file={w.image} />
-              <span style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 13 }}>{`#${w.id}`}</span>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>{w.title ?? ''}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, fontSize: 13 }}>
+                <WorkThumbLabel id={w.id} title={w.title} image={w.image} />
+              </span>
               {LINE_VALUE_LABEL[kind] && (
                 <input className="input" type="number" inputMode="decimal" aria-label={t(LINE_VALUE_LABEL[kind]!)} title={t(LINE_VALUE_LABEL[kind]!)}
                   placeholder={w.price != null ? String(w.price) : '—'} value={lineValues[w.id] ?? ''}
@@ -241,9 +241,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
               display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, width: '100%', background: 'none', border: 'none',
               borderBottom: '1px solid var(--bd)', color: 'var(--tx)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', fontSize: 13, padding: '0 4px',
             }}>
-              <Thumb file={h.image} />
-              <span style={{ fontWeight: 700, color: 'var(--tx2)' }}>{`#${h.id}`}</span>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.title ?? ''}</span>
+              <WorkThumbLabel id={h.id} title={h.title} image={h.image} />
               <span style={{ color: 'var(--ac)', fontSize: 12 }}>{t('ord_new_add')}</span>
             </button>
           ))}
@@ -340,12 +338,4 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
       {unsavedDialog}
     </div>
   )
-}
-
-function Thumb({ file }: { file: string | null }) {
-  const src = thumbUrl(file)
-  return src
-    // eslint-disable-next-line @next/next/no-img-element
-    ? <img src={src} alt="" width={32} height={32} style={{ objectFit: 'cover', borderRadius: 2, flex: 'none' }} />
-    : <span style={{ width: 32, height: 32, background: 'var(--bg3)', borderRadius: 2, flex: 'none' }} />
 }

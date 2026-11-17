@@ -7,7 +7,7 @@ import { createWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
-import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { fromSuiviProcess, fromSuiviEtape } from '@/lib/pipeline/suivi-client'
 import { toLayoutJson } from '@/lib/exhibitions/exhibition-client'
 import {
@@ -443,15 +443,10 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
                       position: 'relative',
                       boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
                     }}>
-                      <div style={{ width: 32, height: 32, background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden', border: '1px solid var(--bd)', position: 'relative' }}>
-                        {o?.ImageURL || o?.txtImageNameLink ? (
-                          <WorkThumb file={o.txtImageNameLink || o.ImageURL} size={64} alt="" />
-                        ) : null}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || t('untitled')}</div>
-                        <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>{t('pm_work_id_label')}: {id}</div>
-                      </div>
+                      {/* R4: thumbnail (hover → large with caption) + `#id` title, « Sans titre · year · technique » when none. */}
+                      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, fontSize: 10, color: 'var(--tx1)' }}>
+                        <WorkThumbLabel id={id} title={o ? o.Titre : undefined} image={o ? (o.txtImageNameLink || o.ImageURL || null) : undefined} px={32} idStyle={{ color: 'var(--tx3)' }} />
+                      </span>
                       <button
                         onClick={() => setOeuvreIds(p => p.filter(x => x !== id))}
                         title={t('pm_remove_batch_title')}
@@ -475,12 +470,9 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}>
                   {filteredWorks.filter(o => !oeuvreIds.includes(o.OeuvreID)).map(o => (
                     <div key={o.OeuvreID} onClick={() => { setOeuvreIds(p => [...p, o.OeuvreID]); setWorkSearch('') }} style={{ padding: '8px 12px', borderBottom: '1px solid var(--bd)', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,168,110,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ width: 24, height: 24, background: 'var(--bg2)', border: '1px solid var(--bd)', position: 'relative' }}>
-                        {(o.ImageURL || o.txtImageNameLink) && (
-                          <WorkThumb file={o.txtImageNameLink || o.ImageURL} size={48} alt="" />
-                        )}
-                      </div>
-                      <div style={{ fontSize: 11 }}>{o.Titre} <span style={{ color: 'var(--tx3)', marginLeft: 4 }}>#{o.OeuvreID}</span></div>
+                      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, fontSize: 11 }}>
+                        <WorkThumbLabel id={o.OeuvreID} title={o.Titre} image={o.txtImageNameLink || o.ImageURL || null} px={24} idStyle={{ color: 'var(--tx3)', fontWeight: 400 }} />
+                      </span>
                     </div>
                   ))}
                 </div>
