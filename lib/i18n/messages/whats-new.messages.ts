@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.38 (2026-11-17) — R2: « À revoir » actions on Aujourd'hui; « Plus tard ».
+  wn_see_again_later_t: { fr: '« À revoir » : Plus tard', en: '« See again »: Later' },
+  wn_see_again_later_d: {
+    fr: 'Sur « Aujourd’hui » au téléphone, « À revoir » montre une carte à la fois (« 1 / 3 › ») avec ses boutons : ouvrir, écrire à ce sujet, lier, sans rapport. « Ne plus montrer » devient « Plus tard » partout : l’entrée ou l’œuvre revient au bout de 7 jours. « Sans rapport » reste définitif.',
+    en: 'On the phone’s « Today », « See again » shows one card at a time (« 1 / 3 › ») with its buttons: open, write about it, link, not related. « Don’t show again » becomes « Later » everywhere: the entry or work comes back after 7 days. « Not related » stays final.',
+  },
   // 3.1.37 (2026-11-17) — R2: the Hub opens on « Aujourd'hui », streamed; Bureau fold; Journal quick row → bar.
   wn_hub_opens_today_t: { fr: 'Le Hub s’ouvre sur Aujourd’hui', en: 'The Hub opens on Today' },
   wn_hub_opens_today_d: {

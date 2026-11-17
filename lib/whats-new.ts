@@ -53,7 +53,8 @@
 // '3.1.35' (2026-11-17): phone long-press preview closes on a tap (B13); small GIF captions fit the frame (B14).
 // '3.1.36' (2026-11-17): R2 — « Aujourd'hui » light phone page; one input bar on every phone screen.
 // '3.1.37' (2026-11-17): R2 — the Hub opens on « Aujourd'hui » (streamed: bar first), « Bureau » fold; Journal quick row → the bar on the phone.
-export const WHATS_NEW_RELEASE = '3.1.37'
+// '3.1.38' (2026-11-17): R2 — « À revoir » actions on Aujourd'hui, one at a time; « Plus tard » (back after 7 days).
+export const WHATS_NEW_RELEASE = '3.1.38'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -65,6 +66,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'see_again_later', day: '2026-11-17' },
   { id: 'hub_opens_today', day: '2026-11-17' },
   { id: 'phone_today_bar', day: '2026-11-17' },
   { id: 'loupe_gif_caption_fixes', day: '2026-11-17' },
