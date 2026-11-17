@@ -10,7 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
-  // 3.1.48 (2026-11-17) — destroyed / lost works on the card and in the history.
+  // 3.1.48 (2026-11-17) — destroyed / lost works on the card and in the history; R7 step 2.
+  wn_orders_everywhere_t: { fr: 'Une vente, un dépôt, un prêt ou un don passe toujours par une commande', en: 'A sale, deposit, loan or gift always goes through an order' },
+  wn_orders_everywhere_d: {
+    fr: 'Le menu Commercial s’appelle Business et Ventes s’appelle Commandes. « Don… » sur la fiche, une vente ou un dépôt dans Pipeline, « Envoyer des œuvres » dans Expositions et la vente sur le téléphone créent maintenant une commande en brouillon avec son papier : l’œuvre ne bouge qu’aux étapes de la commande (signée, sortie, remise). Sur une vente signée, « Encaisser » enregistre un paiement, compté dans Revenus & dépenses.',
+    en: 'The Commercial menu is now Business and Sales is now Orders. « Gift… » on the card, a sale or deposit in Pipeline, « Send works » in Exhibitions and the phone sale now make a draft order with its paper: the work moves only at the order’s steps (signed, out, handed over). On a signed sale, « Record a payment », counted in Revenue & expenses.',
+  },
   wn_fate_card_history_t: { fr: 'Œuvre détruite ou perdue : la fiche le dit', en: 'Destroyed or lost work: the card says so' },
   wn_fate_card_history_d: {
     fr: 'Sur la fiche d’une œuvre détruite ou perdue, la ligne Production affiche « Détruite · date » au lieu d’« En production ». Le constat de destruction ou de perte écrit sa ligne dans Historique / provenance (et « Retrouvée » quand on clôt une perte). Enregistrer la fiche n’ajoute plus de fausse ligne « statut 9 → En production ».',
