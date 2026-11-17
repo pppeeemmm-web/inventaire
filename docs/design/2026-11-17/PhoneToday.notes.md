@@ -118,9 +118,52 @@ That is four steps in a row before the page is usable. The bar's buttons don't e
 
    A number that comes out worse than today blocks the ship.
 
+### Baseline: measured 2026-11-17 on production, as admin
+
+**How it was measured.** Pem's Chrome on the PC, signed in as admin. Chrome wouldn't shrink its window, so each page loaded in a 390 px same-origin frame (phone layout: viewport 386 px).
+
+**Warm load.** The service worker served every JS file from cache: 0 bytes of JS downloaded. The PC's CPU and home network were used, with **no 4G or phone-CPU throttling** (not possible from the extension). A real phone on 4G will be slower than these numbers. They are a floor, not the phone's real time.
+
+| `/atelier/journal?today=1` | Run 1 | Run 2 | Run 3 | Run 4 |
+|---|---|---|---|---|
+| Server first byte | 0.89 s | 1.27 s | 1.09 s | — |
+| « Chargement Atelier » splash gone; header + quick row shown | 1.74 s | 1.75 s | 1.83 s | 1.88 s |
+| Day still empty (« Nothing yet ») at that moment | yes | yes | yes | yes |
+| « À revoir » card shown | 4.88 s | 3.50 s | 3.55 s | 3.83 s |
+| LCP (main content shown) | 4.89 s | 3.49 s | 3.55 s | — |
+| Last server call done | 5.93 s | 4.44 s | 4.65 s | 7.21 s |
+| JS (uncompressed, 23 files) | 1.84 MB | 1.84 MB | 1.84 MB | 1.84 MB |
+
+**Run 4, server calls traced.** Next.js runs a page's server actions **one at a time**, so they wait on each other:
+
+| Order | Server call | Start → end |
+|---|---|---|
+| 1 | `getSeeAgain` | 1.37 → 2.78 s |
+| 2 | `getJournalDayExtras` (the day's entries) | 2.78 → 3.69 s |
+| 3 | `loadJournalBootstrap` | 3.69 → 5.28 s |
+| 4 | `loadAtelierShellOpen` (the shell's post-paint load) | 5.35 → 7.23 s |
+
+The slow « À revoir » query runs first and holds back the day's own entries.
+
+| `/hub` (today's launcher) | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|
+| Server first byte | 1.67 s | 1.69 s | 0.95 s |
+| Launcher shown | 1.73 s | 1.87 s | 1.09 s |
+| JS (uncompressed) | 1.03 MB | 1.03 MB | 1.03 MB |
+
+**Not measured.**
+- A real phone, 4G throttling, a cold cache.
+- Compressed JS size: Vercel sends no content-length, so it can't be read from the frame.
+
+**What it says for the build:**
+1. The Atelier shell costs about 1.8 s before anything shows.
+2. The day's real content arrives at 3.5–4.9 s, behind a queue of server calls.
+3. Two of those calls (`loadJournalBootstrap`, `loadAtelierShellOpen`) aren't needed for « Aujourd'hui » at all.
+4. One server query for the day (rule 3) and no shell (rule 1) attack exactly these.
+
 ### How we prove it
 
-- **Before building:** measure today's `/hub` → journal on production at 390 px, throttled 4G, in Chrome (Performance + Network). Record the time to first paint, to the bar usable, and to the full page, and the JS weight, here as the baseline.
+- **Baseline:** done 2026-11-17, warm and unthrottled (above). Still to do once: the same pages on Pem's real phone over 4G, for the true floor-to-ceiling gap.
 - **After each build step:** the same measure, the same phone profile, next to the baseline. « Faster » is said only with both numbers.
 - Other phone screens (Inventaire, Production, Notes, the work card) also go through the Atelier shell. The same light-route idea could apply to them later, but **not in R2** without Pem's GO: measure first.
 
@@ -153,7 +196,7 @@ That is four steps in a row before the page is usable. The bar's buttons don't e
 4. **Bureau** — Pem asked what it is: the folded bottom group of the phone menu, holding what the phone rarely needs (Pipeline, Vente, Triage, Contacts, Documents, Studio, Catalogue, Commercial, Public). Pem: **all folded**. (Name « Plus » kept as an option if « Bureau » reads unclear in use.)
 5. **Plus tard** — Pem: no preference → default **7 days**, one constant, easy to change after use.
 
-**All five questions answered 2026-11-17.** Speed added as a first rule the same day (section above). Waiting on Pem's GO to build; step 0 of the build = the baseline measure.
+**All five questions answered 2026-11-17.** Speed added as a first rule the same day (section above). Baseline measured 2026-11-17 (Speed › Baseline). Waiting on Pem's GO to build.
 
 ## For the build (after Pem's say)
 
