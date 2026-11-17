@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrats — R7 mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);--yellow:oklch(0.86 0.15 95);--cyan:oklch(0.78 0.12 200);
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px; /* = env(safe-area-inset-bottom) */
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:20px}
+.caption{max-width:1200px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px;max-width:375px}
+
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;display:flex;align-items:center;gap:6px}
+.btn{height:36px;padding:0 12px;border:1px solid var(--bd2);border-radius:3px;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);background:none;white-space:nowrap}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.q{color:var(--tx3)}
+.th{width:28px;height:28px;flex:none;background:linear-gradient(160deg,#cfccc4,#5d5b57);border-radius:2px}
+.th.b{background:linear-gradient(160deg,oklch(0.55 0.12 250),#1d2230)}
+.th.c{background:linear-gradient(160deg,oklch(0.7 0.14 60),#3a2a1c)}
+.th.d{background:linear-gradient(160deg,oklch(0.6 0.08 150),#1c2a22)}
+.num{font-weight:700;font-size:12px;color:var(--tx2)}
+
+/* kind chips */
+.k{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:3px;font-size:11px;font-weight:700;border:1px solid}
+.k.v{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 50%,var(--bd2))}
+.k.d{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 50%,var(--bd2))}
+.k.p{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 50%,var(--bd2))}
+.k.g{color:var(--ac);border-color:var(--ac2)}
+
+/* step dots */
+.steps{display:flex;align-items:center;gap:3px}
+.steps i{width:8px;height:8px;border-radius:50%;border:1px solid var(--bd3);display:block}
+.steps i.on{background:var(--ac);border-color:var(--ac)}
+.steps i.now{border-color:var(--ac);box-shadow:0 0 0 2px color-mix(in srgb,var(--ac) 30%,transparent)}
+.paper{font-size:12px;color:var(--tx3)}
+.paper .ok{color:var(--sage)}
+.paper .no{color:var(--mt)}
+
+/* ── desktop ─────────────────────────────────────────── */
+.desk{width:1280px;height:720px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;overflow:hidden;display:flex}
+.side{width:200px;flex:none;border-right:1px solid var(--bd);padding:14px 0;font-size:13px;color:var(--tx3)}
+.side .g{padding:12px 16px 4px}
+.side a{display:block;padding:6px 16px;color:var(--tx2);text-decoration:none}
+.side a.on{color:var(--tx);background:var(--bg3);border-left:2px solid var(--ac);padding-left:14px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:12px;height:56px;padding:0 20px;border-bottom:1px solid var(--bd)}
+.hdr h3{font-family:var(--font-serif);font-weight:400;font-size:26px;margin:0}
+.strip{display:flex;align-items:center;height:36px;padding:0 20px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--tx2);gap:0;white-space:nowrap}
+.strip b{color:var(--tx);margin-right:3px}
+.strip .dot{color:var(--mt);margin:0 10px}
+.strip .urg,.strip .urg b{color:var(--rust)}
+.split{flex:1;min-height:0;display:flex}
+.list{flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--bd)}
+.chips{display:flex;gap:6px;padding:10px 20px;align-items:center}
+.chip{height:28px;padding:0 10px;border:1px solid var(--bd2);border-radius:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)}
+.chip.on{background:var(--bg3);color:var(--tx);border-color:var(--bd3)}
+.chip b{font-size:11px;color:var(--tx3)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--bg2);text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--bd2)}
+td{padding:8px 8px;border-bottom:1px solid var(--bd);vertical-align:middle}
+tr.sel td{background:color-mix(in srgb,var(--ac) 7%,transparent)}
+tr.closed td{color:var(--tx3)}
+.ref{font-family:ui-monospace,monospace;font-size:12px;color:var(--ac);white-space:nowrap}
+.works{display:flex;gap:3px;align-items:center}
+.works .more{font-size:11px;color:var(--tx3);margin-left:4px}
+.sub{font-size:11px;color:var(--tx3)}
+.grp td{background:var(--bg0);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;padding:5px 10px}
+
+.detail{width:410px;flex:none;overflow:hidden;display:flex;flex-direction:column}
+.dh{padding:14px 18px 10px;border-bottom:1px solid var(--bd)}
+.dh .t{display:flex;align-items:center;gap:8px}
+.dh .ttl{font-family:var(--font-serif);font-size:22px}
+.dh .who{font-size:13px;color:var(--tx2);margin-top:6px}
+.dh .addr{font-size:12px;color:var(--tx3)}
+.dh .ws{display:flex;gap:8px;margin-top:10px}
+.dh .w{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--tx2)}
+.sec{border-bottom:1px solid var(--bd);padding:8px 18px}
+.sec .lbl .chev{margin-left:auto;color:var(--tx3);font-size:12px;letter-spacing:0}
+.tl{display:flex;margin-top:10px}
+.tl div{flex:1;font-size:11px;color:var(--tx3);border-top:2px solid var(--bd2);padding-top:5px}
+.tl div.on{border-color:var(--ac);color:var(--tx2)}
+.tl div.now{border-color:var(--ac);color:var(--ac);font-weight:600}
+.tl small{display:block;color:var(--mt);font-size:10px}
+.next{display:flex;gap:8px;margin-top:10px}
+.pp{display:flex;align-items:center;gap:10px;min-height:34px;border-top:1px solid var(--bd);font-size:13px}
+.pp:first-of-type{border-top:0}
+.pp .ic{width:28px;height:34px;border:1px solid var(--bd3);border-radius:2px;display:grid;place-items:center;font-size:9px;color:var(--tx3);flex:none}
+.pp .ic.miss{border-style:dashed;color:var(--mt)}
+.pp .nm{flex:1;min-width:0}
+.pp .nm .sub{display:block}
+.pp .a{color:var(--tx3);font-size:12px}
+.money{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px;margin-top:8px}
+.money span:nth-child(odd){color:var(--tx3)}
+.money .neg{color:var(--rust)}
+.money .pos{color:var(--sage)}
+
+/* ── phone ──────────────────────────────────────────── */
+.phone{position:relative;width:375px;height:812px;background:var(--bg1);border:1px solid var(--bd2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
+.status{flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:600}
+.pbody{flex:1;min-height:0;overflow:hidden;position:relative}
+.ptop{display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--bd)}
+.ptop .ttl{font-family:var(--font-serif);font-size:24px;flex:1}
+.ib{width:44px;height:44px;display:grid;place-items:center;color:var(--tx2);font-size:20px;flex:none}
+.pchips{display:flex;gap:6px;padding:10px 16px 0;overflow:hidden}
+.pchips .chip{height:32px}
+.pcard{margin:10px 16px 0;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);padding:10px}
+.pcard .top{display:flex;align-items:center;gap:8px}
+.pcard .top .who{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .ws{display:flex;gap:4px;margin-top:8px;align-items:center}
+.pcard .ws .th{width:36px;height:36px}
+.pcard .nx{display:flex;align-items:center;margin-top:8px;font-size:12px;color:var(--tx3);gap:8px}
+.pcard .nx b{color:var(--ac);font-weight:600}
+.pcard .nx .sp{flex:1}
+.fab{position:absolute;right:16px;bottom:calc(var(--safe-b) + 66px);height:48px;padding:0 18px;border-radius:24px;border:1px solid var(--ac2);background:var(--bg3);color:var(--ac);display:flex;align-items:center;font-size:15px;font-weight:600}
+.inbar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px max(6px,var(--safe-b));border-top:1px solid var(--bd);background:var(--bg1);display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.inbar span{height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:var(--tx3);gap:2px}
+.inbar span b{font-size:17px;color:var(--tx2);font-weight:400}
+.psec{padding:12px 16px 0}
+.sticky{position:absolute;left:0;right:0;bottom:0;padding:10px 16px max(10px,var(--safe-b));background:var(--bg1);border-top:1px solid var(--bd);display:flex;gap:8px}
+.sticky .btn{height:48px;flex:1;justify-content:center;font-size:15px}
+.ptl{display:flex;flex-direction:column;margin-top:8px}
+.ptl div{display:flex;align-items:center;gap:10px;min-height:32px;font-size:13px;color:var(--tx3)}
+.ptl div i{width:10px;height:10px;border-radius:50%;border:1px solid var(--bd3);flex:none}
+.ptl div.on{color:var(--tx2)}.ptl div.on i{background:var(--ac);border-color:var(--ac)}
+.ptl div.now{color:var(--ac);font-weight:600}.ptl div.now i{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 30%,transparent)}
+.ptl small{margin-left:auto;font-size:11px;color:var(--mt);font-weight:400}
+.ppap{display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--bd);font-size:14px}
+.ppap .ic{width:30px;height:38px;border:1px solid var(--bd3);border-radius:2px;display:grid;place-items:center;font-size:9px;color:var(--tx3);flex:none}
+.ppap .ic.miss{border-style:dashed;color:var(--mt)}
+.ppap .nm{flex:1;min-width:0}
+.ppap .nm .sub{display:block}
+.ppap .go{width:44px;height:44px;display:grid;place-items:center;color:var(--ac);font-size:18px}
+.note{max-width:1280px;color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:12px}
+.note b{color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="caption">
+  <h1>Contrats — R7 mockup (2026-11-17, v1)</h1>
+  <b>One place for every work that leaves Pem's hands:</b> Vente (V) · Dépôt (D) · Prêt (P) · Don (G), each with its steps and its papers. Replaces « Ventes » at the top of Commercial. Brief: <code>R7_Orders.notes.md</code>.<br>
+  All rows below are <b>made-up examples</b> — the live data has no sale, deposit or loan yet, and 7 gifts (one with a paper). Name « Contrats » is a proposal (question 1).
+</div>
+
+<!-- ═══════════ DESKTOP ═══════════ -->
+<div class="col">
+  <h2>Desktop — list + the agreement</h2>
+  <div class="desk">
+    <nav class="side">
+      <div class="g lbl">Commercial</div>
+      <a class="on">Contrats</a>
+      <a>Contacts</a>
+      <a>Carte</a>
+      <a>Logistique</a>
+      <a>Revenus &amp; dépenses</a>
+      <a>Coffre</a>
+      <div class="g lbl">Studio</div>
+      <a>Vue d'ensemble</a>
+      <a>Pipeline</a>
+      <a>Expositions</a>
+    </nav>
+
+    <div class="main">
+      <div class="hdr">
+        <h3>Contrats</h3>
+        <span style="flex:1"></span>
+        <span class="btn q">⌕ Chercher</span>
+        <span class="btn pri">+ Nouveau</span>
+      </div>
+      <div class="strip">
+        <span>Ouverts</span><span class="dot">·</span>
+        <span><b>1</b>V</span><span class="dot">·</span>
+        <span><b>1</b>D</span><span class="dot">·</span>
+        <span><b>1</b>P</span><span class="dot">·</span>
+        <span><b>0</b>G</span><span class="dot">|</span>
+        <span><b>2 400 €</b>à encaisser</span><span class="dot">·</span>
+        <span class="urg"><b>3</b>œuvres dehors, retour ≤ 30 j</span><span class="dot">·</span>
+        <span><b>2</b>papiers sans copie signée</span>
+      </div>
+
+      <div class="split">
+        <div class="list">
+          <div class="chips">
+            <span class="chip on">Toutes <b>6</b></span>
+            <span class="chip"><span class="k v">V</span> Vente <b>2</b></span>
+            <span class="chip"><span class="k d">D</span> Dépôt <b>1</b></span>
+            <span class="chip"><span class="k p">P</span> Prêt <b>1</b></span>
+            <span class="chip"><span class="k g">G</span> Don <b>2</b></span>
+            <span style="flex:1"></span>
+            <span class="chip">+ clos</span>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden">
+          <table>
+            <thead><tr><th style="width:34px"></th><th>Réf.</th><th>Œuvres</th><th>Avec</th><th>Dates</th><th>Étape</th><th>Papiers</th></tr></thead>
+            <tbody>
+              <tr class="grp"><td colspan="7">Ouverts</td></tr>
+              <tr class="sel">
+                <td><span class="k v">V</span></td>
+                <td><span class="ref">V-2026-001</span></td>
+                <td><div class="works"><span class="th c"></span><span class="num">#2210</span></div></td>
+                <td>Collectionneur A<div class="sub">Lyon</div></td>
+                <td>12 nov.<div class="sub">solde 30 nov.</div></td>
+                <td><div class="steps"><i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i></div><div class="sub">Acompte reçu</div></td>
+                <td class="paper"><span class="ok">● bon</span> <span class="ok">● signé</span></td>
+              </tr>
+              <tr>
+                <td><span class="k d">D</span></td>
+                <td><span class="ref">D-2026-001</span></td>
+                <td><div class="works"><span class="th"></span><span class="th b"></span><span class="th d"></span><span class="more">+2</span></div></td>
+                <td>Galerie X<div class="sub">Marseille · Salle 2</div></td>
+                <td>1 oct.<div class="sub">retour 15 déc.</div></td>
+                <td><div class="steps"><i class="on"></i><i class="on"></i><i class="now"></i><i></i></div><div class="sub">Sorti · commission 40 %</div></td>
+                <td class="paper"><span class="ok">● bordereau</span> <span class="no">○ signé</span></td>
+              </tr>
+              <tr>
+                <td><span class="k p">P</span></td>
+                <td><span class="ref">P-2026-001</span></td>
+                <td><div class="works"><span class="th b"></span><span class="num">#1874</span></div></td>
+                <td>Musée Y<div class="sub">exposition « Z »</div></td>
+                <td>20 nov.<div class="sub">retour 10 janv.</div></td>
+                <td><div class="steps"><i class="on"></i><i class="now"></i><i></i><i></i></div><div class="sub">Signé · à sortir</div></td>
+                <td class="paper"><span class="ok">● bordereau</span> <span class="no">○ signé</span></td>
+              </tr>
+              <tr class="grp"><td colspan="7">Clos — shown here with « + clos » on (hidden by default)</td></tr>
+              <tr class="closed">
+                <td><span class="k g">G</span></td>
+                <td><span class="ref">G-2025-001</span></td>
+                <td><div class="works"><span class="th d"></span><span class="num">#287</span></div></td>
+                <td>Bénéficiaire B</td>
+                <td>2025<div class="sub">remis</div></td>
+                <td><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="sub">Remis</div></td>
+                <td class="paper"><span class="ok">● acte</span> <span class="no">○ signé</span></td>
+              </tr>
+              <tr class="closed">
+                <td><span class="k g">G</span></td>
+                <td><span class="ref">G-—</span></td>
+                <td><div class="works"><span class="th"></span><span class="num">#302</span></div></td>
+                <td>Bénéficiaire C</td>
+                <td>—<div class="sub">enregistré à la main</div></td>
+                <td><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="sub">Remis</div></td>
+                <td class="paper"><span class="no">○ pas de papier</span></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <aside class="detail">
+          <div class="dh">
+            <div class="t"><span class="k v">V</span><span class="ref">V-2026-001</span><span class="ttl">Vente</span><span style="flex:1"></span><span class="btn q">⋯</span></div>
+            <div class="who">Collectionneur A</div>
+            <div class="addr">Livrer à : Domicile · Lyon (adresse du contrat)</div>
+            <div class="ws"><div class="w"><span class="th c"></span><span><span class="num">#2210</span> Sans titre (bleu)</span></div></div>
+          </div>
+          <div class="sec">
+            <div class="lbl">Étape suivante</div>
+            <div class="tl">
+              <div class="on">Brouillon<small>10 nov.</small></div>
+              <div class="on">Signée<small>12 nov.</small></div>
+              <div class="now">Acompte<small>12 nov.</small></div>
+              <div>Soldée<small>→ propriétaire</small></div>
+              <div>Livrée<small>→ gardien</small></div>
+            </div>
+            <div class="next"><span class="btn pri">Encaisser le solde · 2 400 €</span><span class="btn q">Annuler</span></div>
+          </div>
+          <div class="sec">
+            <div class="lbl">Papiers <span class="chev">▾</span></div>
+            <div class="pp"><span class="ic">PDF</span><span class="nm">Bon de commande<span class="sub">généré · refait après chaque paiement</span></span><span class="a">Voir · Partager · Refaire</span></div>
+            <div class="pp"><span class="ic">✓</span><span class="nm">Copie signée<span class="sub">photo du 12 nov.</span></span><span class="a">Voir</span></div>
+            <div class="pp"><span class="ic miss">COA</span><span class="nm">Certificat d'authenticité<span class="sub">proposé à « Soldée »</span></span><span class="a">Créer</span></div>
+            <div class="pp"><span class="ic miss">+</span><span class="nm" style="color:var(--tx3)">Joindre un papier (facture, constat, transport)</span></div>
+          </div>
+          <div class="sec">
+            <div class="lbl">Argent <span class="chev">▾</span></div>
+            <div class="money">
+              <span>Prix catalogue</span><span>3 200 €</span>
+              <span>Remise 0 % · prix final</span><span>3 200 €</span>
+              <span>Reçu (acompte 25 %)</span><span class="pos">800 €</span>
+              <span>Reste</span><span class="neg">2 400 €</span>
+            </div>
+          </div>
+          <div class="sec"><div class="lbl">Liens · Pipeline « Collectionneur A » · Livraison — <span class="chev">▸</span></div></div>
+          <div class="sec"><div class="lbl">Journal du contrat (4 lignes) <span class="chev">▸</span></div></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PHONES ═══════════ -->
+<div class="row">
+
+  <div class="col">
+    <h2>Phone 1 — open agreements</h2>
+    <p>Cards, newest step first. « + Nouveau » offers Vente and Don on the phone (question 7). The R2 input bar stays at the bottom.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl">Contrats</span><span class="ib">⌕</span></div>
+        <div class="pchips">
+          <span class="chip on">Ouverts <b>3</b></span>
+          <span class="chip"><span class="k v">V</span></span>
+          <span class="chip"><span class="k d">D</span></span>
+          <span class="chip"><span class="k p">P</span></span>
+          <span class="chip"><span class="k g">G</span></span>
+        </div>
+
+        <div class="pcard">
+          <div class="top"><span class="k v">V</span><span class="who">Collectionneur A</span><span class="ref">V-2026-001</span></div>
+          <div class="ws"><span class="th c"></span><span class="num">#2210</span><span class="sub">· 3 200 €</span></div>
+          <div class="nx"><span>Acompte reçu</span><span class="sp"></span><b>Encaisser 2 400 € ›</b></div>
+        </div>
+        <div class="pcard">
+          <div class="top"><span class="k d">D</span><span class="who">Galerie X</span><span class="ref">D-2026-001</span></div>
+          <div class="ws"><span class="th"></span><span class="th b"></span><span class="th d"></span><span class="sub">+2 · retour 15 déc.</span></div>
+          <div class="nx"><span>Sorti · copie signée manquante</span><span class="sp"></span><b>Photographier ›</b></div>
+        </div>
+        <div class="pcard">
+          <div class="top"><span class="k p">P</span><span class="who">Musée Y</span><span class="ref">P-2026-001</span></div>
+          <div class="ws"><span class="th b"></span><span class="num">#1874</span><span class="sub">· retour 10 janv.</span></div>
+          <div class="nx"><span>Signé</span><span class="sp"></span><b>Marquer sorti ›</b></div>
+        </div>
+
+        <span class="fab">+ Nouveau</span>
+        <div class="inbar">
+          <span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Phone 2 — one agreement</h2>
+    <p>Steps as a vertical line, papers as 52 px rows (open / share the PDF, photograph the signed copy). One sticky primary button with safe-area padding.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl">Dépôt</span><span class="ref" style="margin-right:12px">D-2026-001</span></div>
+        <div class="psec">
+          <div style="font-size:16px">Galerie X</div>
+          <div class="sub">Marseille · Salle 2 · commission 40 %</div>
+          <div class="ws" style="display:flex;gap:4px;margin-top:8px"><span class="th" style="width:44px;height:44px"></span><span class="th b" style="width:44px;height:44px"></span><span class="th d" style="width:44px;height:44px"></span><span class="th c" style="width:44px;height:44px"></span><span class="th" style="width:44px;height:44px"></span></div>
+        </div>
+        <div class="psec">
+          <div class="lbl">Étapes</div>
+          <div class="ptl">
+            <div class="on"><i></i>Brouillon<small>28 sept.</small></div>
+            <div class="on"><i></i>Signé<small>30 sept.</small></div>
+            <div class="now"><i></i>Sorti — chez la galerie<small>1 oct.</small></div>
+            <div><i></i>Rentré, ou vendu par la galerie<small>retour 15 déc.</small></div>
+          </div>
+        </div>
+        <div class="psec">
+          <div class="lbl">Papiers</div>
+          <div class="ppap"><span class="ic">PDF</span><span class="nm">Bordereau de dépôt<span class="sub">généré 28 sept.</span></span><span class="go">↗</span></div>
+          <div class="ppap"><span class="ic miss">—</span><span class="nm">Copie signée<span class="sub">manquante</span></span><span class="go">◎</span></div>
+          <div class="ppap"><span class="ic miss">+</span><span class="nm" style="color:var(--tx3)">Joindre un papier</span><span class="go">›</span></div>
+        </div>
+        <div class="psec"><div class="lbl">Argent · valeur d'assurance 9 800 € <span style="margin-left:auto">▸</span></div></div>
+        <div class="sticky"><span class="btn">Vendu par la galerie</span><span class="btn pri">Rentré</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <b>What is not shown:</b> the « + Nouveau » form (kind first — four big buttons —, then works, the other party + address, then only that kind's terms; it makes a draft with its paper, works move at « signé / sorti / soldée / acte signé », question 4) · the work card link « voir le contrat » on the locked stage pills · Pipeline's « Créer le contrat » link · the Vault folder per agreement (question 6).
+</div>
+
+</div>
+</body>
+</html>
