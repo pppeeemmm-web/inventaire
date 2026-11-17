@@ -54,6 +54,8 @@ export type WorkDrawerPipelineSectionProps = {
   completedLabel: string
   /** Destroyed / lost: stages locked until the constat is closed (DB guard too). */
   locked: boolean
+  /** Admin may change an archive work's custodian (set to the artist automatically). */
+  isAdmin?: boolean
 }
 
 export function WorkDrawerPipelineSection({
@@ -86,6 +88,7 @@ export function WorkDrawerPipelineSection({
   startedLabel,
   completedLabel,
   locked,
+  isAdmin = false,
 }: WorkDrawerPipelineSectionProps) {
   const { t } = useI18n()
 
@@ -122,7 +125,18 @@ export function WorkDrawerPipelineSection({
     return BY_ORDER.includes(id) || id === 'gift'
   }
   const isGift = ownStage === 'gift'
-  const prodLocked = locked || isOwnershipTransferred || isArchived
+  /**
+   * R3 rules (WorkCard.notes « Rules the build must enforce »): an archive work is catalogued (DB
+   * trigger) and never Disponible — a validated photo shows as « Catalogué · photo ✓ »; a sold or
+   * given work has left the atelier. Each closed stage says why.
+   */
+  const stageWhy = (id: ProdStageId): string => {
+    if (locked) return t('wr_stage_fate_tt')
+    if (isArchived) return id === 'atelier' ? t('wr_stage_archive_atelier_tt') : id === 'available' ? t('wr_stage_archive_avail_tt') : ''
+    if (isOwnershipTransferred && id === 'atelier') return t('wr_stage_transferred_atelier_tt')
+    return ''
+  }
+  const shownStage: ProdStageId = isArchived && prodStage === 'available' ? 'catalogued' : prodStage
   const pemName = pemContact?.NomInstitution ?? 'Pem'
   /** Pem is not always in the drawer's contact list; name it from the id. */
   const isPem = (id: string) => id === String(PEM_CONTACT_ID) || (!!pemContact && id === String(pemContact.ContactID))
@@ -132,7 +146,7 @@ export function WorkDrawerPipelineSection({
     return c ? cName(c) : '—'
   }
   const rowH = narrow ? 44 : 32
-  const prodIdx = PRODUCTION_STAGES.findIndex((s) => s.id === prodStage)
+  const prodIdx = PRODUCTION_STAGES.findIndex((s) => s.id === shownStage)
 
   /** Name as a link ↗ → contact card over the work (the work stays open). */
   const contactLink = (id: string, name: string) => {
@@ -193,21 +207,21 @@ export function WorkDrawerPipelineSection({
         <TopLabel title={t('wc_prod_label_tt')}>{t('wc_prod_label')}</TopLabel>
         <div style={{ display: 'flex', marginTop: 5, minWidth: 0 }}>
           {PRODUCTION_STAGES.map((s, i) => {
-            const on = s.id === prodStage
+            const on = s.id === shownStage
             const done = i < prodIdx
             const col = PROD_STAGE_COLOR[s.id]
-            // Archive works stop at Catalogué (DB rule); sold / given works keep their last stage.
-            const closed = prodLocked && !on
+            const why = on ? '' : stageWhy(s.id)
+            const closed = !!why
             const small =
               s.id === 'atelier'
                 ? startedLabel ? t('wc_stage_started_fmt').replace('{date}', startedLabel) : ''
                 : s.id === 'catalogued'
-                  ? [completedLabel, prodStage === 'catalogued' && needsPhoto ? t('wc_stage_photo_needed') : prodIdx >= 1 ? t('wc_stage_photo_ok') : '']
+                  ? [completedLabel, prodIdx >= 1 ? (needsPhoto ? t('wc_stage_photo_needed') : t('wc_stage_photo_ok')) : '']
                       .filter(Boolean)
                       .join(' · ')
                   : ''
             const caption = [
-              closed ? t('wc_stage_locked_tt') : on ? s.desc : `${s.desc} — ${t('wc_stage_next_tt')}`,
+              closed ? `${s.desc} — ${why}` : on ? s.desc : `${s.desc} — ${t('wc_stage_next_tt')}`,
               s.id === 'catalogued' && on && needsPhoto ? t('wc_stage_photo_needed_tt') : '',
             ].filter(Boolean).join(' ')
             return (
@@ -219,8 +233,7 @@ export function WorkDrawerPipelineSection({
                 aria-disabled={closed}
                 {...cap}
                 onClick={() => {
-                  if (closed) return
-                  if (prodLocked) return
+                  if (closed || locked) return
                   if (on && s.id === 'catalogued' && needsPhoto) {
                     // « photo requise » → picture done = Disponible (same as unticking « Photo requise »).
                     setNeedsPhoto(false)
@@ -348,15 +361,15 @@ export function WorkDrawerPipelineSection({
             name={isPem(contactId) ? pemName : isGift ? nameOf(contactId) : currentLoc}
             narrow={narrow}
             onOpen={onOpenContact}
-            select={isGift ? contactSelect(contactId, setContactId, t('custody_custodian')) : null}
-            canChange={isGift}
+            select={isGift || (isArchived && isAdmin) ? contactSelect(contactId, setContactId, t('custody_custodian')) : null}
+            canChange={isGift || (isArchived && isAdmin)}
             address={addressText}
             addressPicker={
               locationAddresses.length > 1 ? (
                 <LocationAddressPicker addresses={locationAddresses} value={localisationAddressId} onChange={setLocalisationAddressId} />
               ) : null
             }
-            note={isArchived ? t('wc_custodian_auto') : ''}
+            note={isArchived ? (isAdmin ? t('wr_custodian_archive_admin') : t('wr_custodian_archive')) : ''}
             testId="work-card-custodian"
           />
         </div>

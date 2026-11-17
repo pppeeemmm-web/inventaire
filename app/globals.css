@@ -642,3 +642,21 @@ html[data-high-contrast] { filter: contrast(1.35); }
   .wc-dense details > summary { min-height: 0 !important; }
   .wc-dense a[style*='min-height: 44'] { min-height: 28px !important; }
 }
+/* Phone (R3 step 3, 375 px pass): every tap in the card reaches 44 × 44 px without changing the compact
+   look — chips stay 32 px, ⓘ stay small; an invisible ::after widens the hit area. Inline `position`
+   (icons on the picture) wins over this rule. Fields get the 44 px height outright. */
+@media (max-width: 767px) {
+  .wc-card button { position: relative; }
+  .wc-card button::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .wc-card select,
+  .wc-card input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']) { min-height: 44px; }
+  .wc-card summary { min-height: 44px !important; box-sizing: border-box; padding-top: 10px; padding-bottom: 10px; }
+}

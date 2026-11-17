@@ -539,7 +539,8 @@ export function DrawerContent({
     let loadedContactId = String(o.LocalisationID ?? '')
     let loadedOwnerId = String(o.ContactID ?? '')
     if ((loadedOwn === 'artist' || loadedOwn === 'artist_archive') && pemRow) {
-      loadedContactId = String(pemRow.ContactID)
+      // Archive: the artist holds it by default, but an admin may have set another custodian (R3 rule).
+      if (loadedOwn === 'artist' || !loadedContactId) loadedContactId = String(pemRow.ContactID)
       loadedOwnerId = String(pemRow.ContactID)
     }
     const loadedBuyerId = String((o as { AcheteurID?: number | null }).AcheteurID ?? '')
@@ -757,9 +758,11 @@ export function DrawerContent({
     }
   }, [ownStage])
 
+  // R3 rule: a work moved into the artist's archive is held by the artist (admin may change it after).
+  const loadedArchived = ownStageFromStatusId(o.statusId) === 'artist_archive'
   useEffect(() => {
-    if (isArchived && pemContact) setContactId(String(pemContact.ContactID))
-  }, [isArchived, pemContact])
+    if (isArchived && !loadedArchived && pemContact) setContactId(String(pemContact.ContactID))
+  }, [isArchived, loadedArchived, pemContact])
 
   // Reserved: payment not cleared, Pem still owns it (the picked contact is the buyer).
   useEffect(() => {
@@ -777,10 +780,10 @@ export function DrawerContent({
 
   useEffect(() => {
     if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {
-      setContactId(String(pemContact.ContactID))
+      if (ownStage === 'artist' || !loadedArchived) setContactId(String(pemContact.ContactID))
       setOwnerId(String(pemContact.ContactID))
     }
-  }, [ownStage, pemContact])
+  }, [ownStage, pemContact, loadedArchived])
 
   const baselineThemes = useMemo(
     () => new Set<number>(oeuvreThemeMap.get(o.OeuvreID) ?? []),
@@ -1406,7 +1409,8 @@ export function DrawerContent({
   const textareaSt = { ...FIS, resize: 'vertical' as const, fontSize: 12, padding: 8, minHeight: 56 }
 
   return (
-    <>
+    // `wc-card`: phone hit areas (app/globals.css); display: contents keeps the sticky header / bar.
+    <div className="wc-card" style={{ display: 'contents' }}>
       {/* ═══ HEADER ═══ */}
       <div
         data-testid="work-card-header"
@@ -1560,6 +1564,7 @@ export function DrawerContent({
             startedLabel={startedLabel}
             completedLabel={completedLabel}
             locked={!!o.fate}
+            isAdmin={isAdmin}
           />
 
           <WorkCardIdentity
@@ -1961,6 +1966,6 @@ export function DrawerContent({
           }
         />
       )}
-    </>
+    </div>
   )
 }

@@ -60,7 +60,8 @@ const picIcon: CSSProperties = {
   background: 'rgba(8,8,9,.72)',
   border: '1px solid rgba(255,255,255,.14)',
   borderRadius: 3,
-  color: 'var(--tx)',
+  color: '#f8f7f3', // fixed light glyph: the chip is always dark (light theme made it invisible)
+  fontFamily: 'system-ui, sans-serif', // ⟳ ↓ need a font that has them
   fontSize: 14,
   cursor: 'pointer',
   textDecoration: 'none',

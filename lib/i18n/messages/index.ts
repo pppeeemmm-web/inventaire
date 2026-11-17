@@ -28,6 +28,7 @@ import { accountMessages } from './account.messages'
 import { seeAgainMessages } from './see-again.messages'
 import { workLinksMessages } from './work-links.messages'
 import { workCardMessages } from './work-card.messages'
+import { workRecordMessages } from './work-record.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
@@ -79,6 +80,7 @@ export const featureMessages = {
   ...seeAgainMessages,
   ...workLinksMessages,
   ...workCardMessages,
+  ...workRecordMessages,
   ...pipelineUiMessages,
   ...conceptDocsMessages,
   ...notesTriageMessages,

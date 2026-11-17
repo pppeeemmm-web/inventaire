@@ -49,6 +49,7 @@ import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
+import { WorkRecordPhone } from '@/components/atelier/WorkRecordPhone'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
@@ -608,6 +609,22 @@ export function WorkForm({
   }
 
   // ── Render ────────────────────────────────────────────────────────
+
+  // R3 step 3: on the phone a new work opens the recording drawer (Nouvelle œuvre / Reprise);
+  // « Tous les champs » comes back here.
+  if (narrow && !oeuvre && !allFields) {
+    return (
+      <WorkRecordPhone
+        techniques={localTechniques}
+        supports={localSupports}
+        formats={localFormats}
+        action={action}
+        shareInboxPrefill={shareInboxPrefill}
+        pemContactId={pemContact?.ContactID ?? null}
+        onAllFields={() => setAllFields(true)}
+      />
+    )
+  }
 
   return (
     <div data-testid="work-form-root" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>

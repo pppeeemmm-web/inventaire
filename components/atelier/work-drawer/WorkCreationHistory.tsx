@@ -17,6 +17,7 @@ import {
   nearestPlace,
   parsePlaceCoords,
   parseStepDate,
+  placeFitsDate,
   placeLabel,
   sortPlaces,
   sortSteps,
@@ -52,6 +53,13 @@ export function WorkCreationHistory({ oeuvreId, when }: { oeuvreId: number; when
   const periodPlace = steps.length ? null : effectivePlace(oeuvreId, when, data).place
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
+  /** R3 « place vs date »: only places that existed at the line's date (keeps the one already chosen). */
+  const placesForDraft = useMemo(() => {
+    if (!draft) return places
+    const d = parseStepDate(draft.date)
+    if (d === 'bad') return places
+    return places.filter((p) => String(p.id) === draft.placeId || placeFitsDate(p, d.on_date, d.date_precision))
+  }, [places, draft])
   const [newPlace, setNewPlace] = useState<NewPlace | null>(null)
 
   /** Where the phone was at this work's field sessions (earliest first). */
@@ -97,7 +105,7 @@ export function WorkCreationHistory({ oeuvreId, when }: { oeuvreId: number; when
     setBusy(true)
     try {
       const res = await saveCreationStep({ id: draft.id, oeuvre_id: oeuvreId, ...date, kind: draft.kind, place_id: placeId, note: draft.note })
-      if ('error' in res) return void toast.error(`${t('error_prefix')} ${res.error}`)
+      if ('error' in res) return void toast.error(res.error === 'place_date' ? t('wr_place_date_err') : `${t('error_prefix')} ${res.error}`)
       putStep(res.step)
       setDraft(null)
     } finally {
@@ -280,7 +288,7 @@ export function WorkCreationHistory({ oeuvreId, when }: { oeuvreId: number; when
             }}
           >
             <option value="">{t('cr_place_none')}</option>
-            {places.map((p) => (
+            {placesForDraft.map((p) => (
               <option key={p.id} value={String(p.id)}>{placeLabel(p)}</option>
             ))}
             <option value="__new">{t('ps_place_new_option')}</option>

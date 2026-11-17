@@ -11,7 +11,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { lookupGeocode } from '@/lib/geocode-nominatim'
 import { logError } from '@/lib/error-reporter/server'
-import { CREATION_KINDS, sortSteps, type CreationKind, type CreationStep, type DatePrecision, type PeriodChoice, type PeriodSourceData, type Place, type WorkPeriod, type WorkSource } from '@/lib/work-periods'
+import { CREATION_KINDS, placeFitsDate, sortSteps, type CreationKind, type CreationStep, type DatePrecision, type PeriodChoice, type PeriodSourceData, type Place, type WorkPeriod, type WorkSource } from '@/lib/work-periods'
 
 type Err = { error: string }
 type Supa = Awaited<ReturnType<typeof createClient>>
@@ -25,6 +25,21 @@ const PLACE_COLS = 'id, name, address, town, country, latitude, longitude'
 const STEP_COLS = 'id, oeuvre_id, on_date, date_precision, kind, place_id, note, work_session_id'
 const MAX_STEP_NOTE = 500
 
+type PlaceValidity = { id: number; valid_from: string | null; valid_to: string | null }
+
+/**
+ * Place from / to dates (R3 « place vs date »). The columns come with `supabase/sql/place_validity_dates.sql`
+ * (needs Pem's OK); until then the select fails and the rule no-ops (null). Not in the generated types yet,
+ * hence the cast.
+ */
+async function placeValidity(supabase: Supa, id?: number): Promise<PlaceValidity[] | null> {
+  let q = supabase.from('place').select('id, valid_from, valid_to' as 'id')
+  if (id != null) q = q.eq('id', id)
+  const { data, error } = await q
+  if (error) return null
+  return (data ?? []) as unknown as PlaceValidity[]
+}
+
 async function signedIn(supabase: Supa): Promise<boolean> {
   const {
     data: { user },
@@ -35,11 +50,12 @@ async function signedIn(supabase: Supa): Promise<boolean> {
 export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
   const supabase = await createClient()
   if (!(await signedIn(supabase))) return { error: 'auth' }
-  const [pRes, sRes, oRes, plRes] = await Promise.all([
+  const [pRes, sRes, oRes, plRes, validity] = await Promise.all([
     supabase.from('work_period').select(PERIOD_COLS).order('start_on'),
     supabase.from('work_source').select('id, name').order('name'),
     supabase.from('work_period_override').select('oeuvre_id, period_id').limit(20_000),
     supabase.from('place').select(PLACE_COLS).order('name'),
+    placeValidity(supabase),
   ])
   if (pRes.error) return { error: pRes.error.message }
   if (plRes.error) return { error: plRes.error.message }
@@ -82,7 +98,10 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     overrides,
     sourcesByWork,
     sourceNotes,
-    places: (plRes.data ?? []) as Place[],
+    places: ((plRes.data ?? []) as Place[]).map((p) => {
+      const v = validity?.find((x) => x.id === p.id)
+      return v ? { ...p, valid_from: v.valid_from, valid_to: v.valid_to } : p
+    }),
     creation,
   }
 }
@@ -364,6 +383,10 @@ export async function saveCreationStep(input: CreationStepInput): Promise<{ ok: 
   if (place != null && !(Number.isInteger(place) && place > 0)) return { error: 'bad_place' }
   const note = (input.note ?? '').trim().slice(0, MAX_STEP_NOTE) || null
   if (on == null && place == null && note == null) return { error: 'empty' }
+  if (place != null && on != null) {
+    const v = (await placeValidity(supabase, place))?.[0]
+    if (v && !placeFitsDate(v, on, precision)) return { error: 'place_date' }
+  }
   const values = { on_date: on, date_precision: precision, kind: input.kind, place_id: place, note }
   const q =
     input.id != null

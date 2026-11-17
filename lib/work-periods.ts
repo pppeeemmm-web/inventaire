@@ -29,6 +29,12 @@ export type Place = {
   country: string | null
   latitude: number | null
   longitude: number | null
+  /**
+   * When the place existed (R3 rule « place vs date »). Present only once
+   * `supabase/sql/place_validity_dates.sql` is applied; absent = always offered.
+   */
+  valid_from?: string | null
+  valid_to?: string | null
 }
 
 /** Kinds of creation line, in the order they are offered. */
@@ -251,6 +257,22 @@ export function parseStepDate(input: string): { on_date: string | null; date_pre
   const d = new Date(`${iso}T12:00:00Z`)
   if (!ok(+parts[0]) || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso) return 'bad'
   return { on_date: iso, date_precision: 'day' }
+}
+
+/**
+ * R3 rule: a creation-history place is only offered for dates when it existed. A line's date covers
+ * its whole year / month / day; undated lines and places without dates always fit.
+ */
+export function placeFitsDate(
+  place: Pick<Place, 'valid_from' | 'valid_to'>,
+  on_date: string | null,
+  precision: DatePrecision | null,
+): boolean {
+  if (!on_date || (!place.valid_from && !place.valid_to)) return true
+  const end = precision === 'year' ? `${on_date.slice(0, 4)}-12-31` : precision === 'month' ? `${on_date.slice(0, 7)}-31` : on_date
+  if (place.valid_from && end < place.valid_from) return false
+  if (place.valid_to && on_date > place.valid_to) return false
+  return true
 }
 
 /** Places of a work's « Création » lines, in order, without repeats (the route). */

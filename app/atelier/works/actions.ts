@@ -8,7 +8,7 @@ import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
-import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
+import { PEM_CONTACT_ID, seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import {
   makeImageStorageFilename,
   normalizeImageToAvifPair,
@@ -353,7 +353,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const contactId    = numOrNull(formData.get('contact_id'))
   const commentaires      = (formData.get('commentaires')       as string | null)?.trim() || null
   const historique        = (formData.get('historique')         as string | null)?.trim() || null
-  const localisationId    = numOrNull(formData.get('localisation_id'))
+  let localisationId      = numOrNull(formData.get('localisation_id'))
   const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
   /** Which of the location contact's addresses holds the work (null = unspecified). */
   const localisationAddressId = numOrNull(formData.get('localisation_address_id'))
@@ -363,6 +363,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
   let exposable      = formData.get('exposable')     === '1'
   if (statusId === STATUS_ID_ARCHIVE_ARTISTE) exposable = false
+  // R3 rule: an archive work with no custodian is held by the artist (admin may set another).
+  if (statusId === STATUS_ID_ARCHIVE_ARTISTE && localisationId == null) localisationId = PEM_CONTACT_ID
   const broadcastReady = formData.get('broadcast_ready') === '1'
   const broadcastCaptionSeedRaw = (formData.get('broadcast_caption_seed') as string | null)?.trim() ?? ''
   const broadcastCaptionSeed = broadcastCaptionSeedRaw ? broadcastCaptionSeedRaw.slice(0, 2000) : null
