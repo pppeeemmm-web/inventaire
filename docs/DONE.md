@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-17 — R3: the last mockup details (step 1 extras, re-applied on main)
+
+- Side session r3-build-1 re-applied, on a fresh branch from main (`13dfc58`, its old branch clashed with steps 2–3 in 7 files): « Sessions de terrain » as one folded line « N session(s) · N photo(s) de session à valider »; voice notes in Commentaires & notes as cyan « ● note vocale 14 nov. » chips + transcript; the Création summary counts période · commentaires · notes vocales · thèmes · photos de session · IA à juger (Objet's summary from step 2 kept). Where steps 2–3 already did the same, main's version stays.
+- Checked: 4 checks pass; dev, Inventory panel at desktop + 390 px: no sideways scroll, steps 2–3 features present (captions, gates, delivery / return dates, Logistique, Commande). Not seen: a voice-note chip (no linked note among the first works).
+
 ## 2026-11-17 — R3 step 3: phone recording screen + card rules — R3 built (What's new 3.1.34)
 
 - Built by side session r3-build-3, landed `6552eb6`. **Phone recording screen** (`components/atelier/WorkRecordPhone.tsx`; « + œuvre », Hub, Lightroom share; « Tous les champs » = full form): **Nouvelle œuvre** — photo (no forced camera), title, technique, support, size + format with « + Nouveau … », place auto / « + lieu » / 📍 nearest, voice note once created; behind ▸ source, period, « peinte sur l'ancien support de… » (`painted_on`). **Reprise** — find the work by #id / title, photo at the end of its strip (cover kept), a « Reprise — date » line in Historique de création with place + note, same number, stage unchanged (existing « Reprise » kind, no SQL).
