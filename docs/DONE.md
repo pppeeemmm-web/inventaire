@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-17 — B13 long-press preview, B14 small GIF captions (What's new 3.1.35)
+
+- **B13** (Pem 2026-11-16: the phone Inventory long-press preview « a bit glitchy », stays on screen with no way to close it). Reproduced live (admin, Chrome, 390 px frame, `eb2dcfa`): a tap on the open preview closed it and it came back 450 ms later, every time — the preview is a React portal, so the tap bubbled into the thumbnail's own long-press handler and re-armed it, and the lift landed on the removed preview so the timer never cleared. Fix in `components/atelier/ImageLoupe.tsx` (every place with the loupe: Inventory list + grid, Overview, Journal, « À revoir »): only events on the thumbnail itself count; while the held preview is up, touch-scrolling the page is blocked and any scroll closes it.
+- **B14** (« Small GIFs unusable if caption on »): the export caption had a 14 px floor, so on a 40–200 px frame it wrapped over the whole picture. `captionFontPx` in `lib/slideshow-export.ts`: 2.8 % of the short side, at least 14 px, at most 8 %; never more than a third of the frame's height (extra text ends in « … »); left out under 88 px, with a line saying so in the export panel.
+- Checked: typecheck, lint (changed files), i18n:check pass. Dev at 375 px (synthetic touch): hold opens, tap closes and stays closed, touch-scroll blocked while open, a plain tap still opens the work; Chrome on localhost: scrolling the grid closes it. B14: the real `drawFrame` from the dev bundle at 40 / 80 / 100 / 150 / 200 / 400 px — no caption at 40 / 80, one or two cut lines at the bottom at 100–200, unchanged at 400. Not seen: a real finger on a phone; a real GIF download.
+
 ## 2026-11-17 — R3: the last mockup details (step 1 extras, re-applied on main)
 
 - Side session r3-build-1 re-applied, on a fresh branch from main (`13dfc58`, its old branch clashed with steps 2–3 in 7 files): « Sessions de terrain » as one folded line « N session(s) · N photo(s) de session à valider »; voice notes in Commentaires & notes as cyan « ● note vocale 14 nov. » chips + transcript; the Création summary counts période · commentaires · notes vocales · thèmes · photos de session · IA à juger (Objet's summary from step 2 kept). Where steps 2–3 already did the same, main's version stays.

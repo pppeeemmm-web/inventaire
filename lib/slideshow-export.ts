@@ -93,15 +93,17 @@ export function drawFrame(
     }
   }
 
-  const text = settings.caption.on ? captionText(work, settings.caption.fields, settings.caption.lang, untitled) : ''
+  const size = captionFontPx(W, H)
+  const text = settings.caption.on && size > 0 ? captionText(work, settings.caption.fields, settings.caption.lang, untitled) : ''
   if (text) {
-    const size = Math.round(Math.max(14, Math.min(W, H) * 0.028))
     ctx.font = `${size}px Georgia, 'Times New Roman', serif`
     ctx.textBaseline = 'top'
     const pad = Math.round(size * 0.6)
     const maxW = W * 0.9
-    const lines = wrap(ctx, text, maxW - 2 * pad)
     const lineH = Math.round(size * 1.3)
+    // B14: never more than a third of the frame's height — extra lines end in « … ».
+    const maxLines = Math.max(1, Math.floor((H / 3 - 2 * pad) / lineH))
+    const lines = clampLines(ctx, wrap(ctx, text, maxW - 2 * pad), maxLines, maxW - 2 * pad)
     const boxW = Math.min(maxW, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 2 * pad)
     const boxH = lines.length * lineH + 2 * pad
     // Same rule as the player: the caption's anchor follows its x / y %, the box stays inside the frame.
@@ -119,6 +121,33 @@ export function drawFrame(
     lines.forEach((l, i) => ctx.fillText(l, left + pad, top + pad + i * lineH))
   }
   ctx.restore()
+}
+
+/**
+ * Caption font size for a frame (B14, Pem 2026-11-16: small GIFs were unusable with the caption on — a 14 px
+ * floor wrapped the text over the whole picture). 2.8 % of the short side, at least 14 px on big frames, but
+ * never more than 8 % of the short side; 0 = frame too small to read any caption (short side under
+ * CAPTION_MIN_FRAME), so it is left out.
+ */
+const CAPTION_MIN_PX = 7
+export const CAPTION_MIN_FRAME = Math.ceil(CAPTION_MIN_PX / 0.08)
+export function captionFontPx(W: number, H: number): number {
+  const short = Math.min(W, H)
+  const px = Math.min(Math.max(14, short * 0.028), short * 0.08)
+  return px >= CAPTION_MIN_PX ? Math.round(px) : 0
+}
+
+/** Keep at most `max` lines; the last kept one ends in « … » when text was cut, and no line is wider than maxW. */
+function clampLines(ctx: CanvasRenderingContext2D, lines: string[], max: number, maxW: number): string[] {
+  const kept = lines.slice(0, max)
+  const cut = lines.length > max
+  return kept.map((l, i) => {
+    const last = cut && i === kept.length - 1
+    if (!last && ctx.measureText(l).width <= maxW) return l
+    let t = last ? `${l}…` : l
+    while (t.length > 1 && ctx.measureText(t).width > maxW) t = `${t.slice(0, -2).trimEnd()}…`
+    return t
+  })
 }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {

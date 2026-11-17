@@ -11,9 +11,11 @@ import { useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { surfaceError } from '@/lib/error-reporter/client'
 import {
+  CAPTION_MIN_FRAME,
   FRAME_MAX,
   FRAME_MIN,
   FRAME_PRESETS,
+  captionFontPx,
   downloadBlob,
   exportFramesZip,
   exportGif,
@@ -176,6 +178,11 @@ export function SlideshowExport({ works, settings }: { works: SlideWork[]; setti
         <span className="t-mono-sm" style={{ fontSize: 11, color: valid ? 'var(--tx3)' : 'var(--rust)' }}>
           {valid ? `${width} × ${height} px` : t('ss_ex_size_bad').replace('{min}', String(FRAME_MIN)).replace('{max}', String(FRAME_MAX))}
         </span>
+        {valid && settings.caption.on && captionFontPx(width, height) === 0 ? (
+          <span className="t-mono-sm" style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }} data-testid="slideshow-export-caption-too-small">
+            {t('ss_ex_caption_too_small').replace('{px}', String(CAPTION_MIN_FRAME))}
+          </span>
+        ) : null}
       </div>
 
       <div>

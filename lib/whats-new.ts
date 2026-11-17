@@ -50,7 +50,8 @@
 // '3.1.32' (2026-11-16): R3 step 1 — the work card re-laid out (top block, Création / Objet, Replié / Développé).
 // '3.1.33' (2026-11-17): R3 step 2 — card Objet: logistics, commission, presentation gates, hover captions; Montée kept on save.
 // '3.1.34' (2026-11-17): R3 step 3 — phone recording screen (Nouvelle œuvre / Reprise), card rules, 44 px phone taps.
-export const WHATS_NEW_RELEASE = '3.1.34'
+// '3.1.35' (2026-11-17): phone long-press preview closes on a tap (B13); small GIF captions fit the frame (B14).
+export const WHATS_NEW_RELEASE = '3.1.35'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -62,6 +63,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'loupe_gif_caption_fixes', day: '2026-11-17' },
   { id: 'work_record_phone', day: '2026-11-17' },
   { id: 'work_card_objet', day: '2026-11-17' },
   { id: 'work_card_r3', day: '2026-11-16' },

@@ -73,6 +73,10 @@ export const slideshowMessages = defineMessages({
     fr: 'Une image par œuvre, sans transition, 256 couleurs. Pour une vidéo plus tard : Images (ZIP), en couleurs complètes.',
     en: 'One frame per work, no transition, 256 colours. For a video later: Images (ZIP), in full colour.',
   },
+  ss_ex_caption_too_small: {
+    fr: 'Légende laissée de côté sous {px} px de côté : trop petite pour être lue.',
+    en: 'Caption left out under {px} px a side: too small to read.',
+  },
   ss_ex_frame: { fr: 'Format du cadre', en: 'Frame size' },
   ss_ex_square: { fr: '1:1 carré', en: '1:1 square' },
   ss_ex_portrait: { fr: '4:5 portrait', en: '4:5 portrait' },

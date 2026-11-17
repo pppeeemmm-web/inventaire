@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.35 (2026-11-17) — long-press preview (B13) + small GIF captions (B14).
+  wn_loupe_gif_caption_fixes_t: { fr: 'Aperçu au doigt et petits GIF', en: 'Long-press preview and small GIFs' },
+  wn_loupe_gif_caption_fixes_d: {
+    fr: 'Au téléphone, l’aperçu d’une œuvre (appui long sur sa vignette) se ferme d’un toucher et ne revient plus tout seul ; la liste ne défile plus dessous. Dans l’export de diaporama, la légende d’un petit GIF tient en bas du cadre (un tiers au plus, coupée par « … ») ; sous 88 px elle est laissée de côté.',
+    en: 'On the phone, a work’s preview (long press on its thumbnail) closes with one tap and no longer comes back by itself; the list no longer scrolls underneath. In the slideshow export, a small GIF’s caption fits at the bottom of the frame (a third at most, cut with « … »); under 88 px it is left out.',
+  },
   // 3.1.34 (2026-11-17) — R3 step 3: phone recording screen + card rules.
   wn_work_record_phone_t: { fr: 'Enregistrer une œuvre au téléphone', en: 'Record a work on the phone' },
   wn_work_record_phone_d: {

@@ -41,16 +41,27 @@ export function ImageLoupe({
   }
   useEffect(() => clear, [])
 
-  // Held loupe: any tap closes it (registered after the press that opened it).
+  // Held loupe: any tap closes it (registered after the press that opened it). B13 (Pem 2026-11-16): the list
+  // under it must not scroll while it is up — a finger still down after the hold used to scroll the Inventory
+  // underneath; and if anything scrolls anyway, the loupe closes.
   useEffect(() => {
     if (open?.mode !== 'hold') return
     const close = () => setOpen(null)
+    const freeze = (e: TouchEvent) => e.preventDefault()
     const id = window.setTimeout(() => document.addEventListener('pointerdown', close, { once: true }), 0)
+    document.addEventListener('touchmove', freeze, { passive: false })
+    window.addEventListener('scroll', close, { capture: true, passive: true })
     return () => {
       window.clearTimeout(id)
       document.removeEventListener('pointerdown', close)
+      document.removeEventListener('touchmove', freeze)
+      window.removeEventListener('scroll', close, { capture: true })
     }
   }, [open])
+
+  // B13: the loupe is a portal, so React bubbles its events into this box. Only events on the thumbnail itself
+  // count — a tap on the open loupe used to re-arm the long press, and the loupe came back 450 ms after closing.
+  const own = (e: { target: EventTarget }) => box.current?.contains(e.target as Node) ?? false
 
   return (
     <div
@@ -70,7 +81,8 @@ export function ImageLoupe({
         setOpen((o) => (o?.mode === 'hover' ? null : o))
       }}
       onPointerDown={(e) => {
-        if (e.pointerType === 'mouse') return
+        if (e.pointerType === 'mouse' || !own(e)) return
+        swallow.current = false
         start.current = { x: e.clientX, y: e.clientY }
         clear()
         timer.current = window.setTimeout(() => {
@@ -96,6 +108,7 @@ export function ImageLoupe({
         if (swallow.current || open) e.preventDefault()
       }}
       onClickCapture={(e) => {
+        if (!own(e)) return
         if (swallow.current) {
           e.preventDefault()
           e.stopPropagation()
