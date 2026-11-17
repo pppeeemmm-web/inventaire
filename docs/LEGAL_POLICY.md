@@ -15,6 +15,10 @@
 2. A **gift's owner changes at handover** (*don manuel*), not at signature.
 3. **« Confié »** (a work left with a printer, framer, photographer, restorer) is a **fifth order kind**.
 4. **Sending = share the PDF** (share sheet / download); the other side signs and returns it; Pem uploads the signed copy. Extra formality **only where the law, or the other party, requires it**.
+5. **Status (Pem, 2026-11-17, evening):** sole entrepreneur, **artiste peintre** — an *artiste-auteur* (arts plastiques), with its own VAT, social and income-tax thresholds. Treat a sale as a **professional sale** by default; below the thresholds some obligations may not apply — to check against the French framework (lawyer / accountant).
+6. **14-day return right and buyer information on every sale, as a house rule** (Pem: « to make sure we don't go into deep trouble »), whether or not the law requires it for that sale. The money received is **kept aside, not counted as definitive**, until the period is over and the sale is settled.
+7. **Originals or e-signature** for gallery deposits, business sales above €5 000 and rights contracts: **a default, not a rule** — Pem stays flexible per partner (« if I appear very rigid from the onset, this is not the way to build a good relationship »). The app suggests, never blocks.
+8. **Gifts may carry a resale restriction** (Pem's idea): a clause forbidding resale for a period. French law allows a temporary inalienability clause in a gift if it serves a serious and legitimate interest (Code civil art. 900-1 [R]); in a *don manuel* without a deed it is hard to prove — the gift paper would have to carry it. For the lawyer.
 
 ---
 
