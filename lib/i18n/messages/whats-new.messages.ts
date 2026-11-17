@@ -10,7 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
-  // 3.1.50 (2026-11-17) — R7 closes: Confié, 14-day return.
+  // 3.1.50 (2026-11-17) — R7 closes: Confié, 14-day return; work state batch 1.
+  wn_work_state_one_rule_t: { fr: 'Une seule règle pour l’état d’une œuvre', en: 'One rule for a work’s state' },
+  wn_work_state_one_rule_d: {
+    fr: 'La fiche et le tableau Production suivent une seule règle : une œuvre cataloguée avec sa photo validée passe Disponible d’elle-même, sinon elle reste En production ; les tâches Cataloguer / Photographier s’ouvrent et se ferment seules ; l’historique s’écrit tout seul à chaque changement de statut, de propriétaire ou de dépositaire.',
+    en: 'The work card and the Production board follow one rule: a catalogued work with its photo approved becomes Available by itself, otherwise it stays In production; the Catalogue / Photograph tasks open and close by themselves; the history writes itself at every change of status, owner or holder.',
+  },
   wn_return_14_days_confie_t: { fr: 'Retour de 14 jours sur chaque vente, et les commandes « Confié »', en: '14-day return on every sale, and « Entrusted » orders' },
   wn_return_14_days_confie_d: {
     fr: 'Chaque vente a 14 jours de retour à partir de la livraison (ou de la remise en main propre) : la commande, la fiche et le téléphone montrent les jours restants. L’argent reçu reste « en attente » jusqu’à la fin du délai ; les totaux de l’année dans Revenus & dépenses ne comptent que l’argent définitif. « Retour » annule la vente, ramène les œuvres à l’atelier et indique le montant à rembourser (l’application ne vire rien). Le bon de commande porte le droit de retour et un formulaire à découper. Nouveau type de commande « Confié » : une œuvre chez un encadreur, un restaurateur ou un photographe garde son étape et affiche « chez … » jusqu’à son retour.',
