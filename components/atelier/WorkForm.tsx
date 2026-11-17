@@ -861,7 +861,9 @@ export function WorkForm({
               <PipeProgress
                 stages={OWNERSHIP_STAGES.map(s => ({
                   ...s,
-                  disabled: !['artist', 'reserved', 'artist_archive'].includes(s.id),
+                  // Archive = catalogued first (Pem 2026-11-17, archive_shelf.sql).
+                  disabled: !['artist', 'reserved', 'artist_archive'].includes(s.id)
+                    || (s.id === 'artist_archive' && prodStage === 'atelier' && ownStage !== 'artist_archive'),
                 }))}
                 current={ownStage}
                 onSelect={(id) => setOwnStage(id as OwnStageId)}

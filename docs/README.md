@@ -7,7 +7,7 @@
 
 | Doc | Use when | Verified |
 |-----|----------|----------|
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-15 |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-17 (Archive rule, §2) |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
 | [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal + his annotated phone mockups for Claude Design (R2), work drawer (R3), timeline / map / previews (R4); slideshow done. Design first, not a GO | 2026-11-15 |

@@ -1,6 +1,10 @@
 -- Studio rules on works, enforced in the database so every write path follows them
 -- (drawer, WorkForm, approved pending changes, sessions, share-triage). Owner 2026-11-03.
 --
+-- SUPERSEDED for rule 1 by archive_shelf.sql (Pem 2026-11-17): Archive no longer ticks
+-- « Catalogué » by itself — the database refuses to archive a work that is not catalogued.
+-- Do not re-apply section 1 below.
+--
 -- 1. Archive artiste ⇒ catalogued. Moving a work to "Archive artiste" (OeuvreStatus id 3)
 --    ticks "Catalogué"; the production-span rule then ends production that day, as for any
 --    catalogued work. Sold and gift do not touch the production dates.

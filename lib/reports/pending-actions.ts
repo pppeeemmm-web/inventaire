@@ -12,7 +12,8 @@ export async function loadPendingActionsMap(
   t: (k: DictKey) => string,
   ids?: number[],
 ): Promise<Map<number, string[]>> {
-  let q = sb.from('work_action').select('oeuvre_id, action_type_id').eq('done', false)
+  // Open = not done and not paused (paused = the work is in Archive, archive_shelf.sql).
+  let q = sb.from('work_action').select('oeuvre_id, action_type_id').eq('done', false).is('paused_at', null)
   if (ids) q = q.in('oeuvre_id', ids)
   const [actsRes, typesRes] = await Promise.all([
     q,

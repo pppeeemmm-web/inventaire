@@ -776,10 +776,8 @@ export function DrawerContent({
     if (isOwnershipTransferred && prodStage === 'atelier') setProdStage('available')
   }, [isOwnershipTransferred, prodStage])
 
-  // Archive artiste is catalogued (DB rule, oeuvres_status_location_depth_rules.sql) — show it here too.
-  useEffect(() => {
-    if (isArchived && prodStage === 'atelier') setProdStage('catalogued')
-  }, [isArchived, prodStage])
+  // Archive needs a catalogued work (Pem 2026-11-17, archive_shelf.sql): the Archive pill stays
+  // closed while the stage is « Atelier » — nothing ticks « Catalogué » behind the user's back.
 
   useEffect(() => {
     if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {

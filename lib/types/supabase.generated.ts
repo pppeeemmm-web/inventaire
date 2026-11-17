@@ -3218,6 +3218,7 @@ export type Database = {
           id: number
           note: string | null
           oeuvre_id: number
+          paused_at: string | null
         }
         Insert: {
           action_type_id: number
@@ -3227,6 +3228,7 @@ export type Database = {
           id?: number
           note?: string | null
           oeuvre_id: number
+          paused_at?: string | null
         }
         Update: {
           action_type_id?: number
@@ -3236,6 +3238,7 @@ export type Database = {
           id?: number
           note?: string | null
           oeuvre_id?: number
+          paused_at?: string | null
         }
         Relationships: [
           {

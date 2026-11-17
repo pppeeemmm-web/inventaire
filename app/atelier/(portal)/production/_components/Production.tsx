@@ -88,7 +88,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const loadData = useCallback(async () => {
     const [types, { data: acts }, { data: issues }] = await Promise.all([
       getWorkActionTypes(sb),
-      sb.from('work_action').select('*').eq('done', false),
+      // Open = not done and not paused (paused = the work is in Archive, archive_shelf.sql).
+      sb.from('work_action').select('*').eq('done', false).is('paused_at', null),
       sb
         .from('studio_task')
         .select('id,created_at,action,details,type,status,priority,severity,oeuvre_id,work_action_type_id,photo_r2_key')

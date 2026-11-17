@@ -266,7 +266,12 @@ export function BatchEditModal({
     startEdit(async () => {
       try {
         const r = await batchEdit(ids, c)
-        if ('error' in r) { const gate = gateErrorKey(r.error); setError(gate ? t(gate) : r.error); return }
+        if ('error' in r) {
+          // Archive needs a catalogued work (archive_shelf.sql): name the works that block it.
+          const notCatalogued = r.error.match(/^archive_requires_catalogue_ids:(.+)$/)
+          if (notCatalogued) { setError(t('err_archive_requires_catalogue_ids_fmt').replace('{ids}', notCatalogued[1])); return }
+          const gate = gateErrorKey(r.error); setError(gate ? t(gate) : r.error); return
+        }
         onDone(r.updated)
         reloadAtelierAfterBatchSuccess()
       } catch (e) {

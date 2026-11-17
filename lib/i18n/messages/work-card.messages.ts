@@ -203,6 +203,10 @@ export const workCardMessages = defineMessages({
     fr: 'Fermé : un don se prépare avec « Don… » — la propriété passe au donataire à la signature de l’acte.',
     en: 'Closed: a gift is prepared with « Gift… » — ownership moves to the recipient when the deed is signed.',
   },
+  wc_own_closed_archive_tt: {
+    fr: 'Fermé : cataloguer d’abord — une œuvre ne part en archive qu’avec sa fiche (même partielle).',
+    en: 'Closed: catalogue it first — a work goes to the archive only with its record (even partial).',
+  },
   wc_own_closed_locked_tt: {
     fr: 'Fermé : l’œuvre est détruite / perdue — rouvrir le constat d’abord.',
     en: 'Closed: the work is destroyed / lost — reopen the condition report first.',

@@ -17,7 +17,7 @@ export function isWorkSaveI18nError(error: string): error is DictKey {
 }
 
 /**
- * DB / action gate codes (supabase/sql/work_lifetime_gates.sql, work_custody_model.sql, condition_report_fate.sql, batchEdit,
+ * DB / action gate codes (supabase/sql/work_lifetime_gates.sql, work_custody_model.sql, condition_report_fate.sql, archive_shelf.sql, batchEdit,
  * order actions) → message key. They arrive inside a PostgREST message or as the bare code.
  */
 const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
@@ -28,6 +28,8 @@ const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
   work_out_of_circulation: 'err_work_out_of_circulation',
   custody_order_required: 'err_custody_order_required',
   sale_order_required: 'err_sale_order_required',
+  archive_requires_catalogue: 'err_archive_requires_catalogue',
+  archive_exit_requires_photo: 'err_archive_exit_requires_photo',
 }
 
 export function gateErrorKey(error: string): AnyDictKey | null {

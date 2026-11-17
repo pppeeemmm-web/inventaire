@@ -23,6 +23,18 @@ export const custodyMessages = defineMessages({
     fr: 'Vendu : la propriété passe à l’acheteur quand la commande est réglée, la garde à la livraison.',
     en: 'Sold: ownership moves to the buyer when the order is paid, custody on delivery.',
   },
+  err_archive_requires_catalogue: {
+    fr: 'Archive : cataloguez d’abord l’œuvre (une fiche partielle suffit). Ses tâches ouvertes seront mises en pause.',
+    en: 'Archive: catalogue the work first (a partial record is enough). Its open tasks will be paused.',
+  },
+  err_archive_requires_catalogue_ids_fmt: {
+    fr: 'Archive : cataloguez d’abord ces œuvres (une fiche partielle suffit) — {ids}. Rien n’a été modifié.',
+    en: 'Archive: catalogue these works first (a partial record is enough) — {ids}. Nothing was changed.',
+  },
+  err_archive_exit_requires_photo: {
+    fr: 'Sortie d’archive vers Disponible : la photo doit être faite. Sinon, repassez l’œuvre en production.',
+    en: 'Out of the archive straight to Available: the photo must be done. Otherwise, send the work back into production.',
+  },
   gift_handed_over: { fr: 'Remise au bénéficiaire maintenant', en: 'Handed over to the recipient now' },
   gift_handed_over_help: {
     fr: 'Décoché : vous gardez l’œuvre (dépositaire Pem) jusqu’à la remise.',

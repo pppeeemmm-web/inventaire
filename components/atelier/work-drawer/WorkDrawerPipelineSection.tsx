@@ -121,8 +121,11 @@ export function WorkDrawerPipelineSection({
   // once given the recipient and the custodian stay editable.
   const BY_ORDER: OwnStageId[] = ['consigned', 'loan', 'sold']
   const lockedByOrder = BY_ORDER.includes(loadedOwnStage)
+  /** Archive = catalogued first (Pem 2026-11-17, archive_shelf.sql). */
+  const archiveNeedsCatalogue = prodStage === 'atelier'
   const stageDisabled = (id: OwnStageId) => {
     if (locked) return id !== ownStage
+    if (id === 'artist_archive' && archiveNeedsCatalogue) return true
     if (id === loadedOwnStage) return false
     if (lockedByOrder) return true
     return BY_ORDER.includes(id) || id === 'gift'
@@ -326,7 +329,9 @@ export function WorkDrawerPipelineSection({
               ? ''
               : locked
                 ? t('wc_own_closed_locked_tt')
-                : lockedByOrder || BY_ORDER.includes(s.id)
+                : s.id === 'artist_archive' && archiveNeedsCatalogue
+                  ? t('wc_own_closed_archive_tt')
+                  : lockedByOrder || BY_ORDER.includes(s.id)
                   ? t('wc_own_closed_order_tt')
                   : t('wc_own_closed_gift_tt')
             return (

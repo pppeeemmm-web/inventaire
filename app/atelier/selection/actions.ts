@@ -174,6 +174,22 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   }
   if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE) update.Exposable = false
 
+  // Archive = catalogued first (Pem 2026-11-17, archive_shelf.sql). The database refuses the
+  // whole update otherwise; check first so the message can name the works that block it.
+  if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE && update['Catalogué'] !== true) {
+    const { data: notCatalogued, error: ncErr } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID')
+      .in('OeuvreID', ids)
+      .is('deleted_at', null)
+      .not('Catalogué', 'is', true) // false or empty
+    if (ncErr) return { error: ncErr.message }
+    if (notCatalogued?.length) {
+      const list = notCatalogued.slice(0, 20).map((r) => `#${r.OeuvreID}`).join(', ')
+      return { error: `archive_requires_catalogue_ids:${list}${notCatalogued.length > 20 ? ` (+${notCatalogued.length - 20})` : ''}` }
+    }
+  }
+
   const commentToAdd      = changes.Commentaires?.trim() || ''
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasComment        = commentToAdd.length > 0
