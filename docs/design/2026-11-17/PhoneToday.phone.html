@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone today — R2 mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);--yellow:oklch(0.86 0.15 95);--cyan:oklch(0.78 0.12 200);
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px; /* = env(safe-area-inset-bottom) */
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:20px}
+.caption{max-width:1200px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px;width:375px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px}
+
+.phone{position:relative;width:375px;height:812px;background:var(--bg1);border:1px solid var(--bd2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
+.status{flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:600}
+.body{flex:1;min-height:0;overflow:hidden;position:relative}
+.ib{width:44px;height:44px;display:grid;place-items:center;color:var(--tx2);font-size:20px;flex:none}
+.sp{flex:1}
+
+/* day header */
+.dayhdr{display:flex;align-items:center;height:48px;padding:0 0 0 0;border-bottom:1px solid var(--bd)}
+.dayhdr .date{font-family:var(--font-serif);font-size:22px;white-space:nowrap}
+.dayhdr .today{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ac);font-weight:700;margin-left:8px}
+.sum{padding:6px 16px 0;font-size:12px;color:var(--tx3)}
+.pulse{display:flex;align-items:center;gap:0;margin:8px 16px 0;height:32px;border:1px solid var(--bd);border-radius:3px;padding:0 10px;font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden}
+.pulse b{font-weight:700;color:var(--tx);margin-right:3px}
+.pulse .dot{color:var(--mt);margin:0 6px}
+.pulse .urg b,.pulse .urg{color:var(--rust)}
+.pulse .z,.pulse .z b{color:var(--mt)}
+.pulse .go{margin-left:auto;color:var(--tx3)}
+
+.sec{padding:14px 16px 0}
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;display:flex;align-items:center;gap:6px}
+.lbl .n{color:var(--tx2)}
+.lbl .sp{flex:1}
+.lbl .pg{letter-spacing:0;text-transform:none;font-weight:500;color:var(--tx3);font-size:11px}
+
+.card{margin-top:8px;border:1px solid var(--bd2);border-radius:4px;padding:10px;background:var(--bg2)}
+.card .kind{font-size:11px;color:var(--ac)}
+.wk{display:flex;gap:10px;align-items:center;min-height:44px}
+.th{width:44px;height:44px;flex:none;background:linear-gradient(160deg,#cfccc4,#5d5b57);border-radius:2px}
+.th.b{background:linear-gradient(160deg,oklch(0.55 0.12 250),#1d2230)}
+.th.c{background:linear-gradient(160deg,oklch(0.7 0.14 60),#3a2a1c)}
+.th.d{background:linear-gradient(160deg,oklch(0.6 0.08 150),#1c2a22)}
+.th.sm{width:32px;height:32px}
+.wk .t{font-family:var(--font-serif);font-size:18px;line-height:1.1}
+.wk .m{font-size:11px;color:var(--tx3)}
+.num{font-weight:700;font-size:13px;color:var(--tx2);margin-right:4px;font-family:var(--font-ui)}
+.acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btn{height:36px;padding:0 12px;border:1px solid var(--bd2);border-radius:3px;display:inline-flex;align-items:center;font-size:13px;color:var(--tx)}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.q{color:var(--tx3)}
+.hint{position:relative;display:inline-block}
+.tip{position:absolute;z-index:5;right:-6px;bottom:42px;width:230px;padding:7px 9px;background:#000;border:1px solid var(--bd3);border-radius:4px;font-size:11px;line-height:1.3;color:var(--tx2)}
+.tip::after{content:'';position:absolute;right:24px;bottom:-6px;width:10px;height:10px;background:#000;border-right:1px solid var(--bd3);border-bottom:1px solid var(--bd3);transform:rotate(45deg)}
+
+.works{display:flex;flex-direction:column;margin-top:4px}
+.works .wk{border-bottom:1px solid color-mix(in srgb,var(--bd) 60%,transparent);padding:4px 0}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 7px;border:1px solid var(--bd2);border-radius:11px;font-size:11px;color:var(--tx2);white-space:nowrap}
+.chip.y{border-color:var(--yellow);color:var(--yellow)}
+.chip.r{border-color:var(--rust);color:var(--rust)}
+.chip.s{border-color:var(--sage);color:var(--sage)}
+.emptyline{margin-top:6px;font-size:12px;color:var(--mt);border-bottom:1px dashed var(--bd2);padding-bottom:6px}
+
+/* timeline */
+.tl{margin-top:6px}
+.ent{display:grid;grid-template-columns:42px 1fr;gap:0 8px;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
+.ent .h{font-size:11px;color:var(--tx3);padding-top:2px}
+.ent .k{font-size:11px;color:var(--tx3);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ent .tx{font-size:14px;line-height:1.4;margin-top:2px}
+.ent .au{display:flex;align-items:center;gap:8px;margin-top:6px;height:32px;border:1px solid var(--bd);border-radius:16px;padding:0 10px;font-size:12px;color:var(--tx2);width:max-content}
+.sug{margin-top:6px;padding-top:6px;border-top:1px dashed var(--bd)}
+.sug .lbl{color:var(--ac2)}
+.sug .wk{min-height:44px}
+.sug .t{font-size:15px}
+.ok,.no{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--bd2);border-radius:3px;font-size:16px;flex:none}
+.ok{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 50%,var(--bd2))}
+.no{color:var(--tx3)}
+.fold{display:flex;align-items:center;gap:8px;min-height:44px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--tx2)}
+.fold .c{color:var(--tx3);font-size:12px}
+.fold::before{content:'▸';color:var(--tx3);font-size:11px}
+
+/* sticky input bar */
+.bar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:color-mix(in srgb,var(--bg0) 94%,transparent);border-top:1px solid var(--bd2);padding:0 0 var(--safe-b);backdrop-filter:blur(8px)}
+.bar span{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:var(--tx2);border-right:1px solid var(--bd)}
+.bar span:last-child{border-right:none}
+.bar span i{font-style:normal;font-size:19px;line-height:1}
+.bar span.on{color:var(--ac);background:var(--bg2)}
+.fadeout{position:absolute;left:0;right:0;bottom:90px;height:40px;background:linear-gradient(transparent,var(--bg1));pointer-events:none}
+
+/* sheets */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg2);border-top:1px solid var(--bd3);border-radius:14px 14px 0 0;padding:8px 16px calc(var(--safe-b) + 12px)}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--bd3);margin:0 auto 10px}
+.sheet h3{font-family:var(--font-serif);font-weight:400;font-size:24px;margin:0 0 2px}
+.sheet .sub{font-size:12px;color:var(--tx3);margin-bottom:12px}
+.opt{display:flex;align-items:center;gap:12px;min-height:60px;border:1px solid var(--bd2);border-radius:4px;padding:8px 12px;margin-bottom:8px;background:var(--bg1)}
+.opt i{font-style:normal;font-size:22px;width:28px;text-align:center}
+.opt b{font-weight:600;font-size:15px;display:block}
+.opt small{font-size:11px;color:var(--tx3);display:block;margin-top:2px}
+.opt.main{border-color:var(--ac2)}
+.opt .arr{margin-left:auto;color:var(--tx3)}
+.rec{width:96px;height:96px;border-radius:50%;margin:10px auto 8px;display:grid;place-items:center;background:color-mix(in srgb,var(--rust) 22%,transparent);border:2px solid var(--rust)}
+.rec::after{content:'';width:34px;height:34px;border-radius:8px;background:var(--rust)}
+.timer{text-align:center;font-size:22px;font-weight:600;color:var(--rust)}
+.wave{display:flex;gap:3px;justify-content:center;align-items:center;height:30px;margin:6px 0}
+.wave i{width:3px;background:var(--rust);border-radius:2px;opacity:.8}
+.live{border:1px solid var(--bd);border-radius:4px;padding:10px;font-size:14px;line-height:1.4;color:var(--tx2);min-height:72px;background:var(--bg1)}
+.live em{color:var(--tx3);font-style:normal}
+.meta{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:12px;color:var(--tx3);flex-wrap:wrap}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.big{height:48px;border:1px solid var(--bd2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.big.pri{background:var(--ac);color:#1a1408;border-color:var(--ac);font-weight:600}
+
+/* menu */
+.menu{position:absolute;inset:0;background:var(--bg1);display:flex;flex-direction:column}
+.mhdr{display:flex;align-items:center;height:48px;border-bottom:1px solid var(--bd);padding-left:16px;font-family:var(--font-serif);font-size:22px}
+.mg{padding:10px 16px 0}
+.mi{display:flex;align-items:center;gap:12px;min-height:44px;font-size:15px;border-bottom:1px solid color-mix(in srgb,var(--bd) 50%,transparent)}
+.mi i{font-style:normal;width:22px;text-align:center;font-size:16px}
+.mi.on{color:var(--ac)}
+.mi .bdg{margin-left:auto;font-size:11px;min-width:20px;height:20px;border-radius:10px;background:var(--bg3);display:grid;place-items:center;padding:0 6px;color:var(--tx2)}
+.mi .bdg.r{background:color-mix(in srgb,var(--rust) 30%,transparent);color:var(--rust)}
+.mfold{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;color:var(--tx3);border-top:1px solid var(--bd);margin-top:8px}
+.mfold::before{content:'▸';font-size:11px}
+.mfold small{margin-left:auto;font-size:11px;color:var(--mt)}
+.note{margin-top:4px;font-size:11px;color:var(--tx3);line-height:1.35}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="caption">
+  <h1>Phone « Aujourd'hui » — R2 mockup, 2026-11-17 (v1)</h1>
+  Design only. The phone opens on <b>today's page</b>: capture inputs → scan documents → today's work. One sticky input bar <b>Écrire · Vocal · Œuvre · Photo · doc</b>. Sales and pipeline move to the menu. Spec, field map and questions: <a href="./PhoneToday.notes.md" style="color:var(--ac)">PhoneToday.notes.md</a>. Sample day: Monday 17 Nov. 2026.
+</div>
+
+<div class="row">
+
+<!-- 1. LANDING -->
+<div class="col">
+  <h2>1 · Aujourd'hui (landing)</h2>
+  <p>/hub on the phone. One header row, pulse in one line, « À revoir » one card at a time, works of the day, sticky bar.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span><span class="sp"></span><span class="ib">‹</span><span class="ib" style="color:var(--mt)">›</span><span class="ib">📅</span></div>
+      <div class="sum">2 écrits · 3 notes vocales · 2 œuvres · 1 photo à valider</div>
+      <div class="pulse"><span class="urg"><b>10</b>en retard</span><span class="dot">·</span><span><b>1</b>aujourd'hui</span><span class="dot">·</span><span class="z"><b>0</b>à valider</span><span class="dot">·</span><span class="z"><b>0</b>boîte</span><span class="go">›</span></div>
+
+      <div class="sec">
+        <div class="lbl">À revoir aujourd'hui<span class="sp"></span><span class="pg">1 / 3 ›</span></div>
+        <div class="card">
+          <div class="kind">Deux œuvres proches, pas encore liées</div>
+          <div class="wk" style="margin-top:4px"><span class="th c"></span><div><div class="t"><span class="num">#1316</span>Les mortes marguerites</div><div class="m">huile · 2019</div></div></div>
+          <div class="wk"><span class="th"></span><div><div class="t"><span class="num">#2357</span>Marguerites, reprise</div><div class="m">huile · 2025</div></div></div>
+          <div class="acts">
+            <span class="btn pri">Lier…</span>
+            <span class="btn">Écrire</span>
+            <span class="btn q">Sans rapport</span>
+            <span class="hint"><span class="btn q">Plus tard</span>
+              <span class="tip">Revient dans quelques jours. Rien n'est caché pour de bon ; sans réponse, la carte revient aussi.</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Œuvres du jour <span class="n">2</span></div>
+        <div class="works">
+          <div class="wk"><span class="th b"></span><div style="flex:1;min-width:0"><div class="t"><span class="num">#2361</span>Nocturne, quai</div><div class="m">nouvelle · acrylique · atelier Mazenod</div></div><span class="chip y">1 photo à valider</span></div>
+          <div class="wk"><span class="th"></span><div style="flex:1;min-width:0"><div class="t"><span class="num">#2233</span>Brume sur l'étang</div><div class="m">reprise · ajout d'une photo</div></div><span class="chip s">✓</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Écrits et notes du jour <span class="n">5</span></div>
+        <div class="tl">
+          <div class="ent"><span class="h">8:12</span><div><div class="k">✍️ écrit</div><div class="tx">Le bleu du quai ne tient pas à la lumière du matin — repasser un glacis…</div></div></div>
+        </div>
+      </div>
+      <div class="fadeout"></div>
+      <div class="bar"><span><i>✍️</i>Écrire</span><span><i>🎤</i>Vocal</span><span><i>🖼</i>Œuvre</span><span><i>📄</i>Photo · doc</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. SCROLLED -->
+<div class="col">
+  <h2>2 · Aujourd'hui, scrolled</h2>
+  <p>Writings + voice notes in one timeline; ✦ suggestions with thumbnail + title; the two folds closed.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span><span class="sp"></span><span class="ib">‹</span><span class="ib" style="color:var(--mt)">›</span><span class="ib">📅</span></div>
+      <div class="sec" style="padding-top:8px">
+        <div class="lbl">Écrits et notes du jour <span class="n">5</span></div>
+        <div class="tl">
+          <div class="ent"><span class="h">8:12</span><div><div class="k">✍️ écrit</div><div class="tx">Le bleu du quai ne tient pas à la lumière du matin — repasser un glacis outremer.</div></div></div>
+          <div class="ent"><span class="h">10:40</span><div><div class="k">🎤 note vocale · Mémo · Général · <span style="color:var(--ac2)">✦ transcrit · à vérifier</span></div><div class="tx">Penser à rapprocher les marguerites de 2019 de la reprise de cette année…</div><div class="au">▶ 0:48</div>
+            <div class="sug">
+              <div class="lbl">✦ Suggestions IA (à valider)</div>
+              <div class="wk"><span class="th sm c"></span><div style="flex:1;min-width:0"><div class="t"><span class="num">#1316</span>Les mortes marguerites</div></div><span class="ok">✓</span><span class="no">✕</span></div>
+              <div class="wk"><span class="th sm"></span><div style="flex:1;min-width:0"><div class="t"><span class="num">#2357</span>Marguerites, reprise</div></div><span class="ok">✓</span><span class="no">✕</span></div>
+            </div></div></div>
+          <div class="ent"><span class="h">11:05</span><div><div class="k">📷 inspiration</div><div class="wk" style="margin-top:4px"><span class="th d" style="width:88px;height:56px"></span><div class="m">Lichens, mur du cimetière</div></div></div></div>
+          <div class="ent"><span class="h">14:30</span><div><div class="k">📄 document · 3 pages · <span style="color:var(--tx3)">texte lu sur le PC</span></div><div class="tx" style="color:var(--tx2)">Carnet B, p. 41–43</div></div></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="fold">Attributs d'œuvres modifiés <span class="c">4</span></div>
+        <div class="fold">Création (Kaizen) <span class="c">1</span></div>
+      </div>
+      <div class="fadeout"></div>
+      <div class="bar"><span><i>✍️</i>Écrire</span><span><i>🎤</i>Vocal</span><span><i>🖼</i>Œuvre</span><span><i>📄</i>Photo · doc</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. VOCAL -->
+<div class="col">
+  <h2>3 · Vocal</h2>
+  <p>One spoken input — « Dicter » folded in. Audio always kept; live words when the phone can (Q2).</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span></div>
+      <div class="dim"></div>
+      <div class="sheet" style="padding-bottom:calc(var(--safe-b) + 12px)">
+        <div class="grab"></div>
+        <h3>Note vocale</h3>
+        <div class="sub">Gardée dans la journée · transcrite sur le PC</div>
+        <div class="timer">0:23</div>
+        <div class="wave"><i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:30px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:9px"></i><i style="height:24px"></i><i style="height:16px"></i><i style="height:6px"></i></div>
+        <div class="rec"></div>
+        <div class="live">penser à rapprocher les marguerites de deux mille dix-neuf de la reprise <em>…</em></div>
+        <div class="meta">Mots en direct = premier jet · <span class="chip">Mémo · Général ▾</span></div>
+        <div class="row2"><span class="big">Annuler</span><span class="big pri">Arrêter et garder</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. PHOTO DOC -->
+<div class="col">
+  <h2>4 · Photo · doc</h2>
+  <p>The separate capture button Pem asked for. QR moves here from today's bottom bar.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h3>Photo · doc</h3>
+        <div class="sub">Ajouté à la journée du 17 nov.</div>
+        <div class="opt main"><i>📷</i><div><b>Inspiration</b><small>Rejoint les notes du jour · lier à une œuvre ou un concept (option)</small></div><span class="arr">›</span></div>
+        <div class="opt"><i>📄</i><div><b>Document</b><small>Manuscrit ou imprimé, plusieurs pages — le texte est lu sur le PC</small></div><span class="arr">›</span></div>
+        <div class="opt"><i>👤</i><div><b>Carte de visite</b><small>Crée ou complète un contact</small></div><span class="arr">›</span></div>
+        <div class="opt"><i>▦</i><div><b>Étiquette QR</b><small>Ouvre la fiche de l'œuvre étiquetée</small></div><span class="arr">›</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. OEUVRE -->
+<div class="col">
+  <h2>5 · Œuvre</h2>
+  <p>« Capture » → « Œuvre ». The choice comes first, so a session work always gets « Nouvelle » or « Reprise » (R2 question closed). Next screens = R3 recording drawer.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h3>Œuvre</h3>
+        <div class="sub">Quel travail aujourd'hui ?</div>
+        <div class="opt main"><i>＋</i><div><b>Nouvelle œuvre</b><small>Nouveau numéro · photo, titre, technique, lieu</small></div><span class="arr">›</span></div>
+        <div class="opt"><i>⟳</i><div><b>Reprise d'une œuvre</b><small>Même numéro · ajoute la photo et une ligne « Reprise »</small></div><span class="arr">›</span></div>
+        <div class="opt"><i>◫</i><div><b>Photos de la séance</b><small>Lightroom → Partager → « Ajouter à la séance »</small></div><span class="arr">›</span></div>
+        <div class="note">Nouvelle / Reprise ouvrent le tiroir d'enregistrement R3 (WorkCard.phone.html, téléphones 1–2). Sur le téléphone, /atelier/works/new ouvre ce même tiroir (ancien 4b).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. MENU -->
+<div class="col">
+  <h2>6 · Menu</h2>
+  <p>Aujourd'hui first, Field, Kaizen; everything desk-heavy folded under « Bureau » (Q4).</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="menu">
+        <div class="mhdr">Atelier<span class="sp"></span><span class="ib">✕</span></div>
+        <div class="mg">
+          <div class="mi on"><i>☀</i>Aujourd'hui</div>
+          <div class="lbl" style="margin-top:12px">Terrain</div>
+          <div class="mi"><i>▤</i>Inventaire</div>
+          <div class="mi"><i>◷</i>Production</div>
+          <div class="mi"><i>📓</i>Journal — les jours</div>
+          <div class="mi"><i>🎤</i>Notes<span class="bdg">3</span></div>
+          <div class="lbl" style="margin-top:12px">Kaizen</div>
+          <div class="mi"><i>✦</i>Création<span class="bdg">2</span></div>
+          <div class="mi"><i>⚙</i>Opérations &amp; Stratégie</div>
+          <div class="mi"><i>⌕</i>Audit<span class="bdg r">5</span></div>
+          <div class="mfold">Bureau<small>Pipeline · Vente · Triage · Contacts · Documents · Studio · Catalogue · Commercial · Public</small></div>
+          <div class="mfold" style="margin-top:0">Compte</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+</body>
+</html>
