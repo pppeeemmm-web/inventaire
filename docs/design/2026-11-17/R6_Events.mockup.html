@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expositions &amp; événements — R6 mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);--yellow:oklch(0.86 0.15 95);--cyan:oklch(0.78 0.12 200);--violet:oklch(0.72 0.12 300);
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px; /* = env(safe-area-inset-bottom) */
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:20px}
+.caption{max-width:1200px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px;max-width:375px}
+.sub{font-size:12px;color:var(--tx3)}
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;display:flex;align-items:center;gap:6px}
+.btn{height:32px;padding:0 12px;border:1px solid var(--bd2);border-radius:3px;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);background:none;white-space:nowrap}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.q{color:var(--tx3)}
+.th{width:28px;height:28px;flex:none;background:linear-gradient(160deg,#cfccc4,#5d5b57);border-radius:2px;display:inline-block;vertical-align:middle}
+.th.b{background:linear-gradient(160deg,oklch(0.55 0.12 250),#1d2230)}
+.th.c{background:linear-gradient(160deg,oklch(0.7 0.14 60),#3a2a1c)}
+.th.d{background:linear-gradient(160deg,oklch(0.6 0.08 150),#1c2a22)}
+.num{font-weight:700;font-size:12px;color:var(--tx2)}
+.ref{font-family:ui-monospace,monospace;font-size:12px;color:var(--ac);white-space:nowrap}
+
+/* event kind chips */
+.e{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:3px;font-size:11px;font-weight:700;border:1px solid;flex:none}
+.e.x{color:var(--violet);border-color:color-mix(in srgb,var(--violet) 50%,var(--bd2))}
+.e.c{font-size:10px;color:var(--rust);border-color:color-mix(in srgb,var(--rust) 50%,var(--bd2))}
+.e.ed{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 50%,var(--bd2))}
+/* R7 order kind chips (small) */
+.k{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:3px;font-size:10px;font-weight:700;border:1px solid;flex:none}
+.k.v{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 50%,var(--bd2))}
+.k.d{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 50%,var(--bd2))}
+.k.p{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 50%,var(--bd2))}
+.k.f{color:var(--violet);border-color:color-mix(in srgb,var(--violet) 50%,var(--bd2))}
+
+.steps{display:inline-flex;align-items:center;gap:3px}
+.steps i{width:8px;height:8px;border-radius:50%;border:1px solid var(--bd3);display:block}
+.steps i.on{background:var(--ac);border-color:var(--ac)}
+.steps i.now{border-color:var(--ac);box-shadow:0 0 0 2px color-mix(in srgb,var(--ac) 30%,transparent)}
+
+/* where-is pills */
+.w{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:11px;font-size:12px;border:1px solid var(--bd2);color:var(--tx2);white-space:nowrap}
+.w.studio{color:var(--tx3)}
+.w.draft{border-style:dashed;color:var(--tx2)}
+.w.out{border-color:color-mix(in srgb,var(--yellow) 45%,var(--bd2));color:var(--yellow)}
+.w.back{border-color:color-mix(in srgb,var(--sage) 45%,var(--bd2));color:var(--sage)}
+.w.sold{border-color:color-mix(in srgb,var(--sage) 70%,var(--bd2));color:var(--sage);background:color-mix(in srgb,var(--sage) 10%,transparent)}
+/* prep ticks */
+.t{display:inline-grid;place-items:center;width:20px;height:20px;border:1px solid var(--bd3);border-radius:3px;font-size:12px;color:transparent}
+.t.on{background:color-mix(in srgb,var(--sage) 22%,transparent);border-color:color-mix(in srgb,var(--sage) 60%,var(--bd2));color:var(--sage)}
+.t.late{border-color:var(--rust)}
+.t.na{border-style:dotted;border-color:var(--mt)}
+
+/* ── desktop ─────────────────────────────────────────── */
+.desk{width:1280px;height:930px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;overflow:hidden;display:flex}
+.side{width:190px;flex:none;border-right:1px solid var(--bd);padding:14px 0;font-size:13px;color:var(--tx3)}
+.side .g{padding:12px 16px 4px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:600}
+.side a{display:block;padding:6px 16px;color:var(--tx2);text-decoration:none}
+.side a.on{color:var(--tx);background:var(--bg3);border-left:2px solid var(--ac);padding-left:14px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:12px;height:56px;padding:0 20px;border-bottom:1px solid var(--bd)}
+.hdr h3{font-family:var(--font-serif);font-weight:400;font-size:26px;margin:0;flex:1}
+.strip{display:flex;align-items:center;height:36px;padding:0 20px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--tx2);white-space:nowrap}
+.strip b{color:var(--tx);margin-right:3px}
+.strip .dot{color:var(--mt);margin:0 10px}
+.strip .urg,.strip .urg b{color:var(--rust)}
+.split{flex:1;min-height:0;display:flex}
+.list{width:270px;flex:none;border-right:1px solid var(--bd);display:flex;flex-direction:column}
+.chips{display:flex;gap:6px;padding:10px 14px;align-items:center}
+.chip{height:28px;padding:0 10px;border:1px solid var(--bd2);border-radius:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)}
+.chip.on{background:var(--bg3);color:var(--tx);border-color:var(--bd3)}
+.grp{padding:10px 14px 4px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;border-top:1px solid var(--bd);display:flex;gap:6px}
+.ev{display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--bd);align-items:flex-start}
+.ev.sel{background:color-mix(in srgb,var(--ac) 8%,transparent);box-shadow:inset 2px 0 0 var(--ac)}
+.ev .nm{font-size:14px;color:var(--tx)}
+.ev .mt{font-size:12px;color:var(--tx3);margin-top:2px}
+.ev .ln{font-size:11px;color:var(--tx2);margin-top:4px}
+.detail{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.dh{padding:14px 20px 12px;border-bottom:1px solid var(--bd)}
+.dh .t1{display:flex;align-items:center;gap:10px}
+.dh .t1 h4{font-family:var(--font-serif);font-weight:400;font-size:26px;margin:0}
+.dh .t2{display:flex;gap:16px;font-size:12px;color:var(--tx2);margin-top:6px;flex-wrap:wrap}
+.dh .t2 a{color:var(--ac);text-decoration:none}
+.life{display:flex;gap:0;margin-left:auto;font-size:11px}
+.life span{padding:3px 9px;border:1px solid var(--bd2);color:var(--tx3);margin-left:-1px}
+.life span.on{color:var(--ac);border-color:var(--ac2);background:color-mix(in srgb,var(--ac) 10%,transparent)}
+.sec{border-bottom:1px solid var(--bd)}
+.sech{display:flex;align-items:center;gap:8px;padding:10px 20px}
+.sech .lbl{flex:1}
+.sech .fold{color:var(--tx3);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--bg2);text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;padding:7px 5px;border-bottom:1px solid var(--bd2);white-space:nowrap}
+th.c,td.c{text-align:center}
+td{padding:6px 5px;border-bottom:1px solid var(--bd);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr.tk td:first-child{box-shadow:inset 2px 0 0 var(--ac)}
+th.grpL{border-left:1px solid var(--bd2)}
+td.grpL{border-left:1px solid var(--bd)}
+.ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:inline-block;vertical-align:middle}
+.prep{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;padding:0 20px 10px}
+.pi{display:flex;align-items:center;gap:8px;min-height:30px;font-size:13px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.pi .d{margin-left:auto;font-size:12px;color:var(--tx3)}
+.pi.late .d{color:var(--rust)}
+.pi.done{color:var(--tx3);text-decoration:line-through}
+.ords{padding:0 20px 10px}
+.ord{display:flex;align-items:center;gap:10px;min-height:32px;font-size:13px;border-bottom:1px solid var(--bd)}
+.ord .who{flex:1;color:var(--tx2)}
+
+/* edition block */
+.edi{width:1280px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1.1fr 1fr;gap:28px}
+.edi h4{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.run{display:flex;gap:2px;flex-wrap:wrap;margin-top:8px}
+.run i{width:16px;height:16px;border:1px solid var(--bd3);border-radius:2px;display:block}
+.run i.s{background:color-mix(in srgb,var(--sage) 50%,transparent);border-color:var(--sage)}
+.run i.g{background:color-mix(in srgb,var(--ac) 45%,transparent);border-color:var(--ac)}
+.run i.o{background:color-mix(in srgb,var(--yellow) 35%,transparent);border-color:var(--yellow)}
+.run i.ea{border-style:dashed}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 12px;font-size:13px;margin-top:6px}
+.kv span:nth-child(odd){color:var(--tx3)}
+
+/* ── phone ──────────────────────────────────────────── */
+.phone{position:relative;width:375px;height:812px;background:var(--bg1);border:1px solid var(--bd2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
+.status{flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:600}
+.pbody{flex:1;min-height:0;overflow:hidden;position:relative}
+.ptop{display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--bd)}
+.ptop .ttl2{font-family:var(--font-serif);font-size:24px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;display:grid;place-items:center;color:var(--tx2);font-size:20px;flex:none}
+.pgrp{padding:14px 16px 0;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600}
+.pcard{margin:8px 16px 0;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);padding:10px}
+.pcard .top{display:flex;align-items:center;gap:8px}
+.pcard .top .who{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .ws{display:flex;gap:4px;margin-top:8px;align-items:center}
+.pcard .ws .th{width:36px;height:36px}
+.pcard .nx{display:flex;align-items:center;margin-top:8px;font-size:12px;color:var(--tx3);gap:8px}
+.pcard .nx b{color:var(--ac);font-weight:600}
+.pcard .nx .sp{flex:1}
+.inbar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px max(6px,var(--safe-b));border-top:1px solid var(--bd);background:var(--bg1);display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.inbar span{height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:var(--tx3);gap:2px}
+.inbar span b{font-size:17px;color:var(--tx2);font-weight:400}
+.psec{padding:12px 16px 0}
+.pw{display:flex;align-items:center;gap:10px;min-height:64px;border-bottom:1px solid var(--bd)}
+.pw .th{width:48px;height:48px}
+.pw .nm{flex:1;min-width:0}
+.pw .nm .tt{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tick{width:44px;height:44px;border:1px solid var(--bd3);border-radius:4px;display:grid;place-items:center;font-size:10px;color:var(--tx3);flex:none;text-align:center;line-height:1.1}
+.tick.on{background:color-mix(in srgb,var(--sage) 20%,transparent);border-color:color-mix(in srgb,var(--sage) 60%,var(--bd2));color:var(--sage)}
+.ptabs{display:flex;padding:8px 16px 0;gap:6px}
+.sticky{position:absolute;left:0;right:0;bottom:0;padding:10px 16px max(10px,var(--safe-b));background:var(--bg1);border-top:1px solid var(--bd);display:flex;gap:8px}
+.sticky .btn{height:48px;flex:1;justify-content:center;font-size:15px}
+.note{max-width:1280px;color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="caption">
+  <h1>Expositions &amp; événements — R6 mockup (v2, 2026-11-17)</h1>
+  Design only. Brief: <b>R6_Events.notes.md</b>. Names, places and works are placeholders; the tab is empty today (0 exhibitions). An event = <b>accepted + involves works</b>: Exposition <span class="e x">E</span>, Collaboration <span class="e c">Co</span>, Lancement d'édition <span class="e ed">É</span>. Its works move only through <b>R7 orders</b> (<span class="k p">P</span> prêt, <span class="k d">D</span> dépôt, <span class="k v">V</span> vente, <span class="k f">C</span> confié — new fifth kind, Pem v2); the event never makes a paper.
+</div>
+
+<!-- ═══════════════ DESKTOP ═══════════════ -->
+<div class="col">
+<h2>Desktop — one exhibition, its selection, its orders, what to prepare</h2>
+<div class="desk">
+  <div class="side">
+    <div class="g">Studio</div>
+    <a>Aperçu</a><a>Pipeline</a><a class="on">Expositions</a><a>Fournitures</a>
+    <div class="g">Business</div>
+    <a>Commandes</a><a>Contacts</a><a>Carte</a>
+  </div>
+  <div class="main">
+    <div class="hdr"><h3>Expositions &amp; événements</h3><span class="btn pri">+ Nouvel événement</span></div>
+    <div class="strip">
+      <span><b>4</b>œuvres sorties</span><span class="sub">&nbsp;(Galerie X 3 · Imprimerie Z 1)</span><span class="dot">·</span>
+      <span><b>1</b>retour sous 14 j</span><span class="dot">·</span>
+      <span class="urg"><b>2</b>préparations en retard</span><span class="dot">·</span>
+      <span><b>1</b>édition en cours</span>
+    </div>
+    <div class="split">
+      <!-- list -->
+      <div class="list">
+        <div class="chips"><span class="chip on">Tous</span><span class="chip"><span class="e x">E</span></span><span class="chip"><span class="e c">Co</span></span><span class="chip"><span class="e ed">É</span></span></div>
+        <div class="grp">En cours <b style="color:var(--tx2)">2</b></div>
+        <div class="ev sel"><span class="e x">E</span><div><div class="nm">Dunamis</div><div class="mt">Galerie X · Marseille · 1 oct.–15 déc.</div><div class="ln">6 œuvres · 3 sorties · 1 vendue · retour 15 déc.</div></div></div>
+        <div class="ev"><span class="e ed">É</span><div><div class="nm">1411 — tirages</div><div class="mt">Imprimerie Z · nov.–janv.</div><div class="ln">1 œuvre confiée · tirage 30 + 5 EA</div></div></div>
+        <div class="grp">À venir <b style="color:var(--tx2)">1</b></div>
+        <div class="ev"><span class="e c">Co</span><div><div class="nm">Duo avec Artiste B</div><div class="mt">Lieu Y · Sète · févr. 2027</div><div class="ln">8 œuvres · 2 « faites ensemble » · aucune commande</div></div></div>
+        <div class="ev"><span class="e x">E</span><div><div class="nm">Atelier ouvert — printemps</div><div class="mt">L'atelier · Marseille · 12–13 avr.</div><div class="ln">14 œuvres montrées sur place · pas de commande</div></div></div>
+        <div class="grp">Passés <b style="color:var(--tx2)">0</b><span style="margin-left:auto">▸</span></div>
+        <div class="sub" style="padding:6px 14px">Each past event: switch « sur le site » → About « Expositions » list</div>
+      </div>
+
+      <!-- detail -->
+      <div class="detail">
+        <div class="dh">
+          <div class="t1"><span class="e x">E</span><h4>Dunamis</h4>
+            <div class="life"><span>À confirmer</span><span>Prévu</span><span class="on">En cours</span><span>Terminé</span></div>
+          </div>
+          <div class="t2">
+            <span>Galerie X — 12 rue …, 13001 Marseille</span>
+            <span>1 oct. → 15 déc. 2026</span>
+            <span>depuis Pipeline : <a href="#">Candidature Galerie X ›</a></span>
+          </div>
+          <div class="t2"><span class="sub">Personnes :</span><span>Galerie X <span class="sub">lieu</span></span><span>Curatrice C <span class="sub">commissaire</span></span><span>Assoc. D <span class="sub">organisateur</span></span><a href="#">+ personne</a>
+            <span><a href="#">Exporter au calendrier</a></span>
+          </div>
+        </div>
+
+        <!-- section 1: works (open) -->
+        <div class="sec">
+          <div class="sech"><span class="lbl">Œuvres · sélection « Dunamis » (6)</span>
+            <span class="btn q">+ Œuvres</span><span class="btn pri">Créer la commande (2) ›</span><span class="fold">▾</span></div>
+          <table>
+            <thead><tr>
+              <th style="width:28px"></th><th></th><th>Œuvre</th><th>Où est-elle</th>
+              <th class="c grpL">Cartel</th><th class="c">Cadre</th><th class="c" title="Constat départ">Const. ↗</th><th class="c">Accr.</th><th class="c" title="Constat retour">Const. ↙</th><th class="c">Photo</th>
+              <th class="r grpL">Assur.</th>
+            </tr></thead>
+            <tbody>
+              <tr><td><span class="t on">✓</span></td><td><span class="th c"></span></td><td><span class="num">#1411</span> <span class="ttl">δύναμις I</span></td><td><span class="w out"><span class="k p">P</span>Sortie · P-2026-003</span></td>
+                <td class="c grpL"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t on">✓</span></td><td class="r grpL">4 800 €</td></tr>
+              <tr><td><span class="t on">✓</span></td><td><span class="th b"></span></td><td><span class="num">#1412</span> <span class="ttl">δύναμις II</span></td><td><span class="w out"><span class="k p">P</span>Sortie · P-2026-003</span></td>
+                <td class="c grpL"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t late"></span></td><td class="r grpL">4 800 €</td></tr>
+              <tr><td><span class="t on">✓</span></td><td><span class="th d"></span></td><td><span class="num">#1415</span> <span class="ttl">δύναμις V</span></td><td><span class="w sold"><span class="k v">V</span>Vendue · V-2026-004</span></td>
+                <td class="c grpL"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t na"></span></td><td class="c"><span class="t on">✓</span></td><td class="r grpL">—</td></tr>
+              <tr class="tk"><td><span class="t on">✓</span></td><td><span class="th"></span></td><td><span class="num">#1418</span> <span class="ttl">Étude pour δύναμις</span></td><td><span class="w studio">Studio</span></td>
+                <td class="c grpL"><span class="t"></span></td><td class="c"><span class="t late"></span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t na"></span></td><td class="c"><span class="t"></span></td><td class="r grpL">1 200 €</td></tr>
+              <tr class="tk"><td><span class="t on">✓</span></td><td><span class="th c"></span></td><td><span class="num">#1420</span> <span class="ttl">Étude II</span></td><td><span class="w studio">Studio</span></td>
+                <td class="c grpL"><span class="t"></span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t na"></span></td><td class="c"><span class="t"></span></td><td class="r grpL">1 200 €</td></tr>
+              <tr><td><span class="t"></span></td><td><span class="th b"></span></td><td><span class="num">#1302</span> <span class="ttl">Liquid 4</span></td><td><span class="w draft"><span class="k d">D</span>Brouillon · D-2026-002</span></td>
+                <td class="c grpL"><span class="t"></span></td><td class="c"><span class="t on">✓</span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t"></span></td><td class="c"><span class="t na"></span></td><td class="c"><span class="t"></span></td><td class="r grpL">3 000 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- section 2: prep (open) -->
+        <div class="sec">
+          <div class="sech"><span class="lbl">À préparer · modèle Exposition · 6 / 11</span><span class="btn q">+ Étape</span><span class="fold">▾</span></div>
+          <div class="prep">
+            <div class="pi done"><span class="t on">✓</span>Transport aller<span class="d">29 sept.</span></div>
+            <div class="pi late"><span class="t late"></span>Photos d'accrochage<span class="d">5 oct. · en retard</span></div>
+            <div class="pi done"><span class="t on">✓</span>Constats départ<span class="d">30 sept.</span></div>
+            <div class="pi late"><span class="t late"></span>Cadre « Étude pour δύναμις »<span class="d">10 oct. · en retard</span></div>
+            <div class="pi done"><span class="t on">✓</span>Assurance clou-à-clou<span class="d">28 sept.</span></div>
+            <div class="pi"><span class="t"></span>Démontage<span class="d">15 déc.</span></div>
+            <div class="pi done"><span class="t on">✓</span>Vernissage — invitations<span class="d">20 sept.</span></div>
+            <div class="pi"><span class="t"></span>Transport retour + constats retour<span class="d">16 déc.</span></div>
+          </div>
+        </div>
+
+        <!-- section 3: orders (folded but shown as a short list) -->
+        <div class="sec">
+          <div class="sech"><span class="lbl">Commandes liées (3)</span><span class="fold">▾</span></div>
+          <div class="ords">
+            <div class="ord"><span class="k p">P</span><span class="ref">P-2026-003</span><span class="who">Galerie X · prêt · 3 œuvres · retour 15 déc.</span><span class="steps"><i class="on"></i><i class="on"></i><i class="now"></i><i></i></span><span class="sub">Sorti</span></div>
+            <div class="ord"><span class="k v">V</span><span class="ref">V-2026-004</span><span class="who">Collectionneur A (via Galerie X, commission 40 %)</span><span class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="now"></i><i></i></span><span class="sub">Soldée</span></div>
+            <div class="ord"><span class="k d">D</span><span class="ref">D-2026-002</span><span class="who">Galerie X · dépôt-vente · 1 œuvre</span><span class="steps"><i class="now"></i><i></i><i></i><i></i></span><span class="sub">Brouillon — chez Pem pour vérification</span></div>
+          </div>
+        </div>
+        <div class="sec"><div class="sech"><span class="lbl">Plan d'accrochage · 4 murs · 5 / 6 placées</span><span class="fold">▸</span></div></div>
+        <div class="sec"><div class="sech"><span class="lbl">Traces · 12 photos · invitation · 1 article</span><span class="fold">▸</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════ EDITION ═══════════════ -->
+<div class="col">
+<h2>Desktop — a « Lancement d'édition »: the source work goes out and back, the edition is what it makes</h2>
+<div class="edi">
+  <div>
+    <h4><span class="e ed">É</span>1411 — tirages</h4>
+    <div class="lbl">Œuvre source</div>
+    <table style="margin-top:4px">
+      <tbody>
+        <tr><td style="width:36px"><span class="th c"></span></td><td><span class="num">#1411</span> δύναμις I</td>
+          <td><span class="w out"><span class="k f">C</span>Confié · Imprimerie Z · C-2026-001</span></td><td class="sub">retour 20 nov. · constat ✓</td></tr>
+      </tbody>
+    </table>
+    <div class="sub" style="margin-top:8px">The order is the new R7 kind <b style="color:var(--tx2)">Confié</b> (Pem v2): Brouillon → Signé → Sorti chez l'artisan → Rentré; owner Pem, custodian the printer; paper « Bon de confiage ». Also for framing, restoration, photography.</div>
+    <div class="lbl" style="margin-top:14px">À préparer</div>
+    <div class="pi done"><span class="t on">✓</span>Numérisation / prise de vue<span class="d">8 nov.</span></div>
+    <div class="pi"><span class="t"></span>Bon à tirer validé<span class="d">25 nov.</span></div>
+    <div class="pi"><span class="t"></span>Signature et numérotation des tirages<span class="d">10 déc.</span></div>
+  </div>
+  <div>
+    <div class="lbl">Édition produite — une fiche au catalogue, pas une par tirage</div>
+    <div class="kv">
+      <span>Titre</span><span>δύναμις I — tirage pigmentaire</span>
+      <span>Tirage</span><span>30 + 5 EA</span>
+      <span>Imprimeur</span><span>Imprimerie Z</span>
+      <span>Prix / ex.</span><span>350 €</span>
+      <span>État</span><span><b>30</b> · 7 vendus · 2 offerts · 1 en dépôt · <b>20 au studio</b></span>
+    </div>
+    <div class="run">
+      <i class="s"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="g"></i><i class="g"></i><i class="o"></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i class="ea"></i><i class="ea"></i><i class="ea"></i><i class="ea"></i><i class="ea"></i>
+    </div>
+    <div class="sub" style="margin-top:8px">Copies leave through R7 orders with a copy number on the line (« 3/30 »). One catalogue entry per edition (Pem v2). Built when the first real edition comes — none in the data today.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════ PHONES ═══════════════ -->
+<div class="row">
+  <div class="col">
+    <h2>Phone 1 — events</h2>
+    <p>Cards of what is on now and next. Creating an event or an order stays on the desktop. The R2 input bar stays at the bottom.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl2">Expositions</span><span class="ib">⌕</span></div>
+        <div class="pgrp">En cours</div>
+        <div class="pcard">
+          <div class="top"><span class="e x">E</span><span class="who">Dunamis</span><span class="sub">→ 15 déc.</span></div>
+          <div class="sub" style="margin-top:4px">Galerie X · Marseille</div>
+          <div class="ws"><span class="th c"></span><span class="th b"></span><span class="th d"></span><span class="th"></span><span class="sub">+2</span></div>
+          <div class="nx"><span>3 sorties · 1 vendue · 2 au studio</span><span class="sp"></span><b>Ouvrir ›</b></div>
+        </div>
+        <div class="pcard">
+          <div class="top"><span class="e ed">É</span><span class="who">1411 — tirages</span><span class="sub">→ 20 nov.</span></div>
+          <div class="sub" style="margin-top:4px">Imprimerie Z</div>
+          <div class="ws"><span class="th c"></span><span class="sub">#1411 · confiée à l'imprimeur</span></div>
+          <div class="nx"><span>Bon à tirer · 25 nov.</span><span class="sp"></span><b>Ouvrir ›</b></div>
+        </div>
+        <div class="pgrp">À venir</div>
+        <div class="pcard">
+          <div class="top"><span class="e c">Co</span><span class="who">Duo avec Artiste B</span><span class="sub">févr.</span></div>
+          <div class="sub" style="margin-top:4px">Lieu Y · Sète · 8 œuvres sélectionnées</div>
+        </div>
+        <div class="inbar">
+          <span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Phone 2 — at the venue (taking down the show)</h2>
+    <p>One row per work, 44 px ticks for what is done standing up; « Constat » opens the condition-report capture. One sticky button = the order's next step for the whole group (safe-area padding).</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl2">Dunamis</span><span class="ref" style="margin-right:12px">P-2026-003</span></div>
+        <div class="ptabs"><span class="chip on">Œuvres 6</span><span class="chip">À préparer 2</span><span class="chip">Infos</span></div>
+        <div class="psec">
+          <div class="lbl">Retour · 15 déc.</div>
+          <div class="pw"><span class="th c"></span><div class="nm"><div class="tt">δύναμις I</div><div class="sub">#1411 · sortie</div></div><span class="tick on">✓<br>décroch.</span><span class="tick on">◎<br>constat</span></div>
+          <div class="pw"><span class="th b"></span><div class="nm"><div class="tt">δύναμις II</div><div class="sub">#1412 · sortie</div></div><span class="tick on">✓<br>décroch.</span><span class="tick">◎<br>constat</span></div>
+          <div class="pw"><span class="th d"></span><div class="nm"><div class="tt">δύναμις V</div><div class="sub">#1415 · vendue — reste chez X</div></div><span class="tick" style="opacity:.35">—</span><span class="tick" style="opacity:.35">—</span></div>
+          <div class="pw"><span class="th"></span><div class="nm"><div class="tt">Étude pour δύναμις</div><div class="sub">#1418 · studio</div></div><span class="tick" style="opacity:.35">—</span><span class="tick" style="opacity:.35">—</span></div>
+        </div>
+        <div class="sticky"><span class="btn pri">Marquer rentrées — 2 œuvres</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Not shown:</b> « + Nouvel événement » (kind first — Exposition / Collaboration / Lancement d'édition — then name, place, dates; or « Créer l'événement » from a won Pipeline process) · « Créer la commande » opening the R7 form prefilled (Prêt, the venue and its address, the event dates, the event link) → a draft in Pem's feed · the floor plan (today's tool, fed by the selection) · the work card « Expositions » list and history line · the past-events list feeding the About « Expositions » block (question 9).
+</div>
+
+</div>
+</body>
+</html>
