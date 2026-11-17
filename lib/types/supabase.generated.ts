@@ -4020,6 +4020,10 @@ export type Database = {
         Args: { p_notes: string; p_oeuvre: number }
         Returns: Json
       }
+      oeuvre_contact_label: {
+        Args: { p_id: number; p_with_place?: boolean }
+        Returns: string
+      }
       oeuvre_fate_close_orders: {
         Args: { p_kind: string; p_oeuvre: number; p_on: string }
         Returns: undefined

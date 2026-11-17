@@ -1,6 +1,6 @@
 -- Orders (R7) — Pem's decisions of 2026-11-17 (docs/design/2026-11-17/R7_Open_Decisions.md).
 --
--- DRAFT — NOT APPLIED. Own OK (CLAUDE.md: SQL needs its own GO). Additive: today's code keeps
+-- APPLIED 2026-11-17 (Pem: « Apply it »), migration work_order_r7_decisions. Additive: today's code keeps
 -- working before and after it. After applying: npm run gen:types (no type change expected — kind and
 -- status are text), flip ENTRUSTED_LIVE to true in lib/orders/kinds.ts, npm run typecheck.
 --
