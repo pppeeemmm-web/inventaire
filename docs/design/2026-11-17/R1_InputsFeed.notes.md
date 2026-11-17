@@ -114,6 +114,8 @@ Pem 2026-11-17: « start working on the two of them ». Order — no-SQL first, 
 6. **R1 · the Fil**: Overview main column (desktop) + phone deck (Création · Fiches · Kaizen); team « Proposer une idée »; team « Pour vous » notifications; Audit gains the discard log with « Rappeler ».
 7. Folding work-note text into lines, « Notes » into the Journal day, retiring « Idées brûlantes » — after 6 works, each with Pem's look.
 
+**Progress (verified against live code 2026-11-17):** 1 done (`219ec19`). 2 done as v1 — `app/hub/today/page.tsx` + `components/hub/TodayClient.tsx`, data loaded in parallel on the server; the Hub « Journal » row opens it; works of the day still come from `listWorkSessionJournal(20)` (not yet one query); not measured on production. 3 done — `components/shared/PhoneInputBar.tsx` in the Atelier phone shell and on `/hub/today`; Écrire → `/atelier/journal?today=1&write=1`; the Journal day's quick row still shows on the phone (fold it in next). 4–7 not started.
+
 Each step: one local commit, checks (`typecheck`, `lint`, `i18n:check`, `atelier:chrome:check`), 375 px look in a real browser, What's new at the end of the batch.
 
 ## Parked from the same session (not R1)

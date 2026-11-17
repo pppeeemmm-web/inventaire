@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.36 (2026-11-17) — R2: « Aujourd'hui » light phone page + one input bar on every phone screen.
+  wn_phone_today_bar_t: { fr: 'Au téléphone : Aujourd’hui et une barre de saisie', en: 'On the phone: Today and one input bar' },
+  wn_phone_today_bar_d: {
+    fr: 'Une page « Aujourd’hui » légère (ligne Journal du Hub) : la journée, « À revoir », les œuvres du jour et les écrits s’affichent d’un coup, sans charger tout l’atelier. En bas de chaque écran du téléphone, une seule barre : Écrire (ouvre le formulaire du jour) · Vocal · Œuvre · Photo · doc (document, carte de visite, étiquette QR). Les rappels restent dans le menu.',
+    en: 'A light « Today » page (the Hub’s Journal row): the day, « See again », the works of the day and the writings show at once, without loading the whole studio. At the bottom of every phone screen, one bar: Write (opens today’s form) · Voice · Work · Photo · doc (document, business card, QR label). Reminders stay in the menu.',
+  },
   // 3.1.35 (2026-11-17) — long-press preview (B13) + small GIF captions (B14).
   wn_loupe_gif_caption_fixes_t: { fr: 'Aperçu au doigt et petits GIF', en: 'Long-press preview and small GIFs' },
   wn_loupe_gif_caption_fixes_d: {
