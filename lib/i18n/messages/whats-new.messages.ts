@@ -11,6 +11,11 @@ export const whatsNewMessages = defineMessages({
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
   // 3.1.51 (2026-11-17) — work rules batch 2.
+  wn_previews_everywhere_t: { fr: 'Vignette et titre sur chaque numéro d’œuvre', en: 'Thumbnail and title on every work number' },
+  wn_previews_everywhere_d: {
+    fr: 'Commandes, Coffre, tableau Production, Pipeline, Constellation, ⌘K et les listes de choix montrent maintenant la vignette et le titre de chaque œuvre ; un appui long ou le survol ouvre la grande image. Une œuvre détruite ou perdue ne peut plus être cochée « Montrable ».',
+    en: 'Orders, Vault, Production board, Pipeline, Constellation, ⌘K and the pickers now show each work’s thumbnail and title; a long press or hover opens the big picture. A destroyed or lost work can no longer be ticked « Showable ».',
+  },
   wn_work_rules_checked_t: { fr: 'L’historique ne se perd plus, et la photo validée prévient', en: 'History is no longer lost, and validating a photo warns first' },
   wn_work_rules_checked_d: {
     fr: 'Enregistrer une fiche ne fait plus disparaître une ligne d’historique écrite entre-temps. Valider la photo d’une œuvre de l’atelier demande d’abord : elle passera Disponible et sera visible sur le site. La modification en lot refuse « Catalogué » sans photo. Audit → Règles liste les œuvres qui ne suivent pas une règle (vérifié aussi chaque nuit).',
