@@ -42,6 +42,30 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }] },
 }
 
+/**
+ * DEV ONLY — unsticks « Chargement Atelier… » in Claude's in-app Browser pane.
+ * React 19 reveals streamed Suspense content ($RV) and retries hydration (_reactRetry) on the next
+ * requestAnimationFrame; a hidden pane paints no frames, so the page never leaves the fallback.
+ * Memory note: reference_browser_pane_raf_hang.md. When no frame has fired for ~1 s (≤ 15 s after load)
+ * this reveals pending boundaries and runs each revealed boundary's retry once. Every React internal is
+ * typeof-guarded + try/catch so a React upgrade that renames them turns this into a no-op.
+ * Visible browsers get frames, so it never acts there. Not rendered in production builds.
+ */
+const DEV_RAF_UNSTICK = `(function(){try{
+  var t0=Date.now(),last=t0;
+  (function f(){last=Date.now();if(Date.now()-t0<15000)requestAnimationFrame(f)})();
+  var iv=setInterval(function(){try{
+    if(Date.now()-t0>15000){clearInterval(iv);return}
+    if(Date.now()-last<1000)return;
+    var rb=window.$RB;
+    if(rb&&rb.length&&typeof window.$RV==='function')window.$RV(rb);
+    var it=document.createNodeIterator(document,NodeFilter.SHOW_COMMENT),n;
+    while((n=it.nextNode())){
+      if(n.data==='$'&&typeof n._reactRetry==='function'&&!n._pemRetried){n._pemRetried=1;try{n._reactRetry()}catch(e){}}
+    }
+  }catch(e){}},500);
+}catch(e){}})();`
+
 export default function RootLayout({
   children,
 }: {
@@ -77,6 +101,9 @@ export default function RootLayout({
             `,
           }}
         />
+        {process.env.NODE_ENV === 'development' ? (
+          <script dangerouslySetInnerHTML={{ __html: DEV_RAF_UNSTICK }} />
+        ) : null}
       </head>
       <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
         <RouteProgress />
