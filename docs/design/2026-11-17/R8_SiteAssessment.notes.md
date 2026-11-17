@@ -1,0 +1,71 @@
+# R8 — public site vs the Atelier « Site » module
+
+Verified against live code 2026-11-17 (worktree at `4db1bb8` = production `X-Build-Sha`). Assessment only: no code, SQL or content changed.
+
+Sources: [`SITE_REVIEW_2026-11-16.md`](../../SITE_REVIEW_2026-11-16.md) (the 10 items + feed), live site read-only (`curl` headers / HTML, built-in browser at 1440 px and 375 px), and the code below. Admin screens read from code, not signed in.
+
+## What the module is
+
+Atelier sidebar → **Public** group: `site` (« Site web »), `portfolio` (PDF), `analytics`, `broadcast` (admin) — `components/atelier/TeamPortalClient.tsx:1101`. The `site` tab renders `PortfolioConfigShell` → [`SiteEditorPanel`](../../../components/atelier/site/SiteEditorPanel.tsx) (1,014 lines) + `PagesEditor` (block composition) + `KnobsPanel` (light / shadow / frame / bg / mat / type / atm / motion / circadian / a11y).
+
+Everything it edits is **one JSON file in R2** (`vault/portfolio_sections.json`, `lib/portfolio-sections-from-r2.ts`), saved by `savePortfolioConfig` → `revalidateTag('portfolio')` + `revalidatePath('/', '/works', '/about', '/practice', '/enquiry')`. No database table.
+
+What the JSON holds: `general` (artist name, public email, Instagram, phone, medium tagline FR/EN) · `landing` (hero work + caption FR/EN, sky gradient, gloss, bevel) · `about.intro` FR/EN · `practice` (statement, themes, materials) · `works_modes[]` (sequences: label, layout among 11, collections = theme + intro/description FR/EN + manual order, outro, light, shadow, mobile fallback, map panorama) · `site_blocks` (5 legacy blocks: visible / order → nav, page background) · `pages` (block lists for landing / works / about: biographie, expositions, presse, contact, cv, text, image, quote, gallery strip…) · `knobs` (site → page cascade).
+
+Which public page reads it, and how:
+
+| Page | Reads the JSON | Render | Live headers 2026-11-17 |
+|---|---|---|---|
+| `/` | server, cached (`loadPortfolioSectionsCached`) | static, revalidated on save | `HIT`, TTFB 0.10 s, 32 KB |
+| `/works` | server, **fresh R2 read every request** + `createClient()` (cookies) | dynamic | `private, no-store`, `MISS`, **TTFB 2.0 s, 246 KB** |
+| `/about`, `/practice` | **client only** (`loadPortfolioConfig()` server action in `useEffect`) | prerender of the fallback | `PRERENDER`, 0.34 s, but the HTML holds the hard-coded fallback bio, not the saved one |
+| `/enquiry` | server (landing shadows) + client (email, phone) | prerender | `PRERENDER` |
+| `/works/[id]`, `/journal` | — | do not exist | 404 |
+
+## Item by item
+
+Effort: S ≤ half a day · M 1–2 days · L more.
+
+| # | Item | What the module controls today | State | Waits on a look decision | Effort |
+|---|---|---|---|---|---|
+| 1 | Paintings big | Layout per sequence (carousel, grid, procession, salon, vitrine, timeline, letter, map, motion interior; constellation + diptych are « coming soon » placeholders), mobile fallback, light / shadow / bevel / voile / grain / vignette / glow knobs. **No size control**: the work box is a code constant (`worksCardViewport`: 25 % of width, 42 % of height on desktop; true-scale ref 70 cm, `lib/physical-art-display-size.ts`). | **Missing.** Measured live: 119 px wide at 1440 px, 108 px at 375 px. The haze / shadow can already be turned down from the knobs (voile, shadow opacity) — that part works. | **A. Big vs true scale** (see below) | M (a « Grand » view as default, true scale kept as « Accrochage ») |
+| 2 | One page per work | Nothing. The Enquiry form already reads `?oeuvre_id=` and stores it on `inquiry` — that end works. | **Missing** (`/works/1` → 404; zoom keeps `/works`). | **B. Work page layout** (image size, what sits beside it) — follows A | M (route + metadata + sitemap entries + « Enquire » button) |
+| 3 | Landing in 3 s | Hero work picker, caption FR/EN, sky gradient, gloss, bevel, nav order + hide via blocks, landing blocks (hero, identity, text, statement…), artist name. | **Partly works.** Content is editable and reaches `/`. Missing / broken in code: the hero is always a circle (`WavingCircle`), clock + « Hz » counter not switchable, empty-text `/hub` link, inline `<style>` inside the `/works` link. In the pane at 1440 px the hero had not painted after 4 s (may be the pane's known no-rAF quirk — not proven on a real browser). | **C. Landing layout**: circle disc vs full uncropped work; keep the clock or not | S once C is decided |
+| 4 | Social previews | Indirect: `og:image` = the landing hero picked in the module. | **Broken for sharing**: `og:image` is a 400×400 AVIF on `r2.dev`; `/works`, `/about`, `/practice` have none. | No (a 1200×630 JPEG crop rule only, follows A/C lightly) | S (OG image route per page; per-work once #2 exists) |
+| 5 | Speed + images off `r2.dev` | Nothing (hosting is env + code). | **Broken**: `/works` 2.0 s TTFB, no cache, 246 KB HTML; images from `pub-…r2.dev` with **no `Cache-Control`** (checked: 249 KB AVIF, no header). Image URLs all go through `imageUrl()` (`NEXT_PUBLIC_R2_PUBLIC_URL`), so a custom domain is an env change + `next.config.ts` `remotePatterns` + Cloudflare setup. | No | M (`/works` → cached read + `revalidateTag` already fired on save; custom image domain is owner setup in Cloudflare) |
+| 6 | One name | `general.artist_name` (live: « pierre emmanuel moulin », feeds `og:site_name`, the landing ring, the About `<h1>`) + an identity block that can override it. | **Partly.** `<title>` / descriptions come from fixed i18n keys (« the pem workshop — painter »), About footer is hard-coded « the pem workshop ». No JSON-LD `Person`. So the module name and the page titles disagree. | **D. The name** (Pem picks the one form) | S |
+| 7 | FR / EN done properly | Every text field is FR + EN side by side (`DualField`) — the content side exists. | **Broken for search**: `<html lang="en">`, `og:locale=en_GB` on French pages, `?lang=en` alternates serve the same HTML; language is a client toggle. EN bio text quality + facts differ = content, Pem's. | No (D helps) | M (server-rendered language, e.g. `/en/…` or `?lang` read on the server) |
+| 8 | About / Practice content | About intro FR/EN, Practice statement / themes / materials, About blocks (biographie, expositions, presse, cv, contact, image…). | **Wired but only after hydration**: `/about` and `/practice` fetch the JSON in the browser, so Google reads the hard-coded fallback bio. Practice content is thin (heading only, per review). Nav: the module can show / hide / order About and Practice (`site_blocks` → `hiddenNavRoutes` / `orderedNavRoutes`); on the landing, About / Practice are drawn as « satellite » orbs around the hero rather than inline links (`lib/site-block-visibility.ts`) — so their weak presence is partly the landing design (C), not only a module setting. | **E. Merge Practice into About?** (the type comment already says « /practice is folded into /about ») | S (server-render both) + Pem's text / photo |
+| 9 | Calls to action | `general.contact_email`, `general.phone`, `general.instagram`; a `contact` block on About. | **Partly / control nothing reads**: email + phone show on `/enquiry`; **`general.instagram` is read by no public page**; enquiry reasons are hard-coded in `EnquiryClient` (general / question / complaint / shipping / other) — no buy / commission / show / press. No newsletter. | Minor (where the footer sits — part of C) | S (reasons, Instagram link, footer); newsletter = external tool, needs GO (no transactional email) |
+| 10 | Captions + small copy | Collection heading / intro / show-text per collection; « Accroche médiums » tagline (not shown on `/works` captions). | **Missing**: captions show title, year, size only — `/works` selects `Support` but only uses it for « round »; no medium, series, availability. Touch wording « Pincer ou toucher » on desktop (key `pub_works_zoom_hint_enter_mobile`). | No | S |
+| F | Public journal feed | Nothing. | **Missing**: `journal_entry.visibility` allows `team` / `private` only (per review; not re-queried — no SQL in this pass). | **F. Carnet page design** | M + SQL GO |
+
+### Also found (not in the 10)
+
+- **Live bug on `/works`** (seen at 375 px, also present at 1440 px): the collapsed sequence text shows `Fire &amp; Brilliance, Chaos &amp; Order` — HTML entities not decoded in the teaser (`richTextToPlain` in [`WorksSectionTextCard.tsx`](../../../components/public/WorksSectionTextCard.tsx)). And the visitor sees the label « CLOSING TEXT — PREVIEW » / « Texte de clôture — aperçu » (`pub_works_text_preview_hint`) — reads like an editor note. S, no look decision.
+- **Controls nothing reads** in `KnobsPanel`: `type.scale_pct` (« taille du texte ») and `motion.parallax_mult` are read by no public file (grep of `components`, `lib`, `app`). Several `light` / `mat` fields are labelled « future » in `lib/site-blocks/knob-types.ts`. Either wire or hide — S.
+- The module is large (11 layouts, ~40 knobs, 3 block systems: `site_blocks`, `pages`, legacy fields). Most of R8 is not « add a control » — it is choosing a default look and removing choices that don't serve it.
+
+## Look decisions Pem takes first, in order
+
+1. **A. Big painting vs true-scale wall** — what a visitor sees first on `/works`: the work filling ~75 % of the screen height on a plain ground (review), or today's lit wall at true relative scale. Proposal from the review: big by default, the wall kept as an « Accrochage » view. This sets #1 and the frame for #2 and #4.
+2. **B. One work's page** — image size and what sits with it (caption lines, detail shots, « Enquire », next / previous). Follows A.
+3. **C. Landing** — keep the circle disc or show a full uncropped work; keep the clock / Hz counter or drop it; which nav items show (Works · Journal · About · Contact). The circadian sky can stay either way.
+4. **D. One name** — « Pierre Emmanuel Moulin (Pem) », « Pem », or « the pem workshop » as the main form.
+5. **E. Practice** — fold into About or keep its own page.
+6. **F. Carnet (journal) page** — later, after A–C; needs its own screen design + SQL GO.
+
+Items 5, 7, 10 and the bugs above need no look decision.
+
+## Recommended first batch (no look decision needed)
+
+1. `/works` text card: decode entities + replace the « preview » label (S). Bug, visible today.
+2. Speed: `/works` reads the cached JSON (save already revalidates) and stops depending on cookies → static + revalidated (M). Custom image domain with long cache: Pem / owner sets it up in Cloudflare, then one env change.
+3. Server-render `/about` and `/practice` from the JSON so search sees the real bio (S).
+4. Social previews: 1200×630 JPEG `og:image` for `/`, `/works`, `/about` (S).
+5. Captions: medium (from `Support`) + desktop zoom wording (S); enquiry reasons buy / commission / show / press + the Instagram link the module already stores (S).
+6. Hide or wire the two dead knobs (S).
+
+Then, after Pem's A–C: big view (#1), one page per work (#2) with per-work OG + sitemap, the landing (#3), FR / EN on the server (#7). Then the Carnet (F).
+
+Not checked: Lighthouse / real-phone timings, the module's own screens rendered (read from code only), the live `portfolio_sections.json` contents beyond what the public HTML shows.
