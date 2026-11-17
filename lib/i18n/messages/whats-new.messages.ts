@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.42 (2026-11-17) — R2: days, ✦ rows, folds, phone menu.
+  wn_today_days_menu_t: { fr: 'Aujourd’hui : d’un jour à l’autre', en: 'Today: day to day' },
+  wn_today_days_menu_d: {
+    fr: 'Sur « Aujourd’hui » au téléphone, ‹ › passent au jour précédent ou suivant. On y trouve aussi les suggestions ✦ du jour avec leur vignette, les œuvres photographiées ce jour-là, et deux volets repliés : attributs d’œuvres modifiés et Création (Kaizen). Le menu du téléphone commence par Aujourd’hui · Idées ; « Notes » est rangé dans le Journal.',
+    en: 'On the phone’s « Today », ‹ › step to the previous or next day. It also shows the day’s ✦ suggestions with their thumbnail, the works photographed that day, and two folded sections: changed work attributes and Creation (Kaizen). The phone menu starts with Today · Ideas; « Notes » lives in the Journal.',
+  },
   // 3.1.41 (2026-11-17) — R1: Idées for the team.
   wn_ideas_team_t: { fr: 'Idées : proposer, discuter', en: 'Ideas: propose, discuss' },
   wn_ideas_team_d: {

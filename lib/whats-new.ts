@@ -57,7 +57,8 @@
 // '3.1.39' (2026-11-17): Triage — swipe, 6 s to undo (shared swipe deck).
 // '3.1.40' (2026-11-17): Œuvre and Vocal sheets on the phone bar; the Fil (admin) + Audit « Retirés du Fil ».
 // '3.1.41' (2026-11-17): Idées — Petite / Recherche, Graine · Pousse · Mûre, discussions, « Proposer une idée ».
-export const WHATS_NEW_RELEASE = '3.1.41'
+// '3.1.42' (2026-11-17): Aujourd'hui — step between days, ✦ rows, folds; phone menu Aujourd'hui · Fil · Idées.
+export const WHATS_NEW_RELEASE = '3.1.42'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -69,6 +70,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'today_days_menu', day: '2026-11-17' },
   { id: 'ideas_team', day: '2026-11-17' },
   { id: 'phone_work_voice_sheets', day: '2026-11-17' },
   { id: 'triage_swipe_undo', day: '2026-11-17' },
