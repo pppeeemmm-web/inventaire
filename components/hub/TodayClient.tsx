@@ -17,6 +17,7 @@ import type { JournalDayEntry } from '@/app/atelier/(portal)/journal/entry-actio
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
+import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
 const VoiceNoteSheet = dynamic(
@@ -158,27 +159,12 @@ export function TodayPulse({ metrics }: { metrics: FieldPulseMetric[] }) {
 }
 
 export function TodaySeeAgain({ seeAgain }: { seeAgain: SeeAgainSlots }) {
-  const { t } = useI18n()
   if (!seeAgain.then && !seeAgain.alone && !seeAgain.close) return null
+  // Same card and actions as the Journal (Ouvrir, Plus tard, Écrire à ce sujet, Lier, Sans rapport), one slot at a time.
   return (
-    <section data-testid="hub-today-see-again" style={section}>
-      <h2 style={heading}>{t('today_see_again')}</h2>
-      {seeAgain.then ? (
-        <Link href={`/atelier/journal?day=${seeAgain.then.day}`} style={{ display: 'block', color: 'var(--tx)', textDecoration: 'none', fontSize: 14, lineHeight: 1.4, minHeight: 44 }}>
-          <span style={{ color: 'var(--tx3)' }}>{t(seeAgain.then.sameWeek ? 'sa_then_week' : 'sa_then_older')}</span>
-          <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {seeAgain.then.snippet}
-          </span>
-        </Link>
-      ) : seeAgain.alone ? (
-        <WorkChip work={seeAgain.alone} />
-      ) : seeAgain.close ? (
-        <div style={{ display: 'grid', gap: 6 }}>
-          <WorkChip work={seeAgain.close.a} />
-          <WorkChip work={seeAgain.close.b} />
-        </div>
-      ) : null}
-    </section>
+    <div data-testid="hub-today-see-again" style={{ padding: '10px 12px', borderTop: '1px solid var(--bd)' }}>
+      <SeeAgainCard context="today" initialSlots={seeAgain} oneAtATime />
+    </div>
   )
 }
 

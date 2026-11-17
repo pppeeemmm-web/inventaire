@@ -21,6 +21,8 @@ export type SeeAgainSlots = {
 }
 type Err = { error: string }
 type Kind = 'then' | 'alone' | 'close'
+/** « Plus tard » (R2, Pem 2026-11-17: default 7 days): a hidden entry or lone work comes back after this. « Sans rapport » on a pair stays. */
+const LATER_DAYS = 7
 
 /** Small stable hash → index; the same day and slot give the same pick. */
 function pick<T>(items: T[], seed: string): T | null {
@@ -63,13 +65,18 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
       .limit(5000),
     supabase.from('journal_entry_link').select('oeuvre_id').not('oeuvre_id', 'is', null).not('validated_at', 'is', null),
     supabase.from('tblrelations').select('source_id, target_id').in('relation_type', [...WORK_LINK_TYPES]),
-    supabase.from('see_again_dismissed').select('kind, a, b'),
+    supabase.from('see_again_dismissed').select('kind, a, b, at'),
   ])
   for (const r of [entriesRes, worksRes, linksRes, relsRes, dismissedRes]) {
     if (r.error) return { error: r.error.message }
   }
 
-  const dismissed = new Set((dismissedRes.data ?? []).map((d) => `${d.kind}:${d.a}:${d.b}`))
+  const laterCutoff = Date.now() - LATER_DAYS * 86_400_000
+  const dismissed = new Set(
+    (dismissedRes.data ?? [])
+      .filter((d) => d.kind === 'close' || new Date(d.at).getTime() > laterCutoff)
+      .map((d) => `${d.kind}:${d.a}:${d.b}`),
+  )
   const works = (worksRes.data ?? []).map((w) => ({ id: w.OeuvreID, title: w.Titre, image: w.txtImageNameLink }))
   const byId = new Map(works.map((w) => [w.id, w]))
   const pairKey = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`)
@@ -150,11 +157,16 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
   return { then, alone, close }
 }
 
-/** "Not related" / hide: not shown to this person again. */
+/** « Sans rapport » on a pair: not shown to this person again. « Plus tard » on an entry or a work: back after `LATER_DAYS`. */
 export async function dismissSeeAgain(kind: Kind, a: number, b?: number): Promise<{ ok: true } | Err> {
   const supabase = await guardTeam()
   if (!supabase) return { error: 'auth' }
   const [x, y] = b != null && b < a ? [b, a] : [a, b]
+  if (kind !== 'close') {
+    // « Plus tard » again after the 7 days: restart the clock (no UPDATE policy on the table, so delete + insert).
+    const { error: delError } = await supabase.from('see_again_dismissed').delete().eq('kind', kind).eq('a', String(x)).eq('b', '')
+    if (delError) return { error: delError.message }
+  }
   const { error } = await supabase
     .from('see_again_dismissed')
     .upsert({ kind, a: String(x), b: y != null ? String(y) : '' }, { onConflict: 'user_id,kind,a,b', ignoreDuplicates: true })

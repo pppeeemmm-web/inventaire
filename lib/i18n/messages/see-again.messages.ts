@@ -10,7 +10,9 @@ export const seeAgainMessages = defineMessages({
   sa_open_day: { fr: 'Ouvrir le jour', en: 'Open the day' },
   sa_open_work: { fr: 'Ouvrir', en: 'Open' },
   sa_write: { fr: 'Écrire à ce sujet', en: 'Write about it' },
-  sa_hide: { fr: 'Ne plus montrer', en: "Don't show again" },
+  // R2 (Pem 2026-11-17: « Ne plus montrer » too harsh) — the item comes back after 7 days.
+  sa_hide: { fr: 'Plus tard', en: 'Later' },
+  sa_next: { fr: 'Suivant', en: 'Next' },
   sa_link: { fr: 'Lier', en: 'Link' },
   sa_not_related: { fr: 'Sans rapport', en: 'Not related' },
   sa_linked: { fr: 'Lien ajouté.', en: 'Link added.' },

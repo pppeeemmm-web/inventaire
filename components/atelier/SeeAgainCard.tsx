@@ -21,9 +21,20 @@ export const JOURNAL_COMPOSE_EVENT = 'pem:journal-compose'
 const workHref = (id: number) => `/atelier/inventory?work=${id}`
 const btn: CSSProperties = { minHeight: 44, fontSize: 11, letterSpacing: 0.5 }
 
-export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
+export function SeeAgainCard({
+  context,
+  initialSlots,
+  oneAtATime = false,
+}: {
+  context: 'journal' | 'overview' | 'today'
+  /** Already read on the server (phone « Aujourd'hui »): no read on mount. */
+  initialSlots?: SeeAgainSlots
+  /** Phone « Aujourd'hui » (R2): one slot at a time, « 1 / 3 › » steps to the next. */
+  oneAtATime?: boolean
+}) {
   const { t, lang } = useI18n()
-  const [slots, setSlots] = useState<SeeAgainSlots | null>(null)
+  const [slots, setSlots] = useState<SeeAgainSlots | null>(initialSlots ?? null)
+  const [step, setStep] = useState(0)
   const [pending, startTransition] = useTransition()
   /** Link picker on the close pair: from → to, of a type (owner 2026-11-13: links have a direction). */
   const [linking, setLinking] = useState<{ from: number; to: number; type: WorkLinkType } | null>(null)
@@ -35,8 +46,8 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
     setSlots(res)
   }, [])
   useEffect(() => {
-    void load(true)
-  }, [load])
+    if (!initialSlots) void load(true)
+  }, [load, initialSlots])
 
   function write(text: string) {
     if (context === 'journal') {
@@ -59,6 +70,10 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
   }
 
   if (!slots || (!slots.then && !slots.alone && !slots.close)) return null
+  const present = (['then', 'alone', 'close'] as const).filter((k) => slots[k])
+  const current = present[step % present.length]
+  /** All slots, or only the current one when `oneAtATime`. */
+  const show = (k: (typeof present)[number]) => !oneAtATime || k === current
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const dayLabel = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -67,9 +82,26 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
       data-testid="see-again-card"
       style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}
     >
-      <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('sa_title')}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="t-eyebrow" style={{ color: 'var(--tx3)', flex: 1 }}>{t('sa_title')}</div>
+        {oneAtATime && present.length > 1 ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="see-again-next"
+            aria-label={t('sa_next')}
+            onClick={() => {
+              setLinking(null)
+              setStep((n) => n + 1)
+            }}
+            style={{ ...btn, minWidth: 44 }}
+          >
+            {`${present.indexOf(current) + 1} / ${present.length} ›`}
+          </button>
+        ) : null}
+      </div>
 
-      {slots.then ? (
+      {slots.then && show('then') ? (
         <Slot label={t(slots.then.sameWeek ? 'sa_then_week' : 'sa_then_older')}>
           <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>{dayLabel(slots.then.day)}</div>
           <p style={{ margin: '2px 0 6px', fontSize: 13, lineHeight: 1.45, color: 'var(--tx)', overflowWrap: 'anywhere' }}>
@@ -87,7 +119,7 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
         </Slot>
       ) : null}
 
-      {slots.alone ? (
+      {slots.alone && show('alone') ? (
         <Slot label={t('sa_alone')}>
           <WorkLine w={slots.alone} untitled={t('sa_untitled')} />
           <Actions>
@@ -104,7 +136,7 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
         </Slot>
       ) : null}
 
-      {slots.close ? (
+      {slots.close && show('close') ? (
         <Slot label={t('sa_close')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <WorkLine w={slots.close.a} untitled={t('sa_untitled')} />

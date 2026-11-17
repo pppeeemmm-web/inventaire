@@ -209,6 +209,27 @@ The slow « À revoir » query runs first and holds back the day's own entries.
 3. Two of those calls (`loadJournalBootstrap`, `loadAtelierShellOpen`) aren't needed for « Aujourd'hui » at all.
 4. One server query for the day (rule 3) and no shell (rule 1) attack exactly these.
 
+### After steps 2–3: measured 2026-11-17 on production (build `4db1bb8`), as admin
+
+Same method as the baseline: Pem's Chrome on the PC, a 390 px same-origin frame, warm service-worker cache, no throttling. The two pages were loaded one after the other, three times each, so they ran under the same conditions.
+
+| Run | `/hub` (« Aujourd'hui », streamed): first byte → bar → writings → « À revoir » | `/atelier/journal?today=1` (old path): first byte → bar → « À revoir » |
+|---|---|---|
+| 1 | 1.33 → 1.45 → 1.58 → 2.76 s | 1.69 → 1.99 → 5.33 s |
+| 2 | 1.34 → 1.37 → 1.40 → 2.03 s | 0.96 → 1.51 → 3.55 s |
+| 3 | 0.97 → 1.02 → 1.05 → 1.78 s | 1.04 → 1.66 → 3.78 s |
+
+- **Bar usable:** 1.0–1.45 s on `/hub`, against 1.5–2.0 s on the journal. That is under the 1.5 s target, warm and unthrottled; a real phone on 4G is not measured yet.
+- **The day's content:**
+  - `/hub` shows its writings 1.05–1.58 s after the page opens.
+  - The journal still opens on « Nothing yet » at 1.5 s; its entries wait behind the queued server calls (3.5–4.9 s in the baseline).
+- **« À revoir »:** 1.8–2.8 s on `/hub`, against 3.6–5.3 s. It no longer holds back anything else.
+- **JS:** about 1.08 MB uncompressed (20 files), against 1.84 MB for the journal through the Atelier shell.
+- **First byte:**
+  - It is now the biggest part of `/hub`'s time: about 1.0–1.3 s warm, and 1.6–2.5 s on the first loads right after the deploy.
+  - Before anything is sent, the server checks the session several times: the middleware, `requireSession`, and the signed-in name.
+  - That is the next thing to look at: measure first, no change yet.
+
 ### How we prove it
 
 - **Baseline:** done 2026-11-17, warm and unthrottled (above). Still to do once: the same pages on Pem's real phone over 4G, for the true floor-to-ceiling gap.
