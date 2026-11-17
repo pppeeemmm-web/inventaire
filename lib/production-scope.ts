@@ -1,19 +1,32 @@
-import { statusOf, type StatusKey } from '@/lib/data'
-import type { Oeuvre } from '@/lib/types/database'
+/**
+ * One definition of « in production » (docs/WORK_RULES.md rule 16, Pem 2026-11-17). Read from the
+ * status id, never from its label (labels load after the first paint). Used by the Production board,
+ * its report and the work-session picker. Display chips (`statusOf`) and the address rule
+ * (`oeuvre_stage_key`, database) describe other things and keep their own logic.
+ */
 
-/** Statuses that never show on the Production board (nor in its report). */
-export const PRODUCTION_EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'destroyed', 'lost']
+/** Out of the studio's work: archived (3), sold (6), destroyed (9), lost (10), given (11). */
+export const OUT_OF_PRODUCTION_STATUS_IDS: readonly number[] = [3, 6, 9, 10, 11]
+
+export function isOutOfProduction(statusId: number | null | undefined): boolean {
+  return statusId != null && OUT_OF_PRODUCTION_STATUS_IDS.includes(statusId)
+}
+
+type StageFields = { Catalogué?: boolean | null; NeedsPhotograph?: boolean | null }
+
+/** The stage is not finished: not catalogued, or catalogued with the photo still to take. */
+export function stageUnfinished(o: StageFields): boolean {
+  return !o.Catalogué || !!o.NeedsPhotograph
+}
 
 /**
- * A work is "in production" when it is not sold/given/archived and is either not catalogued yet,
- * still needs its photograph, or has a pending production action (`work_action.done = false`).
- * Shared by the Production board and its Rapport so both list the same works.
+ * In production: not out of production, and either its stage is unfinished or it has an open task
+ * (`work_action` not done, not paused — Encadrer, Retoucher… on a finished work count too).
  */
 export function isInProduction(
-  o: Oeuvre,
-  statusLabelMap: Record<number, string>,
-  worksWithPendingActions: Set<number>,
+  o: StageFields & { OeuvreID: number; statusId?: number | null },
+  worksWithOpenTasks?: Set<number>,
 ): boolean {
-  if (o.Catalogué && !o.NeedsPhotograph && !worksWithPendingActions.has(o.OeuvreID)) return false
-  return !PRODUCTION_EXCLUDED_STATUSES.includes(statusOf(o, statusLabelMap))
+  if (isOutOfProduction(o.statusId)) return false
+  return stageUnfinished(o) || !!worksWithOpenTasks?.has(o.OeuvreID)
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { isOutOfProduction, stageUnfinished } from '@/lib/production-scope'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -51,13 +52,9 @@ function dateInputToSessionIso(value: string): string | null {
 const SESSION_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
-
+// One definition of « in production » (lib/production-scope.ts).
 function workIsInProgress(work: WorkSessionWorkOption): boolean {
-  return (
-    (work.statusId == null || !SESSION_WORK_EXCLUDED_STATUS_IDS.has(work.statusId))
-    && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
-  )
+  return !isOutOfProduction(work.statusId) && stageUnfinished(work)
 }
 
 function sessionItemTitle(

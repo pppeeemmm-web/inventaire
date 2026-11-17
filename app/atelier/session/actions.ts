@@ -1,5 +1,6 @@
 'use server'
 
+import { isOutOfProduction, stageUnfinished } from '@/lib/production-scope'
 import { listJournalSourceDays, type JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
 import crypto from 'crypto'
 import { revalidatePath } from 'next/cache'
@@ -38,7 +39,6 @@ function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
 
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const SESSION_WORK_FETCH_PAGE_SIZE = 1000
-const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
 
 function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
@@ -371,12 +371,14 @@ function itemIsActionable(item: WorkSessionItem): boolean {
   return item.shots.length > 0 && itemHasApplyTarget(item)
 }
 
+// One definition of « in production » (lib/production-scope.ts): archived, sold, given, destroyed and
+// lost works are not offered; a work in progress = its stage unfinished.
 function isSessionWorkCandidate(work: Pick<WorkSessionWorkOption, 'statusId'>): boolean {
-  return work.statusId == null || !SESSION_WORK_EXCLUDED_STATUS_IDS.has(work.statusId)
+  return !isOutOfProduction(work.statusId)
 }
 
 function isSessionWorkInProgress(work: Pick<WorkSessionWorkOption, 'statusId' | 'Catalogué' | 'NeedsPhotograph'>): boolean {
-  return isSessionWorkCandidate(work) && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
+  return isSessionWorkCandidate(work) && stageUnfinished(work)
 }
 
 function findItemIndex(payload: WorkSessionPayload, itemId: string): number {

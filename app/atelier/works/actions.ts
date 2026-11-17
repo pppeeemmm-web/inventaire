@@ -25,10 +25,6 @@ import { logError } from '@/lib/error-reporter/server'
 import { extractPalette } from '@/lib/image-palette'
 import { r2GetObjectBuffer } from '@/lib/r2-s3-object-get'
 import { logSystemEvent } from '@/lib/utils/logging'
-import {
-  historiqueLinesForOeuvreUpdate,
-  mergeHistoriqueLines,
-} from '@/lib/oeuvre-historique'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
 import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 
@@ -89,51 +85,8 @@ async function replaceOeuvreWorkGroups(
   return { ok: true }
 }
 
-async function syncPipelineWithBooleans(
-  supabase: SupabaseClient<Database>,
-  oid: number,
-  flags: { catalogued: boolean; needsPhotograph: boolean }
-): Promise<{ error: string } | { ok: true }> {
-  const setAction = async (actionId: number, state: 'done' | 'pending' | 'remove'): Promise<{ error: string } | { ok: true }> => {
-    if (state === 'remove') {
-      const { error } = await supabase.from('work_action').delete().eq('oeuvre_id', oid).eq('action_type_id', actionId)
-      if (error) return { error: error.message }
-      return { ok: true }
-    }
-    const isDone = state === 'done'
-    const { data: existing, error: selErr } = await supabase
-      .from('work_action')
-      .select('id, done')
-      .eq('oeuvre_id', oid)
-      .eq('action_type_id', actionId)
-      .maybeSingle()
-    if (selErr) return { error: selErr.message }
-
-    if (existing) {
-      if (existing.done !== isDone) {
-        const { error } = await supabase.from('work_action').update({ done: isDone }).eq('id', existing.id)
-        if (error) return { error: error.message }
-      }
-    } else {
-      const { error } = await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: actionId, done: isDone })
-      if (error) return { error: error.message }
-    }
-    return { ok: true }
-  }
-
-  // Action IDs: 6 = Photographier, 9 = Cataloguer
-  const steps: Array<[number, 'done' | 'pending' | 'remove']> = !flags.catalogued
-    ? [[9, 'pending'], [6, 'remove']]
-    : flags.needsPhotograph
-      ? [[9, 'done'], [6, 'pending']]
-      : [[9, 'done'], [6, 'done']]  // "Disponible" (Catalogued + no photo needed)
-
-  for (const [aId, state] of steps) {
-    const r = await setAction(aId, state)
-    if ('error' in r) return { error: `pipeline action ${aId}: ${r.error}` }
-  }
-  return { ok: true }
-}
+// Cataloguer / Photographier tasks follow the stage in the database (work_state_rules.sql,
+// docs/WORK_RULES.md rules 6–7): no screen syncs them any more.
 
 /** `saved`: the row as stored after the DB triggers ran — lets the list patch one row, no reload. */
 export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre> }
@@ -378,7 +331,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const anonymityLevel = numOrNull(formData.get('anonymity_level')) ?? 0
   const adminOverrideAnonymity = formData.get('admin_override_anonymity') === '1'
   const isPaid         = formData.get('is_paid') === '1'
-  const isGift         = formData.get('is_gift') === '1'
   const presentationId = numOrNull(formData.get('presentation_id'))
 
   const themeIds: number[] = (formData.getAll('themes') as string[])
@@ -493,7 +445,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       admin_override_anonymity: adminOverrideAnonymity,
       tva_rate:          tvaRate,
       is_paid:           isPaid,
-      is_gift:           isGift,
       PresentationID:  presentationId,
       txtImageNameLink:  imageName,
       production_origin: productionOrigin,
@@ -514,10 +465,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
     if ('error' in themeRes) return { error: themeRes.error }
-
-    // Sync pipeline actions with production booleans
-    const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
-    if ('error' in pipeRes) return { error: pipeRes.error }
 
     revalidatePath('/atelier')
     revalidatePath(`/atelier/works/${oid}/edit`)
@@ -554,24 +501,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // « statut 9 → En production » history line, no status-change event.
     const sid = current?.fate ? current.statusId : statusId
 
-    // User-edited base; server appends ownership / location lines when those fields change.
-    let finalHistorique = historique ?? current?.Historique ?? ''
-    if (current) {
-      const autoLines = await historiqueLinesForOeuvreUpdate(
-        supabase,
-        {
-          statusId: current.statusId,
-          ContactID: current.ContactID,
-          LocalisationID: current.LocalisationID,
-        },
-        {
-          statusId: sid ?? null,
-          contactId: contactId ?? null,
-          localisationId: localisationId ?? null,
-        },
-      )
-      finalHistorique = mergeHistoriqueLines(finalHistorique, autoLines)
-    }
+    // User-edited text. The status / owner / custodian lines are written by the database on the
+    // same update (oeuvre_history, docs/WORK_RULES.md rule 14), so no screen can forget them.
+    const finalHistorique = historique ?? current?.Historique ?? ''
 
     // Upload new image if provided via form (separate from ImageManager flow)
     let formUploadedNewImage = false
@@ -583,7 +515,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       formUploadedNewImage = true
     }
 
-    const isGift       = formData.get('is_gift')       === '1'
     const paymentDone  = formData.get('payment_received') === '1'
     const isAnonymous  = formData.get('is_anonymous') === '1'
 
@@ -624,7 +555,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       admin_override_anonymity: adminOverrideAnonymity,
       tva_rate:          tvaRate,
       is_paid:           isPaid,
-      is_gift:           isGift,
       PresentationID:    presentationId,
       broadcast_ready:   broadcastReady,
       broadcast_caption_seed: broadcastCaptionSeed,
@@ -643,7 +573,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Montee:                   'montee',              // drawer only
       Encadree:                 'encadree',            // drawer only
       IsCommission:             'is_commission',       // drawer only
-      is_gift:                  'is_gift',             // drawer only
       admin_override_anonymity: 'admin_override_anonymity', // drawer only
       PresentationID:           'presentation_id',     // drawer only
       localisation_address_id:  'localisation_address_id',
@@ -689,17 +618,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       })
     }
 
-    // ── Log Significant Event: Status Change ──
-    if (current && sid !== current.statusId) {
-      await logSystemEvent({
-        eventType: 'STATUS_CHANGE',
-        tableName: 'Oeuvres',
-        rowId: oid,
-        oldValue: current.statusId,
-        newValue: sid,
-        metadata: { titre }
-      })
-    }
+    // Status change event: written by the database (oeuvre_status_event, rule 14).
 
     // ── Log Significant Event: Location Move ──
     if (current && localisationId !== current.LocalisationID) {
@@ -735,10 +654,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         metadata: { titre, anonymity_level: anonymityLevel },
       })
     }
-
-    // Sync pipeline actions with production booleans
-    const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
-    if ('error' in pipeRes) return { error: pipeRes.error }
 
     const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
     if ('error' in themeRes) return { error: themeRes.error }
@@ -782,12 +697,6 @@ export async function revertWorkSnapshot(
     .eq('OeuvreID', oeuvreId)
     .is('deleted_at', null)
   if (uErr) return { error: uErr.message }
-
-  const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {
-    catalogued: snapshot.catalogued,
-    needsPhotograph: snapshot.needsPhotograph,
-  })
-  if ('error' in pipeRes) return { error: pipeRes.error }
 
   const themeRes = await replaceOeuvreThemes(svc, oeuvreId, snapshot.themeIds)
   if ('error' in themeRes) return { error: themeRes.error }
@@ -1247,12 +1156,8 @@ export async function commitWorkImage(
 
   // Cover already moved to this image via is_cover + the trigger — nothing to write on Oeuvres.
   // NeedsPhotograph is a manual quality gate (diffusion-grade photo validated by
-  // the artist only): adding an image NEVER clears it or promotes the status.
-  const { data: workState } = await supabase
-    .from('Oeuvres')
-    .select('"Catalogué", "NeedsPhotograph"')
-    .eq('OeuvreID', oeuvreId)
-    .single()
+  // the artist only): adding an image NEVER clears it or promotes the status. Its tasks follow
+  // the stage in the database (work_state_rules.sql), so nothing to sync here.
 
   await logSystemEvent({
     eventType: 'VAULT_UPLOAD',
@@ -1261,14 +1166,6 @@ export async function commitWorkImage(
     newValue: inserted.txtImageNameLink,
     metadata: { source: 'image_manager' },
   })
-
-  if (workState) {
-    const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {
-      catalogued: !!workState['Catalogué'],
-      needsPhotograph: workState.NeedsPhotograph === true,
-    })
-    if ('error' in pipeRes) return { error: pipeRes.error }
-  }
 
   revalidatePath('/atelier')
   return { ok: true, image: inserted as WorkImage }

@@ -47,18 +47,13 @@ export interface Oeuvre {
   Commentaires?: string | null;
   Historique?: string | null;
   PresentationID?: number | null;
-  StageProduction?: string | null;
   anonymity_level?: number | null;
   is_paid?: boolean | null;
   /** VAT rate (percent or fraction per saveWork). */
   tva_rate?: number | null;
-  is_gift?: boolean | null;
-  commercial_status?: string | null;
   ImageURL: string | null;
   /** Soft-delete marker — null = active (apply migration `oeuvres_deleted_at.sql`). */
   deleted_at?: string | null;
-  // Kept in DB for historical reference, not used by app logic:
-  // commercial_status, StageProduction
   // Dead columns dropped in DB (`supabase/sql/dead_columns_drop.sql`); not in this interface.
 }
 

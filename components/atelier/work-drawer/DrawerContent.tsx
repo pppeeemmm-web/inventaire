@@ -178,7 +178,9 @@ export function DrawerContent({
   const [profondeur,  setProfondeur]  = useState(String(o.Profondeur ?? ''))
   const [presentationId, setPresentationId] = useState(String((o as { PresentationID?: number }).PresentationID ?? ''))
   const [prodStage, setProdStage] = useState<ProdStageId>(() => prodStageFromOeuvre(o))
-  const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
+  // The stage is held once (docs/WORK_RULES.md, #2381): « photo to take » IS the Catalogué step,
+  // never a second switch that can disagree with it.
+  const needsPhoto = prodStage === 'catalogued'
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
   // Custody model (docs/WORK_CUSTODY_MODEL.md): contactId = custodian (LocalisationID),
   // ownerId = owner (ContactID), buyerId = buyer (AcheteurID).
@@ -504,8 +506,9 @@ export function DrawerContent({
     setHauteur(d.hauteur ?? '')
     setLargeur(d.largeur ?? '')
     setProfondeur(d.profondeur ?? '')
-    setProdStage((d.prodStage as ProdStageId) || 'atelier')
-    setNeedsPhoto(!!d.needsPhoto)
+    // An older draft kept the photo switch apart: « Disponible » + photo to take = the Catalogué step.
+    const draftStage = (d.prodStage as ProdStageId) || 'atelier'
+    setProdStage(draftStage === 'available' && d.needsPhoto ? 'catalogued' : draftStage)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
     setLocalisationAddressId(d.localisationAddressId ?? '')
@@ -545,8 +548,6 @@ export function DrawerContent({
     const loadedOwn = ownStageFromStatusId(o.statusId)
     const loadedProd = prodStageFromOeuvre(o)
     setProdStage(loadedProd)
-    // Seed from the derived stage (what editorBaseline stores), not raw NeedsPhotograph.
-    setNeedsPhoto(loadedProd === 'catalogued')
     setOwnStage(loadedOwn)
     const pemRow = (initialContacts as DrawerContactRow[]).find((c) =>
       (c.NomInstitution ?? '').toLowerCase().includes('pem'),
@@ -758,12 +759,10 @@ export function DrawerContent({
   // the source of the recurring false "Unsaved changes" dialog.
   const handleProdStageChange = useCallback((next: ProdStageId) => {
     setProdStage(next)
-    setNeedsPhoto(next === 'catalogued')
   }, [])
 
   const handleNeedsPhotoChange = useCallback((v: boolean) => {
-    setNeedsPhoto(v)
-    if (!v) setProdStage('available')
+    setProdStage(v ? 'catalogued' : 'available')
   }, [])
 
   useEffect(() => {
@@ -948,7 +947,6 @@ export function DrawerContent({
     fd.append('prix_final', String(prixFinalComputed))
     fd.append('tva_rate', tvaRate)
     fd.append('is_paid', paymentDone ? '1' : '0')
-    fd.append('is_gift', ownStage === 'gift' ? '1' : '0')
     fd.append('commentaires', commentaires)
     fd.append('historique', historique)
     fd.append('catalogued', prodStage !== 'atelier' ? '1' : '0')

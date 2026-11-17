@@ -161,7 +161,8 @@ export function WorkForm({
 
   // ── Production state (derived from booleans) ──────────────────────
   const [prodStage,  setProdStage]  = useState<ProdStageId>(() => prodStageFromOeuvre(oeuvre))
-  const [needsPhoto, setNeedsPhoto] = useState(!!(oeuvre?.NeedsPhotograph ?? false))
+  // The stage is held once (docs/WORK_RULES.md, #2381): « photo to take » IS the Catalogué step.
+  const needsPhoto = prodStage === 'catalogued'
 
   // ── Ownership / flow state ────────────────────────────────────────
   const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
@@ -324,8 +325,8 @@ export function WorkForm({
     setHauteur(d.hauteur ?? '')
     setLargeur(d.largeur ?? '')
     setProfondeur(d.profondeur ?? '')
-    setProdStage((d.prodStage as ProdStageId) || 'atelier')
-    setNeedsPhoto(!!d.needsPhoto)
+    const draftStage = (d.prodStage as ProdStageId) || 'atelier'
+    setProdStage(draftStage === 'available' && d.needsPhoto ? 'catalogued' : draftStage)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
@@ -409,24 +410,6 @@ export function WorkForm({
   }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
 
   // ── Automations ───────────────────────────────────────────────────
-
-  // A. Change of prodStage dictates NeedsPhoto logic
-  useEffect(() => {
-    if (prodStage === 'catalogued') {
-      setNeedsPhoto(true)
-    } else {
-      setNeedsPhoto(false)
-    }
-  }, [prodStage])
-
-  // B. NeedsPhoto cleared → move to available
-  const prevNeedsPhoto = useRef(needsPhoto)
-  useEffect(() => {
-    if (!needsPhoto && prevNeedsPhoto.current === true) {
-      setProdStage('available')
-    }
-    prevNeedsPhoto.current = needsPhoto
-  }, [needsPhoto])
 
   // C. Gift → price = 0
   useEffect(() => {
@@ -814,8 +797,9 @@ export function WorkForm({
               }} color={PROD_STAGE_COLOR[prodStage]} />
               <div style={{ display: 'flex', gap: 32, marginTop: 20 }}>
                 <Switch label={t('wf_photo_required')} checked={needsPhoto} onChange={v => {
-                  if (isOwnershipTransferred || isArchived) return
-                  setNeedsPhoto(v)
+                  // The photo switch moves between the Catalogué step and Disponible; at the Atelier step it waits.
+                  if (isOwnershipTransferred || isArchived || prodStage === 'atelier') return
+                  setProdStage(v ? 'catalogued' : 'available')
                 }} />
                 <Switch label={t('wf_exposable')} checked={exposable} onChange={setExposable} />
               </div>

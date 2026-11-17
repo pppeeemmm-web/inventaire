@@ -20,12 +20,6 @@ import {
   type ConditionWorkPatch,
 } from '@/lib/condition'
 import { DATE_PRECISIONS, type DatePrecision } from '@/lib/partial-date'
-import {
-  appendHistoriqueForOeuvres,
-  formatFateHistoriqueLine,
-  formatFateReportRemovedHistoriqueLine,
-  formatFoundHistoriqueLine,
-} from '@/lib/oeuvre-historique'
 
 type Err = { error: string }
 type Supa = Awaited<ReturnType<typeof createClient>>
@@ -192,8 +186,7 @@ export async function createConditionReport(
     .select(REPORT_COLS)
     .single()
   if (error || !data) return writeError(error?.message ?? 'insert')
-  const fateLine = formatFateHistoriqueLine(data as Omit<ConditionReport, 'issues'>)
-  if (fateLine) await appendHistoriqueForOeuvres(supabase, [{ oeuvreId, lines: [fateLine] }])
+  // « [date] Détruite / Perdue » is written by the database with the status (oeuvre_history).
   revalidatePath('/atelier')
   return { ok: true, report: { ...(data as Omit<ConditionReport, 'issues'>), issues: [] }, work: await workPatch(supabase, oeuvreId) }
 }
@@ -207,21 +200,13 @@ export async function updateConditionReport(
   if (!user) return { error: 'auth' }
   const clean = cleanInput(input)
   if ('error' in clean) return clean
-  const { data: before } = await supabase.from('condition_report').select('kind, resolved_on').eq('id', id).maybeSingle()
   const { data, error } = await supabase.from('condition_report').update(clean.values).eq('id', id).select(REPORT_COLS).maybeSingle()
   if (error) return writeError(error.message)
   // RLS hides the row from the update when the user is neither its author nor admin.
   if (!data) return { error: 'forbidden' }
   revalidatePath('/atelier')
   const report = data as Omit<ConditionReport, 'issues'>
-  // History: an examination turned into a destruction / loss, or a lost work found again.
-  const lines: string[] = []
-  if (before && before.kind !== report.kind) {
-    const l = formatFateHistoriqueLine(report)
-    if (l) lines.push(l)
-  }
-  if (report.kind === 'lost' && report.resolved_on && !before?.resolved_on) lines.push(formatFoundHistoriqueLine(report.resolved_on))
-  if (lines.length) await appendHistoriqueForOeuvres(supabase, [{ oeuvreId: report.oeuvre_id, lines }])
+  // History (a destruction / loss, « Retrouvée »): written by the database (oeuvre_history).
   return { ok: true, report, work: await workPatch(supabase, report.oeuvre_id) }
 }
 
@@ -232,15 +217,10 @@ export async function deleteConditionReport(id: number): Promise<{ ok: true; wor
   if (!user) return { error: 'auth' }
   // Issues go with the constat (FK cascade): read their photos first so they can be recycled.
   const { data: issues } = await supabase.from('condition_issue').select('photo_key').eq('report_id', id)
-  const { data, error } = await supabase.from('condition_report').delete().eq('id', id).select('id, oeuvre_id, kind, resolved_on')
+  const { data, error } = await supabase.from('condition_report').delete().eq('id', id).select('id, oeuvre_id')
   if (error) return writeError(error.message)
   if (!data?.length) return { error: 'forbidden' }
-  // An open destruction / loss report gave the work its status: say in the history that it went.
-  if (data[0].kind !== 'examination' && !data[0].resolved_on) {
-    await appendHistoriqueForOeuvres(supabase, [
-      { oeuvreId: data[0].oeuvre_id, lines: [formatFateReportRemovedHistoriqueLine(data[0].kind)] },
-    ])
-  }
+  // « Constat … supprimé » is written by the database when the status comes back (oeuvre_history).
   await recyclePhotos((issues ?? []).map((r) => r.photo_key))
   revalidatePath('/atelier')
   return { ok: true, work: await workPatch(supabase, data[0].oeuvre_id) }

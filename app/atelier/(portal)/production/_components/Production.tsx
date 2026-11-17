@@ -17,11 +17,22 @@ import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-a
 import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
 import { imageUrl, thumbUrl, yearOf, statusOf } from '@/lib/data'
 import { isInProduction } from '@/lib/production-scope'
+import { addBoardTask, completeBoardTask, moveBoardTask, type BoardResult } from '@/app/atelier/works/production-board-actions'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { MissingThumb, WorkThumb, SuggestionThumb } from '@/components/atelier/WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────
+
+/** Refusals from production-board-actions.ts; database gates fall back to gateErrorKey. */
+const BOARD_OWN_ERRORS: Record<string, DictKey> = {
+  catalogue_requires_photo: 'prod_err_catalogue_requires_photo',
+  photo_requires_catalogue: 'prod_err_photo_requires_catalogue',
+}
+function boardErrorKey(code: string): DictKey | null {
+  return BOARD_OWN_ERRORS[code] ?? gateErrorKey(code)
+}
 
 interface ActionType {
   id:         number
@@ -126,115 +137,58 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     for (const a of actions) worksWithActions.add(a.oeuvre_id)
 
     return localOeuvres.filter((o) => {
-      if (!isInProduction(o, statusLabelMap, worksWithActions)) return false
+      if (!isInProduction(o, worksWithActions)) return false
       if (sq) {
         const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''}`.toLowerCase()
         if (!bag.includes(sq)) return false
       }
       return true
     })
-  }, [localOeuvres, statusLabelMap, tM, search, actions])
+  }, [localOeuvres, tM, search, actions])
 
   const oeuvresById = useMemo(
     () => new Map(localOeuvres.map((o) => [o.OeuvreID, o])),
     [localOeuvres],
   )
 
-  async function markDone(oeuvreId: number, actionTypeId: number) {
-    const actionType = actionTypes.find((at) => at.id === actionTypeId)
-    const o = oeuvresById.get(oeuvreId)
-
-    // Mark the action row as done
-    const { error } = await sb.from('work_action')
-      .update({ done: true, done_at: new Date().toISOString() })
-      .eq('oeuvre_id', oeuvreId)
-      .eq('action_type_id', actionTypeId)
-
-    if (error) {
-      alert(t('prod_tab_err_update').replace('{msg}', error.message))
-      return
+  // Every move goes through the server (production-board-actions.ts): a refused save is shown and the
+  // board redraws from what the database kept — status, tasks and history follow the stage there.
+  function applyBoardResult(oeuvreId: number, r: BoardResult): boolean {
+    if ('error' in r) {
+      const key = boardErrorKey(r.error)
+      alert(key ? t(key) : t('prod_tab_err_update').replace('{msg}', r.error))
+      void loadData()
+      return false
     }
-
-    let newActionsToAdd: any[] = []
-
-    // Write back to Oeuvres if this action has a linked field
-    if (actionType?.field_key || actionTypeId === 6 || actionTypeId === 9) {
-      const updates: any = {}
-      if (actionType?.field_key) updates[actionType.field_key] = true
-
-      if (actionTypeId === 9) {
-        // Cataloguer ticked done → enter photo gate, do NOT skip to Available
-        updates['Catalogué']        = true
-        updates['NeedsPhotograph']  = true
-        updates['statusId']         = 1  // En production — gate not cleared yet
-
-        // Auto-create Photographier task if not already pending
-        const { data: existing } = await sb.from('work_action')
-          .select('id')
-          .eq('oeuvre_id', oeuvreId)
-          .eq('action_type_id', 6)
-          .eq('done', false)
-          .maybeSingle()
-        if (!existing) {
-          const { data: newAction } = await sb.from('work_action').insert({
-            oeuvre_id:      oeuvreId,
-            action_type_id: 6,
-            done:           false,
-          }).select().single()
-          if (newAction) newActionsToAdd.push(newAction)
-        }
-      } else if (actionTypeId === 6) {
-        // Photographier ticked done → clear photo gate, move to Disponible
-        updates['NeedsPhotograph'] = false
-        updates['statusId']        = 2  // Disponible
-      } else {
-        // Other field_key actions — only advance to Available if fully ready
-        const willBeCatalogued = o?.Catalogué
-        const willNotNeedPhoto = !o?.NeedsPhotograph
-        if (willBeCatalogued && willNotNeedPhoto) {
-          updates['statusId'] = 2
-        }
-      }
-
-      await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
-
-      // Update local oeuvres state so header counts and filters update instantly
-      if (Object.keys(updates).length > 0) {
-        setLocalOeuvres((prev) =>
-          prev.map((item) =>
-            item.OeuvreID === oeuvreId ? { ...item, ...updates } : item
-          )
-        )
-      }
+    if (r.work) {
+      const w = r.work
+      setLocalOeuvres((prev) => prev.map((item) => (item.OeuvreID === oeuvreId
+        ? {
+            ...item,
+            statusId: w.statusId,
+            Catalogué: !!w.Catalogué,
+            NeedsPhotograph: !!w.NeedsPhotograph,
+            Encadree: w.Encadree,
+            Montee: w.Montee,
+            Exposable: w.Exposable,
+          }
+        : item)))
     }
-
-    // Remove from local state so card disappears immediately, and inject new actions so they appear instantly
-    setActions((prev) => {
-      const filtered = prev.filter(
-        (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
-      )
-      return [...filtered, ...newActionsToAdd]
-    })
-    
-    // Sync the main oeuvres list so the tables update their status chips
+    setActions((prev) => [...prev.filter((a) => a.oeuvre_id !== oeuvreId), ...r.openTasks])
     router.refresh()
+    return true
   }
 
-  // Add an action to a work
+  async function markDone(oeuvreId: number, actionTypeId: number) {
+    applyBoardResult(oeuvreId, await completeBoardTask(oeuvreId, actionTypeId))
+  }
+
   async function addAction(oeuvreId: number, actionTypeId: number) {
-    const { data } = await sb.from('work_action')
-      .upsert({ oeuvre_id: oeuvreId, action_type_id: actionTypeId, done: false },
-               { onConflict: 'oeuvre_id,action_type_id' })
-      .select()
-      .single()
-    if (data) setActions((prev) => [...prev.filter(
-      (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
-    ), data])
+    applyBoardResult(oeuvreId, await addBoardTask(oeuvreId, actionTypeId))
   }
 
-  // Drag a card back to an earlier column (desktop, owner 2026-11-12): the pending to-do of the
-  // source column is deleted (not marked done — markDone has side effects) and one is added on the
-  // target. Onto Catalogue = rewind: not catalogued, status En production (photo flag kept).
+  // Drag a card back to an earlier column (desktop, owner 2026-11-12): the open to-do of the source
+  // column goes (not ticked) and one opens on the target. Onto Catalogue = back to the Atelier stage.
   // Forward onto Photography stays on ✓ only.
   const [drag, setDrag] = useState<{ oid: number; from: number } | null>(null)
   async function moveAction(oeuvreId: number, fromType: number, toType: number) {
@@ -243,28 +197,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       toast.info(t('prod_drag_forward_tick'))
       return
     }
-    const { error: delErr } = await sb.from('work_action')
-      .delete()
-      .eq('oeuvre_id', oeuvreId)
-      .eq('action_type_id', fromType)
-      .eq('done', false)
-    if (delErr) {
-      alert(t('prod_tab_err_update').replace('{msg}', delErr.message))
-      return
-    }
-    if (toType === 9) {
-      const updates = { Catalogué: false, statusId: 1 }
-      const { error } = await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
-      if (error) {
-        alert(t('prod_tab_err_update').replace('{msg}', error.message))
-        await loadData()
-        return
-      }
-      setLocalOeuvres((prev) => prev.map((item) => (item.OeuvreID === oeuvreId ? { ...item, ...updates } : item)))
-    }
-    setActions((prev) => prev.filter((a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === fromType)))
-    await addAction(oeuvreId, toType)
-    router.refresh()
+    applyBoardResult(oeuvreId, await moveBoardTask(oeuvreId, fromType, toType))
   }
 
   const productionCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'en_production').length

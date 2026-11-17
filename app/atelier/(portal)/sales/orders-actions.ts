@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { logError } from '@/lib/error-reporter/server'
 import { circulationError, CONSIGN_FROM, SALE_ORDER_FROM } from '@/lib/work-circulation'
-import { appendHistoriqueForOeuvres, historiqueLinesForOeuvreUpdate } from '@/lib/oeuvre-historique'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import { ORDER_KEY_PREFIX, VAULT_ORDER_FOLDERS } from '@/lib/vault/folder-routing'
@@ -370,28 +369,15 @@ type OrderRow = {
   id: string; kind: WorkOrderKind; status: string; party_id: number; address_id: number | null
   end_date: string | null; price_final: number | null; ref: string | null
 }
-type WorkRow = { OeuvreID: number; statusId: number | null; ContactID: number | null; LocalisationID: number | null }
 
-/** Move the works of an order and write their history lines. */
-async function moveWorks(
-  supabase: Supa,
-  ids: number[],
-  patch: Record<string, unknown>,
-  after: (w: WorkRow) => { statusId: number | null; contactId: number | null; localisationId: number | null },
-): Promise<string | null> {
+/**
+ * Move the works of an order. Their history lines (« Réservé — X », « Vendu à X », custodian…) and
+ * status events are written by the database on this update (oeuvre_history, docs/WORK_RULES.md rule 14).
+ */
+async function moveWorks(supabase: Supa, ids: number[], patch: Record<string, unknown>): Promise<string | null> {
   if (ids.length === 0) return null
-  const { data: before, error: readErr } = await supabase
-    .from('Oeuvres').select('OeuvreID, statusId, ContactID, LocalisationID').in('OeuvreID', ids)
-  if (readErr) return readErr.message
   const { error } = await supabase.from('Oeuvres').update(patch).in('OeuvreID', ids)
-  if (error) return error.message
-  const items: { oeuvreId: number; lines: string[] }[] = []
-  for (const w of (before ?? []) as WorkRow[]) {
-    const lines = await historiqueLinesForOeuvreUpdate(supabase, { statusId: w.statusId, ContactID: w.ContactID, LocalisationID: w.LocalisationID }, after(w))
-    if (lines.length) items.push({ oeuvreId: w.OeuvreID, lines })
-  }
-  await appendHistoriqueForOeuvres(supabase, items)
-  return null
+  return error ? error.message : null
 }
 
 export async function advanceWorkOrder(orderId: string, to: string): Promise<SimpleOrderResult> {
@@ -450,30 +436,23 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
 
   let moveErr: string | null = null
   if (order.kind === 'sale' && to === 'signed') {
-    moveErr = await moveWorks(supabase, ids, { statusId: 4, AcheteurID: party },
-      // contactId names the line (« Réservé — <buyer> »); owner stays Pem until paid.
-      (w) => ({ statusId: 4, contactId: party, localisationId: w.LocalisationID }))
+    moveErr = await moveWorks(supabase, ids, { statusId: 4, AcheteurID: party })
   } else if (order.kind === 'sale' && to === 'paid') {
-    moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party },
-      (w) => ({ statusId: 6, contactId: party, localisationId: w.LocalisationID }))
+    moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party })
   } else if (order.kind === 'sale' && to === 'delivered') {
-    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id },
-      (w) => ({ statusId: w.statusId, contactId: party, localisationId: party }))
+    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id })
   } else if (order.kind === 'gift' && to === 'handed_over') {
     // Don manuel (Pem 2026-11-17): ownership and custody move together at hand-over. The price is
     // kept; the gift's reference value lives on its order line.
     moveErr = await moveWorks(supabase, ids,
-      { statusId: 11, ContactID: party, AcheteurID: party, is_gift: true, LocalisationID: party, localisation_address_id: order.address_id },
-      () => ({ statusId: 11, contactId: party, localisationId: party }))
+      { statusId: 11, ContactID: party, AcheteurID: party, LocalisationID: party, localisation_address_id: order.address_id })
   } else if (order.kind === 'entrusted' && to === 'out') {
     // « Confié »: the work keeps its stage and owner; only the custodian changes.
-    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date },
-      (w) => ({ statusId: w.statusId, contactId: w.ContactID, localisationId: party }))
+    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date })
   } else if (order.kind === 'entrusted' && to === 'closed') {
     const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('LocalisationID', party)
     const back = (still ?? []).map((w) => w.OeuvreID)
-    moveErr = await moveWorks(supabase, back, { LocalisationID: PEM, localisation_address_id: null, ReturnDate: null },
-      (w) => ({ statusId: w.statusId, contactId: w.ContactID, localisationId: PEM }))
+    moveErr = await moveWorks(supabase, back, { LocalisationID: PEM, localisation_address_id: null, ReturnDate: null })
     if (!moveErr && ids.length) {
       await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
         .eq('order_id', order.id).eq('line_status', 'active')
@@ -481,17 +460,14 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   } else if ((order.kind === 'consignment' || order.kind === 'loan') && to === 'out') {
     const statusId = order.kind === 'loan' ? 8 : 7
     moveErr = await moveWorks(supabase, ids,
-      { statusId, ContactID: PEM, LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date },
-      // contactId names the line (« Consigné / Prêt — <gallery / borrower> »); owner stays Pem.
-      () => ({ statusId, contactId: party, localisationId: party }))
+      { statusId, ContactID: PEM, LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date })
   } else if ((order.kind === 'consignment' || order.kind === 'loan') && to === 'closed') {
     // Only works still out with this custodian come back; sold / given ones left the order already.
     const { data: still } = await supabase.from('Oeuvres').select('OeuvreID')
       .in('OeuvreID', ids).in('statusId', [7, 8]).eq('LocalisationID', party)
     const back = (still ?? []).map((w) => w.OeuvreID)
     moveErr = await moveWorks(supabase, back,
-      { statusId: 2, ContactID: PEM, LocalisationID: PEM, localisation_address_id: null, ReturnDate: null },
-      () => ({ statusId: 2, contactId: PEM, localisationId: PEM }))
+      { statusId: 2, ContactID: PEM, LocalisationID: PEM, localisation_address_id: null, ReturnDate: null })
     if (!moveErr && ids.length) {
       await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
         .eq('order_id', order.id).eq('line_status', 'active')
@@ -553,8 +529,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
     for (const w of reserved ?? []) {
       // Back to « Disponible » at Pem's, or « Consigné » if it is still at a gallery that holds it.
       const atGallery = w.LocalisationID != null && w.LocalisationID !== PEM
-      const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null },
-        (x) => ({ statusId: atGallery ? 7 : 2, contactId: PEM, localisationId: x.LocalisationID }))
+      const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null })
       if (err) return { error: err }
     }
   }
@@ -756,8 +731,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   const { data: reserved } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('statusId', 4).eq('AcheteurID', o.party_id)
   const back = [...new Set([...(still ?? []), ...(reserved ?? [])].map((w) => w.OeuvreID))]
   const moveErr = await moveWorks(supabase, back,
-    { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null },
-    () => ({ statusId: 2, contactId: PEM, localisationId: PEM }))
+    { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null })
   if (moveErr) {
     await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
     return { error: moveErr }

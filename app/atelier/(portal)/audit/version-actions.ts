@@ -81,6 +81,10 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     'fate_on',
     'fate_precision',
     'status_before_fate',
+    // Dropped columns still present in older snapshots (work_state_drop_duplicates.sql, 2026-11-17).
+    'is_gift',
+    'StageProduction',
+    'commercial_status',
   ])
   const payload: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(snap)) {

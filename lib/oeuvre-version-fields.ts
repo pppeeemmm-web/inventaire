@@ -28,7 +28,6 @@ export const OEUVRE_VERSION_FIELDS = [
   'NeedsPhotograph',
   'IsCommission',
   'is_paid',
-  'is_gift',
   'anonymity_level',
 ] as const
 
@@ -57,7 +56,6 @@ const LABEL_KEYS = {
   NeedsPhotograph: 'vf_needs_photo',
   IsCommission: 'vf_commission',
   is_paid: 'vf_paid',
-  is_gift: 'vf_gift',
   anonymity_level: 'vf_anonymity',
 } as const satisfies Record<OeuvreVersionField, DictKey>
 

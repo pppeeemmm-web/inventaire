@@ -14,6 +14,15 @@ export const accountMessages = defineMessages({
     fr: 'Vers Photographie : utilisez ✓ sur la carte (avancer passe par ✓).',
     en: 'To Photography: use ✓ on the card (moving forward goes through ✓).',
   },
+  // Production board refusals (production-board-actions.ts).
+  prod_err_catalogue_requires_photo: {
+    fr: 'Cataloguer : ajoutez d’abord au moins une photo à l’œuvre.',
+    en: 'Catalogue: add at least one photo to the work first.',
+  },
+  prod_err_photo_requires_catalogue: {
+    fr: 'Photographier : l’œuvre doit d’abord être cataloguée.',
+    en: 'Photograph: the work must be catalogued first.',
+  },
   // `#1234` preview (WorkRef).
   wr_untitled: { fr: 'Sans titre', en: 'Untitled' },
   wr_not_found: { fr: 'Œuvre introuvable', en: 'Work not found' },

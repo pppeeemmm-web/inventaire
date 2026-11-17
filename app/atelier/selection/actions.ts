@@ -22,10 +22,6 @@ import {
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
-import {
-  appendHistoriqueForOeuvres,
-  historiqueLinesForOeuvreUpdate,
-} from '@/lib/oeuvre-historique'
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
 import sharp from 'sharp'
@@ -66,7 +62,6 @@ export interface BatchChanges {
   // Group junction — add and/or remove group IDs across working_group_work
   addGroupIds?:       string[]
   removeGroupIds?:    string[]
-  is_gift?:           boolean
   is_paid?:           boolean
   NeedsPhotograph?:   boolean
   broadcast_ready?:   boolean
@@ -162,7 +157,6 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   }
   if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
   if (changes.localisation_address_id !== undefined) update.localisation_address_id = changes.localisation_address_id
-  if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
   if (changes.broadcast_ready   !== undefined) update.broadcast_ready   = changes.broadcast_ready
@@ -210,23 +204,8 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   let count = ids.length
 
-  const historiqueRelevant = changes.statusId !== undefined
-
-  let worksBefore: Array<{
-    OeuvreID: number
-    statusId: number | null
-    ContactID: number | null
-    LocalisationID: number | null
-  }> = []
-
-  if (hasScalarChanges && historiqueRelevant) {
-    const { data } = await supabase
-      .from('Oeuvres')
-      .select('OeuvreID, statusId, ContactID, LocalisationID')
-      .in('OeuvreID', ids)
-      .is('deleted_at', null)
-    worksBefore = (data ?? []) as typeof worksBefore
-  }
+  // Status / owner / custodian history lines are written by the database (oeuvre_history,
+  // docs/WORK_RULES.md rule 14).
 
   if (hasScalarChanges) {
     const { error, data: updatedIds } = await supabase
@@ -237,28 +216,6 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
       .select('OeuvreID')
     if (error) return { error: error.message }
     count = updatedIds?.length ?? ids.length
-
-    if (historiqueRelevant && worksBefore.length > 0) {
-      const histItems: { oeuvreId: number; lines: string[] }[] = []
-      for (const w of worksBefore) {
-        const lines = await historiqueLinesForOeuvreUpdate(
-          supabase,
-          {
-            statusId: w.statusId,
-            ContactID: w.ContactID,
-            LocalisationID: w.LocalisationID,
-          },
-          {
-            statusId:
-              changes.statusId !== undefined ? changes.statusId : w.statusId,
-            contactId: w.ContactID,
-            localisationId: w.LocalisationID,
-          },
-        )
-        if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
-      }
-      await appendHistoriqueForOeuvres(supabase, histItems)
-    }
   }
 
   // Comments: appended per work, "YYYY-MM-DD — text" on a new line (owner 2026-11-13: never overwrite).

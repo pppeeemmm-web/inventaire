@@ -25,7 +25,7 @@ A work's fate (destroyed / lost) has **one source**: an open condition report of
 
 `OeuvreStatus`: 1 En production · 2 Disponible · 3 Archive artiste · 4 Réservé · 6 Vendu · 7 Consigné · 8 Prêt · 9 Destroyed · 10 Lost · 11 Gift. (5 "Archive privée" removed 2026-11-03.)
 
-Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Cataloguer → Photographier → Disponible (see §5).
+Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Cataloguer → Photographier → Disponible (see §5). **Rules of a work (states, moves, consequences, live checks): [`WORK_RULES.md`](./WORK_RULES.md)** — since 2026-11-17 (batch 1) the database sets the studio status from the stage, opens / closes the stage tasks, stamps a ticked task, dates the end of production at Prêt, sets tasks aside for archived / destroyed / lost works, and writes every Historique line and status event ([`work_state_rules.sql`](../supabase/sql/work_state_rules.sql)).
 
 **Archive (3) = the shelf** (Pem 2026-11-17, [`archive_shelf.sql`](../supabase/sql/archive_shelf.sql)): put away, out of circulation, reversible.
 - In only once catalogued (a partial record is fine) — the database refuses otherwise (`archive_requires_catalogue`); nothing ticks « Catalogué » by itself any more. Un-ticking « Catalogué » on an archived work is refused the same way.
@@ -39,15 +39,19 @@ Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Catal
 |---|---|---|---|
 | 1 | `oeuvre_version_snap` → `snapshot_oeuvre` | every UPDATE | OLD row → `oeuvre_versions` (snapshot keys = real column names), `changed_by = auth.uid()` |
 | 2 | `trg_enforce_anonymity_level` | INSERT/UPDATE | Unless `admin_override_anonymity`: status 1/2 → `anonymity_level` 0; status 3 → 2 |
+| 2a | `trg_oeuvre_a_status_follows_stage` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph`, `fate` | Status 1 / 2 with no fate → 2 if catalogued and photo validated, else 1 (WORK_RULES rule 5, 2026-11-17) |
 | 2b | `trg_oeuvre_archive_guard` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph` | §2 Archive: status 3 needs `Catalogué`; 3 → 2 needs the photo done. Errors `archive_requires_catalogue`, `archive_exit_requires_photo` (2026-11-17) |
 | 3 | `trg_oeuvre_fate_guard` | `statusId`, `fate` | §1 |
 | 4 | `trg_oeuvre_field_defaults` | `LocalisationID`, `ContactID`, `Profondeur`, `Encadree`, `Montee`, `Technique` | No holder → owner (else Pem 13); empty depth, not framed/mounted/sculpture → `0.1` |
 | 5 | `trg_oeuvre_holder_check` | `statusId`, `ContactID`, `LocalisationID` | 1/2/3: Pem owns + holds. 4: Pem owns. 7/8: custodian ≠ Pem + active custody order. 6: owner ≠ Pem + paid sale order; custody to buyer only on delivery. 11: owner ≠ Pem. Errors `custody_order_required`, `holder_required`, `sale_order_required` |
 | 6 | `trg_oeuvre_location_by_stage` | `statusId`, `Catalogué`, `NeedsPhotograph`, `LocalisationID`, `localisation_address_id`, `fate` | Address must belong to the holder. Holder ≠ Pem with one address → that address. Pem: address follows stage (Atelier in production, Principal from Disponible) unless picked by hand |
-| 7 | `trg_oeuvre_production_span` | `Catalogué`, `statusId`, `Année`, `production_started_on`, `production_completed_on`, `production_started_precision`, `production_completed_precision` | Catalogued → `production_completed_on` = today (precision reset to day); un-catalogued → cleared + "Reprise en production" line in `Historique`. `Année` empty → year of completion. End before start → error. Start / end can be a year or month (stored 1 Jan / the 1st + precision; null = day, [`oeuvres_production_precision.sql`](../supabase/sql/oeuvres_production_precision.sql), 2026-11-14). Status 1 also covers « catalogued, photo still to take » (`NeedsPhotograph`) — screens must word it from `Catalogué`, not from the status label |
+| 7 | `trg_oeuvre_production_span` | `Catalogué`, `NeedsPhotograph`, `statusId`, `Année`, `production_started_on`, `production_completed_on`, `production_started_precision`, `production_completed_precision` | Becomes Prêt (catalogued + photo validated) → `production_completed_on` = today (precision reset to day); leaves Prêt → cleared + "Reprise en production" line in `Historique` (WORK_RULES rule 8, 2026-11-17; was: at cataloguing). `Année` empty → year of completion. End before start → error. Start / end can be a year or month (stored 1 Jan / the 1st + precision; null = day, [`oeuvres_production_precision.sql`](../supabase/sql/oeuvres_production_precision.sql), 2026-11-14). Status 1 also covers « catalogued, photo still to take » (`NeedsPhotograph`) — screens must word it from `Catalogué`, not from the status label |
 | 8 | `trg_oeuvre_soft_delete_gate` | `deleted_at` | Soft-deleting a sold / gift work: admin only |
-| 9 | `trg_sync_is_public` | `statusId`, `fate` | `is_public` = status in (2, 4, 6, 7, 8, 11) and no fate |
-| after | `trg_oeuvre_archive_tasks` (security definer) | `statusId` | Into 3 → pause open `work_action`; 3 → 1 / 2 → un-pause (§2 Archive, 2026-11-17) |
+| 9 | `trg_sync_is_public` | `statusId`, `fate`, `Catalogué`, `NeedsPhotograph` | `is_public` = status in (2, 4, 6, 7, 8, 11) and no fate |
+| 10 | `trg_zz_oeuvre_history` (security definer) | every UPDATE | Last BEFORE trigger: status line (« Vendu à X », « Réservé — X », « A → B »…), destroyed / lost / found / report removed, custodian line — appended to `Historique` unless already there (rule 14) |
+| after | `trg_oeuvre_archive_tasks` (security definer) | `statusId` | Into 3 / 9 / 10 → open `work_action` set aside (`paused_at`); out to any other status → back (rule 12) |
+| after | `trg_oeuvre_tasks_follow_stage` (security definer) | INSERT; `Catalogué`, `NeedsPhotograph` | Cataloguer open ⇔ not catalogued; Photographier open ⇔ catalogued + photo to take (rule 6) |
+| after | `trg_oeuvre_status_event` (security definer) | UPDATE where status changed | `system_log` STATUS_CHANGE, source `db` (rule 14) |
 | after | `graph_register_oeuvre_node` / `graph_unregister_oeuvre_node` | INSERT / DELETE | Index node in `nodes` |
 | after | `graph_oeuvre_embedding_dirty` | `Titre`, `Commentaires`, `Technique` | Marks the work's index text for re-embedding |
 | after | `graph_sync_oeuvre_contact_edges` | `AcheteurID`, `ContactID`, `LocalisationID` | Graph edges work ↔ contacts |
@@ -63,7 +67,7 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | `tblImage` | `tblimage_cover_sync` | Keeps `Oeuvres.txtImageNameLink` = cover image |
 | `contact_addresses` | `trg_contact_address_link_single` (security definer) | Contact left with one address → its works (≠ Pem, not deleted) without address get it (2026-11-12) |
 | `condition_report` | §1 | Fate |
-| `work_action` | `trg_work_action_archive_pause` (security definer) | Task added / reopened on an archived work → paused; ticked done → pause cleared (§2 Archive, 2026-11-17) |
+| `work_action` | `trg_work_action_before_write` (security definer) | Task added / reopened on an archived / destroyed / lost work → set aside; ticked → pause cleared, `done_at` stamped; unticked → `done_at` cleared (rules 7, 12) |
 | `Contact` | `ensure_admin_flags_protected` | Only an admin may change `is_admin`, `is_team_member`, `IsTeamMember` |
 | `shipment` | `trg_shipment_return_window` | Sale order return window from delivery |
 | `sale_order` | `trg_sale_order_ref` | Order reference |
@@ -74,13 +78,13 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 
 | Writer | Writes | Notes |
 |---|---|---|
-| `saveWork` (`app/atelier/works/actions.ts`) | Most `Oeuvres` fields incl. `statusId` | Non-admin edits on existing works → `pending_changes` (keys in `lib/work-pending-keys.ts`); approval replays `saveWork` |
+| `saveWork` (`app/atelier/works/actions.ts`) | Most `Oeuvres` fields incl. `statusId` (one stage, no separate photo switch since 2026-11-17); no history line / status event / task sync of its own | Non-admin edits on existing works → `pending_changes` (keys in `lib/work-pending-keys.ts`); approval replays `saveWork` |
 | Drawer pipeline stages | Status 1/2/3/4/7/8/6/11 via orders | 9/10 not offered |
-| Production board (`Production.tsx`) | `work_action` done; `Catalogué`, `NeedsPhotograph`, `statusId` 1/2; drag-back (desktop, 2026-11-13) deletes the pending source row, adds the target row; onto Catalogue: `Catalogué=false`, `statusId=1` | Columns: not catalogued → Catalogue only; Photography needs catalogued; handling columns stack; forward onto Photography only by ✓ |
+| Production board (`Production.tsx` → server `production-board-actions.ts` since 2026-11-17; shows a refusal) | `Catalogué`, `NeedsPhotograph`, other tasks' fields; status and stage tasks follow in the database; drag-back (desktop, 2026-11-13) deletes the pending source row, adds the target row; onto Catalogue: `Catalogué=false`, `statusId=1` | Columns: not catalogued → Catalogue only; Photography needs catalogued; handling columns stack; forward onto Photography only by ✓ |
 | Image descriptions (`describe_batch.py`, service role) | `work_description` (AI, unverified); feeds `oeuvre_search_text` → node pending | Never writes `Commentaires`; one row per work + cover + engine + prompt |
 | Work drawer links (`WorkLinksSection`), See again **Link** | `tblrelations` (source = this work, target = other; `lib/work-links.ts` types: painted_on, derived_from, answers, series, diptych, influence, proximity) via `insertConstellationRelation` | Human links only; the Constellation draws unknown types with its default edge |
 | Orders: sales, consignments, gifts, exhibitions | `statusId`, `ContactID`, `LocalisationID` | Through the holder check |
-| Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address | Archive: checks first and names the works not catalogued; nothing changes if one blocks (2026-11-17) |
+| Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address (no « gift » flag since 2026-11-17) | Archive: checks first and names the works not catalogued; nothing changes if one blocks (2026-11-17) |
 | Field session apply (`app/atelier/session/actions.ts`) | New work (`Titre`, size, `Technique`, `Support`, `statusId` 1, `NeedsPhotograph`, `production_started_on`, `Historique`); images via `addWorkImage` | Existing works: size/technique/support display-only, never written back |
 | Condition reports | `condition_report` → fate via §1 | Admin for destroyed/lost |
 | Version restore (`restoreOeuvreVersion`, admin) | Snapshot row minus `OeuvreID`, `is_public`, `txtImageNameLink`, `created_at`, `fate*`, `status_before_fate` | Refused while a fate is open (`fate_open`); a snapshot with status 9/10 and no fate is refused by the guard |
@@ -132,5 +136,6 @@ Every function sets `search_path` (`set search_path to 'public'`) — new ones t
 - 2026-11-12 — the stage/address trigger only ran on work saves; address-side trigger added (§4).
 - 2026-11-12 — status 9/10 could be written without a fate; guard added (§1).
 - 2026-11-12 — 4 security-definer functions were callable signed-out (theme/group rewrite, graph insert, private text read); revoked (§7).
+- 2026-11-17 — Batch 1 of [`WORK_RULES.md`](./WORK_RULES.md): #2381 was half-moved (the card held the stage twice); 21 open Cataloguer tasks on catalogued works, 1 missing Photographier, #2112's open task, 23 end dates on works not Prêt, 12 / 37 status changes with no history line, 4 with no event. Rules moved into the database ([`work_state_rules.sql`](../supabase/sql/work_state_rules.sql)), repaired ([`work_state_repairs.sql`](../supabase/sql/work_state_repairs.sql)); `is_gift` / `StageProduction` / `commercial_status` to drop after deploy ([`work_state_drop_duplicates.sql`](../supabase/sql/work_state_drop_duplicates.sql)).
 - 2026-11-17 — Archive ticked « Catalogué » by itself (owner rule of 2026-11-03, `oeuvres_status_location_depth_rules.sql`) and left open tasks open on archived works (25 tasks on 25 works). Pem's rule of 2026-11-17 replaces it: catalogued first, tasks paused (§2 Archive, [`archive_shelf.sql`](../supabase/sql/archive_shelf.sql)); the 25 tasks were paused. Its two trigger functions are not callable through the API (EXECUTE revoked). Not yet in this map (to verify in the data-integrity walk): §5 lists 9 writers, the code has 27 files writing `Oeuvres` and 18 browser components writing tables directly.
 - 2026-11-13 — signed-out visitors could read 31 contacts (all columns), every column of 836 public works (price, notes, owner / buyer ids), all `tblrelations` and `work_action` rows; closed (§7).

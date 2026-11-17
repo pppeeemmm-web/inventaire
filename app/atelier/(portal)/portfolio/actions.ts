@@ -280,9 +280,12 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
       .is('deleted_at', null)
       .is('fate', null)
       .in('statusId', [1, 2])
-      .select('OeuvreID')
+      .select('OeuvreID, statusId')
     if (error) throw error
     if (!updated?.length) return { error: 'Statut incompatible : seule une œuvre en production ou disponible peut être rendue publique ici.' }
+    // The database keeps it En production until it is catalogued with its photo validated (rule 5,
+    // docs/WORK_RULES.md): say so instead of reporting a success.
+    if (updated[0].statusId !== 2) return { error: 'Pas encore prête : cataloguez l’œuvre et validez sa photo pour la rendre disponible.' }
     return { ok: true }
   } catch (e: any) {
     console.error('[setWorkPublic]', e)

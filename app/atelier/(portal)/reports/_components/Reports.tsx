@@ -238,7 +238,7 @@ export function Reports({
       case 'production': {
         if (!loaded.pendingActions) return null
         const withSteps = new Set(loaded.pendingActions.keys())
-        return oeuvres.filter((o) => isInProduction(o, statusLabelMap, withSteps))
+        return oeuvres.filter((o) => isInProduction(o, withSteps))
       }
       case 'kaizen':
         return loaded.kaizen?.items ?? null

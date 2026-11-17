@@ -46,7 +46,6 @@ export const PENDING_CHECKBOX_KEYS = [
   'needs_photograph',
   'admin_override_anonymity',
   'is_paid',
-  'is_gift',
   'payment_received',
   'is_anonymous',
 ] as const
@@ -216,7 +215,6 @@ export const PENDING_FORM_KEY_TO_COLUMN: Record<string, string> = {
   needs_photograph: 'NeedsPhotograph',
   admin_override_anonymity: 'admin_override_anonymity',
   is_paid: 'is_paid',
-  is_gift: 'is_gift',
   themes: 'themes',
   groups: 'groups',
 }

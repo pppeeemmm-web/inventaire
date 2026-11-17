@@ -92,7 +92,6 @@ export function BatchEditModal({
   const [encadree,       setEncadree]       = useState<Tri>(null)
   const [catalogued,     setCatalogued]     = useState<Tri>(null)
   const [isCommission,   setIsCommission]   = useState<Tri>(null)
-  const [isGift,         setIsGift]         = useState<Tri>(null)
   const [isPaid,         setIsPaid]         = useState<Tri>(null)
   const [needsPhoto,     setNeedsPhoto]     = useState<Tri>(null)
   const [broadcastReady, setBroadcastReady] = useState<Tri>(null)
@@ -109,7 +108,7 @@ export function BatchEditModal({
   function resetAll() {
     setTitre(''); setStatusId(''); setTechnique(''); setSupport(''); setFormat('')
     setPrix(''); setDiscount(''); setAnnee(''); setAddressId(''); setLocDetail(''); setNote(''); setPeriod(''); setPlace('')
-    for (const s of [setExposable, setMontee, setEncadree, setCatalogued, setIsCommission, setIsGift, setIsPaid, setNeedsPhoto, setBroadcastReady]) s(null)
+    for (const s of [setExposable, setMontee, setEncadree, setCatalogued, setIsCommission, setIsPaid, setNeedsPhoto, setBroadcastReady]) s(null)
     setThemeSel(EMPTY_SEL as JunctionSel<number>); setGroupSel(EMPTY_SEL as JunctionSel<string>)
     setError(null)
   }
@@ -192,7 +191,6 @@ export function BatchEditModal({
     { key: 'framed',     label: t('framed'),     value: encadree,     set: setEncadree,     adminOnly: true },
     { key: 'montee',     label: t('montee'),     value: montee,       set: setMontee,       adminOnly: true },
     { key: 'paid',       label: t('paid'),       value: isPaid,       set: setIsPaid,       adminOnly: true },
-    { key: 'gift',       label: t('gift'),       value: isGift,       set: setIsGift,       adminOnly: true },
     { key: 'commission', label: t('commission'), value: isCommission, set: setIsCommission, adminOnly: true },
     { key: 'catalogued', label: t('catalogued'), value: catalogued,   set: setCatalogued,   adminOnly: true },
     { key: 'exposable',  label: t('exposable'),  value: exposable,    set: setExposable,    adminOnly: true },
@@ -246,7 +244,6 @@ export function BatchEditModal({
     if (encadree       !== null) c.Encadree        = encadree
     if (catalogued     !== null) c['Catalogué']    = catalogued
     if (isCommission   !== null) c.IsCommission    = isCommission
-    if (isGift         !== null) c.is_gift         = isGift
     if (isPaid         !== null) c.is_paid         = isPaid
     if (needsPhoto     !== null) c.NeedsPhotograph = needsPhoto
     if (broadcastReady !== null) c.broadcast_ready = broadcastReady
