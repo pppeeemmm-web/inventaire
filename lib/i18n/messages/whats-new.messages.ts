@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.40 (2026-11-17) — R2: Œuvre + Vocal sheets on the phone bar (the Fil is admin-only: admin guide, not here).
+  wn_phone_work_voice_sheets_t: { fr: 'Au téléphone : Œuvre et Vocal', en: 'On the phone: Work and Voice' },
+  wn_phone_work_voice_sheets_d: {
+    fr: 'Le bouton « Œuvre » de la barre propose d’abord le choix : nouvelle œuvre, reprise d’une œuvre, ou photos de la séance. Dans « Vocal », les mots s’affichent pendant l’enregistrement quand le téléphone le permet (« Masquer les mots » pour les cacher) et restent comme premier texte de la note ; le son est toujours gardé et transcrit sur le PC. Le choix « Mémo · Général » disparaît du téléphone.',
+    en: 'The bar’s « Work » button first offers the choice: new work, resuming a work, or session photos. In « Voice », words show while recording when the phone can (« Hide words » turns them off) and stay as the note’s first text; the audio is always kept and transcribed on the PC. The « Memo · General » choice is gone from the phone.',
+  },
   // 3.1.39 (2026-11-17) — Triage on the shared swipe deck.
   wn_triage_swipe_undo_t: { fr: 'Triage : balayer, 6 s pour annuler', en: 'Triage: swipe, 6 s to undo' },
   wn_triage_swipe_undo_d: {

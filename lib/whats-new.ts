@@ -55,7 +55,8 @@
 // '3.1.37' (2026-11-17): R2 — the Hub opens on « Aujourd'hui » (streamed: bar first), « Bureau » fold; Journal quick row → the bar on the phone.
 // '3.1.38' (2026-11-17): R2 — « À revoir » actions on Aujourd'hui, one at a time; « Plus tard » (back after 7 days).
 // '3.1.39' (2026-11-17): Triage — swipe, 6 s to undo (shared swipe deck).
-export const WHATS_NEW_RELEASE = '3.1.39'
+// '3.1.40' (2026-11-17): Œuvre and Vocal sheets on the phone bar; the Fil (admin) + Audit « Retirés du Fil ».
+export const WHATS_NEW_RELEASE = '3.1.40'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -67,6 +68,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'phone_work_voice_sheets', day: '2026-11-17' },
   { id: 'triage_swipe_undo', day: '2026-11-17' },
   { id: 'see_again_later', day: '2026-11-17' },
   { id: 'hub_opens_today', day: '2026-11-17' },
