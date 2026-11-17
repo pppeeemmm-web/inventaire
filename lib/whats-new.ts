@@ -49,7 +49,8 @@
 // '3.1.31' (2026-11-16): a ?work= link opens one card (Inventory panel); Overview counts right from the start (TODO 18).
 // '3.1.32' (2026-11-16): R3 step 1 — the work card re-laid out (top block, Création / Objet, Replié / Développé).
 // '3.1.33' (2026-11-17): R3 step 2 — card Objet: logistics, commission, presentation gates, hover captions; Montée kept on save.
-export const WHATS_NEW_RELEASE = '3.1.33'
+// '3.1.34' (2026-11-17): R3 step 3 — phone recording screen (Nouvelle œuvre / Reprise), card rules, 44 px phone taps.
+export const WHATS_NEW_RELEASE = '3.1.34'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -61,6 +62,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'work_record_phone', day: '2026-11-17' },
   { id: 'work_card_objet', day: '2026-11-17' },
   { id: 'work_card_r3', day: '2026-11-16' },
   { id: 'work_link_one_card', day: '2026-11-16' },

@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.34 (2026-11-17) — R3 step 3: phone recording screen + card rules.
+  wn_work_record_phone_t: { fr: 'Enregistrer une œuvre au téléphone', en: 'Record a work on the phone' },
+  wn_work_record_phone_d: {
+    fr: 'Au téléphone, « + œuvre » ouvre un écran court : « Nouvelle œuvre » (photo, titre, technique, support, format, lieu) ou « Reprise » (choisir l’œuvre, ajouter la photo et une ligne « Reprise » dans son historique, même numéro). La fiche suit aussi des règles : une œuvre en archive ne peut pas être Disponible et son gardien est l’artiste. Tous les boutons de la fiche se touchent facilement au téléphone.',
+    en: 'On the phone, « + œuvre » opens a short screen: « Nouvelle œuvre » (photo, title, technique, support, format, place) or « Reprise » (pick the work, add the picture and a « Reprise » line in its history, same number). The card also follows rules: an archived work can’t be Available and its custodian is the artist. Every button on the card is easy to tap on the phone.',
+  },
   // 3.1.33 (2026-11-17) — R3 step 2: the card's « Objet » part.
   wn_work_card_objet_t: { fr: 'Fiche œuvre : logistique, commande, présentation', en: 'Work card: logistics, commission, presentation' },
   wn_work_card_objet_d: {
