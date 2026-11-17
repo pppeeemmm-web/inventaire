@@ -103,14 +103,15 @@ export default function EnquiryClient({
   const instagram = instagramProfile(contact.instagram)
 
   const oeuvreParam = searchParams.get('oeuvre_id')
-  const orderParam = searchParams.get('sale_order_id')
+  // R7: an enquiry about an order (`/enquiry?order=<work_order id>`); was `sale_order_id`.
+  const orderParam = searchParams.get('order')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.email || !form.message) return
     setLoading(true)
     const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
-    const saleOrderId = orderParam && orderParam.length > 10 ? orderParam : null
+    const workOrderId = orderParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderParam) ? orderParam : null
     const message = isProspectReason(category)
       ? `${t('enquiry_reason_message_prefix').replace('{reason}', t(PROSPECT_REASON_KEYS[category]))}\n\n${form.message}`
       : form.message
@@ -122,7 +123,7 @@ export default function EnquiryClient({
       status: 'open',
     }
     if (oeuvreId != null) row.oeuvre_id = oeuvreId
-    if (saleOrderId) row.sale_order_id = saleOrderId
+    if (workOrderId) row.work_order_id = workOrderId
     const { error } = await sb.from('inquiry').insert([row])
     setLoading(false)
     if (!error) setSent(true)

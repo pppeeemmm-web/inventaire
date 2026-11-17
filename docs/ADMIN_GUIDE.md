@@ -1645,11 +1645,11 @@ Static-from-config pages. Copy comes through `useI18n().t(key)` + the dictionary
 
 **Files.** [`app/enquiry/page.tsx`](../app/enquiry/page.tsx), [`components/public/EnquiryClient.tsx`](../components/public/EnquiryClient.tsx).
 
-Anon insert into `inquiry` table (`name`, `email`, `message`, `category`, `status = 'open'`, optional `oeuvre_id`, optional `sale_order_id`).
+Anon insert into `inquiry` table (`name`, `email`, `message`, `category`, `status = 'open'`, optional `oeuvre_id`, optional `work_order_id`).
 
 URL params:
 - `?oeuvre_id=<int>` — pre-fills the inquiry with a work reference.
-- `?sale_order_id=<id>` — pre-fills the inquiry with a sale order reference (after-sales routing).
+- `?order=<id>` — pre-fills the inquiry with an order reference (`work_order`, after-sales routing).
 
 > **Admin note — RLS on `inquiry`.** Anon `INSERT` is granted by policy; `SELECT` is team-only. Check via `supabase/sql/grant_audit_queries.sql` after any DDL change.
 

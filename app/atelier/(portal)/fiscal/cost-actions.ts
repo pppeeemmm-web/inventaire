@@ -5,7 +5,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { fromSaleOrder } from '@/lib/sales/sales-client'
 
 export type ExpenseWorkLink = { oeuvre_id: number; amount: number | null }
 
@@ -24,7 +23,7 @@ export type WorkCost = {
   total: number
   byCategory: { category: string; amount: number }[]
   lines: WorkCostLine[]
-  /** Final price of the completed sale order for this work, when there is one. */
+  /** The work's price on its paid sale order (`work_order`), when there is one. */
   salePrice: number | null
 }
 
@@ -115,14 +114,7 @@ export async function fetchWorkCost(oeuvreId: number): Promise<WorkCost | null> 
   const byCat = new Map<string, number>()
   for (const l of lines) byCat.set(l.category ?? '', (byCat.get(l.category ?? '') ?? 0) + l.amount)
 
-  const { data: sale } = await fromSaleOrder(supabase)
-    .select('prix_final')
-    .eq('oeuvre_id', oeuvreId)
-    .eq('statut', 'completed')
-    .order('completed_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const salePrice = sale?.prix_final != null ? Number(sale.prix_final) : await workOrderSalePrice(supabase, oeuvreId)
+  const salePrice = await workOrderSalePrice(supabase, oeuvreId)
 
   return {
     total: Math.round(lines.reduce((s, l) => s + l.amount, 0) * 100) / 100,

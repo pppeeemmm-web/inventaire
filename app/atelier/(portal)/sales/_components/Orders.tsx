@@ -8,25 +8,31 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useSearchParams } from 'next/navigation'
+import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
 import { thumbUrl } from '@/lib/data'
 import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { NewOrderForm, orderErrorText, type NewOrderInitial, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
 
-const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift']
-const KIND_LETTER: Record<WorkOrderKind, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G' }
+const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
+const KIND_LETTER: Record<WorkOrderKind, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G', entrusted: 'C' }
 const KIND_LABEL: Record<WorkOrderKind, DictKey> = {
-  sale: 'ord_kind_sale', consignment: 'ord_kind_consignment', loan: 'ord_kind_loan', gift: 'ord_kind_gift',
+  sale: 'ord_kind_sale', consignment: 'ord_kind_consignment', loan: 'ord_kind_loan', gift: 'ord_kind_gift', entrusted: 'ord_kind_entrusted',
 }
 const KIND_COLOR: Record<WorkOrderKind, string> = {
-  sale: 'var(--sage)', consignment: 'var(--cyan)', loan: 'var(--yellow, var(--ac))', gift: 'var(--ac)',
+  sale: 'var(--sage)', consignment: 'var(--cyan)', loan: 'var(--yellow, var(--ac))', gift: 'var(--ac)', entrusted: 'var(--tx2)',
 }
 const STEPS: Record<WorkOrderKind, string[]> = {
   sale: ['draft', 'signed', 'deposit_paid', 'paid', 'delivered'],
   consignment: ['draft', 'signed', 'out', 'closed'],
   loan: ['draft', 'signed', 'out', 'closed'],
   gift: ['draft', 'signed', 'handed_over'],
+  entrusted: ['draft', 'out', 'closed'],
+}
+const VALUE_LABEL: Partial<Record<WorkOrderKind, DictKey>> = {
+  consignment: 'ord_line_value_consignment', loan: 'ord_line_value_loan', gift: 'ord_line_value_gift', entrusted: 'ord_line_value_entrusted',
 }
 /** Denser cells than the shared .tbl, so seven columns fit beside the order panel. */
 const CELL = { padding: '8px 10px' } as const
@@ -35,7 +41,8 @@ const FINISHED = new Set(['closed', 'cancelled', 'delivered', 'handed_over'])
 function stepLabelKey(kind: WorkOrderKind, step: string): DictKey {
   if (kind === 'gift' && step === 'signed') return 'ord_st_gift_signed'
   if ((kind === 'consignment' || kind === 'loan') && step === 'signed') return 'ord_st_signed_m'
-  if ((kind === 'consignment' || kind === 'loan') && step === 'closed') return 'ord_st_closed_m'
+  if ((kind === 'consignment' || kind === 'loan' || kind === 'entrusted') && step === 'closed') return 'ord_st_closed_m'
+  if (kind === 'entrusted' && step === 'out') return 'ord_st_entrusted_out'
   return `ord_st_${step}` as DictKey
 }
 
@@ -58,13 +65,15 @@ const NEXT: Record<WorkOrderKind, Record<string, string[]>> = {
   consignment: { draft: ['signed'], signed: ['out'], out: ['closed'] },
   loan: { draft: ['signed'], signed: ['out'], out: ['closed'] },
   gift: { draft: ['signed'], signed: ['handed_over'] },
+  entrusted: { draft: ['out'], out: ['closed'] },
 }
 const CANCEL_FROM: Record<WorkOrderKind, string[]> = {
-  sale: ['draft', 'signed', 'deposit_paid'], consignment: ['draft', 'signed'], loan: ['draft', 'signed'], gift: ['draft'],
+  sale: ['draft', 'signed', 'deposit_paid'], consignment: ['draft', 'signed'], loan: ['draft', 'signed'], gift: ['draft', 'signed'], entrusted: ['draft'],
 }
 function actionKey(kind: WorkOrderKind, to: string): DictKey {
   if (kind === 'sale') return `ord_do_sale_${to}` as DictKey
   if (kind === 'gift') return `ord_do_gift_${to}` as DictKey
+  if (kind === 'entrusted') return `ord_do_entrusted_${to}` as DictKey
   if (to === 'out') return kind === 'loan' ? 'ord_do_loan_out' : 'ord_do_cons_out'
   return `ord_do_cons_${to}` as DictKey
 }
@@ -109,13 +118,11 @@ const LINE_LABEL: Record<string, DictKey> = {
 interface Props {
   /** Opens the work card (the Atelier drawer). */
   openWork: (oeuvreId: number) => void
-  /** Former Sales tab, shown folded until R7 moves its figures to Revenue & expenses. */
-  renderLegacy: () => ReactNode
   /** Contacts for the new-order form (buyer / gallery / borrower / recipient). */
   contacts: OrderContact[]
 }
 
-export function Orders({ openWork, renderLegacy, contacts }: Props) {
+export function Orders({ openWork, contacts }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
@@ -128,7 +135,6 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
   const [kind, setKind] = useState<WorkOrderKind | 'all'>('all')
   const [showClosed, setShowClosed] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [legacyOpen, setLegacyOpen] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [formInitial, setFormInitial] = useState<NewOrderInitial | undefined>(undefined)
   const [payOpen, setPayOpen] = useState(false)
@@ -139,6 +145,17 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
   const signedInput = useRef<HTMLInputElement>(null)
   /** An order opened by link (`?order=`): if it is closed, the list shows closed orders too. */
   const linkedOrder = useRef<string | null>(null)
+  // A link to another order while this screen is open (work card, Fil, Pipeline): follow it.
+  const orderParam = useSearchParams()?.get('order') ?? null
+  const seenOrderParam = useRef<string | null>(null)
+  useEffect(() => {
+    if (!orderParam || orderParam === seenOrderParam.current) return
+    seenOrderParam.current = orderParam
+    linkedOrder.current = orderParam
+    setSelectedId(orderParam); setStepErr(null); setPayOpen(false)
+    void load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per new link
+  }, [orderParam])
   useEffect(() => {
     const o = linkedOrder.current && orders?.find((x) => x.id === linkedOrder.current)
     if (!o) return
@@ -190,7 +207,7 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
     void load()
     // Opened from elsewhere (work card, Pipeline, Exhibitions, phone): select or prefill, once.
     const intent = readUrlIntent()
-    if (intent.orderId) { setSelectedId(intent.orderId); linkedOrder.current = intent.orderId }
+    if (intent.orderId) { setSelectedId(intent.orderId); linkedOrder.current = intent.orderId; seenOrderParam.current = intent.orderId }
     if (intent.initial) { setFormInitial(intent.initial); setFormOpen(true) }
     // The Atelier mobile bar's « Vente » (TeamPortalClient `openNewSaleOrder`) asks for a new sale.
     try {
@@ -240,7 +257,7 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
   }
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: 0, sale: 0, consignment: 0, loan: 0, gift: 0 }
+    const c: Record<string, number> = { all: 0, sale: 0, consignment: 0, loan: 0, gift: 0, entrusted: 0 }
     for (const o of orders ?? []) {
       if (!showClosed && FINISHED.has(o.status)) continue
       c.all++; c[o.kind]++
@@ -359,6 +376,9 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title ?? ''}</span>
                   {w.line_status !== 'active' && LINE_LABEL[w.line_status] && (
                     <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(LINE_LABEL[w.line_status])}</span>
+                  )}
+                  {w.value != null && VALUE_LABEL[o.kind] && (
+                    <span title={t(VALUE_LABEL[o.kind]!)} style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{fmtMoney(w.value, o.currency)}</span>
                   )}
                 </button>
               )
@@ -522,15 +542,6 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
     return <span title={n ? undefined : t('ord_no_paper')} style={{ fontSize: 12, color: n ? 'var(--sage)' : 'var(--tx3)', whiteSpace: 'nowrap' }}>{n ? `● ${n}` : '○'}</span>
   }
 
-  const legacy = (
-    <details open={legacyOpen} onToggle={(e) => setLegacyOpen((e.currentTarget as HTMLDetailsElement).open)} style={{ borderTop: '1px solid var(--bd)', marginTop: 16 }}>
-      <summary style={{ cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', padding: narrow ? '0 16px' : 0, fontSize: 12, color: 'var(--tx3)' }}>
-        {t('ord_legacy_title')}
-      </summary>
-      {legacyOpen && renderLegacy()}
-    </details>
-  )
-
   const header = (
     <div style={{ padding: narrow ? '12px 16px 0' : '0 0 4px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -596,7 +607,6 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
             </span>
           </button>
         ))}
-        {legacy}
         {form}
       </div>
     )
@@ -656,7 +666,6 @@ export function Orders({ openWork, renderLegacy, contacts }: Props) {
           {selected ? detail(selected) : <div style={{ padding: 18, fontSize: 13, color: 'var(--tx3)' }}>{t('ord_pick_one')}</div>}
         </aside>
       </div>
-      {legacy}
       {form}
     </div>
   )

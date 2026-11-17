@@ -7,8 +7,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** New sale order / reservation: in production, available, or consigned (sold through the gallery). */
 export const SALE_ORDER_FROM = [1, 2, 7] as const
-/** Completing a sale: the reservation the order made (4), or a work still in the studio / gallery. */
-export const SALE_COMPLETE_FROM = [1, 2, 4, 7] as const
 /** New consignment / loan: works still in the studio. */
 export const CONSIGN_FROM = [1, 2] as const
 

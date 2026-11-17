@@ -210,7 +210,7 @@ export function PipelineProcessDrawer({ process, onClose, onEdit, onRefresh, onC
   )
 }
 
-const ORDER_LETTER: Record<string, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G' }
+const ORDER_LETTER: Record<string, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G', entrusted: 'C' }
 
 /**
  * R7: a sale / consignment process links to its order(s) in « Commandes »; the papers and the
@@ -247,7 +247,7 @@ function ProcessOrders({ process }: { process: Process }) {
           <span style={{ color: 'var(--ac)' }}>{t('ord_open_order')}</span>
         </Link>
       ))}
-      {orders.length === 0 && (
+      {!orders.some((o) => o.status !== 'cancelled') && (
         <>
           <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 8 }}>{t('ord_from_process_none')}</div>
           <Link className="btn ghost sm" href={`/atelier/sales?${q.toString()}`} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>

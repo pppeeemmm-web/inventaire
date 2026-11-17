@@ -8,15 +8,19 @@
 //
 // Sources: note_line (work / proposal lines; idea lines grouped one item per idea), kaizen_item by
 // others (open), pending_changes (work facts waiting for approval — approve / reject reuse Audit's
-// actions). Items Pem leaves alone fold into « Refroidies » after COOL_DAYS (approvals never cool).
+// actions), draft orders a team member made (R7 v2: « a hand change in the work card becomes a draft
+// order … submitted to me to check »; they stay until signed or cancelled in Commandes — « Retirer »
+// cancels the draft). Items Pem leaves alone fold into « Refroidies » after COOL_DAYS (approvals and
+// draft orders never cool).
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { diffPendingPayload } from '@/lib/work-pending-keys'
 import { approvePendingChange, rejectPendingChange } from '@/app/atelier/(portal)/audit/pending-actions'
+import { cancelWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 
-export type FilKind = 'note_line' | 'idea' | 'kaizen_item' | 'pending_change'
+export type FilKind = 'note_line' | 'idea' | 'kaizen_item' | 'pending_change' | 'work_order'
 export type FilSection = 'creation' | 'fiches' | 'kaizen'
 export type FilDecision = 'keep' | 'discard'
 
@@ -39,6 +43,8 @@ export type FilItem = {
   /** Work facts: edit / create / image_add (an image proposal shows its picture). */
   changeKind?: string | null
   image?: string | null
+  /** Draft order (R7): the order to open, its kind and the other party. */
+  order?: { id: string; ref: string | null; kind: string; party: string }
   flagged: boolean
   cooled: boolean
 }
@@ -102,13 +108,14 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
   const { supabase, user } = g
   const me = user.id
 
-  const [linesRes, kaizenRes, pendingRes, statesRes] = await Promise.all([
+  const [linesRes, kaizenRes, pendingRes, statesRes, ordersRes] = await Promise.all([
     supabase.from('note_line').select('*').is('discarded_at', null).order('created_at', { ascending: false }).limit(500),
     supabase.from('kaizen_item').select('id, created_at, title, body, author_id, section, work_ids, done_at').is('done_at', null).order('created_at', { ascending: false }).limit(300),
     supabase.from('pending_changes').select('*').eq('status', 'pending').order('created_at', { ascending: false }).limit(200),
     supabase.from('feed_item_state').select('item_kind, item_id, state, at, recalled_at'),
+    supabase.from('work_order').select('id, ref, kind, party_id, created_at, created_by').eq('status', 'draft').not('created_by', 'is', null).neq('created_by', me).order('created_at', { ascending: false }).limit(100),
   ])
-  for (const r of [linesRes, kaizenRes, pendingRes, statesRes]) {
+  for (const r of [linesRes, kaizenRes, pendingRes, statesRes, ordersRes]) {
     if (r.error) {
       await logError('fil list failed', r.error, { source: 'fil.listFil' })
       return { error: r.error.message }
@@ -130,6 +137,19 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
   const lines = (linesRes.data ?? []).filter((l) => l.author_id !== me)
   const kaizen = (kaizenRes.data ?? []).filter((k) => k.author_id !== me)
   const pending = pendingRes.data ?? []
+  const drafts = ordersRes.data ?? []
+  const [draftLines, draftParties] = drafts.length
+    ? await Promise.all([
+        supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', drafts.map((d) => d.id)).order('position'),
+        supabase.from('Contact').select('*').in('ContactID', [...new Set(drafts.map((d) => d.party_id))]),
+      ])
+    : [{ data: [] as Array<{ order_id: string; oeuvre_id: number; position: number }> }, { data: [] }]
+  const firstWorkOf = new Map<string, number>()
+  for (const l of draftLines.data ?? []) if (!firstWorkOf.has(l.order_id)) firstWorkOf.set(l.order_id, l.oeuvre_id)
+  const partyName = new Map<number, string>()
+  for (const c of (draftParties.data ?? []) as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]) {
+    partyName.set(c.ContactID, c.NomInstitution || [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || `#${c.ContactID}`)
+  }
 
   // Idea lines: one item per idea, counting lines newer than Pem's last look.
   const byIdea = new Map<string, typeof lines>()
@@ -150,8 +170,9 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     ...lines.map((l) => l.oeuvre_id),
     ...kaizen.map((k) => (k.work_ids ?? [])[0]),
     ...pending.map((p) => p.oeuvre_id),
+    ...[...firstWorkOf.values()],
   ].filter((x): x is number => typeof x === 'number')
-  const authorIds = [...lines.map((l) => l.author_id), ...kaizen.map((k) => k.author_id), ...pending.map((p) => p.author_id)].filter(
+  const authorIds = [...lines.map((l) => l.author_id), ...kaizen.map((k) => k.author_id), ...pending.map((p) => p.author_id), ...drafts.map((d) => d.created_by)].filter(
     (x): x is string => !!x,
   )
   const [works, names] = await Promise.all([worksFor(supabase, [...new Set(workIds)]), namesFor(supabase, [...new Set(authorIds)])])
@@ -237,6 +258,25 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     })
   }
 
+  for (const d of drafts) {
+    const wid = firstWorkOf.get(d.id)
+    items.push({
+      key: `work_order:${d.id}`,
+      kind: 'work_order',
+      id: d.id,
+      section: 'fiches',
+      author: name(d.created_by),
+      at: d.created_at,
+      title: null,
+      body: '',
+      work: wid != null ? works.get(wid) ?? { id: wid, title: null, thumb: null } : null,
+      order: { id: d.id, ref: d.ref, kind: d.kind, party: partyName.get(d.party_id) ?? `#${d.party_id}` },
+      flagged: false,
+      // A draft waits for Pem: it never cools.
+      cooled: false,
+    })
+  }
+
   // Flagged first (« Une idée pour Pem ? »), then newest.
   items.sort((a, b) => Number(b.flagged) - Number(a.flagged) || b.at.localeCompare(a.at))
   return { items }
@@ -262,6 +302,17 @@ export async function decideFil(kind: FilKind, id: string, decision: FilDecision
   if (kind === 'pending_change') {
     const res = decision === 'keep' ? await approvePendingChange(Number(id)) : await rejectPendingChange(Number(id), '')
     if ('error' in res) return res
+  }
+
+  // A draft order stays in the Fil until it is signed or cancelled in Commandes (no « seen » state):
+  // « Garder » leaves it, « Retirer » cancels the draft (the cancellation is on the order itself).
+  if (kind === 'work_order') {
+    if (decision === 'discard') {
+      const res = await cancelWorkOrder(id)
+      if ('error' in res) return res
+    }
+    revalidatePath('/hub/fil')
+    return { ok: true }
   }
 
   if (decision === 'discard' && kind === 'note_line') {

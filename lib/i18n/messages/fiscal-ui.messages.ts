@@ -102,4 +102,5 @@ export const fiscalUiMessages = defineMessages({
   fiscal_pivot_amount: { fr: 'Montant', en: 'Amount' },
   fiscal_pivot_net: { fr: 'Solde (recettes − dépenses)', en: 'Net (income − expenses)' },
   fiscal_pivot_sales: { fr: 'Ventes', en: 'Sales' },
+  fiscal_sales_tab: { fr: 'Ventes', en: 'Sales' },
 })

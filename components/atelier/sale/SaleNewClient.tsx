@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { statusOf } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
-import { completeMobileSale, type CompleteMobileSaleResult } from '@/app/atelier/sale/new/actions'
+import { completeMobileSale, searchSaleWorks, type CompleteMobileSaleResult } from '@/app/atelier/sale/new/actions'
 
 export type MobileSaleWork = {
   OeuvreID: number
@@ -99,7 +99,13 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
     () => Object.fromEntries(techniques.map((tech) => [tech.TechniqueID, tech.Technique ?? ''])) as Record<number, string>,
     [techniques],
   )
-  const workMap = useMemo(() => new Map(works.map((work) => [work.OeuvreID, work])), [works])
+  // Works found on the server (older than the 300 the page loads), kept once picked.
+  const [extraWorks, setExtraWorks] = useState<MobileSaleWork[]>([])
+  const allWorks = useMemo(() => {
+    const known = new Set(works.map((w) => w.OeuvreID))
+    return [...works, ...extraWorks.filter((w) => !known.has(w.OeuvreID))]
+  }, [works, extraWorks])
+  const workMap = useMemo(() => new Map(allWorks.map((work) => [work.OeuvreID, work])), [allWorks])
   const selectedWorks = useMemo(
     () => selectedIds.flatMap((id) => {
       const work = workMap.get(id)
@@ -109,12 +115,23 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
   )
   const saleableWorks = useMemo(
     () =>
-      works.filter((work) => {
+      allWorks.filter((work) => {
         const key = statusOf(work, statusLabelMap)
         return key !== 'sold' && key !== 'gift' && key !== 'artist_archive' && key !== 'destroyed' && key !== 'lost'
       }),
-    [works, statusLabelMap],
+    [allWorks, statusLabelMap],
   )
+  // Nothing in the loaded list for this search: ask the server (debounced).
+  useEffect(() => {
+    const q = search.trim()
+    if (!q) return
+    const local = works.some((w) => String(w.OeuvreID).includes(q.replace(/^#/, '')) || (w.Titre ?? '').toLowerCase().includes(q.toLowerCase()))
+    if (local) return
+    const id = setTimeout(() => {
+      void searchSaleWorks(q).then((found) => setExtraWorks((cur) => [...cur.filter((w) => !found.some((f) => f.OeuvreID === w.OeuvreID)), ...found]))
+    }, 300)
+    return () => clearTimeout(id)
+  }, [search, works])
   const filteredWorks = useMemo(() => {
     const q = search.trim().toLowerCase()
     const pool = saleableWorks.filter((work) => !selectedIds.includes(work.OeuvreID))

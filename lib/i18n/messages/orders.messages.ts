@@ -42,10 +42,6 @@ export const ordersMessages = defineMessages({
   ord_commission: { fr: 'Commission', en: 'Commission' },
   ord_back_by: { fr: 'retour', en: 'back by' },
   ord_back_to_list: { fr: 'Commandes', en: 'Orders' },
-  ord_legacy_title: {
-    fr: 'Ancien onglet Ventes (chiffres, ancien formulaire) — jusqu’à la fin du chantier',
-    en: 'Former Sales tab (figures, old form) — until the build is done',
-  },
   ord_line_returned: { fr: 'rentrée', en: 'returned' },
   ord_line_sold: { fr: 'vendue', en: 'sold' },
   ord_line_given: { fr: 'donnée', en: 'given' },
@@ -114,8 +110,8 @@ export const ordersMessages = defineMessages({
   ord_do_cons_out: { fr: 'Sortie — chez la galerie', en: 'Out — at the gallery' },
   ord_do_loan_out: { fr: 'Sortie — chez l’emprunteur', en: 'Out — with the borrower' },
   ord_do_cons_closed: { fr: 'Rentrée à l’atelier', en: 'Back at the studio' },
-  ord_do_gift_signed: { fr: 'Acte signé (le bénéficiaire devient propriétaire)', en: 'Deed signed (the recipient becomes the owner)' },
-  ord_do_gift_handed_over: { fr: 'Remise (le bénéficiaire garde l’œuvre)', en: 'Handed over (the recipient holds the work)' },
+  ord_do_gift_signed: { fr: 'Acte signé (rien ne bouge avant la remise)', en: 'Deed signed (nothing moves until the hand-over)' },
+  ord_do_gift_handed_over: { fr: 'Remise (le bénéficiaire devient propriétaire et garde l’œuvre)', en: 'Handed over (the recipient becomes the owner and holds the work)' },
   ord_do_cancel: { fr: 'Annuler la commande', en: 'Cancel the order' },
   ord_confirm_step: {
     fr: 'Passer à cette étape ? Les œuvres changent de statut, de propriétaire ou de gardien selon l’étape, avec une ligne dans leur historique.',
@@ -168,12 +164,54 @@ export const ordersMessages = defineMessages({
   },
   ord_from_process: { fr: 'Commandes liées', en: 'Linked orders' },
   ord_from_process_none: {
-    fr: 'Aucune commande liée. Une vente ou un dépôt se fait dans Commandes, prérempli depuis ce suivi.',
-    en: 'No linked order. A sale or consignment is made in Orders, prefilled from this process.',
+    fr: 'Aucune commande en cours. Une vente ou un dépôt se fait dans Commandes, prérempli depuis ce suivi.',
+    en: 'No order under way. A sale or consignment is made in Orders, prefilled from this process.',
   },
   ord_from_process_create: { fr: 'Créer la commande', en: 'Create the order' },
   ord_gift_intro: {
     fr: 'Un don est une commande : brouillon et acte de don d’abord, puis « Acte signé » et « Remise » dans Commandes.',
     en: 'A gift is an order: a draft and its deed first, then « Deed signed » and « Handed over » in Orders.',
   },
+  ord_reminder_cooling_off: {
+    fr: 'Fin du délai de rétractation — vente {ref} ({works}) : l’acheteur ne peut plus rendre l’œuvre.',
+    en: 'Cooling-off ends — sale {ref} ({works}): the buyer can no longer return the work.',
+  },
+  ord_card_intro: {
+    fr: 'Depuis la fiche, une sortie est une commande en brouillon : rien ne bouge avant qu’elle soit signée dans Commandes. Un brouillon fait par l’équipe arrive dans le Fil de Pem.',
+    en: 'From the card, a work leaving is a draft order: nothing moves until it is signed in Orders. A draft made by the team reaches Pem’s Fil.',
+  },
+  wc_order_chip_tt: {
+    fr: 'Préparer une commande pour cette œuvre (brouillon, à signer dans Commandes).',
+    en: 'Prepare an order for this work (a draft, signed in Orders).',
+  },
+  wc_order_link_tt: { fr: 'Ouvrir sa commande {ref}', en: 'Open its order {ref}' },
+  fil_order_title: { fr: 'Commande en brouillon {ref}', en: 'Draft order {ref}' },
+  fil_order_body: {
+    fr: '{kind} avec {party} — à vérifier puis signer dans Commandes. Retirer = annuler le brouillon.',
+    en: '{kind} with {party} — check it, then sign it in Orders. Remove = cancel the draft.',
+  },
+  ord_reminder_out: {
+    fr: '{ref} — sortie le {date} ({kind}, {party}) : la commande est-elle signée et son papier prêt ? Le brouillon attend dans Commandes.',
+    en: '{ref} — goes out on {date} ({kind}, {party}): is the order signed and its paper ready? The draft waits in Orders.',
+  },
+  ord_reminder_back: {
+    fr: '{ref} — retour prévu le {date} ({party}) : organiser le retour, ou prolonger.',
+    en: '{ref} — due back on {date} ({party}): arrange the return, or extend.',
+  },
+  // ── R7 decisions (Pem 2026-11-17): line values, « Confié » ──
+  ord_kind_entrusted: { fr: 'Confié', en: 'Entrusted' },
+  ord_new_party_entrusted: { fr: 'Artisan (encadreur, restaurateur…)', en: 'Craftsperson (framer, restorer…)' },
+  ord_do_entrusted_out: { fr: 'Confié — chez l’artisan', en: 'Entrusted — with the craftsperson' },
+  ord_do_entrusted_closed: { fr: 'Rentré à l’atelier', en: 'Back at the studio' },
+  ord_st_entrusted_out: { fr: 'Confié', en: 'Entrusted' },
+  ord_line_value_consignment: { fr: 'Prix convenu', en: 'Agreed price' },
+  ord_line_value_loan: { fr: 'Valeur d’assurance', en: 'Insurance value' },
+  ord_line_value_entrusted: { fr: 'Valeur d’assurance', en: 'Insurance value' },
+  ord_line_value_gift: { fr: 'Valeur de référence (jamais imprimée)', en: 'Reference value (never printed)' },
+  wc_entrusted_chip: { fr: 'Confié · chez {party}', en: 'Entrusted · with {party}' },
+  wc_entrusted_chip_tt: {
+    fr: 'L’œuvre garde son étape ; elle est chez l’artisan jusqu’à son retour. Ouvrir sa commande {ref}.',
+    en: 'The work keeps its stage; it is with the craftsperson until it comes back. Open its order {ref}.',
+  },
+  ord_line_value_hint: { fr: 'vide = le prix de l’œuvre aujourd’hui.', en: 'empty = the work’s price today.' },
 })

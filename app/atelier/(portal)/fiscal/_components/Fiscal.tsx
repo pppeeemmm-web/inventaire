@@ -15,6 +15,7 @@ import type { Agg, Dim } from '@/lib/pivot'
 import { buildPivot } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { fetchSalesIncome } from '@/lib/sales/income'
+import { FiscalSales } from './FiscalSales'
 import { FiscalByYear } from './FiscalByYear'
 import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from '@/app/atelier/(portal)/fiscal/cost-actions'
 
@@ -62,6 +63,10 @@ interface Expense {
 interface Props {
   oeuvres: Oeuvre[]
   contacts?: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  /** For « Ventes » (figures moved from the former Sales tab, R7). */
+  statusLabelMap?: Record<number, string>
+  cM?: Record<number, string>
+  tM?: Record<number, string>
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -104,7 +109,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function Fiscal({ oeuvres, contacts = [] }: Props) {
+export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, tM = {} }: Props) {
   const { t } = useI18n()
   // Cost per work is admin-only (owner enters costs alone for now).
   const [isAdmin, setIsAdmin] = useState(false)
@@ -127,7 +132,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
     }
   }
   const [loading,  setLoading]  = useState(true)
-  const [section,  setSection]  = useState<'dashboard' | 'by_year' | 'expenses' | 'framework'>('dashboard')
+  const [section,  setSection]  = useState<'dashboard' | 'by_year' | 'sales' | 'expenses' | 'framework'>('dashboard')
   const [editing,  setEditing]  = useState<Expense | 'new' | null>(null)
 
   useEffect(() => {
@@ -308,10 +313,11 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
         <div style={{ display: 'flex' }}>
           {navBtn('dashboard', t('dashboard'))}
           {navBtn('by_year', t('fiscal_by_year_tab'))}
+          {navBtn('sales', t('fiscal_sales_tab'))}
           {navBtn('expenses', `${t('expenses')} (${expenses.length})`)}
           {navBtn('framework', t('framework'))}
         </div>
-        <div style={{ display: section === 'by_year' ? 'none' : 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: section === 'by_year' || section === 'sales' ? 'none' : 'flex', alignItems: 'center', gap: 10 }}>
           {/* Year selector (By year shows every year, so it is hidden there) */}
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
             style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
@@ -486,6 +492,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
 
       {/* ── Tax framework reference ── */}
       {section === 'by_year' && <FiscalByYear fmtEur={fmtEur} />}
+      {section === 'sales' && <FiscalSales oeuvres={oeuvres} statusLabelMap={statusLabelMap} cM={cM} tM={tM} />}
 
       {section === 'framework' && (
         <div style={{ flex: 1, overflow: 'auto', padding: '28px 32px', maxWidth: 760 }}>

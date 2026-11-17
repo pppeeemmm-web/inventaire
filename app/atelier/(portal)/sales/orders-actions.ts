@@ -4,7 +4,7 @@
 // One list for sale / consignment / loan / gift (`work_order` + `work_order_work`, SQL
 // supabase/sql/work_order.sql). Writes: create a draft, move a step, cancel (slice 2).
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { logError } from '@/lib/error-reporter/server'
@@ -14,14 +14,20 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import { ORDER_KEY_PREFIX, VAULT_ORDER_FOLDERS } from '@/lib/vault/folder-routing'
 import { buildOrderPaper, PAPER_SLUG, PAPER_TITLE, type PaperParty } from '@/lib/orders/order-paper'
+import { addCalendarDaysIso } from '@/lib/sale-return-window'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
+import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
 
-export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift'
+/** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
+export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
 
 export interface WorkOrderLineView {
   oeuvre_id: number
   title: string | null
   image: string | null
   line_status: string
+  /** Agreed price (consignment), insurance value (loan, entrusted) or reference value (gift — never printed). */
+  value: number | null
 }
 
 export interface WorkOrderPaperView {
@@ -90,7 +96,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const partyIds = [...new Set(orders.map((o) => o.party_id))]
 
   const [linesRes, partiesRes, papersRes, paymentsRes] = await Promise.all([
-    supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position').in('order_id', orderIds),
+    supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position, price, insurance_value').in('order_id', orderIds),
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', partyIds),
     supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', orderIds),
     supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', orderIds).order('payment_date', { ascending: false }),
@@ -121,7 +127,8 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       .sort((a, b) => a.position - b.position || a.oeuvre_id - b.oeuvre_id)
       .map((l) => {
         const w = workById.get(l.oeuvre_id)
-        return { oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null, line_status: l.line_status }
+        const value = o.kind === 'consignment' ? (l.price ?? l.insurance_value) : o.kind === 'sale' ? l.price : l.insurance_value
+        return { oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null, line_status: l.line_status, value: value == null ? null : Number(value) }
       })
     const papers = (papersRes.data ?? [])
       .filter((d) => d.work_order_id === o.id)
@@ -158,6 +165,9 @@ export type SimpleOrderResult = { ok: true } | { error: string }
 
 /** Works a gift may come from (as the former gift dialog): available, reserved, consigned, lent. */
 const GIFT_FROM = [2, 4, 7, 8] as const
+/** A work may go to a framer / restorer from the studio, available or archived — it keeps its stage. */
+const ENTRUST_FROM = [1, 2, 3] as const
+const CUSTODY_KINDS: WorkOrderKind[] = ['consignment', 'loan', 'entrusted']
 
 /** Allowed next steps per kind (cancel handled apart). */
 const NEXT: Record<WorkOrderKind, Record<string, string[]>> = {
@@ -165,12 +175,15 @@ const NEXT: Record<WorkOrderKind, Record<string, string[]>> = {
   consignment: { draft: ['signed'], signed: ['out'], out: ['closed'] },
   loan: { draft: ['signed'], signed: ['out'], out: ['closed'] },
   gift: { draft: ['signed'], signed: ['handed_over'] },
+  entrusted: { draft: ['out'], out: ['closed'] },
 }
 const CANCEL_FROM: Record<WorkOrderKind, string[]> = {
   sale: ['draft', 'signed', 'deposit_paid'],
   consignment: ['draft', 'signed'],
   loan: ['draft', 'signed'],
-  gift: ['draft'],
+  // Ownership moves at hand-over (don manuel, Pem 2026-11-17): a signed deed can still be cancelled.
+  gift: ['draft', 'signed'],
+  entrusted: ['draft'],
 }
 
 async function guardTeam(): Promise<{ supabase: Supa } | { error: string }> {
@@ -193,7 +206,7 @@ function strOrNull(v: FormDataEntryValue | null): string | null {
 
 /** Work ids already on another open order of the same family (sale / gift vs consignment / loan). */
 async function busyWorks(supabase: Supa, ids: number[], kind: WorkOrderKind): Promise<number[]> {
-  const family = kind === 'sale' || kind === 'gift' ? ['sale', 'gift'] : ['consignment', 'loan']
+  const family = kind === 'sale' || kind === 'gift' ? ['sale', 'gift'] : CUSTODY_KINDS
   const { data } = await supabase
     .from('work_order_work')
     .select('oeuvre_id, line_status, work_order!work_order_work_order_id_fkey(kind, status)')
@@ -206,23 +219,69 @@ async function busyWorks(supabase: Supa, ids: number[], kind: WorkOrderKind): Pr
   return [...new Set(open.map((r) => r.oeuvre_id))]
 }
 
+// ── Date reminders (Pem 2026-11-17: « a reminder when the dates are getting closer … drafts ready
+// to go out ») ── A consignment / loan gets two reminders (Field reminders, Today): a week before it
+// goes out (is it signed, is the paper ready?) and a week before it is due back. They start with
+// « <REF> — sortie » / « <REF> — retour » so the order's steps can close them: « Sortie » closes the
+// first, « Rentré » and a cancel close both.
+const REMIND_DAYS_BEFORE = 7
+
+function reminderDay(date: string | null, today: string): string | null {
+  if (!date || date < today) return null
+  const d = addCalendarDaysIso(date, -REMIND_DAYS_BEFORE)
+  return d < today ? today : d
+}
+
+async function scheduleDateReminders(supabase: Supa, orderId: string): Promise<void> {
+  const { data: o } = await supabase.from('work_order').select('ref, kind, start_date, end_date, process_id, party_id').eq('id', orderId).single()
+  if (!o?.ref || !CUSTODY_KINDS.includes(o.kind as WorkOrderKind)) return
+  const { data: c } = await supabase.from('Contact').select('*').eq('ContactID', o.party_id).maybeSingle()
+  const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
+  const party = contact ? (contact.NomInstitution || [contact.Prénom, contact.Nom].filter(Boolean).join(' ').trim()) : `#${o.party_id}`
+  const kind = resolveMessage('fr', o.kind === 'loan' ? 'ord_kind_loan' : o.kind === 'entrusted' ? 'ord_kind_entrusted' : 'ord_kind_consignment')
+  const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const today = new Date().toISOString().slice(0, 10)
+  const rows: { process_id: string | null; message: string; remind_at: string }[] = []
+  const outAt = reminderDay(o.start_date, today)
+  if (outAt && o.start_date) {
+    rows.push({ process_id: o.process_id, remind_at: outAt, message: resolveMessage('fr', 'ord_reminder_out').replace('{ref}', o.ref).replace('{date}', day(o.start_date)).replace('{kind}', kind).replace('{party}', party) })
+  }
+  const backAt = reminderDay(o.end_date, today)
+  if (backAt && o.end_date) {
+    rows.push({ process_id: o.process_id, remind_at: backAt, message: resolveMessage('fr', 'ord_reminder_back').replace('{ref}', o.ref).replace('{date}', day(o.end_date)).replace('{party}', party) })
+  }
+  if (!rows.length) return
+  const { error } = await supabase.from('suivi_reminder').insert(rows)
+  if (error) await logError('Order date reminders not written', error.message, { source: 'orders.scheduleDateReminders', metadata: { orderId } })
+  else revalidateTag('reminders')
+}
+
+/** Mark the order's date reminders done: « out » (it went out) or « all » (back / cancelled). */
+async function closeDateReminders(supabase: Supa, ref: string | null, which: 'out' | 'all'): Promise<void> {
+  if (!ref) return
+  const prefix = which === 'out' ? `${ref} — sortie` : `${ref} — `
+  const { error } = await supabase.from('suivi_reminder').update({ lu: true }).like('message', `${prefix.replace(/[%_]/g, '')}%`).eq('lu', false)
+  if (error) await logError('Order date reminders not closed', error.message, { source: 'orders.closeDateReminders', metadata: { ref, which } })
+  else revalidateTag('reminders')
+}
+
 export async function createWorkOrder(formData: FormData): Promise<OrderWriteResult> {
   const g = await guardTeam()
   if ('error' in g) return g
   const { supabase } = g
 
   const kind = String(formData.get('kind') ?? '') as WorkOrderKind
-  if (!['sale', 'consignment', 'loan', 'gift'].includes(kind)) return { error: 'ord_err_kind' }
+  if (!['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted'] : [])].includes(kind)) return { error: 'ord_err_kind' }
   // Existence is checked by circulationError below (test works may have negative numbers).
   const oeuvreIds = [...new Set(formData.getAll('oeuvre_ids').map(Number).filter((n) => Number.isInteger(n) && n !== 0))]
   if (oeuvreIds.length === 0) return { error: 'ord_err_no_work' }
   const partyId = numOrNull(formData.get('party_id'))
   if (!partyId || partyId === PEM) return { error: 'holder_required' }
-  const addressId = numOrNull(formData.get('address_id'))
+  let addressId = numOrNull(formData.get('address_id'))
   // A deposit or a loan always says when the works go out and come back (Pem 2026-11-17).
   const startDate = strOrNull(formData.get('start_date'))
   const endDate = strOrNull(formData.get('end_date'))
-  if (kind === 'consignment' || kind === 'loan') {
+  if (CUSTODY_KINDS.includes(kind)) {
     if (!startDate || !endDate) return { error: 'ord_err_dates' }
     if (endDate < startDate) return { error: 'ord_err_dates_order' }
   }
@@ -234,15 +293,21 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   const processId = strOrNull(formData.get('process_id'))
   if (processId && !UUID_RE.test(processId)) return { error: 'ord_err_process' }
 
-  const allowed = kind === 'sale' ? SALE_ORDER_FROM : kind === 'gift' ? GIFT_FROM : CONSIGN_FROM
+  const allowed = kind === 'sale' ? SALE_ORDER_FROM : kind === 'gift' ? GIFT_FROM : kind === 'entrusted' ? ENTRUST_FROM : CONSIGN_FROM
   const circ = await circulationError(supabase, oeuvreIds, allowed)
   if (circ) return { error: circ }
   const busy = await busyWorks(supabase, oeuvreIds, kind)
   if (busy.length) return { error: `ord_err_busy:${busy.map((n) => `#${n}`).join(', ')}` }
+  const { data: prices } = await supabase.from('Oeuvres').select('OeuvreID, Prix').in('OeuvreID', oeuvreIds)
+  const priceOf = new Map((prices ?? []).map((w) => [w.OeuvreID, w.Prix == null ? null : Number(w.Prix)]))
 
   if (addressId) {
     const { data: addr } = await supabase.from('contact_addresses').select('contact_id').eq('id', addressId).maybeSingle()
     if (!addr || addr.contact_id !== partyId) return { error: 'ord_err_address' }
+  } else {
+    // No address given (Pipeline, Exhibitions, phone): a party with a single address gets it, as in the form.
+    const { data: addrs } = await supabase.from('contact_addresses').select('id').eq('contact_id', partyId).limit(2)
+    if (addrs?.length === 1) addressId = addrs[0].id
   }
 
   const { data: order, error } = await supabase
@@ -267,7 +332,17 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
 
   const { error: linesErr } = await supabase
     .from('work_order_work')
-    .insert(oeuvreIds.map((oeuvre_id, position) => ({ order_id: order.id, oeuvre_id, position })))
+    .insert(oeuvreIds.map((oeuvre_id, position) => {
+      // Per-line value (Pem 2026-11-17): the work's price that day unless typed in the form.
+      // Consignment → agreed price (also its insurance value); loan / entrusted → insurance value;
+      // gift → reference value, kept for the record and never printed on the deed.
+      const v = kind === 'sale' ? null : numOrNull(formData.get(`line_value_${oeuvre_id}`)) ?? priceOf.get(oeuvre_id) ?? null
+      return {
+        order_id: order.id, oeuvre_id, position,
+        price: kind === 'consignment' ? v : null,
+        insurance_value: kind === 'sale' ? null : v,
+      }
+    }))
   if (linesErr) {
     await supabase.from('work_order').update({ status: 'cancelled', notes: `Annulée : œuvres non ajoutées (${linesErr.message})` }).eq('id', order.id)
     return { error: linesErr.message }
@@ -280,6 +355,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   if ('error' in paper) {
     await logError('Order paper failed at creation', paper.error, { source: 'orders.createWorkOrder', metadata: { orderId: order.id, ref: order.ref } })
   }
+  if (CUSTODY_KINDS.includes(kind)) await scheduleDateReminders(supabase, order.id)
   revalidatePath('/atelier/sales')
   if (processId) revalidatePath('/atelier/pipeline')
   return { ok: true, id: order.id, ref: order.ref }
@@ -338,7 +414,11 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
     const circ = await circulationError(supabase, ids, CONSIGN_FROM)
     if (circ) return { error: circ }
   }
-  if (order.kind === 'gift' && to === 'signed') {
+  if (order.kind === 'entrusted' && to === 'out') {
+    const circ = await circulationError(supabase, ids, ENTRUST_FROM)
+    if (circ) return { error: circ }
+  }
+  if (order.kind === 'gift' && (to === 'signed' || to === 'handed_over')) {
     const circ = await circulationError(supabase, ids, GIFT_FROM)
     if (circ) return { error: circ }
   }
@@ -371,9 +451,28 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   } else if (order.kind === 'sale' && to === 'paid') {
     moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party },
       (w) => ({ statusId: 6, contactId: party, localisationId: w.LocalisationID }))
-  } else if ((order.kind === 'sale' && to === 'delivered') || (order.kind === 'gift' && to === 'handed_over')) {
+  } else if (order.kind === 'sale' && to === 'delivered') {
     moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id },
       (w) => ({ statusId: w.statusId, contactId: party, localisationId: party }))
+  } else if (order.kind === 'gift' && to === 'handed_over') {
+    // Don manuel (Pem 2026-11-17): ownership and custody move together at hand-over. The price is
+    // kept; the gift's reference value lives on its order line.
+    moveErr = await moveWorks(supabase, ids,
+      { statusId: 11, ContactID: party, AcheteurID: party, is_gift: true, LocalisationID: party, localisation_address_id: order.address_id },
+      () => ({ statusId: 11, contactId: party, localisationId: party }))
+  } else if (order.kind === 'entrusted' && to === 'out') {
+    // « Confié »: the work keeps its stage and owner; only the custodian changes.
+    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date },
+      (w) => ({ statusId: w.statusId, contactId: w.ContactID, localisationId: party }))
+  } else if (order.kind === 'entrusted' && to === 'closed') {
+    const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('LocalisationID', party)
+    const back = (still ?? []).map((w) => w.OeuvreID)
+    moveErr = await moveWorks(supabase, back, { LocalisationID: PEM, localisation_address_id: null, ReturnDate: null },
+      (w) => ({ statusId: w.statusId, contactId: w.ContactID, localisationId: PEM }))
+    if (!moveErr && ids.length) {
+      await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
+        .eq('order_id', order.id).eq('line_status', 'active')
+    }
   } else if ((order.kind === 'consignment' || order.kind === 'loan') && to === 'out') {
     const statusId = order.kind === 'loan' ? 8 : 7
     moveErr = await moveWorks(supabase, ids,
@@ -392,11 +491,8 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
       await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
         .eq('order_id', order.id).eq('line_status', 'active')
     }
-  } else if (order.kind === 'gift' && to === 'signed') {
-    // The price is kept (gift price still an open question, brief Q8) — the old dialog set it to 0.
-    moveErr = await moveWorks(supabase, ids, { statusId: 11, ContactID: party, AcheteurID: party, is_gift: true },
-      (w) => ({ statusId: 11, contactId: party, localisationId: w.LocalisationID }))
   }
+  // Gift « signed »: the deed is signed, nothing moves until the hand-over.
 
   if (moveErr) {
     // Put the order back where it was; the step date it stamped is cleared with it.
@@ -407,8 +503,25 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   }
 
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: to, metadata: { ref: order.ref, kind: order.kind, works: ids } })
-  // Signed: the paper is made again without the « Brouillon » mark.
-  if (to === 'signed') {
+  // Delivered: a reminder on the day the cooling-off window ends (Field reminders, Today).
+  if (order.kind === 'sale' && to === 'delivered') {
+    const { data: win } = await supabase.from('work_order').select('return_window_days, return_window_skipped, process_id').eq('id', order.id).single()
+    const days = Number(win?.return_window_days ?? 14)
+    if (win && !win.return_window_skipped && days > 0) {
+      const { error: remErr } = await supabase.from('suivi_reminder').insert({
+        process_id: win.process_id,
+        message: resolveMessage('fr', 'ord_reminder_cooling_off').replace('{ref}', order.ref ?? '').replace('{works}', ids.map((n) => `#${n}`).join(', ')),
+        remind_at: addCalendarDaysIso(today, days),
+      })
+      if (remErr) await logError('Cooling-off reminder not written', remErr.message, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
+      else revalidateTag('reminders')
+    }
+  }
+  if (CUSTODY_KINDS.includes(order.kind) && to === 'out') await closeDateReminders(supabase, order.ref, 'out')
+  if (CUSTODY_KINDS.includes(order.kind) && to === 'closed') await closeDateReminders(supabase, order.ref, 'all')
+  // Signed: the paper is made again without the « Brouillon » mark. A gift's deed is made again at
+  // hand-over: it becomes the dated record of the hand-over. « Confié » has no signed step.
+  if (to === 'signed' || (order.kind === 'gift' && to === 'handed_over') || (order.kind === 'entrusted' && to === 'out')) {
     const paper = await makeOrderPaper(order.id)
     if ('error' in paper) await logError('Order paper failed at signature', paper.error, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
   }
@@ -444,6 +557,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   const { error } = await supabase.from('work_order').update({ status: 'cancelled' }).eq('id', order.id)
   if (error) return { error: error.message }
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: 'cancelled', metadata: { ref: order.ref, kind: order.kind } })
+  await closeDateReminders(supabase, order.ref, 'all')
   revalidatePath('/atelier/sales')
   return { ok: true }
 }
@@ -505,11 +619,11 @@ export async function getWorksForOrder(ids: number[]): Promise<OrderWorkHit[]> {
   if ('error' in g) return []
   const clean = [...new Set(ids.filter((n) => Number.isInteger(n) && n !== 0))].slice(0, 50)
   if (clean.length === 0) return []
-  const { data } = await g.supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink').in('OeuvreID', clean).is('deleted_at', null)
+  const { data } = await g.supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix').in('OeuvreID', clean).is('deleted_at', null)
   const byId = new Map((data ?? []).map((w) => [w.OeuvreID, w]))
   return clean.flatMap((id) => {
     const w = byId.get(id)
-    return w ? [{ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink }] : []
+    return w ? [{ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix) }] : []
   })
 }
 
@@ -523,7 +637,86 @@ export async function findOrdersForProcess(processId: string): Promise<ProcessOr
   return (data ?? []).map((o) => ({ id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status }))
 }
 
-export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null }
+/** A sale order as Reports « Ventes » reads it (same field names as the former `sale_order` row). */
+export type ReportSaleOrder = {
+  id: string
+  order_ref: string | null
+  statut: string
+  buyer_id: number
+  oeuvre_id: number | null
+  oeuvre_ids: number[]
+  prix_catalogue: number | null
+  prix_final: number | null
+  delivery_date: string | null
+  deposit_paid: boolean
+  balance_paid: boolean
+  delivered: boolean
+  commission_amount: number | null
+  payments: { amount: number }[]
+}
+
+/** Sale orders for Reports (newest first; cancelled ones left out). */
+export async function fetchSaleOrdersForReport(): Promise<ReportSaleOrder[]> {
+  const g = await guardTeam()
+  if ('error' in g) return []
+  const { supabase } = g
+  const { data: orders } = await supabase
+    .from('work_order')
+    .select('id, ref, status, party_id, price_catalogue, price_final, delivered_at, commission_amount')
+    .eq('kind', 'sale').neq('status', 'cancelled')
+    .order('created_at', { ascending: false })
+  if (!orders?.length) return []
+  const ids = orders.map((o) => o.id)
+  const [linesRes, payRes] = await Promise.all([
+    supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', ids),
+    supabase.from('payments').select('work_order_id, amount').in('work_order_id', ids),
+  ])
+  return orders.map((o) => {
+    const works = (linesRes.data ?? []).filter((l) => l.order_id === o.id).sort((a, b) => a.position - b.position).map((l) => l.oeuvre_id)
+    const payments = (payRes.data ?? []).filter((p) => p.work_order_id === o.id).map((p) => ({ amount: Number(p.amount) }))
+    return {
+      id: o.id,
+      order_ref: o.ref,
+      statut: o.status,
+      buyer_id: o.party_id,
+      oeuvre_id: works[0] ?? null,
+      oeuvre_ids: works,
+      prix_catalogue: o.price_catalogue,
+      prix_final: o.price_final,
+      delivery_date: o.delivered_at ? o.delivered_at.slice(0, 10) : null,
+      deposit_paid: payments.length > 0 || ['deposit_paid', 'paid', 'delivered'].includes(o.status),
+      balance_paid: o.status === 'paid' || o.status === 'delivered',
+      delivered: o.status === 'delivered',
+      commission_amount: o.commission_amount,
+      payments,
+    }
+  })
+}
+
+/** The order a work is on (the open one first, else the latest finished one) — the work card's
+ *  stage chips link to it. Cancelled orders and lines that left the order are skipped. */
+export async function findOrderForWork(oeuvreId: number): Promise<(ProcessOrderLink & { party: string }) | null> {
+  const g = await guardTeam()
+  if ('error' in g || !Number.isInteger(oeuvreId)) return null
+  const { data } = await g.supabase
+    .from('work_order_work')
+    .select('line_status, work_order!work_order_work_order_id_fkey(id, ref, kind, status, created_at, party_id)')
+    .eq('oeuvre_id', oeuvreId)
+  const orders = (data ?? [])
+    .filter((l) => l.line_status === 'active' || l.line_status === 'sold' || l.line_status === 'given')
+    .map((l) => l.work_order as unknown as { id: string; ref: string | null; kind: string; status: string; created_at: string; party_id: number } | null)
+    .filter((o): o is { id: string; ref: string | null; kind: string; status: string; created_at: string; party_id: number } => !!o && o.status !== 'cancelled')
+    .sort((a, b) => Number(FINISHED_STATUSES.includes(a.status)) - Number(FINISHED_STATUSES.includes(b.status)) || b.created_at.localeCompare(a.created_at))
+  const o = orders[0]
+  if (!o) return null
+  const { data: c } = await g.supabase.from('Contact').select('*').eq('ContactID', o.party_id).maybeSingle()
+  const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
+  const party = contact ? (contact.NomInstitution || [contact.Prénom, contact.Nom].filter(Boolean).join(' ').trim()) : `#${o.party_id}`
+  return { id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status, party }
+}
+const FINISHED_STATUSES = ['closed', 'delivered', 'handed_over']
+
+export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null; price: number | null }
 
 /** Work picker for a new order: by number (« 2210 », « #2210 ») or by title. */
 export async function searchWorksForOrder(q: string): Promise<OrderWorkHit[]> {
@@ -532,10 +725,10 @@ export async function searchWorksForOrder(q: string): Promise<OrderWorkHit[]> {
   const { supabase } = g
   const term = q.trim().replace(/^#/, '')
   if (!term) return []
-  let query = supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink').is('deleted_at', null).limit(12)
+  let query = supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix').is('deleted_at', null).limit(12)
   query = /^\d+$/.test(term) ? query.eq('OeuvreID', Number(term)) : query.ilike('Titre', `%${term.replace(/[%_]/g, '')}%`)
   const { data } = await query.order('OeuvreID', { ascending: false })
-  return (data ?? []).map((w) => ({ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink }))
+  return (data ?? []).map((w) => ({ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix) }))
 }
 
 export type PartyAddress = { id: number; label: string | null; ville: string | null }
@@ -634,7 +827,11 @@ export async function makeOrderPaper(orderId: string): Promise<SimpleOrderResult
       const w = byId.get(l.oeuvre_id)
       const medium = [w?.Technique != null ? tM.get(w.Technique) : null, w?.Support != null ? sM.get(w.Support) : null].filter(Boolean).join(' sur ')
       const dims = w?.Hauteur && w?.Largeur ? `${w.Hauteur} × ${w.Largeur}${w.Profondeur && w.Profondeur !== '0.1' ? ` × ${w.Profondeur}` : ''} cm` : null
-      const value = kind === 'loan' ? (l.insurance_value ?? w?.Prix ?? null) : kind === 'gift' ? null : (l.price ?? w?.Prix ?? null)
+      // A gift never prints a value; loan / entrusted print the line's insurance value; consignment its agreed price.
+      const value = kind === 'gift' ? null
+        : kind === 'loan' || kind === 'entrusted' ? (l.insurance_value ?? w?.Prix ?? null)
+        : kind === 'consignment' ? (l.price ?? l.insurance_value ?? w?.Prix ?? null)
+        : (l.price ?? w?.Prix ?? null)
       return { id: l.oeuvre_id, title: w?.Titre ?? null, year: w?.Année ? String(w.Année).slice(0, 4) : null, medium: medium || null, dims, value, image: w?.txtImageNameLink ?? null }
     }),
     currency: o.currency,
@@ -646,6 +843,7 @@ export async function makeOrderPaper(orderId: string): Promise<SimpleOrderResult
     startDate: o.start_date,
     endDate: o.end_date,
     returnWindowDays: kind === 'sale' ? o.return_window_days : null,
+    handedOverAt: kind === 'gift' && o.status === 'handed_over' ? o.delivered_at : null,
     notes: o.notes,
   })
 

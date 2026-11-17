@@ -30,7 +30,7 @@ import { deleteSavedReport, listSavedReports, saveReport } from '@/app/atelier/(
 import { listReportContacts, type ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
 import { listDescriptionRatings, type DescriptionRating } from '@/app/atelier/works/description-actions'
 import { listKaizen } from '@/app/atelier/(portal)/kaizen/actions'
-import { fetchOrders, type SaleOrderRow } from '@/app/atelier/(portal)/sales/actions'
+import { fetchSaleOrdersForReport, type ReportSaleOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { PivotAtlasPanel } from '@/app/atelier/(portal)/reports/_components/PivotAtlasPanel'
 import { ReportFieldsPanel } from '@/app/atelier/(portal)/reports/_components/ReportFieldsPanel'
 import { SOURCE_HINT, SOURCE_LABEL, buildSource, type SaleRow, type SourceCtx } from '@/app/atelier/(portal)/reports/_components/report-sources'
@@ -74,7 +74,7 @@ type Loaded = {
   pendingActions?: Map<number, string[]>
   kaizen?: { items: KaizenItem[]; names: Record<string, string> }
   constats?: { reports: ConditionReport[]; names: Record<string, string> }
-  orders?: SaleOrderRow[]
+  orders?: ReportSaleOrder[]
   contacts?: ReportContactRow[]
   aiRatings?: Record<number, DescriptionRating>
 }
@@ -209,7 +209,7 @@ export function Reports({
         .catch(fail)
     }
     if (needs.orders && !loaded.orders) {
-      fetchOrders()
+      fetchSaleOrdersForReport()
         .then((r) => { if (live) setLoaded((p) => ({ ...p, orders: r })) })
         .catch(fail)
     }
@@ -249,9 +249,9 @@ export function Reports({
       case 'sales': {
         if (!loaded.orders) return null
         // Latest order per work (orders arrive newest first; one order may carry several works).
-        const orderOf = new Map<number, SaleOrderRow>()
+        const orderOf = new Map<number, ReportSaleOrder>()
         for (const ord of loaded.orders) {
-          const ids = ord.oeuvre_ids?.length ? ord.oeuvre_ids : [ord.oeuvre_id]
+          const ids = ord.oeuvre_ids
           for (const id of ids) if (!orderOf.has(id)) orderOf.set(id, ord)
         }
         const rows: SaleRow[] = []

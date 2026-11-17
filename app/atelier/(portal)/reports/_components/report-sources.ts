@@ -5,7 +5,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import type { KaizenItem } from '@/lib/kaizen'
 import { ACTION_STATUS_KEY, GRADE_KEY, type ConditionReport } from '@/lib/condition'
-import type { SaleOrderRow } from '@/app/atelier/(portal)/sales/actions'
+import type { ReportSaleOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import type { ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
 import { yearOf } from '@/lib/data'
 import type { ReportConfig, ReportField } from '@/lib/reports/engine'
@@ -14,7 +14,7 @@ import type { ReportSource } from '@/lib/reports/saved-report'
 import { effectivePeriod, effectivePlace, placeLabel, workWhen, type PeriodSourceData } from '@/lib/work-periods'
 import type { DescriptionRating } from '@/app/atelier/works/description-actions'
 
-export type SaleRow = { o: Oeuvre; order: SaleOrderRow | null }
+export type SaleRow = { o: Oeuvre; order: ReportSaleOrder | null }
 
 export type SourceCtx = {
   t: (k: DictKey) => string
@@ -56,12 +56,14 @@ export const SOURCE_HINT: Record<ReportSource, DictKey> = {
   contacts: 'report_source_contacts_hint',
 }
 
+/** `work_order` sale steps (R7). */
 const ORDER_STATUS_KEY: Record<string, DictKey> = {
-  draft: 'report_v_order_draft',
-  confirmed: 'report_v_order_confirmed',
-  deposit_paid: 'report_v_order_deposit_paid',
-  completed: 'report_v_order_completed',
-  cancelled: 'report_v_order_cancelled',
+  draft: 'ord_st_draft',
+  signed: 'ord_st_signed',
+  deposit_paid: 'ord_st_deposit_paid',
+  paid: 'ord_st_paid',
+  delivered: 'ord_st_delivered',
+  cancelled: 'ord_st_cancelled',
 }
 
 function config(fields: string[], sortField: string, dir: 'asc' | 'desc' = 'desc'): ReportConfig {

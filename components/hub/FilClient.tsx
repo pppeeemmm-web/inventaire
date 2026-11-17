@@ -8,6 +8,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { orderBody } from '@/lib/orders/fil-order-text'
 import { thumbUrl } from '@/lib/data'
 import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
@@ -177,7 +178,9 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
   const date = new Date(item.at).toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' })
 
   const kindLabel =
-    item.kind === 'idea'
+    item.kind === 'work_order'
+      ? t('fil_order_title').replace('{ref}', item.order?.ref ?? '')
+      : item.kind === 'idea'
       ? t('fil_idea')
       : item.kind === 'kaizen_item'
         ? t('fil_kaizen')
@@ -187,7 +190,8 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
             ? t('fil_proposal')
             : null
 
-  const body = item.body.length > BODY_MAX ? `${item.body.slice(0, BODY_MAX)}…` : item.body
+  const text = item.order ? orderBody(item.order, t) : item.body
+  const body = text.length > BODY_MAX ? `${text.slice(0, BODY_MAX)}…` : text
   const image = item.image ? thumbUrl(item.image) : null
 
   return (
@@ -231,6 +235,12 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
       {image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={image} alt="" loading="lazy" style={{ maxWidth: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 6, justifySelf: 'start' }} />
+      ) : null}
+
+      {item.order ? (
+        <Link href={`/atelier/sales?order=${item.order.id}`} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', color: 'var(--ac)', fontSize: 13 }}>
+          {t('ord_open_order')}
+        </Link>
       ) : null}
 
       {item.changes?.length ? (

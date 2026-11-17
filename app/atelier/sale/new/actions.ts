@@ -6,6 +6,8 @@
 // → « Acompte » (works reserved), all of it → « Soldée » (the buyer becomes the owner).
 
 import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import type { MobileSaleWork } from '@/components/atelier/sale/SaleNewClient'
 import {
   advanceWorkOrder,
   createWorkOrder,
@@ -64,4 +66,24 @@ export async function completeMobileSale(formData: FormData): Promise<CompleteMo
   revalidatePath('/atelier')
   revalidatePath('/atelier/sale/new')
   return { ok: true, order, status, totalPaid: paymentAmount }
+}
+
+/**
+ * Works beyond the 300 newest the page loads (an older work sold at the studio): by number
+ * (« 120 », « #120 ») or title. Team only (RLS).
+ */
+export async function searchSaleWorks(q: string): Promise<MobileSaleWork[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const term = q.trim().replace(/^#/, '')
+  if (!term) return []
+  let query = supabase
+    .from('Oeuvres')
+    .select('OeuvreID, Titre, Technique, "Année", Prix, PrixFinal, Discount, statusId, "Catalogué", NeedsPhotograph, txtImageNameLink')
+    .is('deleted_at', null)
+    .limit(14)
+  query = /^-?\d+$/.test(term) ? query.eq('OeuvreID', Number(term)) : query.ilike('Titre', `%${term.replace(/[%_]/g, '')}%`)
+  const { data } = await query.order('OeuvreID', { ascending: false })
+  return (data ?? []) as MobileSaleWork[]
 }

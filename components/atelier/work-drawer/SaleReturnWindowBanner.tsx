@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { openReadOr } from '@/lib/atelier/open-reads'
 import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
-import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/(portal)/sales/actions'
+import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/(portal)/sales/cooling-off-actions'
 import { useI18n } from '@/lib/i18n/context'
 import { useCaption } from './WorkCardCaption'
 

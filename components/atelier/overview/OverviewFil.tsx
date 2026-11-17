@@ -15,6 +15,7 @@ import { WorkRef } from '@/components/atelier/WorkRef'
 import { thumbUrl } from '@/lib/data'
 import { dismissToast, toast } from '@/lib/ui/toast'
 import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
+import { orderBody } from '@/lib/orders/fil-order-text'
 import { decideFil, listFil, type FilDecision, type FilItem, type FilSection } from '@/app/atelier/fil/actions'
 
 const UNDO_MS = 6000
@@ -166,7 +167,9 @@ export function OverviewFil() {
     const on = !readOnly && sel?.key === item.key
     const fiche = item.kind === 'pending_change'
     const kindLabel =
-      item.kind === 'idea'
+      item.kind === 'work_order'
+        ? t('fil_order_title').replace('{ref}', item.order?.ref ?? '')
+        : item.kind === 'idea'
         ? t('fil_idea')
         : item.kind === 'kaizen_item'
           ? t('fil_kaizen')
@@ -211,14 +214,14 @@ export function OverviewFil() {
             {item.newLines ? <span>{item.newLines === 1 ? t('fil_new_line_one') : t('fil_new_lines').replace('{n}', String(item.newLines))}</span> : null}
           </div>
           {item.title ? <div style={{ fontWeight: 600, fontSize: 13, ...ELLIPSIS }}>{item.title}</div> : null}
-          {item.body.trim() ? (
+          {(item.order ? orderBody(item.order, t) : item.body).trim() ? (
             <div
               style={{
                 fontSize: 13, lineHeight: 1.4, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                 ...(on ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }),
               }}
             >
-              {item.body.trim()}
+              {(item.order ? orderBody(item.order, t) : item.body).trim()}
             </div>
           ) : null}
           {item.changes?.length ? (

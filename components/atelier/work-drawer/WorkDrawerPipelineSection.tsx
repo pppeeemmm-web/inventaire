@@ -47,8 +47,12 @@ export type WorkDrawerPipelineSectionProps = {
   cName: (c: DrawerContactRow) => string
   currentLoc: string
   setShowNewContact: Dispatch<SetStateAction<boolean>>
-  /** « Don… » chip → GiftTransferModal (keeps the gift override). */
+  /** « Don… » chip → GiftTransferModal on a gift order. */
   onGift: () => void
+  /** « Dépôt… / Prêt… / Vendu… » chips → the same form on that kind (a draft order, R7). */
+  onOrder?: (kind: 'consignment' | 'loan' | 'sale') => void
+  /** The order the work is on: the stage chip it set links to it. */
+  orderLink?: { id: string; ref: string | null; kind?: string; status?: string; party?: string } | null
   /** Production span, already formatted (« 12 juin 2025 »), or ''. */
   startedLabel: string
   completedLabel: string
@@ -87,6 +91,8 @@ export function WorkDrawerPipelineSection({
   setShowNewContact,
   onOpenContact,
   onGift,
+  onOrder,
+  orderLink = null,
   startedLabel,
   completedLabel,
   locked,
@@ -120,9 +126,12 @@ export function WorkDrawerPipelineSection({
   // sale), so those stages are never picked here; a gift is the owner's call (« Don… »), and
   // once given the recipient and the custodian stay editable.
   const BY_ORDER: OwnStageId[] = ['consigned', 'loan', 'sold']
+  const ORDER_KIND: Partial<Record<OwnStageId, 'consignment' | 'loan' | 'sale'>> = { consigned: 'consignment', loan: 'loan', sold: 'sale' }
   const lockedByOrder = BY_ORDER.includes(loadedOwnStage)
   /** Archive = catalogued first (Pem 2026-11-17, archive_shelf.sql). */
   const archiveNeedsCatalogue = prodStage === 'atelier'
+  // R7 v2: from the card, a work in Pem's hands can start any order (as a draft to check).
+  const canStartOrder = !!onOrder && !locked && !lockedByOrder && loadedOwnStage === 'artist' && !isArchived
   const stageDisabled = (id: OwnStageId) => {
     if (locked) return id !== ownStage
     if (id === 'artist_archive' && archiveNeedsCatalogue) return true
@@ -324,6 +333,39 @@ export function WorkDrawerPipelineSection({
                 </Chip>
               )
             }
+            // The stage an order set: a link to that order (« Confié » keeps the stage: its own chip below).
+            if (isOn && orderLink && orderLink.kind !== 'entrusted' && (BY_ORDER.includes(s.id) || s.id === 'gift' || s.id === 'reserved')) {
+              return (
+                <Chip
+                  key={s.id}
+                  narrow={narrow}
+                  tone="own"
+                  active
+                  onClick={() => window.location.assign(`/atelier/sales?order=${orderLink.id}`)}
+                  title={`${s.desc} — ${t('wc_order_link_tt').replace('{ref}', orderLink.ref ?? '')}`}
+                  testId={`work-drawer-own-${s.id}`}
+                >
+                  {`${s.label} · ${orderLink.ref ?? ''}`}
+                </Chip>
+              )
+            }
+            // Dépôt… / Prêt… / Vendu…: a draft order for this work (like « Don… »).
+            const orderKind = ORDER_KIND[s.id]
+            if (!isOn && orderKind && canStartOrder) {
+              return (
+                <Chip
+                  key={s.id}
+                  narrow={narrow}
+                  tone="own"
+                  dashed
+                  onClick={() => onOrder?.(orderKind)}
+                  title={`${s.desc} — ${t('wc_order_chip_tt')}`}
+                  testId={`work-drawer-own-${s.id}`}
+                >
+                  {`${s.label}…`}
+                </Chip>
+              )
+            }
             const dis = stageDisabled(s.id) && !isOn
             const why = !dis
               ? ''
@@ -349,6 +391,19 @@ export function WorkDrawerPipelineSection({
               </Chip>
             )
           })}
+          {/* « Confié » (R7): the work keeps its stage and is with a craftsperson until it comes back. */}
+          {orderLink?.kind === 'entrusted' && orderLink.status === 'out' && (
+            <Chip
+              narrow={narrow}
+              tone="own"
+              active
+              onClick={() => window.location.assign(`/atelier/sales?order=${orderLink.id}`)}
+              title={t('wc_entrusted_chip_tt').replace('{ref}', orderLink.ref ?? '')}
+              testId="work-drawer-entrusted"
+            >
+              {t('wc_entrusted_chip').replace('{party}', orderLink.party ?? '')}
+            </Chip>
+          )}
         </div>
       </div>
 

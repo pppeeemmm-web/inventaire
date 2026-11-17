@@ -25,12 +25,13 @@ Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6
 | Consignment / loan | Pem | gallery / borrower | one of the custodian's |
 | Sold, payment cleared, not delivered | buyer | Pem (or the gallery that holds it) | Principal (or the gallery's) |
 | Sold, delivered | buyer | buyer | one of the buyer's |
-| Gift, deed signed, not handed over | recipient | Pem | Principal |
+| Gift, deed signed, not handed over | Pem | where it is (Pem, gallery, borrower) | that custodian's |
 | Gift, handed over | recipient | recipient | one of the recipient's |
+| « Confié » (framer, restorer, photographer — R7) | Pem | the craftsperson | one of the craftsperson's — **the work keeps its stage** (in production / available / archive) |
 
-- **Ownership moves** when payment is complete and cleared (sale: order `completed`), or when the gift deed is signed.
+- **Ownership moves** when payment is complete and cleared (sale order « Soldée »), or when a gift is **handed over** (don manuel — Pem 2026-11-17; was: at the deed's signature). The gift deed is the dated record of the hand-over.
 - **Custody moves** on delivery / hand-over, never at payment.
-- **Every move out of Pem's place goes through an order**: consignment, loan (exhibitions included), sale. Gifts: the owner decides (gift dialog in the work drawer), no order needed.
+- **Every move out of Pem's place goes through an order** (R7 `work_order`, Business → Commandes): sale, consignment, loan (exhibitions included), gift, and « Confié » (needs `supabase/sql/work_order_r7_decisions.sql`, not applied yet). The work card's « Dépôt… / Prêt… / Vendu… / Don… » make a draft order.
 - Pem's address follows the stage: Atelier while in production, Principal from Available on. An address picked by hand is kept until the next stage change.
 - A custodian with one address gives the work that address automatically; with several, pick it in the drawer.
 
@@ -39,7 +40,7 @@ Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6
 - DB trigger `oeuvre_holder_check` ([`work_custody_model.sql`](../supabase/sql/work_custody_model.sql)): the table above, per status.
 - DB trigger `oeuvre_location_by_stage` (same file): the address rules. Runs only when the work row is saved.
 - DB trigger `trg_contact_address_link_single` on `contact_addresses` ([`contact_address_single_link.sql`](../supabase/sql/contact_address_single_link.sql), applied 2026-11-12): same single-address rule from the address side — when a contact is left with one address, its works without an address get it (Pem excluded). Backfill linked #302, #2124, #2162, #2339, #2341 (Kaizen "linkage broken").
-- Orders: [`sales/actions.ts`](../app/atelier/(portal)/sales/actions.ts), [`consignments/actions.ts`](../app/atelier/consignments/actions.ts); gifts: [`gift-actions.ts`](../app/atelier/works/gift-actions.ts); exhibitions: [`exhibitions/actions.ts`](../app/atelier/(portal)/exhibitions/actions.ts).
+- Orders: [`orders-actions.ts`](../app/atelier/(portal)/sales/orders-actions.ts) (`createWorkOrder`, `advanceWorkOrder`: each step moves the works and writes their history); exhibitions send through it ([`exhibitions/actions.ts`](../app/atelier/(portal)/exhibitions/actions.ts)). The former `sales/actions.ts`, `consignments/actions.ts` and `gift-actions.ts` are gone (R7, 2026-11-17).
 
 ## Mismatches found 2026-11-03 (live code + DB) and their fix
 

@@ -1533,7 +1533,7 @@ Atelier and Hub are the **back office**. The pages in this chapter are what the 
 | `/works` | public | ✓ | — | Public portfolio — collections from Atelier → Site / Portfolio config. |
 | `/practice` | public | ✓ | — | Artist practice / démarche. |
 | `/about` | public | ✓ | — | Biography / CV. |
-| `/enquiry` | public | ✓ | — | Visitor contact form. Optional `?oeuvre_id=` / `?sale_order_id=` routes the inquiry. |
+| `/enquiry` | public | ✓ | — | Visitor contact form. Optional `?oeuvre_id=` / `?order=` (an order id, R7) routes the inquiry. |
 | `/verify/[certId]` | public | — (no robots block, but no inbound links) | — | COA verify (QR target). Service-role read, no anon key. |
 | `/card` | public | ✗ `noindex` | — | Printable business-card sheet (two cards per page, front + back). |
 | `/c/[token]` | public | ✗ `noindex` | — | **Private selection link** — token-validated server-side, never anon-readable. |
@@ -1612,7 +1612,7 @@ Static / config-driven copy pages. Bilingual via `useI18n().t(key)`. The content
 | Message | Required. |
 | Category | `general` / others. Drives where the message routes server-side. |
 | `?oeuvre_id=<id>` | Pre-filled; submission writes `inquiry.oeuvre_id`. Use case: a visitor on `/works/[id]` clicks "Enquire about this work". |
-| `?sale_order_id=<id>` | After-sales enquiry. Pre-fills `inquiry.sale_order_id`. |
+| `?order=<id>` | After-sales enquiry about an order. Pre-fills `inquiry.work_order_id`. |
 | Contact email + phone | Loaded from `config.general` and rendered alongside the form. |
 | Tracking | `trackView('/enquiry', ...)` on mount. |
 

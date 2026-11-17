@@ -13,6 +13,8 @@ const KIND_LABEL = {
   idea: 'fil_log_kind_idea',
   kaizen_item: 'fil_log_kind_kaizen_item',
   pending_change: 'fil_log_kind_pending_change',
+  // Draft orders leave no log line (« Retirer » cancels the order itself); listed for the type.
+  work_order: 'ord_title',
 } as const satisfies Record<FilKind, string>
 
 export function FilLog() {

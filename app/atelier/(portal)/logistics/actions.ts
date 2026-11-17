@@ -14,8 +14,8 @@ async function guardTeam() {
 export type ShipmentSimpleResult = { error: string } | { ok: true }
 
 /**
- * Mark a shipment delivered. When `shipment.sale_order_id` is set (migration),
- * DB trigger syncs `sale_order.return_window_starts_at` + `delivered`.
+ * Mark a shipment delivered. When the shipment points to an order (`shipment.work_order_id`,
+ * R7), the DB delivery trigger updates that order (supabase/sql/work_order.sql).
  */
 export async function markShipmentDelivered(shipmentId: string): Promise<ShipmentSimpleResult> {
   const { error: authErr, supabase } = await guardTeam()

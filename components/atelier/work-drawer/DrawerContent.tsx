@@ -66,6 +66,7 @@ import { WorkAiDescriptionSection } from './WorkAiDescriptionSection'
 import { workWhen } from '@/lib/work-periods'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
+import { findOrderForWork, type ProcessOrderLink, type WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
 
 const WORK_CARD_VIEW_KEY = 'pem.workCard.view'
 
@@ -215,8 +216,19 @@ export function DrawerContent({
     normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
   )
 
-  // ── Gift modal state ───────────────────────────────────
-  const [showGiftModal, setShowGiftModal] = useState(false)
+  // ── Order modal (« Don… », « Dépôt… », « Prêt… », « Vendu… » → a draft order, R7) ──
+  const [orderModalKind, setOrderModalKind] = useState<WorkOrderKind | null>(null)
+  const [orderLink, setOrderLink] = useState<(ProcessOrderLink & { party: string }) | null>(null)
+  useEffect(() => {
+    let live = true
+    setOrderLink(null)
+    findOrderForWork(o.OeuvreID)
+      .then((link) => { if (live) setOrderLink(link) })
+      // The link is a convenience: without it the stage chip just stays locked.
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- the chip falls back to its locked state
+      .catch(() => {})
+    return () => { live = false }
+  }, [o.OeuvreID, o.statusId])
   const [noteBaseline, setNoteBaseline] = useState({ c: '', h: '' })
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
@@ -1591,7 +1603,9 @@ export function DrawerContent({
             cName={cName}
             currentLoc={currentLoc}
             setShowNewContact={setShowNewContact}
-            onGift={() => setShowGiftModal(true)}
+            onGift={() => setOrderModalKind('gift')}
+            onOrder={(kind) => setOrderModalKind(kind)}
+            orderLink={orderLink}
             startedLabel={startedLabel}
             completedLabel={completedLabel}
             locked={!!o.fate}
@@ -1993,12 +2007,16 @@ export function DrawerContent({
         />
       )}
 
-      {showGiftModal && (
+      {orderModalKind && (
         <GiftTransferModal
           oeuvreId={o.OeuvreID}
+          kind={orderModalKind}
           recipients={sortedContacts}
-          onClose={() => setShowGiftModal(false)}
-          onGifted={() => { setShowGiftModal(false); setLongTextReloadNonce((n) => n + 1); router.refresh() }}
+          onClose={() => setOrderModalKind(null)}
+          onGifted={() => {
+            setOrderModalKind(null); setLongTextReloadNonce((n) => n + 1); router.refresh()
+            void findOrderForWork(o.OeuvreID).then(setOrderLink)
+          }}
         />
       )}
 

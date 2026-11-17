@@ -1,7 +1,8 @@
 
 // R7 order papers (docs/design/2026-11-17/R7_Orders.notes.md « Papers per kind »):
 // one generator for the four kinds. Bon de commande (sale), bordereau de dépôt-vente
-// (consignment), contrat de prêt (loan), acte de don (gift). French with an English line,
+// (consignment), contrat de prêt (loan), acte de don (gift), bon de confiage (« Confié »: a framer,
+// restorer, photographer — the work keeps its stage, Pem 2026-11-17). French with an English line,
 // like the former papers. The wording is a plain draft for Pem to review — not legal advice.
 //
 // pdfkit rules (CLAUDE.md): no 8-char hex colours; text without `height` may add a page.
@@ -9,7 +10,7 @@
 
 import { logWarn } from '@/lib/error-reporter/server'
 
-export type PaperKind = 'sale' | 'consignment' | 'loan' | 'gift'
+export type PaperKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
 
 export interface PaperParty {
   name: string
@@ -42,6 +43,8 @@ export interface PaperInput {
   commissionPct: number | null
   startDate: string | null
   endDate: string | null
+  /** Gift: the hand-over date (ownership moves then — « don manuel », Pem 2026-11-17). */
+  handedOverAt: string | null
   returnWindowDays: number | null
   notes: string | null
 }
@@ -51,6 +54,7 @@ export const PAPER_SLUG: Record<PaperKind, string> = {
   consignment: 'bordereau-depot',
   loan: 'contrat-pret',
   gift: 'acte-de-don',
+  entrusted: 'bon-de-confiage',
 }
 
 export const PAPER_TITLE: Record<PaperKind, { fr: string; en: string }> = {
@@ -58,6 +62,7 @@ export const PAPER_TITLE: Record<PaperKind, { fr: string; en: string }> = {
   consignment: { fr: 'Bordereau de dépôt-vente', en: 'Consignment agreement' },
   loan: { fr: 'Contrat de prêt', en: 'Loan agreement' },
   gift: { fr: 'Acte de don', en: 'Deed of gift' },
+  entrusted: { fr: 'Bon de confiage', en: 'Entrustment note' },
 }
 
 const PARTY_ROLE: Record<PaperKind, string> = {
@@ -65,6 +70,7 @@ const PARTY_ROLE: Record<PaperKind, string> = {
   consignment: 'DÉPOSITAIRE / CONSIGNEE',
   loan: 'EMPRUNTEUR / BORROWER',
   gift: 'BÉNÉFICIAIRE / RECIPIENT',
+  entrusted: 'ARTISAN / CRAFTSPERSON',
 }
 
 const SIGN_ROLE: Record<PaperKind, string> = {
@@ -72,13 +78,16 @@ const SIGN_ROLE: Record<PaperKind, string> = {
   consignment: 'POUR LE DÉPOSITAIRE / FOR THE CONSIGNEE',
   loan: "POUR L'EMPRUNTEUR / FOR THE BORROWER",
   gift: 'POUR LE BÉNÉFICIAIRE / FOR THE RECIPIENT',
+  entrusted: "POUR L'ARTISAN / FOR THE CRAFTSPERSON",
 }
 
 const VALUE_HEAD: Record<PaperKind, string | null> = {
   sale: 'PRIX / PRICE',
   consignment: 'PRIX CONVENU / AGREED PRICE',
   loan: "VALEUR D'ASSURANCE / INSURANCE VALUE",
+  // A gift never prints a value (Pem 2026-11-17: « the recipient should not have a price written »).
   gift: null,
+  entrusted: "VALEUR D'ASSURANCE / INSURANCE VALUE",
 }
 
 const CONDITIONS: Record<PaperKind, string> = {
@@ -94,8 +103,13 @@ const CONDITIONS: Record<PaperKind, string> = {
     "L'emprunteur les assure, à la valeur indiquée, du départ de l'atelier jusqu'à leur retour (« clou à clou »), " +
     "et s'engage à les présenter avec la mention « Collection de l'artiste / Courtesy of the artist ». Un constat d'état est fait au départ et au retour.",
   gift:
-    "Le présent acte atteste du don, à titre gracieux, des œuvres listées au bénéficiaire désigné. Aucune contrepartie n'est due. " +
-    "La propriété passe au bénéficiaire à la signature ; la garde, à la remise des œuvres.",
+    "Le présent acte constate le don manuel, à titre gracieux, des œuvres listées au bénéficiaire désigné. Aucune contrepartie n'est due. " +
+    "Le don est réalisé par la remise des œuvres : la propriété et la garde passent ensemble au bénéficiaire à la date de remise indiquée ci-dessus. " +
+    "Jusqu'à cette remise, les œuvres restent la propriété de l'artiste.",
+  entrusted:
+    "Les œuvres listées sont confiées à l'artisan pour le travail décrit ci-dessous (encadrement, restauration, photographie…) et pour la période indiquée. " +
+    "Elles restent la propriété de l'artiste et ne peuvent être ni vendues, ni prêtées, ni exposées. " +
+    "L'artisan en assure la garde et l'assurance, à la valeur indiquée, jusqu'à leur retour à l'atelier.",
 }
 
 async function workImagePng(key: string | null): Promise<Buffer | null> {
@@ -205,7 +219,8 @@ export async function buildOrderPaper(p: PaperInput): Promise<Buffer> {
       if (p.returnWindowDays) rows.push(['Délai de rétractation / Cooling-off', `${p.returnWindowDays} jours après la livraison`])
     }
     if (p.kind === 'consignment' && p.commissionPct != null) rows.push(['Commission du dépositaire / Commission', `${p.commissionPct} % du prix de vente`])
-    if (p.kind === 'consignment' || p.kind === 'loan') rows.push(['Période / Period', `du ${fmtDate(p.startDate)} au ${fmtDate(p.endDate)}`])
+    if (p.kind === 'consignment' || p.kind === 'loan' || p.kind === 'entrusted') rows.push(['Période / Period', `du ${fmtDate(p.startDate)} au ${fmtDate(p.endDate)}`])
+    if (p.kind === 'gift') rows.push(['Date de remise / Handover date', p.handedOverAt ? fmtDate(p.handedOverAt) : '______________________'])
     if (rows.length) {
       ensure(20 + rows.length * 16)
       doc.y += 6
@@ -225,7 +240,7 @@ export async function buildOrderPaper(p: PaperInput): Promise<Buffer> {
     if (p.notes) {
       ensure(40)
       doc.y += 10
-      label(p.kind === 'loan' ? 'OBJET DU PRÊT, NOTES / PURPOSE, NOTES' : 'NOTES')
+      label(p.kind === 'loan' ? 'OBJET DU PRÊT, NOTES / PURPOSE, NOTES' : p.kind === 'entrusted' ? 'TRAVAIL DEMANDÉ, NOTES / WORK REQUESTED, NOTES' : 'NOTES')
       doc.fontSize(9).fillColor(ink).text(p.notes, L, doc.y + 4, { width: W })
     }
 

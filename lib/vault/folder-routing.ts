@@ -9,6 +9,7 @@ export const VAULT_ORDER_FOLDERS = {
   consignment: 'Commandes/Dépôts',
   loan: 'Commandes/Prêts',
   gift: 'Commandes/Dons',
+  entrusted: 'Commandes/Confiés',
 } as const
 /** R2 key prefix per order kind (ASCII) → its Vault folder. */
 export const ORDER_KEY_PREFIX = {
@@ -16,6 +17,7 @@ export const ORDER_KEY_PREFIX = {
   consignment: 'commandes/depots/',
   loan: 'commandes/prets/',
   gift: 'commandes/dons/',
+  entrusted: 'commandes/confies/',
 } as const
 
 export const VAULT_ROUTED_FOLDERS = [

@@ -10,6 +10,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { thumbUrl } from '@/lib/data'
 import { gateErrorKey } from '@/lib/work-save-error'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
+import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
 import {
   createWorkOrder,
   getWorksForOrder,
@@ -22,13 +23,18 @@ import {
 
 export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null }
 
-const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift']
+const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
 const KIND_LABEL: Record<WorkOrderKind, DictKey> = {
-  sale: 'ord_kind_sale', consignment: 'ord_kind_consignment', loan: 'ord_kind_loan', gift: 'ord_kind_gift',
+  sale: 'ord_kind_sale', consignment: 'ord_kind_consignment', loan: 'ord_kind_loan', gift: 'ord_kind_gift', entrusted: 'ord_kind_entrusted',
 }
 const PARTY_LABEL: Record<WorkOrderKind, DictKey> = {
-  sale: 'ord_new_party_sale', consignment: 'ord_new_party_consignment', loan: 'ord_new_party_loan', gift: 'ord_new_party_gift',
+  sale: 'ord_new_party_sale', consignment: 'ord_new_party_consignment', loan: 'ord_new_party_loan', gift: 'ord_new_party_gift', entrusted: 'ord_new_party_entrusted',
 }
+/** Per-line value (Pem 2026-11-17): default = the work's price that day; a gift's is never printed. */
+const LINE_VALUE_LABEL: Partial<Record<WorkOrderKind, DictKey>> = {
+  consignment: 'ord_line_value_consignment', loan: 'ord_line_value_loan', gift: 'ord_line_value_gift', entrusted: 'ord_line_value_entrusted',
+}
+const DATED: WorkOrderKind[] = ['consignment', 'loan', 'entrusted']
 const PEM = 13
 
 const nameOf = (c: OrderContact) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
@@ -78,6 +84,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
   const [addresses, setAddresses] = useState<PartyAddress[]>([])
   const [addressId, setAddressId] = useState('')
   const [terms, setTerms] = useState<Record<string, string>>(initial?.terms ?? {})
+  const [lineValues, setLineValues] = useState<Record<number, string>>({})
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -85,10 +92,18 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
   // Dirty = changed from what the form opened with (a prefilled form closes without asking).
   const snap = (k: WorkOrderKind | null, ids: number[], p: number | null, tm: Record<string, string>, n: string) =>
     JSON.stringify([k, [...ids].sort((x, y) => x - y), p, Object.entries(tm).filter(([, v]) => v).sort(), n])
-  const [baseline] = useState(() => snap(initial?.kind ?? null, initial?.workIds ?? [], party?.ContactID ?? null, initial?.terms ?? {}, initial?.notes ?? ''))
+  const [baseline] = useState(() => snap(initial?.kind ?? null, initial?.workIds ?? [], initial?.partyId && initial.partyId !== PEM ? initial.partyId : null, initial?.terms ?? {}, initial?.notes ?? ''))
   const dirty = snap(kind, works.map((w) => w.id), party?.ContactID ?? null, terms, notes) !== baseline
   const dirtyRef = useRef(dirty)
   dirtyRef.current = dirty
+
+  // Prefilled party: the Atelier contacts arrive after first paint, so it is picked when they do.
+  const partyPicked = useRef(party !== null)
+  useEffect(() => {
+    if (partyPicked.current || !initial?.partyId || initial.partyId === PEM) return
+    const c = contacts.find((x) => x.ContactID === initial.partyId)
+    if (c) { partyPicked.current = true; setParty(c) }
+  }, [contacts, initial?.partyId])
 
   // Prefilled works (by number) are looked up once.
   const initialWorkKey = (initial?.workIds ?? []).join(',')
@@ -143,7 +158,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     if (works.length === 0) { setErr(t('ord_err_no_work')); return false }
     if (!party) { setErr(t('ord_err_party')); return false }
     if (kind === 'sale' && !(Number(String(terms.price_final ?? '').replace(',', '.')) > 0)) { setErr(t('ord_err_price')); return false }
-    if (kind === 'consignment' || kind === 'loan') {
+    if (DATED.includes(kind)) {
       if (!terms.start_date || !terms.end_date) { setErr(t('ord_err_dates')); return false }
       if (terms.end_date < terms.start_date) { setErr(t('ord_err_dates_order')); return false }
     }
@@ -153,6 +168,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     fd.append('party_id', String(party.ContactID))
     if (addressId) fd.append('address_id', addressId)
     for (const [k, v] of Object.entries(terms)) if (v) fd.append(k, v)
+    if (LINE_VALUE_LABEL[kind]) for (const w of works) { const v = lineValues[w.id]; if (v) fd.append(`line_value_${w.id}`, v) }
     if (notes) fd.append('notes', notes)
     if (initial?.processId) fd.append('process_id', initial.processId)
     setBusy(true)
@@ -206,9 +222,18 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
               <Thumb file={w.image} />
               <span style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 13 }}>{`#${w.id}`}</span>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>{w.title ?? ''}</span>
+              {LINE_VALUE_LABEL[kind] && (
+                <input className="input" type="number" inputMode="decimal" aria-label={t(LINE_VALUE_LABEL[kind]!)} title={t(LINE_VALUE_LABEL[kind]!)}
+                  placeholder={w.price != null ? String(w.price) : '—'} value={lineValues[w.id] ?? ''}
+                  onChange={(e) => setLineValues((m) => ({ ...m, [w.id]: e.target.value }))}
+                  style={{ minHeight: 44, width: narrow ? 90 : 110, fontSize: 14, flex: 'none', boxSizing: 'border-box' }} />
+              )}
               <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setWorks((l) => l.filter((x) => x.id !== w.id))}>{t('ord_new_remove')}</button>
             </div>
           ))}
+          {LINE_VALUE_LABEL[kind] && works.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{`${t(LINE_VALUE_LABEL[kind]!)} — ${t('ord_line_value_hint')}`}</div>
+          )}
           <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ord_new_works_ph')}
             style={{ minHeight: 44, fontSize: 15, width: '100%', boxSizing: 'border-box', marginTop: 6 }} />
           {hits.filter((h) => !works.some((w) => w.id === h.id)).map((h) => (
@@ -262,7 +287,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
               {field('deposit_pct', 'ord_new_deposit_pct')}
             </>}
             {kind === 'consignment' && field('commission_pct', 'ord_new_commission')}
-            {(kind === 'consignment' || kind === 'loan') && <>
+            {DATED.includes(kind) && <>
               {field('start_date', 'ord_new_start', 'date', true)}
               {field('end_date', 'ord_new_end', 'date', true)}
             </>}

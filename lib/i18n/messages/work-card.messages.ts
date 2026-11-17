@@ -196,8 +196,8 @@ export const workCardMessages = defineMessages({
 
   // ── Captions on the top block ──
   wc_own_closed_order_tt: {
-    fr: 'Fermé : dépôt, prêt et vente passent par leur dossier (onglets Ventes / Dépôts), pas par la fiche.',
-    en: 'Closed: consignment, loan and sale go through their order (Sales / Consignments tabs), not the card.',
+    fr: 'Fermé : dépôt, prêt et vente passent par leur commande (Business → Commandes), pas par la fiche.',
+    en: 'Closed: consignment, loan and sale go through their order (Business → Orders), not the card.',
   },
   wc_own_closed_gift_tt: {
     fr: 'Fermé : un don se prépare avec « Don… » — la propriété passe au donataire à la signature de l’acte.',

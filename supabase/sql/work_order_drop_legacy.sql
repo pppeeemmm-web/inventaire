@@ -5,11 +5,15 @@
 --   rg -n "sale_order|consignment_order|BATCH_IDS|sale_order_seq" app components lib scripts
 --   select count(*) from sale_order union all select count(*) from consignment_order;  -- 0, 0
 -- Then: npm run gen:types, npm run typecheck.
+-- Apply work_order_r7_decisions.sql before this file (it adds the « entrusted » kind this file keeps
+-- in its custody checks; the 'entrusted' cases are harmless if that kind never appears).
 --
 -- 1. Custody checks read work_order only.
 -- 2. oeuvre_holder_check gains the gift rule: a work becomes « Gift » (or changes recipient) only
---    through a signed gift order, and goes to the recipient's hands only once handed over —
---    the same as a sale (custody model: « every movement is an order », Pem 2026-11-17).
+--    through a gift order HANDED OVER — ownership and custody move together at hand-over (« don
+--    manuel », Pem 2026-11-17; was: at the deed's signature) — custody model « every movement is an
+--    order ». Keeps « Confié » (work_order_r7_decisions.sql): in production / available / archive,
+--    the holder may be a craftsperson through an entrusted order marked out.
 --    The 7 existing gifts are covered by work_order_gift_backfill.sql (the rule only fires on change).
 -- 3. Drop: payments.order_id, shipment.sale_order_id / order_id, inquiry.sale_order_id,
 --    sale_order, consignment_order, set_sale_order_ref, sale_order_seq, oeuvre_batch_ids.
@@ -31,8 +35,9 @@ as $$
         when 'custody'     then o.kind in ('consignment', 'loan') and o.status = 'out' and l.line_status = 'active'
         when 'paid'        then o.kind = 'sale' and o.status in ('paid', 'delivered')
         when 'delivered'   then o.kind = 'sale' and o.status = 'delivered'
-        when 'gift'        then o.kind = 'gift' and o.status in ('signed', 'handed_over')
+        when 'gift'        then o.kind = 'gift' and o.status = 'handed_over'
         when 'gift_handed' then o.kind = 'gift' and o.status = 'handed_over'
+        when 'entrusted'   then o.kind = 'entrusted' and o.status = 'out' and l.line_status = 'active'
         else false
       end)
 $$;
@@ -52,9 +57,13 @@ begin
   if s in (1, 2, 3) then
     new."ContactID" := coalesce(new."ContactID", 13);
     new."LocalisationID" := coalesce(new."LocalisationID", 13);
-    if new."ContactID" <> 13 or new."LocalisationID" <> 13 then
+    if new."ContactID" <> 13 then
       raise exception 'custody_order_required' using errcode = '23514',
-        detail = 'In production / available / archive: Pem owns and holds the work.';
+        detail = 'In production / available / archive: Pem owns the work.';
+    end if;
+    if new."LocalisationID" <> 13 and not oeuvre_order_exists(new."OeuvreID", 'entrusted', new."LocalisationID") then
+      raise exception 'custody_order_required' using errcode = '23514',
+        detail = 'In production / available / archive: Pem holds the work, or a craftsperson through a « Confié » order marked out.';
     end if;
   elsif s = 4 then
     new."ContactID" := coalesce(new."ContactID", 13);
@@ -93,17 +102,11 @@ begin
           detail = 'Sold: custody moves to the buyer on delivery.';
       end if;
     else
-      -- s = 11, new: the gift rule.
+      -- s = 11, new: the gift rule — ownership (and custody) move on a gift order handed over.
       if (was is distinct from 11 or old."ContactID" is distinct from new."ContactID")
-         and not oeuvre_order_exists(new."OeuvreID", 'gift', new."ContactID") then
-        raise exception 'gift_order_required' using errcode = '23514',
-          detail = 'Gift: ownership moves on a signed gift order.';
-      end if;
-      if new."LocalisationID" = new."ContactID"
-         and (was is distinct from 11 or old."LocalisationID" is distinct from new."LocalisationID")
          and not oeuvre_order_exists(new."OeuvreID", 'gift_handed', new."ContactID") then
         raise exception 'gift_order_required' using errcode = '23514',
-          detail = 'Gift: custody moves to the recipient when handed over.';
+          detail = 'Gift: ownership moves when a gift order is handed over (don manuel).';
       end if;
     end if;
   end if;
@@ -129,15 +132,16 @@ begin
       from work_order o join work_order_work l on l.order_id = o.id
      where l.oeuvre_id = p_oeuvre and l.line_status = 'active'
        and ((o.kind = 'sale' and o.status in ('draft', 'signed', 'deposit_paid'))
-         or (o.kind = 'gift' and o.status = 'draft')
-         or (o.kind in ('consignment', 'loan') and o.status in ('draft', 'signed', 'out')))
+         or (o.kind = 'gift' and o.status in ('draft', 'signed'))
+         or (o.kind in ('consignment', 'loan') and o.status in ('draft', 'signed', 'out'))
+         or (o.kind = 'entrusted' and o.status in ('draft', 'out')))
   loop
     update work_order_work
        set line_status = 'removed', closed_at = now(), note = concat_ws(E'\n', nullif(note, ''), v_line)
      where order_id = r.id and oeuvre_id = p_oeuvre;
     if not exists (select 1 from work_order_work where order_id = r.id and line_status = 'active') then
       update work_order
-         set status = case when r.kind in ('consignment', 'loan') and r.status = 'out' then 'closed' else 'cancelled' end,
+         set status = case when r.kind in ('consignment', 'loan', 'entrusted') and r.status = 'out' then 'closed' else 'cancelled' end,
              notes  = concat_ws(E'\n', nullif(notes, ''), v_line)
        where id = r.id;
     else

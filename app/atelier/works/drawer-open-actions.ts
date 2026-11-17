@@ -13,7 +13,7 @@ import { listWorkSessionsForOeuvre } from '@/app/atelier/session/actions'
 import { fetchWorkSessionLocations } from '@/app/atelier/works/period-source-actions'
 import { getWorkDescription } from '@/app/atelier/works/description-actions'
 import { fetchWorkCost } from '@/app/atelier/(portal)/fiscal/cost-actions'
-import { getReturnWindowHintForOeuvre } from '@/app/atelier/(portal)/sales/actions'
+import { getReturnWindowHintForOeuvre } from '@/app/atelier/(portal)/sales/cooling-off-actions'
 import { drawerOpenKey as k, type DrawerOpenOptions, type OpenReadBundle } from '@/lib/atelier/open-read-keys'
 import { runOpenReads } from '@/lib/atelier/open-read-server'
 

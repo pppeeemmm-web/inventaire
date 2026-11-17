@@ -1,23 +1,27 @@
 'use client'
 
-// Work card « Don… » (TODO R7 step 2): a gift is an order like the other three. The chip opens
-// the new-order form on Don with this work; it creates a draft G-YYYY-NNN with its deed
-// (« Acte de don », Vault Commandes/Dons). Nothing moves here: « Acte signé » and « Remise »
-// are steps of the order in Commandes. Was: an immediate status change + a separate slip.
+// Work card « Don… » / « Dépôt… » / « Prêt… » / « Vendu… » (TODO R7, v2 « a hand change in the
+// work card becomes a draft order »): the chip opens the new-order form on that kind with this
+// work; it creates a draft (G / D / P / V-YYYY-NNN) with its paper. Nothing moves here: the
+// steps are taken in Commandes, and a draft made by a team member shows in Pem's Fil.
+// Was (gift): an immediate status change + a separate slip.
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { NewOrderForm, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
+import type { WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
 
 export function GiftTransferModal({
   oeuvreId,
+  kind = 'gift',
   recipients,
   onClose,
   onGifted,
 }: {
   oeuvreId: number
+  kind?: WorkOrderKind
   recipients: OrderContact[]
   onClose: () => void
   /** A draft order now holds the work (the card reloads to show it). */
@@ -32,8 +36,8 @@ export function GiftTransferModal({
       <NewOrderForm
         narrow={narrow}
         contacts={recipients}
-        initial={{ kind: 'gift', lockKind: true, workIds: [oeuvreId] }}
-        intro={t('ord_gift_intro')}
+        initial={{ kind, lockKind: true, workIds: [oeuvreId] }}
+        intro={t(kind === 'gift' ? 'ord_gift_intro' : 'ord_card_intro')}
         onClose={onClose}
         onCreated={(id, ref) => setCreated({ id, ref })}
       />
@@ -41,7 +45,7 @@ export function GiftTransferModal({
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('ord_kind_gift')} onClick={onGifted} style={{
+    <div role="dialog" aria-modal="true" aria-label={t('ord_title')} onClick={onGifted} style={{
       position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{

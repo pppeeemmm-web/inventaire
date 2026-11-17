@@ -111,11 +111,6 @@ export const reportsUiMessages = defineMessages({
   report_v_live: { fr: 'En cours', en: 'Live' },
   report_v_done: { fr: 'Faite', en: 'Done' },
   report_v_to_confirm: { fr: 'À valider', en: 'To confirm' },
-  report_v_order_draft: { fr: 'Brouillon', en: 'Draft' },
-  report_v_order_confirmed: { fr: 'Confirmée', en: 'Confirmed' },
-  report_v_order_deposit_paid: { fr: 'Acompte reçu', en: 'Deposit paid' },
-  report_v_order_completed: { fr: 'Soldée', en: 'Completed' },
-  report_v_order_cancelled: { fr: 'Annulée', en: 'Cancelled' },
 
   // Saved reports, pivot, exports
   report_saved_label: { fr: 'Rapports enregistrés', en: 'Saved reports' },

@@ -27,7 +27,7 @@ export interface AtelierBacklogCounts {
 
 export interface AtelierOverviewBootstrap {
   expenseTotalTtc: number
-  /** Sales income for the fiscal year from `sale_order` + `payments` (`fetchSalesIncome`). */
+  /** Sales income for the fiscal year from sale orders + `payments` (`fetchSalesIncome`). */
   salesIncomeTtc: number
   upcomingPulse: PipelinePulseItem[]
   overviewCalendarEvents: PipelineCalendarEvent[]

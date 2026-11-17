@@ -35,7 +35,6 @@ const ChronologieTab = dynamic(() => import('@/components/atelier/chronologie/Ch
 const Vault = dynamic(() => import('@/app/atelier/(portal)/vault/_components/Vault').then((m) => ({ default: m.Vault })), { loading: () => <TabPanelFallback />, ssr: false })
 const ProductionTab = dynamic(() => import('@/app/atelier/(portal)/production/_components/Production').then((m) => ({ default: m.Production })), { loading: () => <TabPanelFallback />, ssr: false })
 const Logistics = dynamic(() => import('@/app/atelier/(portal)/logistics/_components/Logistics').then((m) => ({ default: m.Logistics })), { loading: () => <TabPanelFallback />, ssr: false })
-const SalesTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components/Sales').then((m) => ({ default: m.Sales })), { loading: () => <TabPanelFallback />, ssr: false })
 const OrdersTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components/Orders').then((m) => ({ default: m.Orders })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/app/atelier/(portal)/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
 const Fiscal = dynamic(() => import('@/app/atelier/(portal)/fiscal/_components/Fiscal').then((m) => ({ default: m.Fiscal })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -351,16 +350,6 @@ export function SegmentRoutePanel({
             if (o) onOpen(o)
             else window.location.assign(`/atelier?work=${id}`)
           }}
-          renderLegacy={() => (
-            <SalesTab
-              oeuvres={oeuvres}
-              statusLabelMap={statusLabelMap}
-              contacts={contacts}
-              groups={groups}
-              cM={cM}
-              tM={tM}
-            />
-          )}
         />
       )
     case 'exhibitions':
@@ -398,7 +387,7 @@ export function SegmentRoutePanel({
     case 'fiscal':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <Fiscal oeuvres={oeuvres} contacts={contacts} />
+          <Fiscal oeuvres={oeuvres} contacts={contacts} statusLabelMap={statusLabelMap} cM={cM} tM={tM} />
         </div>
       )
     case 'themes':

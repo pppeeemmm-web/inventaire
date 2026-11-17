@@ -84,12 +84,9 @@ async function buildReferenceMap(supabase, bucketByRole) {
     addRef(refs, vaultBucket, row.storage_path, { table: 'document', column: 'storage_path', row_id: row.id })
   }
 
-  for (const row of await selectAll(supabase, 'sale_order', 'id,pdf_path')) {
-    addRef(refs, vaultBucket, row.pdf_path, { table: 'sale_order', column: 'pdf_path', row_id: row.id })
-  }
-
-  for (const row of await selectAll(supabase, 'consignment_order', 'id,pdf_path')) {
-    addRef(refs, vaultBucket, row.pdf_path, { table: 'consignment_order', column: 'pdf_path', row_id: row.id })
+  // R7: every order's paper (sale / consignment / loan / gift) — `work_order.paper_path`.
+  for (const row of await selectAll(supabase, 'work_order', 'id,paper_path')) {
+    addRef(refs, vaultBucket, row.paper_path, { table: 'work_order', column: 'paper_path', row_id: row.id })
   }
 
   for (const row of await selectAll(supabase, 'tblImage', 'ImageID,txtImageNameLink')) {
