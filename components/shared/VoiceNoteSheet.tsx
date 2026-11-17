@@ -6,13 +6,7 @@ import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createVoiceNote, updateVoiceNoteDetails } from '@/app/atelier/(portal)/notes/actions'
-import {
-  VOICE_NOTE_BUCKETS,
-  VOICE_NOTE_KINDS,
-  formatVoiceDuration,
-  type VoiceNoteBucket,
-  type VoiceNoteKind,
-} from '@/lib/voice-note-domain'
+import { formatVoiceDuration } from '@/lib/voice-note-domain'
 import { getLiveDictationAvailability, startLiveDictation, startMicRecorder, type RecorderSession } from '@/lib/voice/web-speech'
 import {
   classifyMicError,
@@ -23,7 +17,6 @@ import {
   type MicFailure,
 } from '@/lib/voice/mic-permission'
 import { toast } from '@/lib/ui/toast'
-import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
 /**
@@ -36,8 +29,8 @@ import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
  * R2 phone 3 (2026-11-17): live words show while recording when the browser can (Web Speech,
  * same engine as « Dicter »); they are saved with the audio as the note's first text
  * (`voice_note.transcript`). The PC transcript still comes later as its own Journal entry and
- * never touches that text. On the phone the kind / project chips are gone (a voice note is a
- * Journal entry; defaults memo · general are still saved).
+ * never touches that text. The kind / project chips are gone (a voice note is a Journal entry, R1
+ * step 7); the server still saves the defaults memo · general.
  */
 
 type NextActionKey = 'today' | 'tomorrow' | 'week' | 'waiting' | 'none'
@@ -64,8 +57,6 @@ function readLiveWordsPref(): boolean {
 
 type Details = {
   subject: string
-  kind: VoiceNoteKind
-  bucket: VoiceNoteBucket
   oeuvreId: string
   transcript: string
   nextAction: NextActionKey
@@ -73,8 +64,6 @@ type Details = {
 
 const emptyDetails = (oeuvreId: string): Details => ({
   subject: '',
-  kind: 'memo',
-  bucket: 'general',
   oeuvreId,
   transcript: '',
   nextAction: 'none',
@@ -119,32 +108,6 @@ function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-function kindKey(k: VoiceNoteKind): DictKey {
-  switch (k) {
-    case 'memo':
-      return 'voice_kind_memo'
-    case 'dictation':
-      return 'voice_kind_dictation'
-    case 'meeting':
-      return 'voice_kind_meeting'
-    case 'field':
-      return 'voice_kind_field'
-  }
-}
-
-function bucketKey(b: VoiceNoteBucket): DictKey {
-  switch (b) {
-    case 'terrain':
-      return 'voice_bucket_terrain'
-    case 'studio':
-      return 'voice_bucket_studio'
-    case 'commercial':
-      return 'voice_bucket_commercial'
-    case 'general':
-      return 'voice_bucket_general'
-  }
-}
-
 function micFailureKey(f: MicFailure): DictKey {
   switch (f) {
     case 'denied':
@@ -181,8 +144,6 @@ const footBtn = (grow: number) => ({
 
 function detailsFormData(d: Details, followUpFallback: string): FormData {
   const fd = new FormData()
-  fd.append('kind', d.kind)
-  fd.append('bucket', d.bucket)
   fd.append('subject', d.subject.trim())
   fd.append('transcript', d.transcript)
   fd.append('oeuvre_id', d.oeuvreId.trim())
@@ -236,7 +197,6 @@ export function VoiceNoteSheet({
   const [interim, setInterim] = useState('')
   const [dictationAvailability, setDictationAvailability] =
     useState<ReturnType<typeof getLiveDictationAvailability>>('unsupported')
-  const narrow = useMediaQuery('(max-width: 767px)')
   // Live words while recording: on/off per device; `liveFailed` = the engine stopped (mic shared, no network…).
   const [liveWordsOn, setLiveWordsOn] = useState(true)
   const [liveFailed, setLiveFailed] = useState(false)
@@ -368,8 +328,6 @@ export function VoiceNoteSheet({
     }
     const fd = new FormData()
     const d = detailsRef.current
-    fd.append('kind', d.kind)
-    fd.append('bucket', d.bucket)
     fd.append('subject', '')
     fd.append('transcript', p.transcript)
     if (d.oeuvreId.trim()) fd.append('oeuvre_id', d.oeuvreId.trim())
@@ -729,8 +687,6 @@ export function VoiceNoteSheet({
           ...d,
           subject: typeof draft.subject === 'string' ? draft.subject : '',
           transcript: typeof draft.transcript === 'string' ? draft.transcript : '',
-          kind: draft.kind && VOICE_NOTE_KINDS.includes(draft.kind) ? draft.kind : d.kind,
-          bucket: draft.bucket && VOICE_NOTE_BUCKETS.includes(draft.bucket) ? draft.bucket : d.bucket,
           oeuvreId: typeof draft.oeuvreId === 'string' && draft.oeuvreId ? draft.oeuvreId : d.oeuvreId,
           nextAction: draft.nextAction && NEXT_ACTIONS.includes(draft.nextAction) ? draft.nextAction : 'none',
         }
@@ -991,7 +947,6 @@ export function VoiceNoteSheet({
                 setInterim('')
               }}
               oeuvreOptions={oeuvreOptions}
-              showKindBucket={!narrow}
             />
           ) : null}
         </div>
@@ -1259,7 +1214,6 @@ function DetailsFields({
   onToggleDictation,
   onTranscriptTyped,
   oeuvreOptions,
-  showKindBucket,
 }: {
   t: TFn
   heading: string | null
@@ -1271,8 +1225,6 @@ function DetailsFields({
   onToggleDictation: () => void
   onTranscriptTyped: () => void
   oeuvreOptions: { OeuvreID: number; Titre: string | null }[]
-  /** Desktop only: on the phone a voice note is a Journal entry, sorted later (R2 phone 3). */
-  showKindBucket: boolean
 }) {
   const set = <K extends keyof Details>(k: K, v: Details[K]) => setDetails((d) => ({ ...d, [k]: v }))
   const chip = (active: boolean) => ({
@@ -1321,28 +1273,6 @@ function DetailsFields({
       >
         {dictating ? t('voice_dictate_stop') : t('voice_dictate_start')}
       </button>
-
-      {showKindBucket ? (
-        <>
-          <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_kind_label')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            {VOICE_NOTE_KINDS.map((k) => (
-              <button key={k} type="button" className="btn sm" aria-pressed={details.kind === k} onClick={() => set('kind', k)} style={chip(details.kind === k)}>
-                {t(kindKey(k))}
-              </button>
-            ))}
-          </div>
-
-          <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_bucket_label')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            {VOICE_NOTE_BUCKETS.map((b) => (
-              <button key={b} type="button" className="btn sm" aria-pressed={details.bucket === b} onClick={() => set('bucket', b)} style={chip(details.bucket === b)}>
-                {t(bucketKey(b))}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
 
       {oeuvreOptions.length > 0 ? (
         <>

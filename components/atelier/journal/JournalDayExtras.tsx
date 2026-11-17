@@ -1,6 +1,8 @@
 'use client'
 
 // Journal day page — entries, Kaizen Création items, voice notes, works changed of one Paris calendar day.
+// A voice note is a Journal entry spoken instead of written (R1 step 7): it shows in the day's entries —
+// as its PC transcript entry once there, before that on its own — and « Relier » links it (ex Notes triage).
 // Création items are read from `kaizen_item` (never copied; owner 2026-11-12).
 // Build step 1 (owner GO 2026-11-12, docs/archive/JOURNAL_PROPOSAL.md). Rules are in the DB
 // (supabase/sql/journal_entry.sql): append only, never deleted, hide = admin.
@@ -13,6 +15,8 @@ import { imageUrl } from '@/lib/data'
 import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
+import { VoiceNoteLinkPanel } from '@/components/atelier/journal/VoiceNoteLinkPanel'
+import { formatVoiceDuration } from '@/lib/voice-note-domain'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
 import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
@@ -88,6 +92,8 @@ export function JournalDayExtras({
   const [body, setBody] = useState('')
   const [precision, setPrecision] = useState<'day' | 'month' | 'year'>('day')
   const [conceptId, setConceptId] = useState('')
+  /** Voice note whose « Relier » panel is open. */
+  const [linkOpen, setLinkOpen] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const load = useCallback(async () => {
@@ -233,6 +239,46 @@ export function JournalDayExtras({
 
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 
+  // Voice notes not yet carried by a transcript entry sit among the entries, by time.
+  const pendingVoices = (data?.voices ?? []).filter((v) => !v.hasEntry)
+  const dayItems: Array<{ at: string; entry?: Extras['entries'][number]; voice?: Extras['voices'][number] }> = [
+    ...(data?.entries ?? []).map((e) => ({ at: e.created_at, entry: e })),
+    ...pendingVoices.map((v) => ({ at: v.created_at, voice: v })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+
+  /** « Relier » toggle + panel for a voice note (owner or admin: the server checks). */
+  const linkBlock = (noteId: string, links: NonNullable<Extras['entries'][number]['voiceLinks']>) => {
+    const tags = [
+      links.oeuvre_id != null ? `#${links.oeuvre_id}` : null,
+      links.concept_id ? t('je_voice_link_idea') : null,
+      links.process_id ? t('notes_triage_process') : null,
+      links.condition_report_id != null ? t('notes_triage_constat') : null,
+    ].filter(Boolean)
+    const open = linkOpen === noteId
+    return (
+      <>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-expanded={open}
+            data-testid={`voice-link-toggle-${noteId}`}
+            onClick={() => setLinkOpen(open ? null : noteId)}
+            style={{ minHeight: 44 }}
+          >
+            {t(open ? 'je_voice_link_close' : 'je_voice_link')}
+          </button>
+          {tags.length ? (
+            <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', overflowWrap: 'anywhere' }}>
+              {t('je_voice_linked_fmt').replace('{list}', tags.join(' · '))}
+            </span>
+          ) : null}
+        </div>
+        {open ? <VoiceNoteLinkPanel noteId={noteId} links={links} onChanged={() => void load()} /> : null}
+      </>
+    )
+  }
+
   return (
     <div data-testid="journal-day-extras" style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 32 }}>
       <VoiceNoteSheet
@@ -298,13 +344,37 @@ export function JournalDayExtras({
         <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
           {t('je_heading')}
         </h2>
-        {data && data.entries.length === 0 ? (
+        {data && dayItems.length === 0 ? (
           <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 12px' }}>
             {t('je_empty')}
           </p>
         ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-          {(data?.entries ?? []).map((e) => (
+          {dayItems.map(({ entry: e, voice: v }) =>
+            v ? (
+            <article
+              key={`voice-${v.id}`}
+              data-testid={`journal-voice-${v.id}`}
+              style={{ borderLeft: '3px solid var(--bd)', background: 'var(--bg1)', borderRadius: '0 8px 8px 0', padding: '12px 14px' }}
+            >
+              <div className="t-mono-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>
+                <span style={{ color: 'var(--ac)' }}>{t('je_kind_voice')}</span>
+                <span>
+                  {v.author} · {time(v.created_at)}
+                  {v.duration_ms != null ? ` · ${formatVoiceDuration(v.duration_ms)}` : ''}
+                </span>
+                {v.audioKey ? <span>{t('je_voice_waiting')}</span> : null}
+              </div>
+              {v.subject?.trim() ? (
+                <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{v.subject}</p>
+              ) : null}
+              {v.audioKey ? (
+                <audio controls preload="none" src={imageUrl(v.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} />
+              ) : null}
+              {v.transcript?.trim() ? <EntryText text={v.transcript} /> : null}
+              {linkBlock(v.id, v)}
+            </article>
+            ) : e ? (
             <article
               key={e.id}
               data-testid={`journal-entry-${e.id}`}
@@ -336,6 +406,9 @@ export function JournalDayExtras({
                 )}
                 {e.hidden ? <span>{t('je_hidden_label')}</span> : null}
               </div>
+              {e.voiceLinks?.subject?.trim() ? (
+                <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{e.voiceLinks.subject}</p>
+              ) : null}
               {e.audioKey ? (
                 <audio controls preload="none" src={imageUrl(e.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} data-testid={`journal-entry-audio-${e.id}`} />
               ) : null}
@@ -426,8 +499,10 @@ export function JournalDayExtras({
                   </button>
                 </div>
               ) : null}
+              {e.voiceNoteId && e.voiceLinks ? linkBlock(e.voiceNoteId, e.voiceLinks) : null}
             </article>
-          ))}
+            ) : null,
+          )}
         </div>
 
         {composing || body ? (
@@ -596,27 +671,6 @@ export function JournalDayExtras({
             </article>
           ))}
         </div>
-      </details>
-
-      <details className="pem-fold" data-testid="journal-day-voices">
-        <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
-          {t('je_voices_heading')} ({data?.voices.length ?? 0})
-        </summary>
-        {data && data.voices.length === 0 ? (
-          <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>
-            {t('je_voices_empty')}
-          </p>
-        ) : null}
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {(data?.voices ?? []).map((v) => (
-            <li key={v.id} className="t-mono-sm" style={{ fontSize: 12, minHeight: 44, display: 'flex', alignItems: 'center', gap: 6, overflowWrap: 'anywhere' }}>
-              <Link href="/atelier/notes" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                {v.subject?.trim() || t('je_voice_untitled')}
-              </Link>
-              <span style={{ color: 'var(--tx3)' }}>· {time(v.created_at)}</span>
-            </li>
-          ))}
-        </ul>
       </details>
 
       {data?.isAdmin ? (

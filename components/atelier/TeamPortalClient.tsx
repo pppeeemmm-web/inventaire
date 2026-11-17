@@ -1111,8 +1111,8 @@ export function TeamPortalClient({
   const publicGroup = { label: t('nav_group_public_tab'), tabs: publicTabs }
   // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
   // Phone (R2 phone 6, 2026-11-17): a top block Aujourd'hui · Fil · Idées (rendered below, before
-  // GROUPS), then Terrain (with Inventaire, without Notes: merged into the Journal per R1; the
-  // /atelier/notes route still works), then Kaizen, then the rest.
+  // GROUPS), then Terrain (with Inventaire), then Kaizen, then the rest. Notes are in the Journal on
+  // both (R1 step 7): /atelier/notes redirects there.
   const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
     ? [
         { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal'] },
@@ -1125,7 +1125,7 @@ export function TeamPortalClient({
     : [
         kaizenGroup,
         { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'slideshows'] },
-        { label: t('nav_group_field'), tabs: ['production', 'journal', 'notes'] },
+        { label: t('nav_group_field'), tabs: ['production', 'journal'] },
         studioGroup,
         commercialGroup,
         publicGroup,

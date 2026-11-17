@@ -33,14 +33,46 @@ export type JournalDayEntry = {
   voiceNoteId: string | null
   audioKey: string | null
   engine: string | null
+  /** The voice note's own links (work / idea / project / constat), when RLS lets this user read the note. */
+  voiceLinks: VoiceNoteLinks | null
   works: Array<{ id: number; title: string | null }>
   concepts: Array<{ id: string; title: string | null }>
   /** AI link proposals (✦), not yet validated or rejected (supabase/sql/journal_entry_nodes.sql). */
   proposals: Array<{ linkId: number; workId: number | null; conceptId: string | null; title: string | null; thumb: string | null }>
 }
 
+/** Where a voice note is linked (`voice_note` columns; set by « Relier » on the Journal entry). */
+export type VoiceNoteLinks = {
+  subject: string | null
+  oeuvre_id: number | null
+  concept_id: string | null
+  process_id: string | null
+  condition_report_id: number | null
+}
+
 export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[] }
-export type JournalDayVoice = { id: string; subject: string | null; created_at: string; oeuvre_id: number | null }
+/**
+ * A voice note recorded that day (RLS: own notes, or all for admin). A voice note is a Journal entry
+ * spoken instead of written (R1): once the PC transcript exists it shows as that entry (`hasEntry`);
+ * until then it shows on its own in the day's entries. The links are what Notes triage used to set.
+ */
+export type JournalDayVoice = {
+  id: string
+  subject: string | null
+  created_at: string
+  oeuvre_id: number | null
+  concept_id: string | null
+  process_id: string | null
+  condition_report_id: number | null
+  /** Live words / typed text saved with the audio (not the PC transcript). */
+  transcript: string | null
+  audioKey: string | null
+  duration_ms: number | null
+  author: string
+  mine: boolean
+  /** A Journal entry (the PC transcript) already carries this note. */
+  hasEntry: boolean
+}
 /** Kaizen → Création item created that day — read from `kaizen_item`, never copied (owner 2026-11-12). */
 export type JournalDayCreation = {
   id: number
@@ -121,6 +153,8 @@ export async function getJournalDayExtras(
   const isAdmin = adminFlag === true
   const win = utcWindow(day)
 
+  type VoiceRow = Omit<JournalDayVoice, 'audioKey' | 'author' | 'mine' | 'hasEntry'> & { audio_r2_key: string | null; user_id: string }
+
   // Wave 2: the day's own rows.
   const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes] = await Promise.all([
     withEntries
@@ -129,12 +163,12 @@ export async function getJournalDayExtras(
     withEntries
       ? supabase
           .from('voice_note')
-          .select('id, subject, created_at, oeuvre_id')
+          .select('id, subject, created_at, oeuvre_id, concept_id, process_id, condition_report_id, transcript, audio_r2_key, duration_ms, user_id')
           .gte('created_at', win.from)
           .lt('created_at', win.to)
           .order('created_at', { ascending: true })
           .limit(200)
-      : Promise.resolve({ data: [] as JournalDayVoice[], error: null }),
+      : Promise.resolve({ data: [] as VoiceRow[], error: null }),
     // Admin only by RLS (oeuvre_versions_admin_select): team members get no rows. Ids only: the
     // snapshots come once, below, with the later versions of the changed works.
     isAdmin && withFolds
@@ -187,10 +221,18 @@ export async function getJournalDayExtras(
   const changedIds = [...new Set(versions.map((v) => v.oeuvre_id))].slice(0, 100)
 
   const creationRows = (creationRes.data ?? []).filter((k) => calendarDayInParisFromIso(k.created_at) === day)
+  const voiceRows = ((voicesRes.data ?? []) as VoiceRow[]).filter((v) => calendarDayInParisFromIso(v.created_at) === day)
   const authorIds = [
-    ...new Set([...rows.map((r) => r.author_id), ...creationRows.map((k) => k.author_id)].filter((x): x is string => !!x)),
+    ...new Set(
+      [...rows.map((r) => r.author_id), ...creationRows.map((k) => k.author_id), ...voiceRows.map((v) => v.user_id)].filter(
+        (x): x is string => !!x,
+      ),
+    ),
   ]
   const voiceIds = [...new Set(rows.map((r) => r.voice_note_id).filter((v): v is string => !!v))]
+  // Day voice notes not carried by today's entries: their transcript entry may sit on another day.
+  const carriedHere = new Set(voiceIds)
+  const voiceIdsToCheck = voiceRows.map((v) => v.id).filter((id) => !carriedHere.has(id))
 
   // Wave 3: what the day's rows point to, all at once (links → works is the only chain left).
   const linksAndWorks = (async () => {
@@ -203,7 +245,7 @@ export async function getJournalDayExtras(
       : []
     return { links, works }
   })()
-  const [{ links: linkRows, works }, laterRes, contactsRes, audioRes] = await Promise.all([
+  const [{ links: linkRows, works }, laterRes, contactsRes, audioRes, carriedRes] = await Promise.all([
     linksAndWorks,
     changedIds.length
       ? supabase
@@ -217,8 +259,14 @@ export async function getJournalDayExtras(
     // `select('*')`: the typed select parser rejects the accented `Prénom` column name.
     authorIds.length ? supabase.from('Contact').select('*').in('auth_user_id', authorIds) : Promise.resolve({ data: [] }),
     voiceIds.length
-      ? supabase.from('voice_note').select('id, audio_r2_key').in('id', voiceIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; audio_r2_key: string | null }> }),
+      ? supabase
+          .from('voice_note')
+          .select('id, audio_r2_key, subject, oeuvre_id, concept_id, process_id, condition_report_id')
+          .in('id', voiceIds)
+      : Promise.resolve({ data: [] as Array<VoiceNoteLinks & { id: string; audio_r2_key: string | null }> }),
+    voiceIdsToCheck.length
+      ? supabase.from('journal_entry').select('voice_note_id').in('voice_note_id', voiceIdsToCheck)
+      : Promise.resolve({ data: [] as Array<{ voice_note_id: string | null }> }),
   ])
 
   const titles = new Map<number, string | null>()
@@ -257,7 +305,17 @@ export async function getJournalDayExtras(
   }
 
   const audioKeys = new Map<string, string | null>()
-  for (const v of audioRes.data ?? []) audioKeys.set(v.id, v.audio_r2_key)
+  const voiceLinks = new Map<string, VoiceNoteLinks>()
+  for (const v of audioRes.data ?? []) {
+    audioKeys.set(v.id, v.audio_r2_key)
+    voiceLinks.set(v.id, {
+      subject: v.subject,
+      oeuvre_id: v.oeuvre_id,
+      concept_id: v.concept_id,
+      process_id: v.process_id,
+      condition_report_id: v.condition_report_id,
+    })
+  }
 
   const entries: JournalDayEntry[] = rows
     .filter((r) => !r.hidden_at || isAdmin)
@@ -276,6 +334,7 @@ export async function getJournalDayExtras(
       hidden: !!r.hidden_at,
       voiceNoteId: r.voice_note_id ?? null,
       audioKey: r.voice_note_id ? audioKeys.get(r.voice_note_id) ?? null : null,
+      voiceLinks: r.voice_note_id ? voiceLinks.get(r.voice_note_id) ?? null : null,
       engine: r.engine ?? null,
       works: linkRows
         .filter((l) => l.entry_id === r.id && l.oeuvre_id != null && l.validated_at)
@@ -294,9 +353,17 @@ export async function getJournalDayExtras(
         })),
     }))
 
-  const voices: JournalDayVoice[] = ((voicesRes.data ?? []) as JournalDayVoice[]).filter(
-    (v) => calendarDayInParisFromIso(v.created_at) === day,
-  )
+  const withEntry = new Set([
+    ...carriedHere,
+    ...(carriedRes.data ?? []).map((r) => r.voice_note_id).filter((v): v is string => !!v),
+  ])
+  const voices: JournalDayVoice[] = voiceRows.map(({ audio_r2_key, user_id, ...v }) => ({
+    ...v,
+    audioKey: audio_r2_key,
+    author: names[user_id] || '—',
+    mine: user_id === user.id,
+    hasEntry: withEntry.has(v.id),
+  }))
 
   const creation: JournalDayCreation[] = creationRows.map((k) => ({
     id: k.id,

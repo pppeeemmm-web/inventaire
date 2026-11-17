@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Verb 2 — voice note sheet + Notes tab (auth-gated; requires `voice_note` migration in Supabase).
+ * Verb 2 — voice note sheet + the old Notes route (auth-gated; requires `voice_note` migration in Supabase).
  */
 test.describe('Voice notes (Verb 2)', () => {
   test.skip(
@@ -29,8 +29,9 @@ test.describe('Voice notes (Verb 2)', () => {
     await expect(page.getByText(/Demain|Tomorrow/)).toBeVisible()
   })
 
-  test('atelier notes tab loads shell', async ({ page }) => {
+  // Notes moved into the Journal (R1 step 7): the old route opens the Journal.
+  test('/atelier/notes redirects to the Journal', async ({ page }) => {
     await page.goto('/atelier/notes')
-    await expect(page.getByTestId('notes-tab-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page).toHaveURL(/\/atelier\/journal/, { timeout: 45_000 })
   })
 })

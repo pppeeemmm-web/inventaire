@@ -5,12 +5,11 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { r2PutObject } from '@/lib/r2-s3-object'
 import type { VoiceNoteRow } from '@/lib/types/database'
-import {
-  parseVoiceNoteBucket,
-  parseVoiceNoteKind,
-  type VoiceNoteBucket,
-  type VoiceNoteKind,
-} from '@/lib/voice-note-domain'
+
+// Voice notes are Journal entries (R1 step 7): nobody picks a kind / project any more. New notes get the
+// old defaults; stored values on older notes are kept, never rewritten.
+const DEFAULT_KIND = 'memo'
+const DEFAULT_BUCKET = 'general'
 
 function voiceNoteTable(supabase: Awaited<ReturnType<typeof createClient>>) {
   return (supabase as { from: (name: string) => ReturnType<Awaited<ReturnType<typeof createClient>>['from']> }).from(
@@ -38,7 +37,6 @@ export type CreateVoiceNoteResult = { ok: true; id: string; followUpOk?: boolean
 /** PC transcript of an audio note: `scripts/transcribe/voice_batch.py` writes it as a Journal entry
  *  (`journal_entry.voice_note_id`) and leaves `voice_note.transcript` empty (TODO B1). */
 export type MachineTranscript = { body: string; engine: string | null; verification: string }
-export type VoiceNoteListRow = VoiceNoteRow & { machine_transcript: MachineTranscript | null }
 
 async function machineTranscripts(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -63,31 +61,6 @@ async function machineTranscripts(
   return out
 }
 
-export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteListRow[] } | NotesActionErr> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'auth' }
-
-  const lim = Math.min(Math.max(limit, 1), 500)
-  const { data, error } = await voiceNoteTable(supabase)
-    .select(
-      'id, created_at, updated_at, user_id, kind, bucket, subject, transcript, audio_r2_key, audio_mime, duration_ms, oeuvre_id, process_id, sketchbook_id, concept_id, condition_report_id, routed_at',
-    )
-    .order('created_at', { ascending: false })
-    .limit(lim)
-
-  if (error) return { error: error.message }
-  const base: VoiceNoteRow[] = data ?? []
-  const machine = await machineTranscripts(
-    supabase,
-    base.filter((r) => r.audio_r2_key).map((r) => r.id),
-  )
-  const rows: VoiceNoteListRow[] = base.map((r) => ({ ...r, machine_transcript: machine.get(r.id) ?? null }))
-  return { rows }
-}
-
 export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNoteResult | NotesActionErr> {
   const supabase = await createClient()
   const {
@@ -95,8 +68,8 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
   } = await supabase.auth.getUser()
   if (!user) return { error: 'auth' }
 
-  const kind = parseVoiceNoteKind(String(formData.get('kind') ?? '')) ?? ('memo' as VoiceNoteKind)
-  const bucket = parseVoiceNoteBucket(String(formData.get('bucket') ?? '')) ?? ('general' as VoiceNoteBucket)
+  const kind = DEFAULT_KIND
+  const bucket = DEFAULT_BUCKET
   const subjectRaw = (formData.get('subject') as string | null)?.trim() || null
   const transcriptRaw = (formData.get('transcript') as string | null) ?? ''
   const transcript = transcriptRaw.length > MAX_TRANSCRIPT ? transcriptRaw.slice(0, MAX_TRANSCRIPT) : transcriptRaw
@@ -253,14 +226,6 @@ export async function updateVoiceNoteDetails(
   if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
 
   const patch: Record<string, unknown> = {}
-  if (formData.has('kind')) {
-    const kind = parseVoiceNoteKind(String(formData.get('kind') ?? ''))
-    if (kind) patch.kind = kind
-  }
-  if (formData.has('bucket')) {
-    const bucket = parseVoiceNoteBucket(String(formData.get('bucket') ?? ''))
-    if (bucket) patch.bucket = bucket
-  }
   if (formData.has('subject')) patch.subject = (formData.get('subject') as string | null)?.trim() || null
   if (formData.has('transcript')) {
     const tx = (formData.get('transcript') as string | null) ?? ''
@@ -285,69 +250,9 @@ export async function updateVoiceNoteDetails(
   return { ok: true, followUpOk }
 }
 
-export async function updateVoiceNoteTranscript(
-  id: string,
-  transcript: string,
-): Promise<{ ok: true } | NotesActionErr> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'auth' }
-
-  const text = transcript.length > MAX_TRANSCRIPT ? transcript.slice(0, MAX_TRANSCRIPT) : transcript
-
-  const { data: row, error: selErr } = await voiceNoteTable(supabase)
-    .select('id, user_id')
-    .eq('id', id)
-    .maybeSingle()
-  if (selErr || !row) return { error: 'not_found' }
-
-  const r = row as { id: string; user_id: string }
-  const admin = await rpcIsAdmin(supabase)
-  if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
-
-  const { error: upErr } = await voiceNoteTable(supabase).update({ transcript: text }).eq('id', id)
-  if (upErr) return { error: upErr.message }
-  revalidatePath('/atelier')
-  return { ok: true }
-}
-
-export async function deleteVoiceNote(id: string): Promise<{ ok: true } | NotesActionErr> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'auth' }
-
-  const { data: row, error: selErr } = await voiceNoteTable(supabase)
-    .select('id, user_id, audio_r2_key')
-    .eq('id', id)
-    .maybeSingle()
-  if (selErr || !row) return { error: 'not_found' }
-
-  const r = row as { id: string; user_id: string; audio_r2_key: string | null }
-  const admin = await rpcIsAdmin(supabase)
-  if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
-
-  const { error: delErr } = await voiceNoteTable(supabase).delete().eq('id', id)
-  if (delErr) return { error: delErr.message }
-
-  if (r.audio_r2_key) {
-    try {
-      const { r2DeleteObject } = await import('@/lib/r2-s3-object')
-      await r2DeleteObject(r.audio_r2_key)
-    } catch {
-      /* best-effort */
-    }
-  }
-
-  revalidatePath('/atelier')
-  return { ok: true }
-}
-
-// ── Triage: route a note to a concept / work / pipeline project, or a dated reminder ──
-// Link, never copy: the note stays in Notes; `routed_at` takes it out of "à trier".
+// ── Link a note to a concept / work / pipeline project, or a dated reminder ──
+// Journal entry « Relier » (VoiceNoteLinkPanel; ex Notes triage). Link, never copy: the note stays a
+// Journal entry. `routed_at` is still set on any link (no list reads it since Notes moved).
 
 export type NoteRouteTargets = {
   concepts: { id: string; titre: string; statut: string }[]

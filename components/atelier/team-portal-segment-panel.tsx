@@ -44,7 +44,6 @@ const Themes = dynamic(() => import('@/app/atelier/(portal)/themes/_components/T
 const Reports = dynamic(() => import('@/app/atelier/(portal)/reports/_components/Reports').then((m) => ({ default: m.Reports })), { loading: () => <TabPanelFallback />, ssr: false })
 const Audit = dynamic(() => import('@/app/atelier/(portal)/audit/_components/Audit').then((m) => ({ default: m.Audit })), { loading: () => <TabPanelFallback />, ssr: false })
 const Broadcast = dynamic(() => import('@/app/atelier/(portal)/broadcast/_components/Broadcast').then((m) => ({ default: m.Broadcast })), { loading: () => <TabPanelFallback />, ssr: false })
-const NotesTab = dynamic(() => import('@/app/atelier/(portal)/notes/_components/Notes').then((m) => ({ default: m.Notes })), { loading: () => <TabPanelFallback />, ssr: false })
 const OverviewTab = dynamic(() => import('@/components/atelier/overview/OverviewTab').then((m) => ({ default: m.OverviewTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -85,6 +84,7 @@ export type SegmentRoutePanelProps = {
   groupPrivateWorks: Record<string, number[]>
   themeToGroups: Record<number, string[]>
   groupToThemes: Record<string, number[]>
+  /** Unused since Notes moved into the Journal (R1 step 7); kept so the portal's props stay as they are. */
   voiceNotesTick: number
   initialReminders: import('@/lib/types/database').SuiviReminderListRow[]
   onRemindersMutated: () => Promise<void>
@@ -143,7 +143,6 @@ export function SegmentRoutePanel({
   groupPrivateWorks,
   themeToGroups,
   groupToThemes,
-  voiceNotesTick,
   initialReminders,
   onRemindersMutated,
   handleSaveGroup,
@@ -161,7 +160,6 @@ export function SegmentRoutePanel({
   onOeuvrePatched,
   onOeuvreRemoved,
   inventoryDrawerGuardRef,
-  notesGuardRef,
   onInventoryPanelDirtyChange,
   inventoryFocusRequest,
   onInventoryFocusRequestDone,
@@ -235,6 +233,8 @@ export function SegmentRoutePanel({
           <Kaizen key={tab} scope={tab === 'kaizen' ? 'creation' : 'ops'} />
         </div>
       )
+    // Notes live in the Journal (R1 step 7); `/atelier/notes` redirects there, this covers the instant before.
+    case 'notes':
     case 'journal':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -410,12 +410,6 @@ export function SegmentRoutePanel({
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <Concepts isAdmin={isAdmin} />
-        </div>
-      )
-    case 'notes':
-      return (
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} guardRef={notesGuardRef} />
         </div>
       )
     case 'audit':

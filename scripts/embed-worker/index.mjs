@@ -7,6 +7,9 @@ import { ensureOllamaRunning } from './ensure-ollama.mjs'
 import {
   BATCH_SIZE,
   EMBEDDING_MODEL,
+  JOURNAL_LINK_K,
+  JOURNAL_LINK_MARGIN,
+  JOURNAL_LINK_MIN,
   MAX_EMBEDDING_ATTEMPTS,
   STUCK_EMBEDDING_MINUTES,
 } from './config.mjs'
@@ -146,7 +149,12 @@ async function drainPendingQueries(supabase) {
 
 /** Journal entries embedded since the last pass → AI link proposals (supabase/sql/journal_entry_nodes.sql). */
 async function proposeJournalLinks(supabase) {
-  const { data, error } = await supabase.rpc('journal_propose_links')
+  // Thresholds from config.mjs (quieter rule, R1 step 7): the SQL defaults (3 / 0.60 / 0.03) were too loud.
+  const { data, error } = await supabase.rpc('journal_propose_links', {
+    p_k: JOURNAL_LINK_K,
+    p_min: JOURNAL_LINK_MIN,
+    p_margin: JOURNAL_LINK_MARGIN,
+  })
   if (error) {
     // Function absent before the migration: say so once per pass, never fail the worker.
     console.error('[embed-worker] journal link proposals:', error.message)
