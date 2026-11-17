@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { clearUserCaches } from '@/lib/sw-install/user-caches'
 import { useI18n } from '@/lib/i18n/context'
 import { LoginChrome } from './LoginChrome'
 
@@ -49,6 +50,8 @@ export function LoginClient() {
     setLanDev(
       process.env.NODE_ENV === 'development' && isLanDevHostname(window.location.hostname),
     )
+    // No cached page of the last user survives to the next sign-in (the service worker also does this).
+    void clearUserCaches().catch(() => undefined)
   }, [])
 
   useEffect(() => {

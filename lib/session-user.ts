@@ -66,13 +66,15 @@ export async function getSessionUserDisplay(): Promise<{
   } = await supabase.auth.getUser()
   if (!user) return { displayName: '', fullName: '' }
 
-  const { data: isTeam } = await supabase.rpc('is_team')
-
-  const { data: contact } = await supabase
-    .from('Contact')
-    .select('NomInstitution, Nom, "Prénom", Email, is_team_member')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
+  // Both reads at once: one round trip instead of two.
+  const [{ data: isTeam }, { data: contact }] = await Promise.all([
+    supabase.rpc('is_team'),
+    supabase
+      .from('Contact')
+      .select('NomInstitution, Nom, "Prénom", Email, is_team_member')
+      .eq('auth_user_id', user.id)
+      .maybeSingle(),
+  ])
 
   const useAcronym = Boolean(isTeam) || Boolean(contact?.is_team_member)
 

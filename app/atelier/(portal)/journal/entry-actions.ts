@@ -94,7 +94,11 @@ async function worksMentioned(
 
 /**
  * `opts.folds: false` skips the two fold reads (work versions, Création) — « Aujourd'hui » on the phone
- * loads them only when a fold opens (`getJournalDayFolds`). `opts.entries: false` skips the entries.
+ * loads them only when a fold opens (`getJournalDayFolds`). `opts.entries: false` skips the entries and
+ * what only they use (voice notes, concept options: returned empty).
+ * Reads run in three waves of parallel calls (user + admin flag; the day's rows; what those rows point to)
+ * instead of up to eight calls one after another: each call is a round trip from the server to Supabase
+ * (about 0.2 s in production, R2 speed notes), so the count of waves sets the time.
  */
 export async function getJournalDayExtras(
   day: string,
@@ -104,36 +108,44 @@ export async function getJournalDayExtras(
   const withFolds = opts.folds !== false
   const withEntries = opts.entries !== false
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Wave 1. The admin flag is read with the same session as the user (false when signed out); a
+  // missing user still stops here before any data is read.
+  const [
+    {
+      data: { user },
+    },
+    { data: adminFlag },
+  ] = await Promise.all([supabase.auth.getUser(), supabase.rpc('is_admin')])
   if (!user) return { error: 'auth' }
 
-  const { data: adminFlag } = await supabase.rpc('is_admin')
   const isAdmin = adminFlag === true
   const win = utcWindow(day)
 
+  // Wave 2: the day's own rows.
   const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes] = await Promise.all([
     withEntries
       ? supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500)
       : Promise.resolve({ data: [] as Array<Tables<'journal_entry'>>, error: null }),
-    supabase
-      .from('voice_note')
-      .select('id, subject, created_at, oeuvre_id')
-      .gte('created_at', win.from)
-      .lt('created_at', win.to)
-      .order('created_at', { ascending: true })
-      .limit(200),
-    // Admin only by RLS (oeuvre_versions_admin_select): team members get no rows.
+    withEntries
+      ? supabase
+          .from('voice_note')
+          .select('id, subject, created_at, oeuvre_id')
+          .gte('created_at', win.from)
+          .lt('created_at', win.to)
+          .order('created_at', { ascending: true })
+          .limit(200)
+      : Promise.resolve({ data: [] as JournalDayVoice[], error: null }),
+    // Admin only by RLS (oeuvre_versions_admin_select): team members get no rows. Ids only: the
+    // snapshots come once, below, with the later versions of the changed works.
     isAdmin && withFolds
       ? supabase
           .from('oeuvre_versions')
-          .select('oeuvre_id, changed_at, snapshot')
+          .select('oeuvre_id, changed_at')
           .gte('changed_at', win.from)
           .lt('changed_at', win.to)
           .order('changed_at', { ascending: true })
           .limit(1000)
-      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string; snapshot: unknown }>, error: null }),
+      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string }>, error: null }),
     withFolds
       ? supabase
           .from('kaizen_item')
@@ -147,7 +159,9 @@ export async function getJournalDayExtras(
           data: [] as Array<Pick<Tables<'kaizen_item'>, 'id' | 'created_at' | 'title' | 'body' | 'author_id' | 'done_at' | 'work_ids'>>,
           error: null,
         }),
-    supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500),
+    withEntries
+      ? supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500)
+      : Promise.resolve({ data: [] as Array<{ id: string; titre: string | null }>, error: null }),
   ])
   if (entriesRes.error) {
     await logError('journal day entries failed', entriesRes.error, { source: 'journal.getJournalDayExtras' })
@@ -156,9 +170,6 @@ export async function getJournalDayExtras(
 
   const rows = entriesRes.data ?? []
   const entryIds = rows.map((r) => r.id)
-  const { data: links } = entryIds.length
-    ? await supabase.from('journal_entry_link').select('*').in('entry_id', entryIds)
-    : { data: [] }
   type LinkRow = {
     id: number
     entry_id: number
@@ -168,7 +179,6 @@ export async function getJournalDayExtras(
     proposed_by: string
     rejected_at?: string | null
   }
-  const linkRows = (links ?? []) as LinkRow[]
   const conceptTitles = new Map((conceptsRes.data ?? []).map((c) => [c.id, c.titre as string | null]))
 
   // Field changes: each version row is the work BEFORE a save; the state after is the next
@@ -176,28 +186,53 @@ export async function getJournalDayExtras(
   const versions = (versionsRes.data ?? []).filter((v) => calendarDayInParisFromIso(v.changed_at) === day)
   const changedIds = [...new Set(versions.map((v) => v.oeuvre_id))].slice(0, 100)
 
-  const workIds = [...new Set([...linkRows.filter((l) => l.oeuvre_id != null).map((l) => l.oeuvre_id as number), ...changedIds])]
+  const creationRows = (creationRes.data ?? []).filter((k) => calendarDayInParisFromIso(k.created_at) === day)
+  const authorIds = [
+    ...new Set([...rows.map((r) => r.author_id), ...creationRows.map((k) => k.author_id)].filter((x): x is string => !!x)),
+  ]
+  const voiceIds = [...new Set(rows.map((r) => r.voice_note_id).filter((v): v is string => !!v))]
+
+  // Wave 3: what the day's rows point to, all at once (links → works is the only chain left).
+  const linksAndWorks = (async () => {
+    const links = entryIds.length
+      ? (((await supabase.from('journal_entry_link').select('*').in('entry_id', entryIds)).data ?? []) as LinkRow[])
+      : []
+    const workIds = [...new Set([...links.filter((l) => l.oeuvre_id != null).map((l) => l.oeuvre_id as number), ...changedIds])]
+    const works = workIds.length
+      ? (((await supabase.from('Oeuvres').select('*').in('OeuvreID', workIds)).data ?? []) as Array<Record<string, unknown>>)
+      : []
+    return { links, works }
+  })()
+  const [{ links: linkRows, works }, laterRes, contactsRes, audioRes] = await Promise.all([
+    linksAndWorks,
+    changedIds.length
+      ? supabase
+          .from('oeuvre_versions')
+          .select('oeuvre_id, changed_at, snapshot')
+          .in('oeuvre_id', changedIds)
+          .gte('changed_at', win.from)
+          .order('changed_at', { ascending: true })
+          .limit(2000)
+      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string; snapshot: unknown }> }),
+    // `select('*')`: the typed select parser rejects the accented `Prénom` column name.
+    authorIds.length ? supabase.from('Contact').select('*').in('auth_user_id', authorIds) : Promise.resolve({ data: [] }),
+    voiceIds.length
+      ? supabase.from('voice_note').select('id, audio_r2_key').in('id', voiceIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; audio_r2_key: string | null }> }),
+  ])
+
   const titles = new Map<number, string | null>()
   const covers = new Map<number, string | null>()
   const current = new Map<number, Record<string, unknown>>()
-  if (workIds.length) {
-    const { data: works } = await supabase.from('Oeuvres').select('*').in('OeuvreID', workIds)
-    for (const w of (works ?? []) as Array<Record<string, unknown>>) {
-      titles.set(w.OeuvreID as number, (w.Titre as string | null) ?? null)
-      covers.set(w.OeuvreID as number, (w.txtImageNameLink as string | null) ?? null)
-      current.set(w.OeuvreID as number, w)
-    }
+  for (const w of works) {
+    titles.set(w.OeuvreID as number, (w.Titre as string | null) ?? null)
+    covers.set(w.OeuvreID as number, (w.txtImageNameLink as string | null) ?? null)
+    current.set(w.OeuvreID as number, w)
   }
 
   const changes: JournalDayChange[] = []
   if (changedIds.length) {
-    const { data: later } = await supabase
-      .from('oeuvre_versions')
-      .select('oeuvre_id, changed_at, snapshot')
-      .in('oeuvre_id', changedIds)
-      .gte('changed_at', win.from)
-      .order('changed_at', { ascending: true })
-      .limit(2000)
+    const later = laterRes.data
     const byWork = new Map<number, Array<{ changed_at: string; snapshot: Record<string, unknown> }>>()
     for (const v of (later ?? []) as Array<{ oeuvre_id: number; changed_at: string; snapshot: Record<string, unknown> }>) {
       const list = byWork.get(v.oeuvre_id) ?? []
@@ -216,25 +251,13 @@ export async function getJournalDayExtras(
     }
   }
 
-  const creationRows = (creationRes.data ?? []).filter((k) => calendarDayInParisFromIso(k.created_at) === day)
-  const authorIds = [
-    ...new Set([...rows.map((r) => r.author_id), ...creationRows.map((k) => k.author_id)].filter((x): x is string => !!x)),
-  ]
   const names: Record<string, string> = {}
-  if (authorIds.length) {
-    // `select('*')`: the typed select parser rejects the accented `Prénom` column name.
-    const { data } = await supabase.from('Contact').select('*').in('auth_user_id', authorIds)
-    for (const c of (data ?? []) as { auth_user_id: string | null; Prénom: string | null; Nom: string | null }[]) {
-      if (c.auth_user_id) names[c.auth_user_id] = [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || '—'
-    }
+  for (const c of (contactsRes.data ?? []) as { auth_user_id: string | null; Prénom: string | null; Nom: string | null }[]) {
+    if (c.auth_user_id) names[c.auth_user_id] = [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || '—'
   }
 
-  const voiceIds = [...new Set(rows.map((r) => r.voice_note_id).filter((v): v is string => !!v))]
   const audioKeys = new Map<string, string | null>()
-  if (voiceIds.length) {
-    const { data } = await supabase.from('voice_note').select('id, audio_r2_key').in('id', voiceIds)
-    for (const v of data ?? []) audioKeys.set(v.id, v.audio_r2_key)
-  }
+  for (const v of audioRes.data ?? []) audioKeys.set(v.id, v.audio_r2_key)
 
   const entries: JournalDayEntry[] = rows
     .filter((r) => !r.hidden_at || isAdmin)

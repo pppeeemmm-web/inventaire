@@ -14,6 +14,7 @@ import { listWorkSessionJournal, type WorkSessionJournalRow } from '@/app/atelie
 import { countFil } from '@/app/atelier/fil/actions'
 import { worksPhotographedOn } from './photographed'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
+import { TodayCachedNote } from '@/components/hub/TodayCachedNote'
 import {
   TodayEntries,
   TodayFolds,
@@ -79,6 +80,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   // `key={day}`: moving to another day shows fresh skeletons instead of the previous day's sections.
   return (
     <TodayFrame day={day} today={today}>
+      {/* Render time: the phone's cached copy (app/sw.ts) shows its age, then refreshes. */}
+      <TodayCachedNote renderedAt={Date.now()} />
       <Suspense key={`s-${day}`} fallback={<TodaySkeleton rows={1} />}>
         <SummarySection extras={extras} sessions={sessions} day={day} />
       </Suspense>

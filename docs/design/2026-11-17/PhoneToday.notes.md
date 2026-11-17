@@ -228,7 +228,83 @@ Same method as the baseline: Pem's Chrome on the PC, a 390 px same-origin frame,
 - **First byte:**
   - It is now the biggest part of `/hub`'s time: about 1.0–1.3 s warm, and 1.6–2.5 s on the first loads right after the deploy.
   - Before anything is sent, the server checks the session several times: the middleware, `requireSession`, and the signed-in name.
-  - That is the next thing to look at: measure first, no change yet.
+  - That is the next thing to look at: measured below (« Speed safeguards »).
+
+### Speed safeguards: measured 2026-11-17 (side session, not on production yet)
+
+**Where the server runs.** Production pages run in Vercel's `iad1` region (Washington, USA: `x-vercel-id: cdg1::iad1::…`); the middleware runs at the Paris edge (`cdg1`). Supabase is in `eu-north-1` (Stockholm). Every session check or read made by a page therefore crosses the Atlantic and back.
+
+**First byte of `/hub`: the steps, timed.**
+
+| Step, before anything is sent | Local dev (France → Stockholm), 6 runs | Note |
+|---|---|---|
+| Middleware `getUser` | 69–112 ms | At the Paris edge in production |
+| `requireSession` `getUser` (`app/hub/layout.tsx`) | 83–135 ms | The real gate: kept, first |
+| Signed-in name: `getUser` again | 3–7 ms | Next.js reuses the first answer (same request) |
+| Signed-in name: `is_team` | 80–138 ms (one cold 559 ms) | Only for the corner pill |
+| Signed-in name: `Contact` row | 90–347 ms | Only for the corner pill |
+
+Production, with `curl` (signed out, so no session reads):
+- A page that only reaches the function and returns (the layout's redirect): **0.21–0.23 s** (5 runs).
+- `/works`, which makes about five Supabase reads one after another: **1.30–1.93 s** (3 runs). So **one read from `iad1` costs about 0.2–0.35 s**.
+- Signed in, `/hub` makes three of those reads before its first byte (`requireSession`, `is_team`, `Contact`): that is most of the measured 1.0–1.3 s.
+
+**Changed** (auth unchanged: the middleware and `requireSession` run exactly as before, same redirects; a signed-out request still gets the `/login` redirect and no page data):
+- The signed-in pill now streams in after the first byte (`InternalSessionChrome`, a `Suspense` around it). It is fixed in the corner, so nothing moves when it lands. This applies to every protected layout that shows it (Atelier, Hub, Galerie, Maps).
+- Its two reads (`is_team`, `Contact`) run side by side.
+
+| First byte of `/hub`, signed in | Before | After |
+|---|---|---|
+| Local dev (France → Stockholm), `curl` | 0.69–0.90 s (5 runs) | 0.46–0.51 s (6 runs) |
+| Production (`iad1` → Stockholm) | 1.0–1.3 s (measured above) | **not measured yet**: expected about 0.4–0.6 s less (two reads of 0.2–0.35 s leave the path) |
+
+**Proposal, not done (needs Pem's GO):** run the functions in Stockholm (`"regions": ["arn1"]` in `vercel.json`), next to the database. Each read would drop from about 0.2–0.35 s to a few milliseconds, and Paris → Stockholm is also shorter than Paris → Washington. It moves every server function of the app (pages, actions, crons, R2 uploads, calendar sign-in), so it is a whole-app change, to measure before and after like the rest.
+
+**Folds (« Attributs d'œuvres modifiés », « Création »): about 1.8 s to open, measured live.** The cause is not the database: the work-changes read takes 2.5 ms in Postgres. Opening a fold made up to six Supabase reads **one after another** (user, `is_admin`, the day's rows, the works, their later versions, the authors' names), about 0.2–0.35 s each from `iad1`. It also read the day's voice notes and the concept list, which the folds never show, and on a busy day pulled every work snapshot twice (2 Nov: 4,829 versions, 5.3 MB of snapshots; up to 1,000 of them, about 1.1 MB, were read only for their ids).
+
+**Changed** (`getJournalDayExtras`, no SQL change; same rows, same output): the reads run in three waves of parallel calls (user + admin flag; the day's rows; what those rows point to); the first versions read takes the ids only; the folds skip the voice-note and concept reads. Admin fold: 6 reads in a row → 3. Team fold: 4 → 3. The day's own read on « Aujourd'hui » and in the Journal (same function): up to 7 → 4.
+
+| Opening « Création » (team account), local dev | Before | After |
+|---|---|---|
+| Today (0 items): tap → shown | 507, 589 ms | 354, 372 ms |
+| 28 June 2026 (4 items): tap → shown | 641, 584 ms | 432, 487 ms |
+| Server time of the read (all runs) | 316–490 ms | 226–330 ms |
+
+Production: **not measured yet**. Expected, admin fold: about 1.8 s → about 1.0–1.2 s (three reads of 0.2–0.35 s fewer). With the functions in Stockholm (proposal above), well under 0.5 s.
+
+**The phone's last copy of « Aujourd'hui » (rule 5): built.**
+- `app/sw.ts`: `/hub` and `/hub/today` (today only, no `?day=`) are shown at once from the cache `pem-today-<build>`. The request the browser already sends alongside (navigation preload) brings the fresh page and replaces the copy. A copy older than 12 h is not used.
+- The page knows when the server rendered it. Older than 10 s: it refreshes itself in place (the input bar keeps what is typed). Older than a minute: it also says « Mis à jour il y a N min » until the fresh page is in.
+- Offline: the copy stays, with its age line. The page tries one refresh per copy only, so a failed refresh (Next then reloads the page) cannot loop.
+- One user only: every page cache (« Aujourd'hui », the old page caches, Serwist's page / data caches, including `cross-origin`, which held Supabase answers) is wiped on sign-out, each time `/login` opens (in the worker and in the login page) and when the server answers « Aujourd'hui » with a redirect (signed out). Server Actions (POST) and RSC requests are never cached by this.
+- One build only: a copy from an older deploy is never used (its JS files may be gone).
+- **Found and fixed on the way:** `/hub` was in the worker's install-time precache. That copy was fetched with whoever was signed in when the worker installed, then served first to anyone opening `/hub` on that phone until the next deploy. `/hub` is no longer precached.
+
+| `/hub` on a local production build (`next start`, built-in browser at 375 px, warm) | First byte | Page ready (`domInteractive`) |
+|---|---|---|
+| No cached copy (network) | 182 ms | 1,196 ms |
+| From the cached copy | 1–11 ms | 9–19 ms |
+| Age line shown → gone (fresh page in), copy 1 min old | — | 251 ms → 372 ms |
+
+Checked there:
+- The copy is written and used. A 20 s old copy refreshes silently, with no line. An 80 s old copy shows « Mis à jour il y a 1 min » under the header, then the fresh page replaces it.
+- Opening `/login` empties `pem-today`, `pages`, `pages-rsc` and `cross-origin` (only the public login page comes back).
+- Signed out (session cookie removed in the browser only): `/hub` shows the copy for a moment, refreshes, lands on `/login`, and every user cache is gone.
+
+**Not checked:** the sign-out button itself (it signs the account out everywhere, so it was not pressed on the shared dev account), a real phone, iOS Safari's service worker, production.
+
+**JS budget (rule 6): built.** `npm run perf:budget` (after `npm run build`) adds up each route's first-screen JS from the build output and fails over budget (`--files` lists each file).
+
+| Route | Files | Raw | Gzip | Budget (raw / gzip) |
+|---|---|---|---|---|
+| `/hub` | 16 | 1,101 kB | 332 kB | 1,135 / 342 kB |
+| `/hub/today` | 16 | 1,101 kB | 332 kB | 1,135 / 342 kB |
+| `/hub/fil` | 10 | 850 kB | 264 kB | 875 / 272 kB |
+
+- This matches the 1.08 MB seen in the browser.
+- The design target, **< 150 kB gzip, is not met**: 332 kB.
+- The biggest file (141 kB gzip) is the whole app's FR + EN message dictionary, sent to every page. Sending only the page's language and messages is the largest saving left: a proposal, not done.
+- CI (`.github/workflows/ci.yml`) does not build, so the budget is not in CI; it is a script. Putting it into `npm run build` (Vercel) would block a deploy that grows the phone's JS: Pem's call.
 
 ### How we prove it
 

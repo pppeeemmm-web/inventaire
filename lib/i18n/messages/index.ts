@@ -1,6 +1,7 @@
 import { atelierMessages } from './atelier.messages'
 import { hubMessages } from './hub.messages'
 import { todayMessages } from './today.messages'
+import { todayCacheMessages } from './today-cache.messages'
 import { swipeDeckMessages } from './swipe-deck.messages'
 import { filMessages } from './fil.messages'
 import { ideasMessages } from './ideas.messages'
@@ -60,6 +61,7 @@ export const featureMessages = {
   ...publicMessages,
   ...hubMessages,
   ...todayMessages,
+  ...todayCacheMessages,
   ...swipeDeckMessages,
   ...filMessages,
   ...ideasMessages,

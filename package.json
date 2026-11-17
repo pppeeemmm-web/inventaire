@@ -16,7 +16,8 @@
     "embed:worker": "node scripts/embed-worker/index.mjs",
     "archive": "node scripts/archive-export.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:field": "node scripts/run-atelier-e2e.mjs"
+    "test:e2e:field": "node scripts/run-atelier-e2e.mjs",
+    "perf:budget": "node scripts/perf-budget.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1039.0",

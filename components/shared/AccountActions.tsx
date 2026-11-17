@@ -9,6 +9,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { clearUserCaches } from '@/lib/sw-install/user-caches'
 
 export function AccountActions({ compact = false, style }: { compact?: boolean; style?: CSSProperties }) {
   const { t } = useI18n()
@@ -38,6 +39,8 @@ export function AccountActions({ compact = false, style }: { compact?: boolean; 
       setBusy(false)
       return
     }
+    // The phone's cached pages (« Aujourd'hui » …) belong to this user: gone before /login opens.
+    await clearUserCaches().catch(() => undefined)
     window.location.assign('/login')
   }
 

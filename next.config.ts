@@ -11,10 +11,10 @@ const withSerwist = withSerwistInit({
   swDest: 'public/sw.js',
   disable: process.env.NODE_ENV === 'development',
   cacheOnNavigation: true,
-  additionalPrecacheEntries: [
-    { url: '/~offline', revision: swRevision },
-    { url: '/hub', revision: swRevision },
-  ],
+  // `/hub` is not precached (R2 speed): a precached copy was fetched with whoever was signed in when the
+  // worker installed and then served first to anyone on the phone. app/sw.ts keeps today's copy per user.
+  // The '/~offline' revision also names that cache (one build per copy): keep it the build revision.
+  additionalPrecacheEntries: [{ url: '/~offline', revision: swRevision }],
 })
 
 /** Origin of an env URL, or '' when unset / malformed. */
