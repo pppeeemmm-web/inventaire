@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.39 (2026-11-17) — Triage on the shared swipe deck.
+  wn_triage_swipe_undo_t: { fr: 'Triage : balayer, 6 s pour annuler', en: 'Triage: swipe, 6 s to undo' },
+  wn_triage_swipe_undo_d: {
+    fr: 'Le Triage (publications en attente, demandes du site) montre une carte à la fois : vers la gauche pour refuser ou classer, vers la droite pour valider — ou les boutons ✕ ✓, ou les flèches ← → au clavier. Pendant 6 secondes, « Annuler » ramène la carte ; rien n’est envoyé avant.',
+    en: 'Triage (posts waiting to go out, site enquiries) shows one card at a time: left to reject or file, right to approve — or the ✕ ✓ buttons, or the ← → keys. For 6 seconds « Undo » brings the card back; nothing is sent before.',
+  },
   // 3.1.38 (2026-11-17) — R2: « À revoir » actions on Aujourd'hui; « Plus tard ».
   wn_see_again_later_t: { fr: '« À revoir » : Plus tard', en: '« See again »: Later' },
   wn_see_again_later_d: {
