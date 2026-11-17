@@ -1102,14 +1102,20 @@ export function TeamPortalClient({
   // Kaizen: top of the sidebar on desktop, right after Terrain on phone. Audit (admin only) heads
   // it — reviews are improvement work too (owner 2026-11-12); the Admin group is gone.
   const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen', 'kaizen-ops'] : ['kaizen', 'kaizen-ops']) as Tab[] }
-  const studioGroup = { label: t('nav_group_studio'), tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] as Tab[] }
+  // Phone: « Idées » (concepts) sits in the top block, so Studio drops it there.
+  const studioGroup = {
+    label: t('nav_group_studio'),
+    tabs: (atelierNarrow ? ['overview', 'pipeline', 'exhibitions', 'stock'] : ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock']) as Tab[],
+  }
   const commercialGroup = { label: t('nav_group_commercial'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] as Tab[] }
   const publicGroup = { label: t('nav_group_public_tab'), tabs: publicTabs }
   // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
-  // Phone unchanged for now (Pem: "don't touch yet"): Terrain (with Inventaire) first, then Kaizen.
+  // Phone (R2 phone 6, 2026-11-17): a top block Aujourd'hui · Fil · Idées (rendered below, before
+  // GROUPS), then Terrain (with Inventaire, without Notes: merged into the Journal per R1; the
+  // /atelier/notes route still works), then Kaizen, then the rest.
   const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
     ? [
-        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] },
+        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal'] },
         kaizenGroup,
         studioGroup,
         { label: t('nav_group_catalogue'), tabs: ['reports', 'themes', 'constellation', 'slideshows'] },
@@ -1457,6 +1463,30 @@ export function TeamPortalClient({
             </div>
             <div ref={sidebarNavScrollRef} className="pem-atelier-sidebar-nav-scroll">
               <div data-testid="atelier-nav-groups" className="pem-atelier-sidebar-nav-inner">
+                {atelierNarrow ? (
+                  <div data-testid="atelier-nav-phone-top" className="pem-atelier-sidebar-group">
+                    <div className="pem-atelier-sidebar-tabs">
+                      {[
+                        { key: 'today', label: t('today_nav_today'), on: () => { pendingNavRef.current = () => router.push('/hub'); attemptNavigateWithDrawerGuard() }, active: false },
+                        ...(isAdmin
+                          ? [{ key: 'fil', label: t('fil_title'), on: () => { pendingNavRef.current = () => router.push('/hub/fil'); attemptNavigateWithDrawerGuard() }, active: false }]
+                          : []),
+                        { key: 'ideas', label: t('today_nav_ideas'), on: () => handleSetTab('concepts'), active: tab === 'concepts' },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          data-testid={`atelier-nav-phone-${item.key}`}
+                          onClick={item.on}
+                          className={item.active ? 'pem-sidebar-tab pem-sidebar-tab--on pem-sidebar-tab--narrow' : 'pem-sidebar-tab pem-sidebar-tab--narrow'}
+                          style={{ fontSize: 11, textAlign: 'left', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center' }}
+                        >
+                          <span style={{ fontWeight: item.active ? 600 : 400 }}>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {GROUPS.filter((g) => g.tabs.length > 0).map((g) => (
                   <div key={g.label || g.tabs.join('-')} className="pem-atelier-sidebar-group">
                     {g.label ? <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div> : null}

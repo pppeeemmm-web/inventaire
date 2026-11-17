@@ -3,20 +3,27 @@
 // Streaming: the header and the input bar (TodayFrame) go out at once; every query starts here in
 // parallel and each section streams in when its own data is ready — the slow « À revoir » read
 // (1.4–1.9 s in the 2026-11-17 baseline) no longer holds back the rest. Also served at /hub.
+// `?day=YYYY-MM-DD` shows another day (‹ › in the header; never after today). « À revoir » and the
+// pulse line (Fil count, field inbox) belong to today only and are not read for another day.
+// The two folds (« Attributs d'œuvres modifiés », « Création ») are read only when opened.
 import { Suspense } from 'react'
 import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
 import { getJournalDayExtras } from '@/app/atelier/(portal)/journal/entry-actions'
 import { listWorkSessionJournal, type WorkSessionJournalRow } from '@/app/atelier/session/actions'
 import { countFil } from '@/app/atelier/fil/actions'
+import { worksPhotographedOn } from './photographed'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import {
   TodayEntries,
+  TodayFolds,
   TodayFrame,
   TodayLoadError,
+  TodayPhotographed,
   TodayPulse,
   TodaySeeAgain,
   TodaySkeleton,
+  TodaySuggestions,
   TodaySummary,
   TodayWorks,
   type TodayWork,
@@ -43,32 +50,64 @@ function worksOfDay(rows: WorkSessionJournalRow[], day: string): TodayWork[] {
   return works
 }
 
-export default function TodayPage() {
-  const day = todayCalendarDayInParis()
-  // All reads start now, together; no section waits on another.
-  const pulse = settle(getFieldPulseData())
-  // The Fil count (R1 step 6): null for a non-admin or a failed read — left off the pulse line.
-  const fil = countFil().catch(() => null)
-  const seeAgain = settle(getSeeAgain())
-  const extras = settle(getJournalDayExtras(day))
-  const sessions = settle(listWorkSessionJournal(20, { skipReconcile: true }))
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
+/** The day asked for in `?day=`, or today: a malformed day, an impossible date or a future day falls back to today. */
+function requestedDay(raw: string | string[] | undefined, today: string): string {
+  const day = Array.isArray(raw) ? raw[0] : raw
+  if (!day || !DAY_RE.test(day)) return today
+  const ms = Date.parse(`${day}T12:00:00Z`)
+  if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== day) return today
+  return day > today ? today : day
+}
+
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ day?: string | string[] }> }) {
+  const today = todayCalendarDayInParis()
+  const day = requestedDay((await searchParams).day, today)
+  const isToday = day === today
+  // All reads start now, together; no section waits on another. Today-only reads are skipped for another day.
+  const pulse = isToday ? settle(getFieldPulseData()) : null
+  // The Fil count (R1 step 6): null for a non-admin or a failed read — left off the pulse line.
+  const fil = isToday ? countFil().catch(() => null) : null
+  const seeAgain = isToday ? settle(getSeeAgain()) : null
+  // Folds skipped here: TodayFolds reads them when one opens.
+  const extras = settle(getJournalDayExtras(day, { folds: false }))
+  const sessions = settle(listWorkSessionJournal(20, { skipReconcile: true }))
+  // Another day only: works whose photo file name carries that date (the trace before work sessions).
+  const photographed = isToday ? null : settle(worksPhotographedOn(day))
+
+  // `key={day}`: moving to another day shows fresh skeletons instead of the previous day's sections.
   return (
-    <TodayFrame day={day}>
-      <Suspense fallback={<TodaySkeleton rows={1} />}>
+    <TodayFrame day={day} today={today}>
+      <Suspense key={`s-${day}`} fallback={<TodaySkeleton rows={1} />}>
         <SummarySection extras={extras} sessions={sessions} day={day} />
       </Suspense>
-      <Suspense fallback={<TodaySkeleton rows={1} />}>
-        <PulseSection pulse={pulse} fil={fil} />
+      {pulse && fil ? (
+        <Suspense fallback={<TodaySkeleton rows={1} />}>
+          <PulseSection pulse={pulse} fil={fil} />
+        </Suspense>
+      ) : null}
+      {seeAgain ? (
+        <Suspense fallback={<TodaySkeleton rows={2} />}>
+          <SeeAgainSection seeAgain={seeAgain} />
+        </Suspense>
+      ) : null}
+      <Suspense key={`w-${day}`} fallback={<TodaySkeleton rows={2} />}>
+        <WorksSection sessions={sessions} day={day} isToday={isToday} />
       </Suspense>
-      <Suspense fallback={<TodaySkeleton rows={2} />}>
-        <SeeAgainSection seeAgain={seeAgain} />
+      {photographed ? (
+        <Suspense key={`p-${day}`} fallback={null}>
+          <PhotographedSection photographed={photographed} />
+        </Suspense>
+      ) : null}
+      <Suspense key={`e-${day}`} fallback={<TodaySkeleton rows={3} />}>
+        <EntriesSection extras={extras} day={day} isToday={isToday} />
       </Suspense>
-      <Suspense fallback={<TodaySkeleton rows={2} />}>
-        <WorksSection sessions={sessions} day={day} />
+      <Suspense key={`x-${day}`} fallback={null}>
+        <SuggestionsSection extras={extras} />
       </Suspense>
-      <Suspense fallback={<TodaySkeleton rows={3} />}>
-        <EntriesSection extras={extras} />
+      <Suspense key={`f-${day}`} fallback={null}>
+        <FoldsSection extras={extras} day={day} />
       </Suspense>
     </TodayFrame>
   )
@@ -105,12 +144,32 @@ async function SeeAgainSection({ seeAgain }: { seeAgain: Promise<Awaited<ReturnT
   return 'error' in r ? null : <TodaySeeAgain seeAgain={r} />
 }
 
-async function WorksSection({ sessions, day }: { sessions: Promise<Sessions>; day: string }) {
+async function WorksSection({ sessions, day, isToday }: { sessions: Promise<Sessions>; day: string; isToday: boolean }) {
   const s = await sessions
-  return Array.isArray(s) ? <TodayWorks works={worksOfDay(s, day)} /> : <TodayLoadError />
+  return Array.isArray(s) ? <TodayWorks works={worksOfDay(s, day)} isToday={isToday} /> : <TodayLoadError />
 }
 
-async function EntriesSection({ extras }: { extras: Promise<Extras> }) {
+async function EntriesSection({ extras, day, isToday }: { extras: Promise<Extras>; day: string; isToday: boolean }) {
   const x = await extras
-  return 'error' in x ? <TodayLoadError /> : <TodayEntries entries={x.entries.filter((e) => !e.hidden)} />
+  return 'error' in x ? <TodayLoadError /> : <TodayEntries entries={x.entries.filter((e) => !e.hidden)} day={day} isToday={isToday} />
+}
+
+async function PhotographedSection({ photographed }: { photographed: Promise<Awaited<ReturnType<typeof worksPhotographedOn>> | { error: string }> }) {
+  const p = await photographed
+  if ('error' in p) return <TodayLoadError />
+  return p.works.length ? <TodayPhotographed works={p.works} more={p.more} /> : null
+}
+
+/** ✦ AI link suggestions of the day's visible entries (same data as the Journal); ✓ / ✕ for an admin. */
+async function SuggestionsSection({ extras }: { extras: Promise<Extras> }) {
+  const x = await extras
+  if ('error' in x) return null
+  const rows = x.entries.filter((e) => !e.hidden).flatMap((e) => e.proposals)
+  return rows.length ? <TodaySuggestions rows={rows} canDecide={x.isAdmin} /> : null
+}
+
+/** Waits on the day's read only for `isAdmin` (the work-changes fold is admin only, as in the Journal). */
+async function FoldsSection({ extras, day }: { extras: Promise<Extras>; day: string }) {
+  const x = await extras
+  return <TodayFolds day={day} showChanges={!('error' in x) && x.isAdmin} />
 }

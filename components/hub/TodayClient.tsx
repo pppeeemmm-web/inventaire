@@ -6,14 +6,21 @@
 // is its own component, filled by app/hub/today/page.tsx as its query finishes (Suspense).
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useTransition, type CSSProperties, type ReactNode, type SyntheticEvent } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { AccountActions } from '@/components/shared/AccountActions'
 import type { FieldPulseMetric, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
 import type { SeeAgainSlots, SeeAgainWork } from '@/app/atelier/see-again/actions'
-import type { JournalDayEntry } from '@/app/atelier/(portal)/journal/entry-actions'
+import {
+  decideJournalLink,
+  getJournalDayFolds,
+  type JournalDayChange,
+  type JournalDayCreation,
+  type JournalDayEntry,
+} from '@/app/atelier/(portal)/journal/entry-actions'
+import { toast } from '@/lib/ui/toast'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
@@ -35,6 +42,16 @@ const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
 }
 
 const workHref = (id: number) => `/atelier/inventory?work=${id}`
+const journalDayHref = (day: string, isToday: boolean) => (isToday ? '/atelier/journal?today=1' : `/atelier/journal?day=${day}`)
+
+/** YYYY-MM-DD ± n days (calendar arithmetic at noon UTC: no DST edge). */
+function shiftDay(day: string, n: number): string {
+  const d = new Date(`${day}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+const iconLink: CSSProperties = { minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 20, flex: 'none' }
 
 const section: CSSProperties = { padding: '14px 16px', borderTop: '1px solid var(--bd)' }
 const heading: CSSProperties = { fontSize: 12, letterSpacing: '0.04em', color: 'var(--tx3)', margin: '0 0 8px' }
@@ -70,9 +87,10 @@ const BUREAU_ROWS: Array<{ testId: string; emoji: string; labelKey: DictKey; hre
   { testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', href: '/atelier/issue/new' },
 ]
 
-export function TodayFrame({ day, children }: { day: string; children: ReactNode }) {
+export function TodayFrame({ day, today, children }: { day: string; today: string; children: ReactNode }) {
   const { t, lang } = useI18n()
   const router = useRouter()
+  const pathname = usePathname() || '/hub'
   const narrow = useMediaQuery('(max-width: 767px)')
   const [mounted, setMounted] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
@@ -88,15 +106,34 @@ export function TodayFrame({ day, children }: { day: string; children: ReactNode
     if (mounted && !narrow) router.replace(atelierTabHref('overview'))
   }, [mounted, narrow, router])
 
-  const date = new Date(`${day}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+  // Short form so the one header row (☰ · date · ‹ › · 📅) fits at 360 px. This year: « Mar. 17 nov. »;
+  // another year: « 23/09/2024 », a size smaller.
+  const sameYear = day.slice(0, 4) === today.slice(0, 4)
+  const date = new Date(`${day}T12:00:00Z`)
+    .toLocaleDateString(
+      locale,
+      sameYear
+        ? { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }
+        : { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' },
+    )
+    .replace(/^./, (c) => c.toUpperCase())
+  // ‹ › step a day (`?day=` on this same route); today has no query and no « next ».
+  const dayHref = (d: string) => (d >= today ? pathname : `${pathname}?day=${d}`)
+  const isToday = day >= today
 
   return (
     <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: 'hidden', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
       {/* Right padding keeps 📅 clear of the floating signed-in badge (LoggedInBar). */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 48px 4px 16px' }}>
-        <Link href="/atelier" aria-label={t('today_menu')} style={{ minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 20 }}>☰</Link>
-        <h1 style={{ fontSize: 22, margin: 0, flex: 1, textTransform: 'capitalize' }}>{date}</h1>
-        <Link href="/atelier/journal" aria-label={t('today_days')} style={{ minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 18 }}>📅</Link>
+      <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 48px 4px 8px' }}>
+        <Link href="/atelier" aria-label={t('today_menu')} style={iconLink}>☰</Link>
+        <h1 data-testid="hub-today-date" data-day={day} style={{ fontSize: sameYear ? 22 : 18, margin: '0 4px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</h1>
+        <Link href={dayHref(shiftDay(day, -1))} aria-label={t('today_prev_day')} data-testid="hub-today-prev" style={iconLink}>‹</Link>
+        {isToday ? (
+          <span aria-hidden="true" data-testid="hub-today-next" style={{ ...iconLink, color: 'var(--tx3)', opacity: 0.4 }}>›</span>
+        ) : (
+          <Link href={dayHref(shiftDay(day, 1))} aria-label={t('today_next_day')} data-testid="hub-today-next" style={iconLink}>›</Link>
+        )}
+        <Link href="/atelier/journal" aria-label={t('today_days')} style={{ ...iconLink, fontSize: 18 }}>📅</Link>
       </header>
 
       {children}
@@ -175,7 +212,7 @@ export function TodaySeeAgain({ seeAgain }: { seeAgain: SeeAgainSlots }) {
   )
 }
 
-export function TodayWorks({ works }: { works: TodayWork[] }) {
+export function TodayWorks({ works, isToday = true }: { works: TodayWork[]; isToday?: boolean }) {
   const { t } = useI18n()
   return (
     <section data-testid="hub-today-works" style={section}>
@@ -183,13 +220,28 @@ export function TodayWorks({ works }: { works: TodayWork[] }) {
       {works.length ? (
         <div style={{ display: 'grid', gap: 6 }}>{works.map((w) => <WorkChip key={w.id} work={w} />)}</div>
       ) : (
-        <p style={muted}>{t('today_works_empty')}</p>
+        <p style={muted}>{t(isToday ? 'today_works_empty' : 'today_works_empty_day')}</p>
       )}
     </section>
   )
 }
 
-export function TodayEntries({ entries }: { entries: JournalDayEntry[] }) {
+/** Another day, folded: works whose photo file name carries that date — the day it was photographed, not made. */
+export function TodayPhotographed({ works, more }: { works: TodayWork[]; more: number }) {
+  const { t } = useI18n()
+  return (
+    <details className="pem-fold" data-testid="hub-today-photographed" style={section}>
+      <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--tx2)' }}>
+        {t('today_photographed')} <span style={{ color: 'var(--tx3)' }}>({works.length + more})</span>
+      </summary>
+      <p style={{ ...muted, fontSize: 12, marginBottom: 8 }}>{t('today_photographed_hint')}</p>
+      <div style={{ display: 'grid', gap: 6 }}>{works.map((w) => <WorkChip key={w.id} work={w} />)}</div>
+      {more > 0 ? <p style={{ ...muted, marginTop: 6 }}>{t('today_photographed_more').replace('{n}', String(more))}</p> : null}
+    </details>
+  )
+}
+
+export function TodayEntries({ entries, day, isToday = true }: { entries: JournalDayEntry[]; day: string; isToday?: boolean }) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
@@ -212,11 +264,165 @@ export function TodayEntries({ entries }: { entries: JournalDayEntry[] }) {
           ))}
         </ul>
       ) : (
-        <p style={muted}>{t('today_entries_empty')}</p>
+        <p style={muted}>{t(isToday ? 'today_entries_empty' : 'today_entries_empty_day')}</p>
       )}
-      <Link href="/atelier/journal?today=1" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
+      <Link href={journalDayHref(day, isToday)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
         {t('today_open_full')}
       </Link>
     </section>
+  )
+}
+
+type Suggestion = JournalDayEntry['proposals'][number]
+
+/** ✦ AI link suggestions of the day: thumbnail + `#id` + title; ✓ / ✕ (admin) = the Journal's `decideJournalLink`. */
+export function TodaySuggestions({ rows, canDecide }: { rows: Suggestion[]; canDecide: boolean }) {
+  const { t } = useI18n()
+  const [done, setDone] = useState<Set<number>>(() => new Set())
+  const [pending, startTransition] = useTransition()
+  const open = rows.filter((r) => !done.has(r.linkId))
+  if (!open.length) return null
+
+  function decide(linkId: number, accept: boolean) {
+    startTransition(async () => {
+      const res = await decideJournalLink(linkId, accept)
+      if ('error' in res) {
+        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        return
+      }
+      setDone((prev) => new Set(prev).add(linkId))
+    })
+  }
+
+  const btn: CSSProperties = { minWidth: 44, minHeight: 44, borderRadius: 8, border: '1px solid var(--bd)', background: 'var(--bg1)', color: 'var(--tx)', fontSize: 16, cursor: 'pointer', flex: 'none' }
+  return (
+    <section data-testid="hub-today-suggestions" style={section}>
+      <h2 style={heading}>{t('je_ai_proposals')}</h2>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+        {open.map((p) => (
+          <li key={p.linkId} data-testid={`hub-today-suggestion-${p.linkId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <Link
+              href={p.workId != null ? workHref(p.workId) : '/atelier/concepts'}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, flex: 1, minWidth: 0, color: 'var(--tx)', textDecoration: 'none' }}
+            >
+              <Thumb file={p.thumb} size={44} />
+              <span style={{ fontSize: 14, lineHeight: 1.3, minWidth: 0, overflowWrap: 'anywhere' }}>
+                <span style={{ color: 'var(--tx3)' }}>✦ {p.workId != null ? `#${p.workId}` : t('today_suggestion_idea')}</span>
+                {' · '}
+                {p.title || t('wr_untitled')}
+              </span>
+            </Link>
+            {canDecide ? (
+              <>
+                <button type="button" style={btn} disabled={pending} aria-label={t('je_ai_accept')} data-testid={`hub-today-suggestion-accept-${p.linkId}`} onClick={() => decide(p.linkId, true)}>
+                  ✓
+                </button>
+                <button type="button" style={btn} disabled={pending} aria-label={t('je_ai_reject')} data-testid={`hub-today-suggestion-reject-${p.linkId}`} onClick={() => decide(p.linkId, false)}>
+                  ✕
+                </button>
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+type Folds = { changes: JournalDayChange[]; creation: JournalDayCreation[] }
+
+/** Two folds, closed; the day's work changes and Création items are read when either opens (once). */
+export function TodayFolds({ day, showChanges }: { day: string; showChanges: boolean }) {
+  const { t, lang } = useI18n()
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  const [data, setData] = useState<Folds | 'loading' | 'error' | null>(null)
+
+  function load() {
+    if (data !== null && data !== 'error') return
+    setData('loading')
+    getJournalDayFolds(day)
+      .then((res) => setData('error' in res ? 'error' : { changes: res.changes, creation: res.creation }))
+      .catch(() => setData('error'))
+  }
+  const onToggle = (e: SyntheticEvent<HTMLDetailsElement>) => {
+    if (e.currentTarget.open) load()
+  }
+
+  const summary: CSSProperties = { minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--tx2)' }
+  const status = data === 'loading' ? <p style={muted}>{t('today_fold_loading')}</p> : data === 'error' ? <TodayLoadError /> : null
+  const ready = data !== null && typeof data === 'object' ? data : null
+  const count = (n: number | undefined) => (n == null ? null : <span style={{ color: 'var(--tx3)' }}>({n})</span>)
+
+  return (
+    <>
+      {showChanges ? (
+        <details className="pem-fold" data-testid="hub-today-fold-changes" style={section} onToggle={onToggle}>
+          <summary style={summary}>
+            {t('today_fold_changes')} {count(ready?.changes.length)}
+          </summary>
+          {status}
+          {ready ? (
+            ready.changes.length ? (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+                {ready.changes.map((c) => (
+                  <li key={c.oeuvre_id} style={{ fontSize: 13, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                    <Link href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
+                      #{c.oeuvre_id}
+                      {c.title ? ` ${c.title}` : ''}
+                    </Link>
+                    <span style={{ color: 'var(--tx3)' }}> — {c.fields.join(', ')}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={muted}>{t('je_changes_empty')}</p>
+            )
+          ) : null}
+        </details>
+      ) : null}
+      <details className="pem-fold" data-testid="hub-today-fold-creation" style={section} onToggle={onToggle}>
+        <summary style={summary}>
+          {t('je_creation_heading')} {count(ready?.creation.length)}
+        </summary>
+        {status}
+        {ready ? (
+          ready.creation.length ? (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+              {ready.creation.map((k) => (
+                <li key={k.id} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                  <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
+                    {time(k.created_at)}
+                    {' · '}
+                    {k.author}
+                    {k.done ? <>{' · '}{t('je_creation_done')}</> : null}
+                  </span>
+                  <br />
+                  {k.title ? <b>{k.title}</b> : null}
+                  {k.title && k.body ? ' — ' : null}
+                  {k.body.length > 220 ? `${k.body.slice(0, 220)}…` : k.body}
+                  {k.works.length ? (
+                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                      {k.works.map((id) => (
+                        <Link key={id} href={workHref(id)} style={{ color: 'var(--ac)', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
+                          #{id}
+                        </Link>
+                      ))}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={muted}>{t('je_creation_empty')}</p>
+          )
+        ) : null}
+        {ready ? (
+          <Link href="/atelier/kaizen" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
+            {t('je_creation_open')}
+          </Link>
+        ) : null}
+      </details>
+    </>
   )
 }

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { changedVersionFields } from '@/lib/oeuvre-version-fields'
+import type { Tables } from '@/lib/types/supabase.generated'
 
 export type JournalEntryKind = 'spark' | 'trigger' | 'reflection' | 'note'
 const KINDS: readonly JournalEntryKind[] = ['spark', 'trigger', 'reflection', 'note']
@@ -35,7 +36,7 @@ export type JournalDayEntry = {
   works: Array<{ id: number; title: string | null }>
   concepts: Array<{ id: string; title: string | null }>
   /** AI link proposals (✦), not yet validated or rejected (supabase/sql/journal_entry_nodes.sql). */
-  proposals: Array<{ linkId: number; workId: number | null; conceptId: string | null; title: string | null }>
+  proposals: Array<{ linkId: number; workId: number | null; conceptId: string | null; title: string | null; thumb: string | null }>
 }
 
 export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[] }
@@ -91,8 +92,17 @@ async function worksMentioned(
   return (data ?? []).map((r) => r.OeuvreID).sort((a, b) => a - b)
 }
 
-export async function getJournalDayExtras(day: string): Promise<JournalDayExtras | Err> {
+/**
+ * `opts.folds: false` skips the two fold reads (work versions, Création) — « Aujourd'hui » on the phone
+ * loads them only when a fold opens (`getJournalDayFolds`). `opts.entries: false` skips the entries.
+ */
+export async function getJournalDayExtras(
+  day: string,
+  opts: { folds?: boolean; entries?: boolean } = {},
+): Promise<JournalDayExtras | Err> {
   if (!DAY_RE.test(day)) return { error: 'day' }
+  const withFolds = opts.folds !== false
+  const withEntries = opts.entries !== false
   const supabase = await createClient()
   const {
     data: { user },
@@ -104,7 +114,9 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
   const win = utcWindow(day)
 
   const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes] = await Promise.all([
-    supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500),
+    withEntries
+      ? supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500)
+      : Promise.resolve({ data: [] as Array<Tables<'journal_entry'>>, error: null }),
     supabase
       .from('voice_note')
       .select('id, subject, created_at, oeuvre_id')
@@ -113,7 +125,7 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
       .order('created_at', { ascending: true })
       .limit(200),
     // Admin only by RLS (oeuvre_versions_admin_select): team members get no rows.
-    isAdmin
+    isAdmin && withFolds
       ? supabase
           .from('oeuvre_versions')
           .select('oeuvre_id, changed_at, snapshot')
@@ -122,14 +134,19 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
           .order('changed_at', { ascending: true })
           .limit(1000)
       : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string; snapshot: unknown }>, error: null }),
-    supabase
-      .from('kaizen_item')
-      .select('id, created_at, title, body, author_id, done_at, work_ids')
-      .eq('section', 'creation')
-      .gte('created_at', win.from)
-      .lt('created_at', win.to)
-      .order('created_at', { ascending: true })
-      .limit(200),
+    withFolds
+      ? supabase
+          .from('kaizen_item')
+          .select('id, created_at, title, body, author_id, done_at, work_ids')
+          .eq('section', 'creation')
+          .gte('created_at', win.from)
+          .lt('created_at', win.to)
+          .order('created_at', { ascending: true })
+          .limit(200)
+      : Promise.resolve({
+          data: [] as Array<Pick<Tables<'kaizen_item'>, 'id' | 'created_at' | 'title' | 'body' | 'author_id' | 'done_at' | 'work_ids'>>,
+          error: null,
+        }),
     supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500),
   ])
   if (entriesRes.error) {
@@ -161,11 +178,13 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
 
   const workIds = [...new Set([...linkRows.filter((l) => l.oeuvre_id != null).map((l) => l.oeuvre_id as number), ...changedIds])]
   const titles = new Map<number, string | null>()
+  const covers = new Map<number, string | null>()
   const current = new Map<number, Record<string, unknown>>()
   if (workIds.length) {
     const { data: works } = await supabase.from('Oeuvres').select('*').in('OeuvreID', workIds)
     for (const w of (works ?? []) as Array<Record<string, unknown>>) {
       titles.set(w.OeuvreID as number, (w.Titre as string | null) ?? null)
+      covers.set(w.OeuvreID as number, (w.txtImageNameLink as string | null) ?? null)
       current.set(w.OeuvreID as number, w)
     }
   }
@@ -248,6 +267,7 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
           workId: l.oeuvre_id,
           conceptId: l.concept_id,
           title: l.oeuvre_id != null ? titles.get(l.oeuvre_id) ?? null : conceptTitles.get(l.concept_id as string) ?? null,
+          thumb: l.oeuvre_id != null ? covers.get(l.oeuvre_id) ?? null : null,
         })),
     }))
 
@@ -270,6 +290,15 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
     .map((c) => ({ id: c.id, title: (c.titre as string).trim() }))
 
   return { isAdmin, entries, changes, voices, creation, conceptOptions }
+}
+
+/** The two folds of a day (« Attributs d'œuvres modifiés », « Création (Kaizen) »), read when one opens on « Aujourd'hui ». */
+export async function getJournalDayFolds(
+  day: string,
+): Promise<{ isAdmin: boolean; changes: JournalDayChange[]; creation: JournalDayCreation[] } | Err> {
+  const res = await getJournalDayExtras(day, { entries: false })
+  if ('error' in res) return res
+  return { isAdmin: res.isAdmin, changes: res.changes, creation: res.creation }
 }
 
 /** Days that have journal entries, Création items or voice notes (Paris day), newest first. */

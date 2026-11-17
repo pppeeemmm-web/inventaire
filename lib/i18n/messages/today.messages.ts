@@ -35,4 +35,17 @@ export const todayMessages = defineMessages({
   today_bureau: { fr: 'Bureau', en: 'Desk' },
   today_bureau_sub: { fr: 'Pipeline · Vente · Triage · Contact · Document · Problème', en: 'Pipeline · Sale · Triage · Contact · Document · Issue' },
   today_load_error: { fr: 'Une partie de la journée n’a pas pu se charger.', en: 'Part of the day could not load.' },
+  today_prev_day: { fr: 'Jour précédent', en: 'Previous day' },
+  today_next_day: { fr: 'Jour suivant', en: 'Next day' },
+  today_works_empty_day: { fr: 'Aucune œuvre ce jour-là', en: 'No work that day' },
+  today_entries_empty_day: { fr: 'Rien d’écrit ce jour-là', en: 'Nothing written that day' },
+  today_suggestion_idea: { fr: 'Idée', en: 'Idea' },
+  today_photographed: { fr: 'Photographiées ce jour', en: 'Photographed that day' },
+  today_photographed_hint: { fr: 'D’après la date dans le nom des photos', en: 'From the date in the photos’ file names' },
+  today_photographed_more: { fr: '+ {n} autres', en: '+ {n} more' },
+  today_fold_changes: { fr: 'Attributs d’œuvres modifiés', en: 'Work attributes changed' },
+  today_fold_loading: { fr: 'Chargement…', en: 'Loading…' },
+  /** Phone Atelier menu, top block (R2 phone 6): Aujourd'hui · Fil · Idées (= the concepts tab). */
+  today_nav_today: { fr: 'Aujourd’hui', en: 'Today' },
+  today_nav_ideas: { fr: 'Idées', en: 'Ideas' },
 })
