@@ -1,25 +1,31 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { updateConcept, deleteConcept, uploadConceptSketch, type ConceptRow } from '@/app/atelier/(portal)/concepts/actions'
+import { updateConcept, deleteConcept, uploadConceptSketch, type ConceptRow, type IdeaLine } from '@/app/atelier/(portal)/concepts/actions'
 import { convertConceptToProcess, type PipelineProcessType } from '@/app/atelier/(portal)/pipeline/actions'
 import { TYPE_LABELS, pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { useI18n } from '@/lib/i18n/context'
 import { stringifyError } from '@/lib/error'
 import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
-import { CATEGORY_IDS, CATEGORY_KEYS, MEDIUM_IDS, MEDIUM_KEY, STATUT_COLORS, STATUT_KEYS } from './concept-constants'
-import { ConceptEnergieDot } from './ConceptEnergieDot'
+import { CATEGORY_IDS, CATEGORY_KEYS, IDEA_MATURITIES, IDEA_WEIGHTS, MEDIUM_IDS, MEDIUM_KEY, STATUT_COLORS, STATUT_KEYS, type IdeaMaturity, type IdeaWeight } from './concept-constants'
+import { MATURITY_KEY, MaturityMark, WEIGHT_KEY } from './IdeaMarks'
+import { IdeaDiscussion } from './IdeaDiscussion'
 import { ConceptDocuments } from './ConceptDocuments'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { inputSt, labelSt } from './concept-form-styles'
 import type { ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
 
-export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }: {
+// R1 Idées: the team reads an idea and adds lines to its discussion; only Pem (admin) edits it,
+// sets its weight (Petite / Recherche) and maturity (Graine · Pousse · Mûre), or closes the discussion.
+export function ConceptCard({ concept, documents, lines, isAdmin, onUpdated, onDeleted, onLineAdded, narrow }: {
   concept:   ConceptRow
   documents: ConceptDocument[]
+  lines:     IdeaLine[]
+  isAdmin:   boolean
   onUpdated: (c: ConceptRow) => void
   onDeleted: (id: string) => void
+  onLineAdded: (line: IdeaLine) => void
   narrow: boolean
 }) {
   const { lang, t } = useI18n()
@@ -34,7 +40,8 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
   const [medium,      setMedium]     = useState(concept.medium ?? '')
   const [themesStr,   setThemesStr]  = useState((concept.themes ?? []).join(', '))
   const [statut,      setStatut]     = useState(concept.statut)
-  const [energie,     setEnergie]    = useState<number | ''>(concept.energie ?? '')
+  const [weight,      setWeight]     = useState<IdeaWeight>(concept.weight)
+  const [maturity,    setMaturity]   = useState<IdeaMaturity>(concept.maturity)
   const [imageNote,   setImageNote]  = useState(concept.image_note ?? '')
   const [notes,       setNotes]      = useState(concept.notes ?? '')
   const [category,    setCategory]   = useState(concept.category ?? 'artistic')
@@ -51,12 +58,17 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
       medium:      medium || null,
       themes,
       statut,
-      energie:     energie === '' ? null : Number(energie),
+      weight,
+      maturity,
       image_note:  imageNote.trim() || null,
       notes:       notes.trim() || null,
       category,
     })
     setBusy(false)
+    if ('error' in res) {
+      toast.error(res.error === 'admin' ? t('ideas_admin_only') : t('ideas_err').replace('{e}', stringifyError(res.error)))
+      return
+    }
     if ('ok' in res) {
       toast.success(t('saveDoneUndoHint'))
       onUpdated({
@@ -66,7 +78,8 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
         medium:      medium || null,
         themes:      themes,
         statut,
-        energie:     energie === '' ? null : Number(energie),
+        weight,
+        maturity,
         image_note:  imageNote.trim() || null,
         notes:       notes.trim() || null,
         category:    category,
@@ -74,6 +87,20 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
       })
       setEditing(false)
     }
+  }
+
+  /** Admin quick-set from the open card: one tap sets the weight or the maturity. */
+  async function quickSet(patch: { weight: IdeaWeight } | { maturity: IdeaMaturity }) {
+    setBusy(true)
+    const res = await updateConcept(concept.id, patch)
+    setBusy(false)
+    if ('error' in res) {
+      toast.error(res.error === 'admin' ? t('ideas_admin_only') : t('ideas_err').replace('{e}', stringifyError(res.error)))
+      return
+    }
+    if ('weight' in patch) setWeight(patch.weight)
+    if ('maturity' in patch) setMaturity(patch.maturity)
+    onUpdated({ ...concept, ...patch, updated_at: new Date().toISOString() })
   }
 
   async function onPickSketch(f: File | null) {
@@ -135,7 +162,7 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
         onClick={() => { setExpanded((x) => !x); setEditing(false) }}
         style={{ padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
       >
-        <div style={{ flexShrink: 0 }}><ConceptEnergieDot e={concept.energie} /></div>
+        <div style={{ flexShrink: 0 }}><MaturityMark maturity={concept.maturity} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 13, fontWeight: 500, color: 'var(--tx)',
@@ -145,7 +172,12 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
             {concept.titre}
           </div>
           <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span data-testid="idea-weight" style={{ color: 'var(--tx2)', fontWeight: 500 }}>{t(WEIGHT_KEY[concept.weight])}</span>
+            <span>{t(MATURITY_KEY[concept.maturity])}</span>
             <span style={{ color: 'var(--ac)', fontWeight: 500 }}>{catLabel}</span>
+            {lines.length > 0 && (
+              <span data-testid="idea-lines-count">{lines.length === 1 ? t('ideas_lines_one') : t('ideas_lines_n').replace('{n}', String(lines.length))}</span>
+            )}
             {concept.medium && <span>{concept.medium}</span>}
             {concept.themes?.length ? <span>{concept.themes.slice(0, 3).join(' · ')}</span> : null}
           </div>
@@ -178,11 +210,18 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
                 </select>
               </div>
               <div>
-                <label style={labelSt}>{t('concept_field_energy')}</label>
-                <select style={inputSt} value={energie} onChange={(e) => setEnergie(e.target.value === '' ? '' : Number(e.target.value))}>
-                  <option value="">—</option>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{t(`concept_en_${n}` as 'concept_en_1')}</option>
+                <label style={labelSt}>{t('ideas_field_weight')}</label>
+                <select style={inputSt} value={weight} onChange={(e) => setWeight(e.target.value as IdeaWeight)}>
+                  {IDEA_WEIGHTS.map((w) => (
+                    <option key={w} value={w}>{t(WEIGHT_KEY[w])}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelSt}>{t('ideas_field_maturity')}</label>
+                <select style={inputSt} value={maturity} onChange={(e) => setMaturity(e.target.value as IdeaMaturity)}>
+                  {IDEA_MATURITIES.map((m) => (
+                    <option key={m} value={m}>{t(MATURITY_KEY[m])}</option>
                   ))}
                 </select>
               </div>
@@ -242,12 +281,50 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
                   {concept.description}
                 </div>
               )}
+              {isAdmin ? (
+                <div data-testid="idea-quickset" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                  {([
+                    ['ideas_field_weight', IDEA_WEIGHTS.map((w) => [w, t(WEIGHT_KEY[w]), concept.weight === w, () => void quickSet({ weight: w })] as const)],
+                    ['ideas_field_maturity', IDEA_MATURITIES.map((m) => [m, t(MATURITY_KEY[m]), concept.maturity === m, () => void quickSet({ maturity: m })] as const)],
+                  ] as const).map(([labelKey, opts]) => (
+                    <div key={labelKey} role="group" aria-label={t(labelKey)}>
+                      <div style={{ ...labelSt, marginBottom: 4 }}>{t(labelKey)}</div>
+                      <div style={{ display: 'flex', border: '1px solid var(--bd)' }}>
+                        {opts.map(([id, label, on, pick]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            aria-pressed={on}
+                            disabled={busy}
+                            onClick={pick}
+                            style={{
+                              minHeight: 44, minWidth: 64, padding: '0 10px', fontSize: 11, cursor: 'pointer',
+                              border: 'none', borderRight: '1px solid var(--bd)',
+                              background: on ? 'var(--bg2)' : 'transparent',
+                              color: on ? 'var(--tx)' : 'var(--tx3)',
+                              fontWeight: on ? 500 : 400,
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
-                {concept.energie && (
-                  <div>
-                    <div style={{ ...labelSt, marginBottom: 2 }}>{t('concept_view_energy')}</div>
-                    <div style={{ fontSize: 10, color: 'var(--tx2)' }}>{t(`concept_en_${concept.energie}` as 'concept_en_1')}</div>
-                  </div>
+                {!isAdmin && (
+                  <>
+                    <div>
+                      <div style={{ ...labelSt, marginBottom: 2 }}>{t('ideas_field_weight')}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx2)' }}>{t(WEIGHT_KEY[concept.weight])}</div>
+                    </div>
+                    <div>
+                      <div style={{ ...labelSt, marginBottom: 2 }}>{t('ideas_field_maturity')}</div>
+                      <div style={{ fontSize: 10, color: 'var(--tx2)' }}>{t(MATURITY_KEY[concept.maturity])}</div>
+                    </div>
+                  </>
                 )}
                 {concept.medium && (
                   <div>
@@ -295,8 +372,17 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
                 </div>
               )}
 
-              <ConceptDocuments conceptId={concept.id} initialDocs={documents} />
+              <ConceptDocuments conceptId={concept.id} initialDocs={documents} canEdit={isAdmin} />
               <LinkedVoiceNotes field="concept_id" value={concept.id} />
+
+              <IdeaDiscussion
+                conceptId={concept.id}
+                lines={lines}
+                closedAt={concept.discussion_closed_at}
+                isAdmin={isAdmin}
+                onLineAdded={onLineAdded}
+                onClosedChange={(closedAt) => onUpdated({ ...concept, discussion_closed_at: closedAt })}
+              />
 
               {isBecameWork && concept.oeuvre_id && (
                 <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--sage)' }}>
@@ -310,15 +396,15 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
                   ` · ${t('concept_view_updated')} ${new Date(concept.updated_at).toLocaleDateString(dateLoc)}`}
               </div>
 
-              <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
+              {isAdmin && <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
                 <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setEditing(true)}>{t('concept_view_edit')}</button>
                 <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setShowConvert(!showConvert)}>{t('concept_view_pipeline')}</button>
                 <button type="button" className="btn ghost sm" style={{ color: 'var(--rust)', minHeight: 44 }} onClick={() => void handleDelete()} disabled={busy}>
                   {t('concept_view_delete')}
                 </button>
-              </div>
+              </div>}
 
-              {showConvert && (
+              {isAdmin && showConvert && (
                 <div style={{ marginTop: 12, padding: 12, background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
                   <div style={labelSt}>{t('concept_convert_heading')}</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

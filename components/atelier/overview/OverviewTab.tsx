@@ -651,7 +651,7 @@ export function OverviewTab({
               <LocalJobsControls jobs={jobs} t={t} />
             </Panel>
           )}
-          <Panel {...panelProps('ideas', ideasMore.length)} kind="info" title={t('od_ideas')} count={num(burningConcepts.length)}
+          <Panel {...panelProps('ideas', ideasMore.length)} kind="info" title={t('od_ideas')}
             link={{ label: t('od_concepts_link'), onClick: () => onGoTab('concepts') }}
             moreContent={ideasMore.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => onGoTab('concepts')} t={t} />)}>
             {ideasBase.length
@@ -754,14 +754,11 @@ function Empty({ children, h }: { children: ReactNode; h: number }) {
   return <div style={{ display: 'flex', alignItems: 'center', minHeight: h, padding: '0 12px', color: 'var(--tx3)', fontSize: 12, borderBottom: '1px solid var(--bg2)' }}>{children}</div>
 }
 
-function IdeaLine({ c, h, onGo, t }: { c: { id: string; titre: string; energie: number }; h: number; onGo: () => void; t: (k: string) => string }) {
-  const energy = [t('ov_energy_1'), t('ov_energy_2'), t('ov_energy_3'), t('ov_energy_4'), t('ov_energy_5')][c.energie - 1]
+function IdeaLine({ c, h, onGo, t }: { c: { id: string; titre: string; weight: string }; h: number; onGo: () => void; t: (k: string) => string }) {
   return (
     <Line h={h} onClick={onGo} cols="minmax(0, 1fr) auto">
       <span style={ELLIPSIS} title={c.titre}>{c.titre}</span>
-      <span role="img" aria-label={energy} title={energy} style={{ display: 'flex', gap: 2 }}>
-        {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ width: 6, height: 10, background: i <= c.energie ? 'var(--ac)' : 'var(--bg2)' }} />)}
-      </span>
+      <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(c.weight === 'recherche' ? 'ideas_weight_recherche' : 'ideas_weight_petite')}</span>
     </Line>
   )
 }

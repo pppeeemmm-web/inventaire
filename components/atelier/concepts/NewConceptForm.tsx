@@ -5,7 +5,8 @@ import { createConcept, uploadConceptSketch, type ConceptRow } from '@/app/ateli
 import { useI18n } from '@/lib/i18n/context'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
-import { CATEGORY_IDS, CATEGORY_KEYS, MEDIUM_IDS, MEDIUM_KEY } from './concept-constants'
+import { CATEGORY_IDS, CATEGORY_KEYS, IDEA_MATURITIES, IDEA_WEIGHTS, MEDIUM_IDS, MEDIUM_KEY } from './concept-constants'
+import { MATURITY_KEY, WEIGHT_KEY } from './IdeaMarks'
 import { inputSt, labelSt } from './concept-form-styles'
 
 export function NewConceptForm({ onCreated, onCancel, narrow }: {
@@ -74,15 +75,22 @@ export function NewConceptForm({ onCreated, onCancel, narrow }: {
           </select>
         </div>
         <div>
-          <label style={labelSt}>{t('concept_field_energy')}</label>
-          <select name="energie" style={inputSt}>
-            <option value="">—</option>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>{t(`concept_en_${n}` as 'concept_en_1')}</option>
+          <label style={labelSt}>{t('ideas_field_weight')}</label>
+          <select name="weight" style={inputSt} defaultValue="petite">
+            {IDEA_WEIGHTS.map((w) => (
+              <option key={w} value={w}>{t(WEIGHT_KEY[w])}</option>
             ))}
           </select>
         </div>
-        <div style={{ gridColumn: narrow ? undefined : '1 / -1' }}>
+        <div>
+          <label style={labelSt}>{t('ideas_field_maturity')}</label>
+          <select name="maturity" style={inputSt} defaultValue="graine">
+            {IDEA_MATURITIES.map((m) => (
+              <option key={m} value={m}>{t(MATURITY_KEY[m])}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label style={labelSt}>{t('concept_field_category')}</label>
           <select name="category" style={inputSt} defaultValue="artistic">
             {CATEGORY_IDS.map((id) => (

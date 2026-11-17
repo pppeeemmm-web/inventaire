@@ -409,7 +409,7 @@ export function SegmentRoutePanel({
     case 'concepts':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <Concepts />
+          <Concepts isAdmin={isAdmin} />
         </div>
       )
     case 'notes':

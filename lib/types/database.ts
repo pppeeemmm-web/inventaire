@@ -121,11 +121,11 @@ export interface SuiviEtapePulseRow {
   position: number
 }
 
-/** `concept` rows for overview “burning” strip. */
+/** `concept` rows for the Overview « Idées mûres » tile (R1: maturity Mûre; was the énergie « burning » strip). */
 export interface ConceptBurningRow {
   id: string
   titre: string
-  energie: number
+  weight: string
 }
 
 /** `work_session` field capture row (Verb 1). */

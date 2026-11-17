@@ -1,12 +1,18 @@
 'use server'
 
-// Concept / Idea space server actions.
+// Idées (the concepts tab) server actions — R1 (docs/design/2026-11-17/R1_InputsFeed.notes.md).
+// Ideas and concepts are one kind. The team reads them, adds discussion lines (note_line, target
+// 'idea') and proposes new ones (note_line, target 'proposal'); only Pem (admin) edits an idea, its
+// weight (Petite / Recherche) and maturity (Graine · Pousse · Mûre). RLS on note_line does the
+// guarding (team inserts as self, never on a closed discussion); admin-only writes also check
+// is_admin() here, since `concept` RLS still lets any team member write.
 
 import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 import { r2DeleteObject, r2PutObject } from '@/lib/r2-s3-object'
+import { IDEA_MATURITIES, IDEA_WEIGHTS, type IdeaMaturity, type IdeaWeight } from '@/components/atelier/concepts/concept-constants'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +30,23 @@ export interface ConceptRow {
   energie:     number | null
   notes:       string | null
   category:    string | null
+  weight:      IdeaWeight
+  maturity:    IdeaMaturity
+  discussion_closed_at: string | null
+}
+
+export type { IdeaWeight, IdeaMaturity }
+
+/** One line of an idea's discussion (note_line, target_kind 'idea'). */
+export interface IdeaLine {
+  id:         number
+  conceptId:  string
+  body:       string
+  author:     string | null
+  createdAt:  string
+  /** Discarded by Pem from the Fil: only Pem and the author still see it (RLS). */
+  discarded:  boolean
+  mine:       boolean
 }
 
 export type ConceptResult  = { error: string } | { ok: true; concept: ConceptRow }
@@ -40,6 +63,23 @@ async function guardTeam() {
   return { error: null, supabase }
 }
 
+/** Admin-only writes: the idea itself, its weight, maturity and discussion close. */
+async function guardAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' as const, supabase: null }
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'admin' as const, supabase: null }
+  return { error: null, supabase }
+}
+
+function asWeight(v: unknown): IdeaWeight {
+  return IDEA_WEIGHTS.includes(v as IdeaWeight) ? (v as IdeaWeight) : 'petite'
+}
+function asMaturity(v: unknown): IdeaMaturity {
+  return IDEA_MATURITIES.includes(v as IdeaMaturity) ? (v as IdeaMaturity) : 'graine'
+}
+
 // ── Fetch all concepts ────────────────────────────────────────────────────────
 
 export async function fetchConcepts(): Promise<ConceptRow[]> {
@@ -48,7 +88,6 @@ export async function fetchConcepts(): Promise<ConceptRow[]> {
   const { data } = await supabase
     .from('concept')
     .select('*')
-    .order('energie', { ascending: false, nullsFirst: false })
     .order('updated_at', { ascending: false })
   return (data ?? []) as ConceptRow[]
 }
@@ -56,7 +95,7 @@ export async function fetchConcepts(): Promise<ConceptRow[]> {
 // ── Create concept ────────────────────────────────────────────────────────────
 
 export async function createConcept(formData: FormData): Promise<ConceptResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const titre       = (formData.get('titre') as string | null)?.trim() || 'Sans titre'
@@ -66,13 +105,14 @@ export async function createConcept(formData: FormData): Promise<ConceptResult> 
   const themes      = themesRaw ? themesRaw.split(',').map((t) => t.trim()).filter(Boolean) : null
   const statut      = (formData.get('statut') as string | null) || 'idee'
   const image_note  = (formData.get('image_note') as string | null)?.trim() || null
-  const energie     = formData.get('energie') ? Number(formData.get('energie')) : null
   const notes       = (formData.get('notes') as string | null)?.trim() || null
   const category    = (formData.get('category') as string | null) || 'artistic'
+  const weight      = asWeight(formData.get('weight'))
+  const maturity    = asMaturity(formData.get('maturity'))
 
   const { data, error } = await supabase
     .from('concept')
-    .insert({ titre, description, medium, themes, statut, image_note, energie, notes, category })
+    .insert({ titre, description, medium, themes, statut, image_note, notes, category, weight, maturity })
     .select()
     .single()
 
@@ -83,11 +123,14 @@ export async function createConcept(formData: FormData): Promise<ConceptResult> 
 
 // ── Update concept ────────────────────────────────────────────────────────────
 
-export async function updateConcept(id: string, patch: Partial<Omit<ConceptRow, 'id' | 'created_at' | 'updated_at'>>): Promise<SimpleResult> {
-  const { error: authErr, supabase } = await guardTeam()
+export async function updateConcept(id: string, patch: Partial<Omit<ConceptRow, 'id' | 'created_at' | 'updated_at' | 'discussion_closed_at'>>): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await supabase.from('concept').update(patch).eq('id', id)
+  const clean = { ...patch }
+  if (clean.weight !== undefined) clean.weight = asWeight(clean.weight)
+  if (clean.maturity !== undefined) clean.maturity = asMaturity(clean.maturity)
+  const { error } = await supabase.from('concept').update(clean).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/atelier')
   return { ok: true }
@@ -96,7 +139,7 @@ export async function updateConcept(id: string, patch: Partial<Omit<ConceptRow, 
 // ── Delete concept ────────────────────────────────────────────────────────────
 
 export async function deleteConcept(id: string): Promise<SimpleResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const { data: row } = await supabase.from('concept').select('image_note').eq('id', id).maybeSingle()
@@ -119,7 +162,7 @@ export async function deleteConcept(id: string): Promise<SimpleResult> {
 export async function uploadConceptSketch(
   formData: FormData,
 ): Promise<{ error: string } | { ok: true; storagePath: string }> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const file = formData.get('sketch') as File | null
@@ -149,7 +192,7 @@ export async function uploadConceptSketch(
 // ── Promote to work (just link oeuvre_id + flip statut) ──────────────────────
 
 export async function promoteConcept(id: string, oeuvre_id: number): Promise<SimpleResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const { error } = await supabase
@@ -157,5 +200,112 @@ export async function promoteConcept(id: string, oeuvre_id: number): Promise<Sim
     .update({ statut: 'devenu_oeuvre', oeuvre_id })
     .eq('id', id)
   if (error) return { error: error.message }
+  return { ok: true }
+}
+
+// ── Discussion on an idea (note_line, target 'idea') ─────────────────────────
+
+async function namesFor(supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>, ids: string[]) {
+  const names = new Map<string, string>()
+  if (!ids.length) return names
+  // `select('*')`: the typed select parser rejects the accented `Prénom` column name.
+  const { data } = await supabase.from('Contact').select('*').in('auth_user_id', ids)
+  for (const c of (data ?? []) as { auth_user_id: string | null; Prénom: string | null; Nom: string | null }[]) {
+    if (c.auth_user_id) names.set(c.auth_user_id, [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || '—')
+  }
+  return names
+}
+
+/** Every idea line the reader may see (RLS: discarded ones only for Pem and their author), oldest first. */
+export async function fetchIdeaLines(): Promise<IdeaLine[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('note_line')
+    .select('id, concept_id, body, author_id, created_at, discarded_at')
+    .eq('target_kind', 'idea')
+    .order('created_at', { ascending: true })
+    .limit(2000)
+  if (error || !data) return []
+  const names = await namesFor(supabase, [...new Set(data.map((l) => l.author_id).filter((x): x is string => !!x))])
+  return data
+    .filter((l) => !!l.concept_id)
+    .map((l) => ({
+      id: l.id,
+      conceptId: l.concept_id as string,
+      body: l.body,
+      author: l.author_id ? names.get(l.author_id) ?? null : null,
+      createdAt: l.created_at,
+      discarded: l.discarded_at != null,
+      mine: l.author_id === user.id,
+    }))
+}
+
+/** Anyone on the team adds a line, live at once. Refused on a closed discussion (RLS too). */
+export async function addIdeaLine(conceptId: string, body: string): Promise<{ error: string } | { ok: true; line: IdeaLine }> {
+  const text = body.trim()
+  if (!text) return { error: 'empty' }
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Auth' }
+
+  const { data: idea } = await supabase.from('concept').select('discussion_closed_at').eq('id', conceptId).maybeSingle()
+  if (!idea) return { error: 'missing' }
+  if (idea.discussion_closed_at) return { error: 'closed' }
+
+  const { data, error } = await supabase
+    .from('note_line')
+    .insert({ target_kind: 'idea', concept_id: conceptId, body: text, author_id: user.id })
+    .select('id, concept_id, body, created_at')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Insert failed' }
+  const names = await namesFor(supabase, [user.id])
+  revalidatePath('/hub/fil')
+  return {
+    ok: true,
+    line: { id: data.id, conceptId, body: data.body, author: names.get(user.id) ?? null, createdAt: data.created_at, discarded: false, mine: true },
+  }
+}
+
+/** Pem closes (or reopens) an idea's discussion: still readable, no new lines. */
+export async function setIdeaDiscussionClosed(conceptId: string, closed: boolean): Promise<{ error: string } | { ok: true; closedAt: string | null }> {
+  const { error: authErr, supabase } = await guardAdmin()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const closedAt = closed ? new Date().toISOString() : null
+  const { error } = await supabase.from('concept').update({ discussion_closed_at: closedAt }).eq('id', conceptId)
+  if (error) return { error: error.message }
+  revalidatePath('/atelier')
+  return { ok: true, closedAt }
+}
+
+// ── « Proposer une idée » (note_line, target 'proposal') ─────────────────────
+
+/** The team's creative entry: one text, optionally about one work (#1234). Goes straight to Pem's Fil. */
+export async function proposeIdea(body: string, workRef: string): Promise<SimpleResult> {
+  const text = body.trim()
+  if (!text) return { error: 'empty' }
+  const ref = workRef.trim().replace(/^#/, '')
+  let oeuvreId: number | null = null
+  if (ref) {
+    if (!/^\d{1,9}$/.test(ref)) return { error: 'work' }
+    oeuvreId = Number(ref)
+  }
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Auth' }
+
+  if (oeuvreId != null) {
+    const { data: work } = await supabase.from('Oeuvres').select('OeuvreID').eq('OeuvreID', oeuvreId).maybeSingle()
+    if (!work) return { error: 'work' }
+  }
+
+  const { error } = await supabase
+    .from('note_line')
+    .insert({ target_kind: 'proposal', oeuvre_id: oeuvreId, body: text, author_id: user.id })
+  if (error) return { error: error.message }
+  revalidatePath('/hub/fil')
   return { ok: true }
 }

@@ -73,12 +73,13 @@ export async function fetchAtelierOverviewBootstrap(
       .select('id, process_id, nom, statut, date_echeance, overdue_override, position')
       .order('position'),
     supabase
+      // R1: « Idées brûlantes » (énergie 5) retired — the tile now lists ideas Pem marked Mûre.
       .from('concept')
-      .select('id, titre, energie')
-      .gte('energie', 4)
+      .select('id, titre, weight')
+      .eq('maturity', 'mure')
       .not('statut', 'eq', 'abandonne')
       .not('statut', 'eq', 'devenu_oeuvre')
-      .order('energie', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(5),
     // ── "Needs you" open-item counts (head-only: no rows transferred) ──
     supabase

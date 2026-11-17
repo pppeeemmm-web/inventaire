@@ -38,6 +38,16 @@ async function guardTeam() {
   return { error: null, supabase }
 }
 
+/** Attaching / detaching documents edits the idea itself: Pem (admin) only (R1 Idées). */
+async function guardAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' as const, supabase: null }
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'admin' as const, supabase: null }
+  return { error: null, supabase }
+}
+
 function asConceptDocument(row: Record<string, unknown>): ConceptDocument {
   const source = row.source === 'link' || row.source === 'local' ? row.source : 'file'
   return { ...(row as unknown as ConceptDocument), source }
@@ -77,7 +87,7 @@ export async function addConceptDocumentReference(input: {
   value: string
   notes?: string | null
 }): Promise<Result<{ doc: ConceptDocument }>> {
-  const { error, supabase } = await guardTeam()
+  const { error, supabase } = await guardAdmin()
   if (error || !supabase) return { error: error ?? 'Auth' }
 
   const value = input.value.trim()
@@ -109,7 +119,7 @@ export async function addConceptDocumentReference(input: {
 
 /** Attach an existing Vault document to a concept, or detach it (conceptId null). The document stays in the Vault. */
 export async function setDocumentConcept(docId: string, conceptId: string | null): Promise<Result> {
-  const { error, supabase } = await guardTeam()
+  const { error, supabase } = await guardAdmin()
   if (error || !supabase) return { error: error ?? 'Auth' }
   const { error: dbErr } = await fromDocument(supabase).update({ concept_id: conceptId }).eq('id', docId)
   if (dbErr) return { error: dbErr.message }

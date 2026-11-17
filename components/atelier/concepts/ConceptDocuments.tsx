@@ -46,9 +46,12 @@ function linkHost(url: string | null): string {
 export function ConceptDocuments({
   conceptId,
   initialDocs,
+  canEdit = true,
 }: {
   conceptId: string
   initialDocs: ConceptDocument[]
+  /** R1 Idées: attaching / detaching edits the idea — Pem (admin) only; the team reads. */
+  canEdit?: boolean
 }) {
   const { t, lang } = useI18n()
   const [docs, setDocs] = useState<ConceptDocument[]>(initialDocs)
@@ -175,6 +178,8 @@ export function ConceptDocuments({
 
   const rowBtn = { minHeight: 36, minWidth: 44, flexShrink: 0 } as const
 
+  if (!canEdit && docs.length === 0) return null
+
   return (
     <div data-testid="concept-documents" style={{ marginBottom: 12 }}>
       <div style={labelSt}>
@@ -218,15 +223,18 @@ export function ConceptDocuments({
                   {t('concept_docs_open')}
                 </button>
               ) : null}
-              <button type="button" className="btn ghost sm" style={{ ...rowBtn, color: 'var(--tx3)' }}
-                title={t('concept_docs_detach_title')} onClick={() => void detach(d)}>
-                {t('concept_docs_detach')}
-              </button>
+              {canEdit && (
+                <button type="button" className="btn ghost sm" style={{ ...rowBtn, color: 'var(--tx3)' }}
+                  title={t('concept_docs_detach_title')} onClick={() => void detach(d)}>
+                  {t('concept_docs_detach')}
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
+      {canEdit && <>
       <input
         ref={fileRef}
         type="file"
@@ -278,6 +286,7 @@ export function ConceptDocuments({
           <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={resetForm}>{t('concept_docs_cancel')}</button>
         </div>
       )}
+      </>}
     </div>
   )
 }

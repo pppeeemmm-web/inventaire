@@ -3,6 +3,7 @@ import { hubMessages } from './hub.messages'
 import { todayMessages } from './today.messages'
 import { swipeDeckMessages } from './swipe-deck.messages'
 import { filMessages } from './fil.messages'
+import { ideasMessages } from './ideas.messages'
 import { mobileSaleMessages } from './mobile-sale.messages'
 import { portfolioPdfMessages } from './portfolio-pdf.messages'
 import { publicMessages } from './public.messages'
@@ -59,6 +60,7 @@ export const featureMessages = {
   ...todayMessages,
   ...swipeDeckMessages,
   ...filMessages,
+  ...ideasMessages,
   ...portfolioPdfMessages,
   ...mobileSaleMessages,
   ...siteBlocksMessages,

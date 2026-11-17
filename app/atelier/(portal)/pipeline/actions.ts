@@ -42,6 +42,9 @@ async function guardTeam() {
 export async function convertConceptToProcess(conceptId: string, type: PipelineProcessType) {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  // R1 Idées: only Pem (admin) changes an idea (this flips its statut).
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'admin' }
 
   // 1. Fetch concept
   const { data: concept, error: fetchErr } = await supabase

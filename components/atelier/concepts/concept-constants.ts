@@ -27,3 +27,9 @@ export const MEDIUM_KEY: Record<string, 'concept_med_peinture' | 'concept_med_de
   photo: 'concept_med_photo',
   autre: 'concept_med_autre',
 }
+
+/** R1 Idées: weight and maturity (`concept.weight` / `concept.maturity`, supabase/sql/r1_feed.sql). */
+export const IDEA_WEIGHTS = ['petite', 'recherche'] as const
+export const IDEA_MATURITIES = ['graine', 'pousse', 'mure'] as const
+export type IdeaWeight = (typeof IDEA_WEIGHTS)[number]
+export type IdeaMaturity = (typeof IDEA_MATURITIES)[number]
