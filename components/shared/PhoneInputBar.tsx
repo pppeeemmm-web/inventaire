@@ -42,10 +42,10 @@ export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; work
           background: 'var(--bg1)', borderTop: '1px solid var(--bd)',
         }}
       >
-        <Link href="/atelier/journal?today=1&write=1" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</Link>
-        <button type="button" onClick={onVoice} style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
-        <Link href={workHref} style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</Link>
-        <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>
+        <Link href="/atelier/journal?today=1&write=1" data-testid="phone-bar-write" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</Link>
+        <button type="button" onClick={onVoice} data-testid="phone-bar-voice" style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
+        <Link href={workHref} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</Link>
+        <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>
       </nav>
 
       {docOpen ? (

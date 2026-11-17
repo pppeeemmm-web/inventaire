@@ -13,7 +13,7 @@ test.describe('Voice notes (Verb 2)', () => {
 
   test('journal day opens voice sheet', async ({ page }) => {
     await page.goto('/atelier/journal?today=1')
-    await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
+    await page.getByTestId('phone-bar-voice').click({ timeout: 45_000 })
     const sheet = page.getByTestId('ring-b-voice-sheet')
     await expect(sheet).toBeVisible()
     // Record first: the sheet opens on the recorder, or on the mic-blocked panel when the

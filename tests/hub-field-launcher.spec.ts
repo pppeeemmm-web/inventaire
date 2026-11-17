@@ -37,18 +37,18 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await expect(page.getByTestId('hub-field-verb-issue')).toBeVisible()
   })
 
-  test('journal row opens today in the journal', async ({ page }) => {
+  test('journal row opens the light « Aujourd’hui » page', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     const journalRow = page.getByTestId('hub-field-verb-journal')
     await journalRow.scrollIntoViewIfNeeded()
     await journalRow.click({ force: true })
-    await expect(page).toHaveURL(/\/atelier\/journal/)
+    await expect(page).toHaveURL(/\/hub\/today/)
   })
 
   test('journal day opens the voice note sheet', async ({ page }) => {
     await page.goto('/atelier/journal?today=1')
-    await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
+    await page.getByTestId('phone-bar-voice').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
     // Recording starts on open; with a real mic, cancel it — otherwise close the blocked panel.
     if ((await page.getByTestId('ring-b-voice-sheet').getAttribute('data-phase')) === 'recording') {

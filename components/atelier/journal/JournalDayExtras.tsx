@@ -15,6 +15,7 @@ import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import {
   createJournalEntry,
@@ -73,6 +74,7 @@ export function JournalDayExtras({
   composeSignal?: number
 }) {
   const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [composing, setComposing] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
   // Dictation (browser speech → text in the box). The entry is then saved as provenance voice, unverified.
@@ -240,6 +242,8 @@ export function JournalDayExtras({
         }}
         onSaved={() => void load()}
       />
+      {/* Phone: the sticky input bar (PhoneInputBar) replaces this row (R2 design, field map). */}
+      {narrow ? null : (
       <div
         data-testid="journal-quick-row"
         style={{ display: 'grid', gridTemplateColumns: `repeat(${onCapture ? 4 : 3}, minmax(0, 1fr))`, gap: 8 }}
@@ -285,6 +289,7 @@ export function JournalDayExtras({
           </button>
         ))}
       </div>
+      )}
 
       {isToday ? <SeeAgainCard context="journal" /> : null}
 
