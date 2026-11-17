@@ -44,7 +44,7 @@ From the R1 brief, all answered by Pem the same day:
 | Team menu: Idées unknown (R1 Q5) | **Idées in the team menu** (read, annotate, propose). Journal read-only for the team. |
 | Fil on the phone only | Desktop: **the Fil is Overview's main column** (grows out of « Pour vous »; the other signals become one strip). Team members' « Pour vous » = their proposals and what happened to them (the notification). |
 
-Still open in R2: the team bar (does the team need Œuvre?), and a team member's landing (read-only Aujourd'hui, or Kaizen) — « New R2 questions » below.
+R2 team side: landing = read-only Aujourd'hui (Pem); the team may not use the phone yet, so the team bar and landing are parked until it does — « Open after v3 » below.
 
 **À revoir stays on Aujourd'hui.** It is Pem's own past (works and days to look at again), not team input; the Fil is the team's input. Two decks, two jobs.
 
@@ -251,9 +251,9 @@ The slow « À revoir » query runs first and holds back the day's own entries.
 
 ## Open after v3 (R1 and R2 together)
 
-R1's questions are all answered (v3 table above). New R2 questions:
-1. **Team bar** — Idée · Kaizen · Photo · doc right? (Does the team need Œuvre on the phone? Today capture is admin-only.)
-2. **A team member's landing** — read-only Aujourd'hui (Pem's day + today's works), or straight to Kaizen?
+R1's questions are all answered (v3 table above). R2 questions:
+1. **Team bar** — Idée · Kaizen · Photo · doc right? (Does the team need Œuvre on the phone? Today capture is admin-only.) **Parked** with point 2's note.
+2. **A team member's landing** — **Aujourd'hui, read-only** (Pem 2026-11-17). Pem: « I don't think they use the phone yet, not sure. » → build Pem's phone first; the team's phone (bar + landing) only once the team is seen using it (friction ≥2× rule) — check `work_session` / journal / Kaizen writes from team accounts on mobile before building it.
 
 Waiting on Pem's GO to build — R1 and R2 designed together (R1 brief, « Needs a GO »).
 

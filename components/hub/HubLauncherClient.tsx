@@ -24,7 +24,7 @@ type FieldRow = { testId: string; emoji: string; labelKey: DictKey; subKey: Dict
  * dictation, voice notes and photo capture — so no separate Session or Note rows.
  */
 const FIELD_ROWS: FieldRow[] = [
-  { testId: 'hub-field-verb-journal', emoji: '📓', labelKey: 'hub_field_journal', subKey: 'hub_field_journal_sub', href: '/atelier/journal?today=1' },
+  { testId: 'hub-field-verb-journal', emoji: '📓', labelKey: 'hub_field_journal', subKey: 'hub_field_journal_sub', href: '/hub/today' },
   { testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
   { testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier/pipeline' },
   { testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', subKey: 'hub_field_sale_sub', href: '/atelier/sale/new' },
