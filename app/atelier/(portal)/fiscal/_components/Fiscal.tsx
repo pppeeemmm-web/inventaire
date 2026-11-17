@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkChip } from '@/components/atelier/WorkChip'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -615,11 +616,6 @@ function ExpenseModal({
     })
     return () => { cancelled = true }
   }, [works, expense])
-  const workTitle = useMemo(() => {
-    const m = new Map<number, string>()
-    for (const w of works ?? []) m.set(w.OeuvreID, w.Titre || '')
-    return m
-  }, [works])
   const workHits = useMemo(() => {
     const q = workQuery.trim().toLowerCase()
     if (!works || !q) return []
@@ -846,8 +842,8 @@ function ExpenseModal({
               <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 6 }}>{t('fiscal_cost_works_hint')}</div>
               {links.map((l) => (
                 <div key={l.oeuvre_id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    #{l.oeuvre_id} {workTitle.get(l.oeuvre_id) ?? ''}
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+                    <WorkChip id={l.oeuvre_id} size="chip" />
                   </span>
                   <input
                     type="number" step="0.01" min={0}

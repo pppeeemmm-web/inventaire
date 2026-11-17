@@ -26,6 +26,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
+import { WorkChip as WorkPreviewChip } from '@/components/atelier/WorkChip'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
 const VoiceNoteSheet = dynamic(
@@ -65,17 +66,10 @@ function Thumb({ file, size }: { file: string | null; size: number }) {
   return src ? <img src={src} alt="" width={size} height={size} loading="lazy" style={box} /> : <span style={{ ...box, display: 'inline-block' }} />
 }
 
+/** R4: thumbnail + `#id` + title; hold = the picture with its caption. */
 function WorkChip({ work }: { work: SeeAgainWork | TodayWork }) {
   const file = 'image' in work ? work.image : work.thumb
-  return (
-    <Link href={workHref(work.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, color: 'var(--tx)', textDecoration: 'none' }}>
-      <Thumb file={file} size={44} />
-      <span style={{ fontSize: 14, lineHeight: 1.3 }}>
-        <span style={{ color: 'var(--tx3)' }}>#{work.id}</span>
-        {work.title ? <>{' · '}{work.title}</> : null}
-      </span>
-    </Link>
-  )
+  return <WorkPreviewChip id={work.id} href={workHref(work.id)} title={work.title ?? null} image={file ?? null} style={{ fontSize: 14 }} />
 }
 
 /** Former /hub launcher rows (owner 2026-11-17: « Bureau », folded). */
@@ -302,17 +296,23 @@ export function TodaySuggestions({ rows, canDecide }: { rows: Suggestion[]; canD
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
         {open.map((p) => (
           <li key={p.linkId} data-testid={`hub-today-suggestion-${p.linkId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <Link
-              href={p.workId != null ? workHref(p.workId) : '/atelier/concepts'}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, flex: 1, minWidth: 0, color: 'var(--tx)', textDecoration: 'none' }}
-            >
-              <Thumb file={p.thumb} size={44} />
-              <span style={{ fontSize: 14, lineHeight: 1.3, minWidth: 0, overflowWrap: 'anywhere' }}>
-                <span style={{ color: 'var(--tx3)' }}>✦ {p.workId != null ? `#${p.workId}` : t('today_suggestion_idea')}</span>
-                {' · '}
-                {p.title || t('wr_untitled')}
-              </span>
-            </Link>
+            {p.workId != null ? (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <WorkPreviewChip id={p.workId} href={workHref(p.workId)} title={p.title ?? null} image={p.thumb ?? null} sub="✦" style={{ fontSize: 14 }} />
+              </div>
+            ) : (
+              <Link
+                href="/atelier/concepts"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, flex: 1, minWidth: 0, color: 'var(--tx)', textDecoration: 'none' }}
+              >
+                <Thumb file={p.thumb} size={44} />
+                <span style={{ fontSize: 14, lineHeight: 1.3, minWidth: 0, overflowWrap: 'anywhere' }}>
+                  <span style={{ color: 'var(--tx3)' }}>✦ {t('today_suggestion_idea')}</span>
+                  {' · '}
+                  {p.title || t('wr_untitled')}
+                </span>
+              </Link>
+            )}
             {canDecide ? (
               <>
                 <button type="button" style={btn} disabled={pending} aria-label={t('je_ai_accept')} data-testid={`hub-today-suggestion-accept-${p.linkId}`} onClick={() => decide(p.linkId, true)}>
@@ -368,11 +368,7 @@ export function TodayFolds({ day, showChanges }: { day: string; showChanges: boo
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
                 {ready.changes.map((c) => (
                   <li key={c.oeuvre_id} style={{ fontSize: 13, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                    <Link href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
-                      #{c.oeuvre_id}
-                      {c.title ? ` ${c.title}` : ''}
-                    </Link>
-                    <span style={{ color: 'var(--tx3)' }}> — {c.fields.map((f) => versionFieldLabel(f, t)).join(', ')}</span>
+                    <WorkPreviewChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title ?? null} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
                   </li>
                 ))}
               </ul>
@@ -405,9 +401,7 @@ export function TodayFolds({ day, showChanges }: { day: string; showChanges: boo
                   {k.works.length ? (
                     <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       {k.works.map((id) => (
-                        <Link key={id} href={workHref(id)} style={{ color: 'var(--ac)', display: 'inline-flex', alignItems: 'center', minHeight: 32 }}>
-                          #{id}
-                        </Link>
+                        <WorkPreviewChip key={id} id={id} href={workHref(id)} size="chip" style={{ minHeight: 44 }} />
                       ))}
                     </span>
                   ) : null}

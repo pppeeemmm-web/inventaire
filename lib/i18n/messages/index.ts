@@ -20,6 +20,7 @@ import { inventoryUiMessages } from './inventory-ui.messages'
 import { vaultUiMessages } from './vault-ui.messages'
 import { curationUiMessages } from './curation-ui.messages'
 import { worldMapUiMessages } from './world-map-ui.messages'
+import { chronologieMessages } from './chronologie.messages'
 import { reportsPivotAtlasMessages } from './reports-pivot-atlas.messages'
 import { searchMessages } from './search.messages'
 import { loginMessages } from './login.messages'
@@ -81,6 +82,7 @@ export const featureMessages = {
   ...vaultUiMessages,
   ...curationUiMessages,
   ...worldMapUiMessages,
+  ...chronologieMessages,
   ...reportsPivotAtlasMessages,
   ...searchMessages,
   ...loginMessages,

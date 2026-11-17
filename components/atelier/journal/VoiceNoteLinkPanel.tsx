@@ -4,8 +4,9 @@
 // Link a voice note to a work, an idea (Recherche), a Pipeline project, a constat on its work, or add an
 // opt-in dated reminder. Link, never copy: the note stays a Journal entry. Owner or admin (routeVoiceNote).
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { WorkChip } from '@/components/atelier/WorkChip'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import {
@@ -85,7 +86,7 @@ export function VoiceNoteLinkPanel({
   const row: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }
   const field: React.CSSProperties = { fontSize: 16, flex: '1 1 160px', minWidth: 0, maxWidth: 360, minHeight: 44 }
   const btn: React.CSSProperties = { minHeight: 44 }
-  const linked = (label: string, href: string | null, onUnlink: () => void) => (
+  const linked = (label: ReactNode, href: string | null, onUnlink: () => void) => (
     <div style={{ ...row, fontSize: 13 }}>
       <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
       {href ? (
@@ -112,7 +113,7 @@ export function VoiceNoteLinkPanel({
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('notes_triage_work')}</div>
         {links.oeuvre_id != null ? (
-          linked(`#${links.oeuvre_id}`, `/atelier/inventory?work=${links.oeuvre_id}`, () => void run({ oeuvre_id: null }))
+          linked(<WorkChip id={links.oeuvre_id} size="chip" />, `/atelier/inventory?work=${links.oeuvre_id}`, () => void run({ oeuvre_id: null }))
         ) : (
           <div style={row}>
             <input

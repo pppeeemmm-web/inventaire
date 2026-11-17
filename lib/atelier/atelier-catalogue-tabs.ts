@@ -15,6 +15,8 @@ export const ATELIER_TABS_WITHOUT_CATALOGUE_CHUNK: ReadonlySet<SegmentedAtelierT
   'analytics',
   'kaizen',
   'kaizen-ops',
+  // R4: reads its own whole-catalogue bundle (`loadTimePlaceData`).
+  'chronologie',
 ])
 
 /** True when first paint should include the œuvres keyset chunk (or client hydrate). */

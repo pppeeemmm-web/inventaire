@@ -9,6 +9,58 @@ export const worldMapUiMessages = defineMessages({
     fr: 'Contacts ({count} adresses)',
     en: 'Contacts ({count} addresses)',
   },
+  map_mode_creation_fmt: {
+    fr: 'Création ({count})',
+    en: 'Making ({count})',
+  },
+  map_creation_hint: {
+    fr: 'Où les œuvres ont été faites · plein = lieu précis (Historique de création) · anneau = atelier de la période · pointillé = lieu suggéré par une séance (GPS)',
+    en: 'Where the works were made · solid = own place (making history) · ring = the period’s studio · dotted = place suggested by a session (GPS)',
+  },
+  map_creation_summary_fmt: {
+    fr: '{placed} situées · {precise} lieu précis · {byPeriod} par période · {none} sans lieu',
+    en: '{placed} placed · {precise} own place · {byPeriod} by period · {none} no place',
+  },
+  map_creation_pin_sub_fmt: {
+    fr: '{precise} lieu précis · {byPeriod} par période',
+    en: '{precise} own place · {byPeriod} by period',
+  },
+  map_creation_works_fmt: {
+    fr: '{count} œuvres',
+    en: '{count} works',
+  },
+  map_creation_period_label: {
+    fr: 'Période',
+    en: 'Period',
+  },
+  map_creation_all_periods: {
+    fr: 'Toutes',
+    en: 'All',
+  },
+  map_creation_gps_fmt: {
+    fr: 'Séance du {day} · lieu suggéré : {place}',
+    en: 'Session {day} · suggested place: {place}',
+  },
+  map_creation_gps_none_fmt: {
+    fr: 'Séance du {day} · aucun lieu connu à moins de 2 km',
+    en: 'Session {day} · no known place within 2 km',
+  },
+  map_creation_see_in_time: {
+    fr: 'Voir dans le temps',
+    en: 'See in time',
+  },
+  map_creation_span_fmt: {
+    fr: 'Faites entre {from} et {to}',
+    en: 'Made between {from} and {to}',
+  },
+  map_creation_loading: {
+    fr: 'Chargement des lieux de création…',
+    en: 'Loading where works were made…',
+  },
+  map_creation_error: {
+    fr: 'Lieux de création indisponibles',
+    en: 'Places of making unavailable',
+  },
   map_mode_works_fmt: {
     fr: 'Œuvres ({count})',
     en: 'Works ({count})',

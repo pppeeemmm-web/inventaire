@@ -17,6 +17,7 @@ export type SegmentedAtelierTab =
   | 'broadcast'
   | 'audit'
   | 'constellation'
+  | 'chronologie'
   | 'map'
   | 'journal'
   | 'system'
@@ -47,6 +48,7 @@ export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> =
   broadcast: '/atelier/broadcast',
   audit: '/atelier/audit',
   constellation: '/atelier/constellation',
+  chronologie: '/atelier/chronologie',
   map: '/atelier/map',
   journal: '/atelier/journal',
   system: '/atelier/system',

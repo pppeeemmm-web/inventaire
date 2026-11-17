@@ -31,6 +31,7 @@ function TabPanelFallback() {
 
 const InventoryTab = dynamic(() => import('@/app/atelier/(portal)/inventory/_components/Inventory').then((m) => ({ default: m.Inventory })), { loading: () => <TabPanelFallback />, ssr: false })
 const Constellation = dynamic(() => import('@/app/atelier/(portal)/constellation/_components/Constellation').then((m) => ({ default: m.Constellation })), { loading: () => <TabPanelFallback />, ssr: false })
+const ChronologieTab = dynamic(() => import('@/components/atelier/chronologie/ChronologieTab').then((m) => ({ default: m.ChronologieTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const Vault = dynamic(() => import('@/app/atelier/(portal)/vault/_components/Vault').then((m) => ({ default: m.Vault })), { loading: () => <TabPanelFallback />, ssr: false })
 const ProductionTab = dynamic(() => import('@/app/atelier/(portal)/production/_components/Production').then((m) => ({ default: m.Production })), { loading: () => <TabPanelFallback />, ssr: false })
 const Logistics = dynamic(() => import('@/app/atelier/(portal)/logistics/_components/Logistics').then((m) => ({ default: m.Logistics })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -417,6 +418,8 @@ export function SegmentRoutePanel({
           oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
         />
       )
+    case 'chronologie':
+      return <ChronologieTab />
     case 'slideshows':
       return <SlideshowsTab oeuvres={oeuvres} tM={tM} sM={sM} />
     case 'concepts':

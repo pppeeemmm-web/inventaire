@@ -1104,7 +1104,7 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
 
           {activeItem.oeuvre_id ? (
             <p className="t-mono-sm" data-testid="session-linked-work" style={{ fontSize: 12, color: 'var(--tx2)', margin: 0 }}>
-              {t('session_linked_work')}: #{activeItem.oeuvre_id}{activeItem.oeuvre_title ? ` · ${activeItem.oeuvre_title}` : ''}
+              {t('session_linked_work')}: <WorkRef id={activeItem.oeuvre_id} style={{ color: 'var(--ac)' }} />
             </p>
           ) : activeItem.mode === 'existing' ? (
             <>

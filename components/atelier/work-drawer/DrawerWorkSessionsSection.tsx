@@ -9,6 +9,7 @@ import { parseWorkSessionPayload } from '@/lib/work-session-payload'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
 import Link from 'next/link'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 
 type TFn = (key: DictKey) => string
@@ -169,7 +170,7 @@ export function DrawerWorkSessionsSection({
                     <span style={{ display: 'block', marginTop: 6 }}>
                       {payload.items.map((item, idx) => (
                         <span key={item.id} style={{ display: 'block', color: 'var(--tx3)' }}>
-                          {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? `#${item.oeuvre_id}` : item.title_hint || '—'} ·{' '}
+                          {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? <WorkRef id={item.oeuvre_id} style={{ color: 'var(--ac)' }} /> : item.title_hint || '—'} ·{' '}
                           {item.shots.length + (item.applied_shot_count ?? 0)}{' '}
                           {t(item.shots.length + (item.applied_shot_count ?? 0) === 1 ? 'st_shot_one' : 'drawer_work_sessions_shots')}
                         </span>

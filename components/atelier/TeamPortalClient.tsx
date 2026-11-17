@@ -1027,6 +1027,7 @@ export function TeamPortalClient({
       ['inventory',     t('inventory'), oeuvresCatalogueCount],
       ['reports',       t('tab_reports')],
       ['constellation', t('constellation')],
+      ['chronologie',   t('chrono_tab')],
       ['production',    t('production')],
       ['logistics',     t('logistics')],
       ['sales',         t('nav_tab_orders')],
@@ -1124,7 +1125,8 @@ export function TeamPortalClient({
       ]
     : [
         kaizenGroup,
-        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'slideshows'] },
+        // R4 (Pem 2026-11-17): the Chronologie is computer only — not in the phone menu.
+        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'chronologie', 'slideshows'] },
         { label: t('nav_group_field'), tabs: ['production', 'journal'] },
         studioGroup,
         commercialGroup,

@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
 import { WorkRef } from '@/components/atelier/WorkRef'
+import { WorkChip } from '@/components/atelier/WorkChip'
 import { imageUrl } from '@/lib/data'
 import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
@@ -425,10 +426,7 @@ export function JournalDayExtras({
               {e.works.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                   {e.works.map((w) => (
-                    <WorkRef key={w.id} id={w.id} href={workHref(w.id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                      #{w.id}
-                      {w.title ? ` ${w.title}` : ''}
-                    </WorkRef>
+                    <WorkChip key={w.id} id={w.id} href={workHref(w.id)} title={w.title} size="chip" />
                   ))}
                 </div>
               ) : null}
@@ -442,14 +440,8 @@ export function JournalDayExtras({
                       <div key={p.linkId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                         {p.workId != null ? (
                           // A work: the shared #id preview + loupe, like the confirmed links above (TODO B12, Pem 2026-11-16).
-                          <WorkRef
-                            id={p.workId}
-                            href={workHref(p.workId)}
-                            className="t-mono-sm"
-                            style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
-                          >
-                            ✦ #{p.workId} {p.title || t('wr_untitled')}
-                          </WorkRef>
+                          // R4: thumbnail + title, hold / hover = the picture with its caption.
+                          <WorkChip id={p.workId} href={workHref(p.workId)} title={p.title} sub={`✦ ${t('je_ai_proposals')}`} style={{ flex: '1 1 160px' }} />
                         ) : (
                           <Link
                             href="/atelier/concepts"
@@ -656,9 +648,7 @@ export function JournalDayExtras({
               ) : null}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
                 {k.works.map((id) => (
-                  <WorkRef key={id} id={id} href={workHref(id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                    #{id}
-                  </WorkRef>
+                  <WorkChip key={id} id={id} href={workHref(id)} size="chip" />
                 ))}
                 <Link
                   href="/atelier/kaizen"
@@ -686,11 +676,7 @@ export function JournalDayExtras({
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.changes.map((c) => (
               <li key={c.oeuvre_id} className="t-mono-sm" style={{ fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
-                <WorkRef id={c.oeuvre_id} href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                  #{c.oeuvre_id}
-                  {c.title ? ` ${c.title}` : ''}
-                </WorkRef>
-                <span style={{ color: 'var(--tx3)' }}> — {c.fields.map((f) => versionFieldLabel(f, t)).join(', ')}</span>
+                <WorkChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
               </li>
             ))}
           </ul>

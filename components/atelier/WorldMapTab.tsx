@@ -3,14 +3,21 @@
 // WorldMapTab — contacts + works on an interactive Leaflet map.
 // Fetches contact_addresses (multiple per contact) and Contact.Ville/Pays as fallback.
 // Both fetches run in parallel; pin building only starts when BOTH complete.
+// R4 (Pem 2026-11-17): « Création » mode = where works were made, at the `place` rows' own coordinates
+// (no geocoding); « Œuvres » places a work at its own address (custody model), not its custodian's card
+// city; pin offsets are stable (no random jitter).
 
 import { useState, useEffect, useRef, useMemo, type Dispatch, type MouseEvent, type SetStateAction } from 'react'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { useI18n } from '@/lib/i18n/context'
 import { interpolateMessage } from '@/lib/i18n/message-core'
+import { loadTimePlaceData, type TimePlaceData } from '@/app/atelier/time-place-actions'
+import { nearestPlace } from '@/lib/work-periods'
+import { FIELD_PLACE_COLOR, inSpan, monthKey, parseMonthKey, placeColor, studioOrder } from '@/lib/time-place'
 
 interface ContactRow {
   ContactID:      number
@@ -57,6 +64,25 @@ export interface Pin {
   workThumbs?: string[]   // parallel array of txtImageNameLink paths
   contacts?:  { id: number; name: string; role: string | null }[]  // for multi-contact pins
   oeuvreIds?: number[]    // works-mode pin: OeuvreIDs at this location (order matches thumbs)
+  /** « Création » pins: fixed radius, ring (place read from the period), dotted (GPS suggestion). */
+  radius?:    number
+  hollow?:    boolean
+  dashed?:    boolean
+  /** Parallel to `workThumbs`: each thumbnail links to its work. */
+  thumbIds?:  number[]
+  /** A link under the popup (« Voir dans le temps » → the Chronologie). */
+  link?:      { href: string; label: string }
+}
+
+/** Stable small offset (was random on every load: the same pin moved a little each time). */
+function stableOffset(key: string): [number, number] {
+  let h = 2166136261
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const u = h >>> 0
+  return [((u % 1000) / 1000 - 0.5) * 0.008, (((u >>> 10) % 1000) / 1000 - 0.5) * 0.008]
 }
 
 export const ROLE_COLORS: Record<string, string> = {
@@ -149,6 +175,8 @@ async function geocode(city: string, country: string): Promise<[number, number] 
 // ── Leaflet dynamic import ─────────────────────────────────────────────
 interface MapProps {
   pins: Pin[]
+  /** « Création »: Pem's route between studios, in period order. */
+  route?: [number, number][]
   mapKey: string
   onOpenContact?: (id: number) => void
   onOpenOeuvreById?: (oeuvreId: number) => void
@@ -158,7 +186,7 @@ const LeafletMap = dynamic<MapProps>(
   { ssr: false, loading: () => <div style={{ flex: 1, background: '#0d0d0d' }} /> },
 )
 
-type Mode = 'contacts' | 'works'
+type Mode = 'contacts' | 'works' | 'creation'
 
 // ── Component ──────────────────────────────────────────────────────────
 const SANS_ROLE = '(Sans rôle)'
@@ -191,12 +219,24 @@ export function WorldMapTab({
 }: Props) {
   const { t } = useI18n()
   const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
-  const [mode,      setMode]      = useState<Mode>('contacts')
+  const params = useSearchParams()
+  const [mode,      setMode]      = useState<Mode>(() => (params?.get('mode') === 'creation' ? 'creation' : 'contacts'))
+  /** « Voir sur la carte » from the Chronologie: `?mode=creation&from=2026-05&to=2026-11`. */
+  const [span, setSpan] = useState<{ from: number; to: number } | null>(() => {
+    const from = parseMonthKey(params?.get('from'))
+    const to = parseMonthKey(params?.get('to'))
+    return from != null && to != null && from <= to ? { from, to } : null
+  })
   const [pins,      setPins]      = useState<Pin[]>([])
   const [loading,   setLoading]   = useState(false)
   const [dataReady, setDataReady] = useState(false)
   const [addresses, setAddresses] = useState<ContactAddress[]>([])
   const abortRef = useRef(false)
+  /** « Création »: the whole catalogue's places of making, loaded on first use. */
+  const [tp, setTp] = useState<TimePlaceData | null>(null)
+  const [tpError, setTpError] = useState(false)
+  /** « Création »: only works of this period (null = all). */
+  const [periodFilter, setPeriodFilter] = useState<number | null>(null)
 
   /** Contacts mode: hidden roles (empty = show all roles) */
   const [hiddenRoles, setHiddenRoles] = useState<Set<string>>(() => new Set())
@@ -352,7 +392,8 @@ export function WorldMapTab({
     setLoading(true)
     setPins([])
     if (mode === 'contacts') void buildContactPins()
-    else void buildWorkPins()
+    else if (mode === 'works') void buildWorkPins()
+    else setLoading(false)
     return () => { abortRef.current = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -426,8 +467,9 @@ export function WorldMapTab({
       const coords = await geocode(city, country)
       if (!coords || abortRef.current) continue
 
-      const lat = coords[0] + (Math.random() - 0.5) * 0.008
-      const lng = coords[1] + (Math.random() - 0.5) * 0.008
+      const [dLat, dLng] = stableOffset(key)
+      const lat = coords[0] + dLat
+      const lng = coords[1] + dLng
 
       const unique = [...new Map(entries.map(e => [e.contactId, e.contact])).values()]
       const roleCount: Record<string, number> = {}
@@ -487,11 +529,17 @@ export function WorldMapTab({
     interface WorkLocMeta { city: string; country: string; label: string }
     const groups  = new Map<string, Oeuvre[]>()
     const keyMeta = new Map<string, WorkLocMeta>()
+    const addrById = new Map(addresses.map((a) => [a.id, a]))
 
     oeuvresFiltered.forEach(o => {
+      // The work's own address first (custody model: always one of its custodian's addresses) —
+      // #1653 sits at its custodian's Rutali address while that contact's card says Marseille.
+      const own   = o.localisation_address_id != null ? addrById.get(o.localisation_address_id) : undefined
       const locId = o.LocalisationID
       const cid   = locId ?? o.ContactID ?? 13
-      const addr  = contactLocMap.get(cid) ?? contactLocMap.get(13)
+      const addr  = own && (own.ville || own.pays)
+        ? { city: own.ville ?? '', country: own.pays ?? '' }
+        : (contactLocMap.get(cid) ?? contactLocMap.get(13))
       if (!addr) return
       const { city, country } = addr
       if (!city && !country) return
@@ -506,8 +554,9 @@ export function WorldMapTab({
       const meta   = keyMeta.get(key)!
       const coords = await geocode(meta.city, meta.country)
       if (!coords || abortRef.current) continue
-      const lat   = coords[0] + (Math.random() - 0.5) * 0.008
-      const lng   = coords[1] + (Math.random() - 0.5) * 0.008
+      const [dLat, dLng] = stableOffset(key)
+      const lat   = coords[0] + dLat
+      const lng   = coords[1] + dLng
       const label = group.length === 1 ? (group[0].Titre ?? `#${group[0].OeuvreID}`) : `${group.length} œuvres`
       const workThumbs = group.map(o => o.txtImageNameLink ?? '').filter(Boolean).slice(0, 6) as string[]
       result.push({
@@ -531,6 +580,110 @@ export function WorldMapTab({
     : contacts.filter(c => c.Ville || c.Pays).length
   const worksWithLoc = oeuvresFiltered.length
 
+  // « Création »: load the whole catalogue's places of making once, on first use.
+  useEffect(() => {
+    if (mode !== 'creation' || tp || tpError) return
+    let cancelled = false
+    void loadTimePlaceData().then(
+      (res) => {
+        if (cancelled) return
+        if ('error' in res) setTpError(true)
+        else setTp(res)
+      },
+      () => {
+        if (!cancelled) setTpError(true)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [mode, tp, tpError])
+
+  const creation = useMemo(() => {
+    if (!tp) return null
+    const periodsInOrder = [...tp.periods].sort((a, b) => a.start_on.localeCompare(b.start_on))
+    const studioIds = studioOrder(tp.periods)
+    const colorOf = (placeId: number) => placeColor(placeId, studioIds)
+    let works = periodFilter == null ? tp.works : tp.works.filter((w) => w.periodId === periodFilter)
+    // From the Chronologie (« Voir sur la carte »): only works made in that span.
+    if (span) works = works.filter((w) => inSpan(w.day, w.year, span.from, span.to))
+    const byPlace = new Map<number, typeof works>()
+    let none = 0
+    for (const w of works) {
+      if (w.placeId == null) { none++; continue }
+      const list = byPlace.get(w.placeId) ?? []
+      list.push(w)
+      byPlace.set(w.placeId, list)
+    }
+    const result: Pin[] = []
+    let precise = 0
+    let byPeriod = 0
+    for (const [placeId, list] of byPlace) {
+      const place = tp.places.find((p) => p.id === placeId)
+      const own = list.filter((w) => w.precise).length
+      precise += own
+      byPeriod += list.length - own
+      if (!place || place.latitude == null || place.longitude == null) continue
+      // Own places first, then the most recent works.
+      const shown = [...list].sort((a, b) => Number(b.precise) - Number(a.precise) || b.id - a.id).filter((w) => w.image).slice(0, 12)
+      result.push({
+        id: `place-${placeId}`,
+        lat: place.latitude,
+        lng: place.longitude,
+        label: place.name,
+        sub: [interpolateMessage(t('map_creation_works_fmt'), { count: String(list.length) }),
+          interpolateMessage(t('map_creation_pin_sub_fmt'), { precise: String(own), byPeriod: String(list.length - own) })].join(' · '),
+        color: colorOf(placeId),
+        count: list.length,
+        radius: Math.min(28, 5 + Math.sqrt(list.length) * 0.9),
+        // Ring = mostly read from the period (Marseille: 1 own place of 458); solid = mostly the works' own place.
+        hollow: own * 2 < list.length,
+        workThumbs: shown.map((w) => w.image as string),
+        thumbIds: shown.map((w) => w.id),
+        oeuvreIds: list.map((w) => w.id),
+        link: {
+          href: `/atelier/chronologie?place=${placeId}${span ? `&from=${monthKey(span.from)}&to=${monthKey(span.to)}` : ''}`,
+          label: t('map_creation_see_in_time'),
+        },
+      })
+    }
+    // A session's GPS (field sessions since 3.1.6) for works with no place of their own: a dotted
+    // suggestion at the spot, named after the nearest known place within 2 km. Shown, never written.
+    const workById = new Map(works.map((w) => [w.id, w]))
+    for (const s of tp.sessions) {
+      if (s.lat == null || s.lon == null) continue
+      const ws = s.oeuvreIds.map((id) => workById.get(id)).filter((w): w is NonNullable<typeof w> => !!w && !w.precise)
+      if (!ws.length) continue
+      const near = nearestPlace(s.lat, s.lon, tp.places)
+      const shown = ws.filter((w) => w.image).slice(0, 6)
+      result.push({
+        id: `session-${s.id}`,
+        lat: s.lat,
+        lng: s.lon,
+        label: near
+          ? interpolateMessage(t('map_creation_gps_fmt'), { day: s.day, place: near.name })
+          : interpolateMessage(t('map_creation_gps_none_fmt'), { day: s.day }),
+        sub: ws.map((w) => `#${w.id}${w.title ? ` ${w.title}` : ''}`).join(' · '),
+        color: FIELD_PLACE_COLOR,
+        count: ws.length,
+        radius: 5,
+        dashed: true,
+        workThumbs: shown.map((w) => w.image as string),
+        thumbIds: shown.map((w) => w.id),
+        oeuvreIds: ws.map((w) => w.id),
+      })
+    }
+    // Pem's route: the studios in period order.
+    const route: [number, number][] = []
+    for (const p of periodsInOrder) {
+      const pl = tp.places.find((x) => x.id === p.default_place_id)
+      if (pl?.latitude != null && pl.longitude != null) route.push([pl.latitude, pl.longitude])
+    }
+    return { pins: result, route, placed: precise + byPeriod, precise, byPeriod, none, total: works.length, periods: periodsInOrder }
+  }, [tp, periodFilter, span, t])
+
+  const shownPins = mode === 'creation' ? (creation?.pins ?? []) : pins
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Toolbar */}
@@ -540,18 +693,34 @@ export function WorldMapTab({
         background: 'var(--bg1)', flexShrink: 0,
       }}>
         <div className="t-label">{t('map_view_label')}</div>
-        {(['contacts', 'works'] as Mode[]).map(m => (
+        {(['contacts', 'works', 'creation'] as Mode[]).map(m => (
           <button key={m} className="btn ghost sm" onClick={() => setMode(m)}
             style={{ opacity: mode === m ? 1 : 0.45, fontWeight: mode === m ? 700 : 400 }}
           >
             {m === 'contacts'
               ? interpolateMessage(t('map_mode_contacts_fmt'), { count: String(addrCount) })
-              : interpolateMessage(t('map_mode_works_fmt'), { count: String(worksWithLoc) })}
+              : m === 'works'
+                ? interpolateMessage(t('map_mode_works_fmt'), { count: String(worksWithLoc) })
+                : interpolateMessage(t('map_mode_creation_fmt'), { count: String(tp?.works.length ?? '…') })}
           </button>
         ))}
         {mode === 'works' && (
           <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>
             {t('map_works_marker_hint')}
+          </span>
+        )}
+        {mode === 'creation' && (
+          <span className="t-mono-sm" data-testid="map-creation-summary" style={{ color: 'var(--tx3)', fontSize: 9 }}>
+            {creation
+              ? interpolateMessage(t('map_creation_summary_fmt'), {
+                  placed: String(creation.placed),
+                  precise: String(creation.precise),
+                  byPeriod: String(creation.byPeriod),
+                  none: String(creation.none),
+                })
+              : tpError
+                ? t('map_creation_error')
+                : t('map_creation_loading')}
           </span>
         )}
         {loading && (
@@ -644,6 +813,38 @@ export function WorldMapTab({
                   </div>
                 </>
               )}
+            </>
+          )}
+          {mode === 'creation' && creation && (
+            <>
+              <div className="t-label">{t('map_creation_period_label')}</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  style={{ fontSize: 10, opacity: periodFilter == null ? 1 : 0.45, fontWeight: periodFilter == null ? 700 : 400 }}
+                  onClick={() => setPeriodFilter(null)}
+                >
+                  {t('map_creation_all_periods')}
+                </button>
+                {creation.periods.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, opacity: periodFilter === p.id ? 1 : 0.45, fontWeight: periodFilter === p.id ? 700 : 400 }}
+                    onClick={() => setPeriodFilter((cur) => (cur === p.id ? null : p.id))}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+              {span ? (
+                <button type="button" className="btn ghost sm" data-testid="map-creation-span" style={{ fontSize: 10, borderColor: 'var(--ac)' }} onClick={() => setSpan(null)}>
+                  {interpolateMessage(t('map_creation_span_fmt'), { from: monthKey(span.from), to: monthKey(span.to) })} ✕
+                </button>
+              ) : null}
+              <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>{t('map_creation_hint')}</span>
             </>
           )}
           {mode === 'works' && (
@@ -739,7 +940,7 @@ export function WorldMapTab({
 
       {/* Map */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
-        {pins.length === 0 && !loading && dataReady && (
+        {shownPins.length === 0 && !loading && dataReady && mode !== 'creation' && (
           <div style={{
             position: 'absolute', inset: 0, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
@@ -753,7 +954,8 @@ export function WorldMapTab({
           </div>
         )}
         <LeafletMap
-          pins={pins}
+          pins={shownPins}
+          route={mode === 'creation' ? creation?.route : undefined}
           mapKey={mode}
           onOpenContact={onOpenContact}
           onOpenOeuvreById={onOpenOeuvreById}

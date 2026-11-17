@@ -6,12 +6,13 @@ import { thumbUrl, imageUrl } from '@/lib/data'
 
 interface Props {
   pins:               Pin[]
+  route?:             [number, number][]
   mapKey:             string
   onOpenContact?:     (id: number) => void
   onOpenOeuvreById?:  (oeuvreId: number) => void
 }
 
-export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }: Props) {
+export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvreById }: Props) {
   const divRef   = useRef<HTMLDivElement>(null)
   const mapRef   = useRef<any>(null)
   const layerRef = useRef<any>(null)
@@ -109,22 +110,28 @@ export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }:
       layer.clearLayers()
       if (pins.length === 0) return
       const latlngs: [number, number][] = []
+      if (route && route.length > 1) {
+        layer.addLayer(L.polyline(route, { color: '#c8a86e', weight: 1.5, opacity: 0.7, dashArray: '6,5', interactive: false }))
+      }
 
       // Build thumb URL using canonical helper
       const mkThumb = (path: string) => thumbUrl(path, 64) ?? ''
 
       pins.forEach((pin) => {
         const isWork = pin.id.startsWith('work-')
-        const radius = isWork ? 5 : Math.max(6, Math.min(20, 6 + pin.count * 2))
+        const radius = pin.radius ?? (isWork ? 5 : Math.max(6, Math.min(20, 6 + pin.count * 2)))
 
         // Work thumbnails strip
         const thumbsHtml = pin.workThumbs && pin.workThumbs.length > 0
           ? `<div style="display:flex;gap:3px;margin-top:6px;flex-wrap:wrap">
-               ${pin.workThumbs.slice(0, 6).map((p) =>
-                 `<img src="${mkThumb(p)}" width="44" height="44"
+               ${pin.workThumbs.slice(0, pin.thumbIds ? 12 : 6).map((p, i) => {
+                 const img = `<img src="${mkThumb(p)}" width="44" height="44"
                        onerror="window.__pemHandleThumbError(this, '${p}')"
                        style="object-fit:cover;border:1px solid #2a2a2a;flex-shrink:0;display:block" />`
-               ).join('')}
+                 // « Création » pins: each thumbnail opens its work (it may be outside the loaded batch).
+                 const id = pin.thumbIds?.[i]
+                 return id != null ? `<a href="/atelier/inventory?work=${id}" title="#${id}">${img}</a>` : img
+               }).join('')}
              </div>`
           : ''
 
@@ -167,9 +174,9 @@ export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }:
           radius,
           fillColor:   pin.color,
           color:       isWork ? '#c8a86e' : pin.color,
-          fillOpacity: isWork ? 0.6 : 0.85,
-          weight:      isWork ? 1 : 1.5,
-          dashArray:   isWork ? '3,3' : undefined,
+          fillOpacity: pin.hollow ? 0.12 : pin.dashed ? 0.25 : isWork ? 0.6 : 0.85,
+          weight:      isWork ? 1 : pin.hollow ? 2 : 1.5,
+          dashArray:   isWork || pin.dashed ? '3,3' : undefined,
         })
 
         circle.bindPopup(`
@@ -181,6 +188,7 @@ export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }:
             ${worksHtml}
             ${contactsHtml}
             ${cardLink}
+            ${pin.link ? `<a class="pem-popup-link" href="${pin.link.href.replace(/"/g, '&quot;')}">${pin.link.label.replace(/</g, '&lt;')} →</a>` : ''}
           </div>
         `, { maxWidth: 280 })
 
@@ -226,7 +234,7 @@ export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }:
     })
 
     return () => { cancelled = true }
-  }, [pins, onOpenOeuvreById])
+  }, [pins, route, onOpenOeuvreById])
 
   return <div ref={divRef} style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import {
   applyWorkSessionToOeuvre,
   listWorkSessionsForAdminReview,
@@ -97,7 +98,7 @@ export function PendingWorkSessions() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
                   {row.item_summaries.map((item, idx) => (
                     <div key={item.id} style={{ fontSize: 10, color: 'var(--tx3)' }}>
-                      {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? `#${item.oeuvre_id}` : item.title_hint || '—'} ·{' '}
+                      {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? <WorkRef id={item.oeuvre_id} style={{ color: 'var(--ac)' }} /> : item.title_hint || '—'} ·{' '}
                       {item.shot_count + item.applied_shot_count} {t('drawer_work_sessions_shots')} · {t(item.status === 'applied' ? 'session_status_applied' : 'session_status_draft')}
                     </div>
                   ))}

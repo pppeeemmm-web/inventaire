@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import { listMyNoteLines, type MyNoteLine } from '@/app/atelier/fil/note-lines-actions'
 import { isUndatedOldNote } from '@/lib/note-line-dates'
 
@@ -73,7 +74,7 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
               ) : (
                 <span style={ELLIPSIS}>
                   {t('my_kind_proposal')}
-                  {l.work ? ` · #${l.work.id}` : ''}
+                  {l.work ? <>{' · '}<WorkRef id={l.work.id} style={{ color: 'var(--tx2)' }} /></> : null}
                 </span>
               )
             return (

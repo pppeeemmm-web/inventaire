@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import {
   listBroadcastDashboard,
@@ -391,7 +392,7 @@ function ActivityView({
                 <PlatformChip p={e.platform} />
                 <span style={{ textTransform: 'uppercase', letterSpacing: 1 }}>{e.eventType}</span>
                 <span>· {broadcastRelTime(e.createdAt, t)}</span>
-                {e.titre && <span>· #{e.oeuvreId} {e.titre}</span>}
+                {e.titre && (e.oeuvreId != null ? <span>· <WorkRef id={e.oeuvreId} style={{ color: 'var(--tx2)' }} /></span> : <span>· {e.titre}</span>)}
               </div>
               {e.summary && (
                 <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tx2)', lineHeight: 1.45 }}>

@@ -1,4 +1,6 @@
-# Timeline + map + previews (R4): design brief, 2026-11-17 (v1)
+# Timeline + map + previews (R4): design brief, 2026-11-17 (v2 — Pem's answers)
+
+**Pem's answers, 2026-11-17 (v2):** **two tabs**, not one screen: the **Carte** stays where it is (Commercial) and gains the « Création » mode; the **timeline is its own tab**. Computer only (« too heavy for the phone I have right now »); the preview rule (B) applies everywhere, phone included. Hold / hover = the big picture, the small card goes. Details in « Answers » below; the proposal is updated to match. The mockup is still v1 (one screen + phones) and was not redrawn.
 
 Design only, nothing built, no SQL run (reads only). Inputs: TODO R4, [TODO_NOTES#previews](../../TODO_NOTES.md#previews), [RETHINK](../../RETHINK_2026-11-14.md) (piece 3 « Timeline + map extension + previews »), [STRATEGY](../../STRATEGY.md) aim 2 (links between nodes) and aim 1 (trace), [CONSTELLATION](../../CONSTELLATION.md), [WORK_CUSTODY_MODEL](../../WORK_CUSTODY_MODEL.md) (where works are). Sister briefs: [R1_InputsFeed](./R1_InputsFeed.notes.md), [PhoneToday](./PhoneToday.notes.md) (R2, the day), [R7_Orders](./R7_Orders.notes.md) (works leaving). Mockup next to this file: [R4_TimelineMap.mockup.html](./R4_TimelineMap.mockup.html) (desktop « Création » with Rutali selected, three 375 px phones — map, vertical « Temps », Notes « Trier » with the loupe — and the preview rule before → after; real works, real places and real counts; « Où elles sont » mode not drawn).
 
@@ -105,22 +107,26 @@ Also seen: the Inventory row (`WorkThumb` 40 px in `ImageLoupe`) is the model Pe
 
 ## The proposal
 
-### A. One screen « Carte & temps » (working name — question 1)
+### A. Two tabs: the Carte gains « Création », the timeline is its own tab (Pem 2026-11-17)
 
-**Merge, don't add** (STRATEGY 2026-11-14): the Map tab becomes a map on top and a timeline under it, two views of the same works filtered together. The timeline *is* the « timeline map » of the TODO line: drag a span on it and the map shows the works made in that span; click a place on the map and the timeline shows only what was made there.
+~~One screen « Carte & temps »~~ — **v2: two tabs** (Pem: « I'd like a bit of separation … I have other ideas about this »). It is not twice the code: the map and the timeline are two separate pieces either way; two tabs only add a link between them.
+- **Carte** stays in **Commercial** (Pem: « leave it »), same tab id and route. It gains the **Création** mode.
+- **Timeline** = a new tab (working name « Temps » — name and place in the sidebar still to agree, see « Answers »).
+- **The link between them:** the timeline's selected span opens the Carte filtered to the works made in it (« Voir sur la carte »); a place on the Carte opens the timeline filtered to that place (« Voir dans le temps »). Passed in the URL, nothing shared in memory.
 
-**Moves** from Commercial to **Catalogue**, after Inventaire, next to Constellation (question 2). Contacts mode stays in it for the commercial use.
+**Carte modes (pills, top left):** **Création** · **Où elles sont** (today's Œuvres mode, fixed) · **Contacts** (unchanged). Which mode opens first: Contacts, as today (the tab stays commercial), unless Pem says otherwise.
 
-**Modes (pills, top left):** **Création** (default) · **Où elles sont** (today's Œuvres mode, fixed) · **Contacts** (unchanged).
+The desktop description below still uses the v1 words « upper / lower »: read « Map » as the Carte tab and « Timeline » as the timeline tab, each full height.
 
-#### Desktop (mockup, top)
+#### Desktop (mockup, top — v1 layout)
 - **Map (upper ~55 %).**
   - **Création:** one pin per place of making, at the `place` row's coordinates (no geocoding, no jitter). Size = number of works. **Solid** = works whose place is their own (a « Création » line); **ring** = works placed only by their period's atelier — so the map says how sure it is (« 11 précis · 1 156 par période »). Pem's **route** drawn as a dated line between the ateliers in period order: Waterford (déc. 2019) → Tooreeney (déc. 2021) → Marseille (juin 2024). A small **Provence inset** where Marseille, Aureille, Les Baux, Lac du Peiroo and Istres sit within a few pixels.
+  - **Field-session GPS** (Pem: « I suppose so »): when a session's GPS falls within 2 km of a place and the work has no place of its own, a **dotted pin** = a suggested place. Shown only, never written (the work card already turns it into a suggestion).
   - **Où elles sont:** pins at the **work's address** (custodian's address, custody model), not the custodian's card city — fixes #1653. Pem's 1,169 works collapse to « Atelier · Principal ». Works away from Pem show a thin **arc from where made to where they are** (the 7 gifts today; deposits / loans from R7 later).
   - Clicking a pin opens the **side panel (right, collapsed by default)**: the place, its dates, its works as a grid of thumbnails (`#id` + title or « Sans titre · 2024 »), and « Ouvrir dans l'Inventaire » / « Constellation » with that set.
 - **Timeline (lower ~45 %), horizontal, years → months → days on zoom.**
   - **Period bands** behind everything, one colour per atelier (same colour as its pin).
-  - **Lanes** (each can be folded):
+  - **Lanes** (each can be folded; **Œuvres and Séances open, the other three folded** — Pem: « whatever you think fits best, for the first go »):
     1. **Œuvres** — a bar per month (year when zoomed out); zoomed in, the thumbnails themselves. A work dated to the year sits on a **year shelf** (a band over the whole year), not on a fake 1 January. Works with no date: a **« sans date »** shelf at the end of each period (they are in a period by hand), with the count and a link to the Inventory filter « Périodes à trancher ».
     2. **Séances** — one dot per work session (field / studio), its work's thumbnail on hover.
     3. **Journal & notes** — one tick per entry / voice note / idea line.
@@ -130,10 +136,8 @@ Also seen: the Inventory row (`WorkThumb` 40 px in `ImageLoupe`) is the model Pe
   - A one-line **strip** on top: span · works · sessions · notes · « 579 sans année » (link) — so the gaps are visible (aim 1).
 - Reads from the server in one query for the whole catalogue (dates, place, thumbnail, title — not the loaded batch of the Atelier shell).
 
-#### Phone 375 px (mockup, right)
-- **Carte (Création)**: full-width map, mode pills, **period chips** under it (Tout · Waterford · Tooreeney · Marseille) as the phone's time control; a **bottom sheet** with the selected place's works as rows (thumbnail 44 px + `#id` + title; hold = loupe). No horizontal timeline on the phone.
-- **Temps**: the timeline turns **vertical**, most recent first, one header per month: « nov. 2026 · 5 séances · 7 œuvres · 1 note », then rows (a session with its work, a work made that month, a note). Tapping a day opens « Aujourd'hui » on that day; the ‹ › of Aujourd'hui stays the day-to-day stepping, this is the jump.
-- Both reachable from the phone menu under Catalogue (not the top block — question 6).
+#### Phone — not in v1 (Pem 2026-11-17)
+« Too heavy for the phone I have right now. » Neither tab gets a phone layout in v1; at 375 px they only need to not break (CLAUDE.md). The mockup's two phone screens « Carte » and « Temps » are parked. The preview rule (B) is for the phone too.
 
 ### B. The preview rule — « a work number never travels alone »
 
@@ -153,8 +157,8 @@ Three sizes, one component (`WorkChip`, new; built from `WorkThumb` + `ImageLoup
 - **Sweep order** (Pem's first): ① Notes triage (« #2357 · Les mortes marguerites ») ② the ✦ suggestion rows, desktop Journal (phone already has thumb + title; add the hold) ③ Aujourd'hui folds « Attributs modifiés » / « Création » ④ work card « Liens » and sessions lists ⑤ Kaizen works row, « Pour vous », Broadcast, Fiscal, Vault, Share triage, voice-note picker, issue header ⑥ everywhere else in the table above. Each place keeps where its tap goes.
 
 ### C. Fixes to the map found while reading (each its own GO, bug batch)
-1. Œuvres mode ignores the work's address and uses the custodian's card city (#1653 in Marseille instead of Rutali).
-2. The map geocodes city names at runtime although the 8 `place` rows have coordinates; contacts' addresses have no coordinates at all (34 rows) — geocoding stays for them, cached.
+1. Œuvres mode ignores the work's address and uses the custodian's card city (#1653 in Marseille instead of Rutali). **The data is right** (Pem 2026-11-17: a custodian can have several addresses — the work can sit at one that isn't the card's city, as for a commission; custodian, address and place of making are different things). Only the map reads the wrong field: the fix is to place the pin at the work's address (`localisation_address_id`). Small, one function in `WorldMapTab.tsx`.
+2. The map geocodes city names at runtime although the 8 `place` rows have coordinates — **use the coordinates** (Pem: « if they have coordinates, just use coordinates »). Contacts' addresses have no coordinates (34 rows): geocoding stays for them, cached, unless coordinates get stored once (SQL, own OK).
 3. Pins jitter at random (±0.004°) on every load: the same work moves a little each time.
 
 ## Field map — what each part reads (no new field needed for v1)
@@ -173,7 +177,23 @@ Three sizes, one component (`WorkChip`, new; built from `WorkThumb` + `ImageLoup
 | Where now | `Oeuvres.LocalisationID` + `localisation_address_id` → `contact_addresses` (label, ville, pays) | geocoded by city, cached |
 | Thumbnail + title | `Oeuvres.txtImageNameLink` via `thumbUrl()`, `Titre`, `Année`, `Technique`, status | batch call |
 
-## Open questions (for Pem)
+## Answers (Pem 2026-11-17)
+
+1. **Two tabs** (« I confirm two tabs »). Not twice the code; separation wanted for later ideas.
+2. **The Carte stays in Commercial** (« no point doing that now »). Nothing moves in the sidebar.
+3. **Lanes:** « whatever you think fits best, for the first go » → the five lanes, Œuvres and Séances open, the rest folded.
+4. **One gesture: OK.** Hold / hover a number or a thumbnail = the big picture with its caption; the small `WorkRef` card goes.
+5. Undated works: not answered — v1 keeps the « sans date » shelf per period with its count and link (show, don't push).
+6. **Phone: no** (« too heavy for the phone I have right now »). Computer only for both tabs; the preview rule still applies on the phone.
+7. **Works in Ireland:** « almost all » are in Marseille; some may still be in Ireland, unrecorded. **OK** to the no-code route: add an Irish address (e.g. « Tooreeney ») to Pem's own contact card in Contacts, then set it on the works known to be there. Caveat (custody model): Pem's address follows the stage, and « an address picked by hand is kept until the next stage change » — a status change would put the work back at Atelier / Principal. Old gift / move dates: not wanted for now.
+8. **Field GPS as a dotted suggested pin: yes** (« I suppose so »).
+9. **Youth (1997–2000) at the Marseille atelier: correct.**
+10. **When:** Pem thought R4 waited for R8 because it depended on it; it doesn't. Pem: « no, we keep going » — read as: R4 does not wait for R8. To confirm with the lead when scheduling.
+11. **#1653:** Pem sees no problem — right: the data is correct (a custodian's other address, as for a commission). Only the map's pin is wrong (found issue C1).
+
+**Still open:** the timeline tab's **name** (« Temps », « Chronologie »…) and **where it sits in the sidebar** (proposal: Catalogue, after Constellation — the Carte itself does not move).
+
+## Open questions v1 (as asked; answered above)
 
 1. **One screen or two?** Map and timeline as one screen « Carte & temps » (map above, time below, filtering each other) — my pick, it merges instead of adding a tab. Or keep « Carte » and add a separate « Chronologie » tab? Name ideas: « Carte & temps », « Atlas », « Où & quand ».
 2. **Where it lives.** Move it from Commercial to **Catalogue** (after Inventaire, next to Constellation), with Contacts as one of its modes? Or leave the map in Commercial and put only the timeline in Catalogue?
@@ -186,16 +206,29 @@ Three sizes, one component (`WorkChip`, new; built from `WorkThumb` + `ImageLoup
 9. **The Youth period (1997–2000)** has Marseille Atelier as its place in the data. Is that right? (It decides where 2 works sit on the map.)
 10. **When.** R4 is « later » (after R1, R2, R8). The preview rule (B) is small and can go first as a sweep — build B now and A after R8?
 
+## Build v1 (Pem's GO 2026-11-17: « just build the thing you offer »)
+
+_Verified against live code 2026-11-17_ — built in the side worktree, **uncommitted** (the lead lands it). No SQL. Tab name and place were left open by Pem (« whatever fits »): **« Chronologie » / « Timeline »**, in **Catalogue after Constellation**, desktop menu only.
+
+- **Data:** [`app/atelier/time-place-actions.ts`](../../../app/atelier/time-place-actions.ts) `loadTimePlaceData()` — the whole catalogue (few columns, paged), each work's day / year (`workWhen` + « Création » lines), period and place of making (`effectivePlace`, own vs period), sessions (+ GPS), Journal entries / voice notes / note lines as dated marks, `work_order` with out / back dates. One read for both tabs.
+- **Carte** ([`WorldMapTab.tsx`](../../../components/atelier/WorldMapTab.tsx), [`WorldMapInner.tsx`](../../../components/atelier/WorldMapInner.tsx)): third mode **Création** (pins at `place` coordinates, size by count, ring when mostly read from the period, dotted GPS suggestions, Pem's route, period chips, summary line, popup thumbnails link to the work, « Voir dans le temps »); `?mode=creation&from=&to=`. Fixes C1 (work's own address in Œuvres mode) and C3 (stable offsets). C2: the places' coordinates are used in Création; contact addresses still geocode (no coordinates stored).
+- **Chronologie** ([`components/atelier/chronologie/ChronologieTab.tsx`](../../../components/atelier/chronologie/ChronologieTab.tsx), route `/atelier/chronologie`): as in the proposal (A). Span selection by click or drag; panel with works, sessions, Journal days, orders; « Voir sur la carte ». `?place=` from a Carte pin. A work known only by its year counts in a span only when the span holds the whole year (`inSpan`, same on both tabs).
+- **Preview rule (B):** [`WorkChip.tsx`](../../../components/atelier/WorkChip.tsx) (row 40 px / chip 24 px, « Sans titre · year · technique »); [`WorkRef.tsx`](../../../components/atelier/WorkRef.tsx) now shows a 16 px thumbnail + title and opens the **loupe with its caption** (the small card is gone); [`ImageLoupe.tsx`](../../../components/atelier/ImageLoupe.tsx) takes a `caption` and exports `LoupeView`; `fetchWorkPreviews` (batch) + [`lib/work-preview-cache.ts`](../../../lib/work-preview-cache.ts) (one call per render burst).
+- **Swept:** Journal day (✦ rows → row, entry works, Kaizen works, changed attributes); phone « Aujourd'hui » (works, ✦ rows, both folds); voice-note « Relier » (successor of the Notes triage, which R1 step 7 removed); Overview Fil + « Pour vous »; work card sessions + pending sessions; session capture linked work; Broadcast events; Fiscal cost lines; contact works (WorkRef shows the title itself now).
+- **Not swept (follow-up):** Orders / Ventes / new order form (R7 is changing those files), Vault, Production, Share triage and pickers whose rows are buttons (a link can't sit inside), Exhibitions, Pipeline modal, Constellation side panel, floor plan, ⌘K, the phone Fil deck (hold would fight the swipe; it already has thumb + title).
+- **Checks:** `typecheck`, `lint`, `i18n:check` (0 blocking), `atelier:chrome:check` pass. Seen in the browser pane on a dev server (non-admin dev login): Chronologie (all / 6 months, a month picked, the panel, the hover loupe with caption), « Voir sur la carte » → Création with the span (13 works for Aug. 2026), the full Création map (1,167 placed · 11 own place · 1,156 by period · 13 no place), a pin popup → « Voir dans le temps » → Chronologie `?place=`. **Checked in Pem's Chrome (admin « PM », localhost dev server of this worktree, phone = 390 px iframe):** phone « Aujourd'hui » today — the admin fold « Attributs d'œuvres modifiés » shows each work as thumbnail + `#id` + title (« Sans titre · 2026 · huile ») with the changed fields under it; no horizontal scroll (381 px content in a 389 px viewport). The ✦ rows could not show anywhere: **0 open AI suggestions** in the database (81, all decided). Œuvres mode for #1653 not seen (that work is outside the loaded batch). **Page weight** (`npm run build` + `npm run perf:budget`, within budget): `/hub` and `/hub/today` 276.8 / 280 kB gzip (was 271.4 — +5.4 kB for `WorkChip` + the preview cache), `/hub/fil` 206.2 / 210 (was 203.4).
+- **Found while building, fixed with Pem's OK (2026-11-17):** the 9 Rutali drawings (#1617–#1625) were filed by hand in the Tooreeney period. Pem: made at Rutali, « probably done in August 2024 », photographed on return (file names `…_20240915…`). SQL run on the live DB: their « Création » line (Rutali) dated **2024-08, month precision** (`work_creation_step` 49–57), and their period set by hand to **Marseille** (`work_period_override`, 4 → 5). They now sit in August 2024 on the Chronologie.
+
 ## Needs a GO before building
 
-- Pem's GO on this design and the answers above.
-- **No SQL for v1**: everything reads existing tables. Possible later (own OK): a date on gifts / custody moves (question 7), coordinates on `contact_addresses` (stop geocoding by city).
+- ~~Pem's GO to build~~ — given 2026-11-17, v1 built (above), uncommitted.
+- **No SQL for v1**: everything reads existing tables. Possible later (own OK): coordinates on `contact_addresses` (stop geocoding by city). Gift / move dates: not wanted for now.
 - Part B: new `WorkChip` + a batch preview action; the sweep is many small UI edits (i18n for « Sans titre · … » FR + EN).
-- Part A: the map component rework (place coordinates, modes, side panel), the timeline (new), the phone views, the sidebar move; What's new item.
+- Part A: the Carte gains « Création » (place coordinates, side panel, dotted GPS pins) — same tab, same place; the timeline = a new desktop tab; the links between the two; What's new item. No phone layout, no sidebar move.
 - Part C fixes: bug batch, each its own GO.
 
 ## Not in this brief
 
-- The Constellation itself (links between works) — it gains the preview rule only; « where / when » stay on this screen.
+- The Constellation itself (links between works) — it gains the preview rule only; « where / when » stay on the Carte and the timeline tab.
 - Public site maps / timelines (R8).
 - Photographs as an output (RETHINK: « another time »).

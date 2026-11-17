@@ -11,6 +11,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import { thumbUrl } from '@/lib/data'
 import { dismissToast, toast } from '@/lib/ui/toast'
 import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
@@ -201,10 +202,11 @@ export function OverviewFil() {
             {kindLabel ? <span>{kindLabel}</span> : null}
             <span style={{ color: 'var(--tx2)' }}>{[item.author, date(item.at)].filter(Boolean).join(' · ')}</span>
             {item.work ? (
-              <Link href={workHref(item.work.id)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--tx2)', ...ELLIPSIS, maxWidth: 260 }}>
+              // R4: hover = the picture with its caption (the row's thumbnail is already beside it).
+              <WorkRef id={item.work.id} href={workHref(item.work.id)} thumb={false} stopPropagation style={{ color: 'var(--tx2)', ...ELLIPSIS, maxWidth: 260 }}>
                 #{item.work.id}
                 {item.work.title ? ` · ${item.work.title}` : ''}
-              </Link>
+              </WorkRef>
             ) : null}
             {item.newLines ? <span>{item.newLines === 1 ? t('fil_new_line_one') : t('fil_new_lines').replace('{n}', String(item.newLines))}</span> : null}
           </div>
