@@ -55,7 +55,7 @@ Titles (`PAPER_TITLE`):
 
 ### 1.2 Parties (two columns)
 
-Printed: `L'ARTISTE / THE ARTIST` — Pem's name and her « Principal » address from the contact card (city + country if no address is stored). Right column, the role by kind:
+Printed: `L'ARTISTE / THE ARTIST` — Pem's name and Pem's « Principal » address from the contact card (city + country if no address is stored). Right column, the role by kind:
 
 | Kind | Right-column label (printed) |
 |---|---|
@@ -328,8 +328,8 @@ POUR L'ARTISTE / FOR THE ARTIST        POUR LE BÉNÉFICIAIRE / FOR THE RECIPIEN
 ### 5.3 Gift tax — what the recipient meets (informational)
 
 - A *don manuel* is **not taxed while the tax authorities do not know of it**; it becomes known when the recipient declares it, in a later gift or inheritance (**rappel fiscal**, 15 years back), in an audit or a dispute [V: notaires.fr]. Once known, it must be **declared within one month** (online since 1 Jan 2026 in most cases) [V: notaires.fr; search results on the 2026 online obligation]. The **allowances (abattements)** depend on the relationship donor / recipient — for example **100 000 € from a parent to a child**, renewable every 15 years [V: [impots.gouv.fr — dons exonérés](https://www.impots.gouv.fr/particulier/dons-exoneres)]; the page does not list the siblings / nephews / others amounts, to be taken from the current official table [R: CGI art. 779, 777].
-- A gift to a **non-profit / foundation / public body** follows other rules (exemption from gift duties for qualifying bodies, possible tax receipt for the donor) [R: CGI art. 795, 200, 238 bis] — not covered here, and for **Pem as donor** whether a gift of her *own* work gives any deduction is an accountant's question.
-- **If Pem is VAT-registered**, a gift of goods from the business may count as a taxable supply with a small-gift exemption [R: CGI art. 257]; if she is in franchise, nothing. Accountant's question (§6.1).
+- A gift to a **non-profit / foundation / public body** follows other rules (exemption from gift duties for qualifying bodies, possible tax receipt for the donor) [R: CGI art. 795, 200, 238 bis] — not covered here, and for **Pem as donor** whether a gift of Pem's *own* work gives any deduction is an accountant's question.
+- **If Pem is VAT-registered**, a gift of goods from the business may count as a taxable supply with a small-gift exemption [R: CGI art. 257]; if Pem is in franchise, nothing. Accountant's question (§6.1).
 
 ---
 
@@ -358,7 +358,7 @@ The « bon de commande » (the Vente paper) carries **none of these** apart from
 ### 6.3 Droit de suite
 
 - A levy on **resales** of an original graphic or plastic work in France **in which an art-market professional takes part** (seller, buyer or intermediary), at a declining scale from 4 % of the price HT (floor **750 €**, cap **12 500 € per sale** in the sources found), paid by the **seller**, collected by a collecting society (ADAGP / CAA); protection lasts 70 years after death [R: [CPI L122-8](https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006069414), R122-3 s.; summary pages: [ADAGP — droit de suite](https://www.adagp.fr/fr/utilisateur/droit-de-suite) (the page says professionals must declare the resale to ADAGP; no scale shown)]. Sources disagree on the tier breakpoints — check R122-5.
-- **The first sale by the artist is outside it**, as are resales by a private seller with no professional involved. **A sale by Pem, or by a gallery acting for Pem, is a first sale.** So the Vente and Dépôt papers do not owe it. The relevant points for Pem: **registration with the collecting society** if she wants to collect on later resales, and a line in a Vente paper that the buyer is informed that later resales through a professional trigger the right (informational; it is the seller's duty).
+- **The first sale by the artist is outside it**, as are resales by a private seller with no professional involved. **A sale by Pem, or by a gallery acting for Pem, is a first sale.** So the Vente and Dépôt papers do not owe it. The relevant points for Pem: **registration with the collecting society** if Pem wants to collect on later resales, and a line in a Vente paper that the buyer is informed that later resales through a professional trigger the right (informational; it is the seller's duty).
 - The exemption for a seller who bought the work directly from the artist **less than 3 years earlier** at no more than 10 000 € (an older source; confirm) means a gallery that buys outright from Pem and resells quickly may be exempt — a point for the Vente paper to a gallery.
 
 ### 6.4 Reproduction rights and the moral right

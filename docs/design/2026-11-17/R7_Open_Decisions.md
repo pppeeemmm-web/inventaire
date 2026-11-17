@@ -6,6 +6,13 @@
 
 Facts below were read in the live code of this worktree on 2026-11-17 (file named each time). Nothing was clicked or written.
 
+## Pem's answers (2026-11-17, evening) — these win over the recommendations below
+
+- **Q1 gift price → B, with a change:** the work keeps its price and the gift line keeps a reference value (default = the price that day), but **the gift paper never prints it** — Pem: « the recipient should not have a price written on the docket ». The value stays in the app (insurance, estate, Pem's own records); gifts never count as income.
+- **Gift owner → at handover.** The handover is the gift (*don manuel*): the owner changes at « remis », not at « signé »; the gift paper's wording follows (a dated record of the handover). Lawyer to read the wording before the first real gift.
+- **Q2 sending → open.** Pem asked whether option B is legally solid before choosing; answer given in the lead session (below the summary table: « Legal weight of option B »).
+- **Q3 « Confié » → A:** a fifth kind, the work keeps its stage and shows « Confié · chez <artisan> ». SQL still gets its own OK when built.
+
 ## What to decide first
 
 | # | Decision | Why first |
@@ -43,7 +50,7 @@ Facts below were read in the live code of this worktree on 2026-11-17 (file name
 
 **B. Keep the price, and add a « reference value » on the gift line (recommended).**
 - *App / data:* the work keeps `Prix` untouched. Each gift line gets an editable **valeur de référence** (default = the work's price at the time of signing, can be emptied), stored in the existing `work_order_work.insurance_value` — no SQL needed — or a clearer column later if wanted (own OK). The gift paper prints `VALEUR DE RÉFÉRENCE / REFERENCE VALUE` **only when filled**, with a short line « indicative, non contractuelle ». The same per-line field also fixes the loan paper (it prints the list price silently today). Revenue stays out: no payments row, `price_final` null for gifts.
-- *For:* a dated snapshot; works for insurance, museum, estate; Pem chooses per gift whether a figure appears. *Against:* a printed figure is evidence in a tax discussion — the accountant should say which basis (price list, gallery price) to use for her own works. One small form change (gift + loan line value).
+- *For:* a dated snapshot; works for insurance, museum, estate; Pem chooses per gift whether a figure appears. *Against:* a printed figure is evidence in a tax discussion — the accountant should say which basis (price list, gallery price) to use for Pem's own works. One small form change (gift + loan line value).
 - *Reports / Inventory:* label the value column « valeur » for gifts or leave gifts out of revenue-style totals (a few lines each; to verify when built).
 
 **C. Set the price to 0 (the old dialog).**
@@ -52,7 +59,7 @@ Facts below were read in the live code of this worktree on 2026-11-17 (file name
 
 ### Recommendation
 
-**B.** Keep `Prix`; store a per-gift **reference value** on the order line, printed only if Pem fills or keeps it; never write it to income. Ask the accountant one thing: which basis to quote for her own works (and whether she wants a figure on every gift). C is the one option to rule out. Add a note in R7 that Fiscal's move to `work_order` must **exclude `kind = 'gift'`**.
+**B.** Keep `Prix`; store a per-gift **reference value** on the order line, printed only if Pem fills or keeps it; never write it to income. Ask the accountant one thing: which basis to quote for Pem's own works (and whether Pem wants a figure on every gift). C is the one option to rule out. Add a note in R7 that Fiscal's move to `work_order` must **exclude `kind = 'gift'`**.
 
 ### What to settle before the price — the paper's legal shape (from the wording review §5)
 
@@ -161,9 +168,18 @@ SQL (own OK): the kind check and ref letter; the custody check; the destroyed / 
 
 | Question | Recommended | Needs |
 |---|---|---|
-| Gift price | **B** — keep `Prix`; a per-gift reference value on the order line, printed only if filled; gifts never income | Pem's GO; a form field (gift + loan lines); the accountant's view on the basis for her own works |
+| Gift price | **B** — keep `Prix`; a per-gift reference value on the order line, printed only if filled; gifts never income | Pem's GO; a form field (gift + loan lines); the accountant's view on the basis for Pem's own works |
 | Gift paper vs *don manuel* | ask the lawyer: handover-based gift / receipt | a lawyer's read before the first real gift |
-| How papers are sent | **B** — share sheet / download, signed copy uploaded; e-signature only on demand | Pem's GO; a test of `navigator.share` with a file on her phone |
+| How papers are sent | **B** — share sheet / download, signed copy uploaded; e-signature only on demand | Pem's GO; a test of `navigator.share` with a file on Pem's phone |
 | « Confié » | **A** — fifth kind, work keeps its stage, « chez <artisan> » chip | Pem's GO; SQL (own OK) when R7 step 4 / R6 starts |
 
 Not decided here and **not** in this file: Pem's VAT status and the invoice (wording review §6.1–6.2) — they come from the accountant.
+
+## Legal weight of option B (Pem's question, 2026-11-17)
+
+Not legal advice; public rules, to confirm with the lawyer.
+- **A sale or a deposit needs no special form to exist** (Code civil art. 1582–1583: a sale is made by agreement on the thing and the price). The paper is **proof**, not a condition.
+- **Proof in writing is required above 1 500 €** between private persons (art. 1359 and décret n° 80-533). Below that, any evidence works (emails, messages, payment).
+- **A PDF returned by email with a handwritten signature (scan or photo)** is a copy; a reliable copy has the same force as the original (art. 1379). A **simple electronic signature** (typed name, signed in a PDF reader, « bon pour accord ») is valid and admissible (art. 1366–1367), but if the other side disputes it, **Pem must show it is reliable**. Only a **qualified** e-signature (eIDAS) is presumed reliable.
+- **Gift:** a *don manuel* is proven by the handover itself and possession; the paper records it.
+- **In practice:** B is solid for everyday cases (small sales, a friend, a gallery that emails). It is weakest for a **high-value sale** or a **deposit with a gallery** if a dispute arises. There, either both sign **two paper originals** (in person or by post), or use an e-signature service for that one order, or sign the institution's own contract.
