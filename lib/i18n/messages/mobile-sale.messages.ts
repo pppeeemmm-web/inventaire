@@ -134,8 +134,8 @@ export const mobileSaleMessages = defineMessages({
     en: 'Done',
   },
   sale_mobile_done_completed: {
-    fr: 'Paiement complet : l’œuvre est passée en vendu.',
-    en: 'Full payment recorded: the work is now sold.',
+    fr: 'Paiement complet : l’œuvre est passée en vendu. L’argent reste en attente jusqu’à 14 jours après la remise (marquez « Livrée » dans Commandes quand l’acheteur l’emporte).',
+    en: 'Full payment recorded: the work is now sold. The money stays held until 14 days after hand-over (mark « Delivered » in Orders when the buyer takes it).',
   },
   sale_mobile_done_pending: {
     fr: 'Acompte enregistré : la commande est signée et l’œuvre réservée pour l’acheteur.',

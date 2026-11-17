@@ -112,6 +112,18 @@ const CONDITIONS: Record<PaperKind, string> = {
     "L'artisan en assure la garde et l'assurance, à la valeur indiquée, jusqu'à leur retour à l'atelier.",
 }
 
+// Plain draft for the lawyer (LEGAL_POLICY decision 6: a house rule for every sale, whether or not
+// the law requires it for that sale).
+const RETURN_RIGHT_FR = (d: number) =>
+  `Pour toute vente, l'acheteur peut rendre les œuvres, sans avoir à se justifier, dans les ${d} jours qui suivent leur livraison ou leur remise en main propre. ` +
+  `Il prévient l'artiste par écrit avant la fin du délai (courriel, ou le formulaire de retour joint), puis rapporte ou renvoie les œuvres dans leur état d'origine, bien emballées ; ` +
+  `les frais de retour sont à sa charge, sauf accord contraire. L'artiste rembourse la totalité des sommes reçues au plus tard 14 jours après le retour des œuvres, ` +
+  `par le même moyen de paiement. Jusqu'à la fin du délai, l'artiste conserve ces sommes en attente.`
+const RETURN_RIGHT_EN = (d: number) =>
+  `For every sale, the buyer may return the works, without giving a reason, within ${d} days of their delivery or hand-over: notify the artist in writing before the end ` +
+  `of the period (email, or the attached return form), then bring or send the works back in their original condition, well packed, at the buyer's cost unless agreed otherwise. ` +
+  `The artist refunds everything received within 14 days of the works' return, by the same means of payment, and holds that money until the period ends.`
+
 async function workImagePng(key: string | null): Promise<Buffer | null> {
   if (!key) return null
   const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ''
@@ -216,7 +228,7 @@ export async function buildOrderPaper(p: PaperInput): Promise<Buffer> {
       if (p.discountPct) rows.push(['Remise / Discount', `${p.discountPct} %`])
       rows.push(['Prix final / Total', fmtMoney(p.priceFinal, p.currency)])
       if (p.depositPct && p.priceFinal) rows.push([`Acompte / Deposit (${p.depositPct} %)`, fmtMoney(Math.round(p.priceFinal * p.depositPct) / 100, p.currency)])
-      if (p.returnWindowDays) rows.push(['Délai de rétractation / Cooling-off', `${p.returnWindowDays} jours après la livraison`])
+      if (p.returnWindowDays) rows.push(['Délai de retour / Return period', `${p.returnWindowDays} jours après la livraison ou la remise / ${p.returnWindowDays} days after delivery or hand-over`])
     }
     if (p.kind === 'consignment' && p.commissionPct != null) rows.push(['Commission du dépositaire / Commission', `${p.commissionPct} % du prix de vente`])
     if (p.kind === 'consignment' || p.kind === 'loan' || p.kind === 'entrusted') rows.push(['Période / Period', `du ${fmtDate(p.startDate)} au ${fmtDate(p.endDate)}`])
@@ -237,6 +249,14 @@ export async function buildOrderPaper(p: PaperInput): Promise<Buffer> {
     doc.y += 10
     label('CONDITIONS')
     doc.fontSize(9).fillColor(ink).text(CONDITIONS[p.kind], L, doc.y + 4, { width: W, align: 'justify' })
+    // Buyer information (house rule, LEGAL_POLICY decision 6): a 14-day return on every sale.
+    if (p.kind === 'sale' && p.returnWindowDays) {
+      ensure(120)
+      doc.y += 10
+      label(`DROIT DE RETOUR (${p.returnWindowDays} JOURS) / RIGHT OF RETURN (${p.returnWindowDays} DAYS)`)
+      doc.fontSize(9).fillColor(ink).text(RETURN_RIGHT_FR(p.returnWindowDays), L, doc.y + 4, { width: W, align: 'justify' })
+      doc.fontSize(8).fillColor(grey).text(RETURN_RIGHT_EN(p.returnWindowDays), L, doc.y + 3, { width: W, align: 'justify' })
+    }
     if (p.notes) {
       ensure(40)
       doc.y += 10
@@ -252,6 +272,35 @@ export async function buildOrderPaper(p: PaperInput): Promise<Buffer> {
     doc.moveTo(L, sigY + 46).lineTo(L + 200, sigY + 46).lineWidth(0.5).strokeColor('#bbbbbb').stroke()
     label(SIGN_ROLE[p.kind], L + W / 2 + 10, sigY)
     doc.moveTo(L + W / 2 + 10, sigY + 46).lineTo(L + W, sigY + 46).stroke()
+
+    // ── Sale: detachable return form (its own page, to cut off and send back) ──
+    if (p.kind === 'sale' && p.returnWindowDays) {
+      doc.addPage(); doc.y = top
+      doc.fontSize(8).fillColor(grey).text('- - - - - - - - - - - - - - -   à découper / cut here   - - - - - - - - - - - - - - -', L, doc.y, { width: W, align: 'center' })
+      doc.y += 14
+      label('FORMULAIRE DE RETOUR / RETURN FORM')
+      doc.fontSize(9).fillColor(ink).text(
+        `À renvoyer à l'artiste (adresse ci-dessus ou par courriel) dans les ${p.returnWindowDays} jours qui suivent la livraison ou la remise des œuvres. ` +
+        `/ To send to the artist (address above, or by email) within ${p.returnWindowDays} days of delivery or hand-over.`,
+        L, doc.y + 4, { width: W })
+      doc.y += 12
+      const field = (k: string) => {
+        const y = doc.y + 8
+        doc.fontSize(9).fillColor(grey).text(k, L, y, { width: 200 })
+        doc.moveTo(L + 200, y + 10).lineTo(L + W, y + 10).lineWidth(0.5).strokeColor('#bbbbbb').stroke()
+        doc.y = y + 18
+      }
+      doc.fontSize(9).fillColor(ink).text(
+        `Je notifie le retour des œuvres suivantes de la commande ${p.ref} / I give notice of the return of the following works of order ${p.ref} : ` +
+        p.works.map((w) => `#${w.id}${w.title ? ` ${w.title}` : ''}`).join(', '),
+        L, doc.y + 6, { width: W })
+      field('Reçues le / Received on')
+      field('Nom / Name')
+      field('Adresse / Address')
+      field('')
+      field('Date')
+      field('Signature')
+    }
 
     // ── Header + footer on every page ──
     const range = doc.bufferedPageRange()

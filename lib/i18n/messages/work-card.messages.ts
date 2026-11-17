@@ -220,8 +220,8 @@ export const workCardMessages = defineMessages({
     en: 'Where the record stands: Atelier (in progress) → Catalogué (picture to take) → Available (record ready). Tap the next stage to move on.',
   },
   wc_return_window_tt: {
-    fr: 'Délai de rétractation de la vente : l’acheteur peut encore rendre l’œuvre jusqu’à cette date.',
-    en: 'Sale withdrawal period: the buyer can still return the work until this date.',
+    fr: 'Délai de retour de 14 jours (règle de l’atelier, toute vente) : l’acheteur peut encore rendre l’œuvre ; l’argent reste en attente jusqu’à la fin.',
+    en: '14-day return period (studio rule, every sale): the buyer can still return the work; the money stays held until it ends.',
   },
 
   // ── Owner / custodian hover card ──

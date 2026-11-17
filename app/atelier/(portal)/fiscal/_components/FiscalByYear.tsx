@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { fetchIncomeEntries } from '@/lib/sales/income'
+import { MoneyApart } from './MoneyApart'
 
 type Flow = {
   date: string
@@ -24,6 +25,7 @@ type YearRow = { label: string; income: number; expenses: number; count: number;
 export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
   const { t, lang } = useI18n()
   const [flows, setFlows] = useState<Flow[] | null>(null)
+  const [moneyApart, setMoneyApart] = useState({ held: 0, toRefund: 0 })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
       if (cancelled) return
       const err = exp.error?.message ?? inc.error
       if (err) setError(err)
+      setMoneyApart({ held: inc.held, toRefund: inc.toRefund })
       const rows: Flow[] = []
       for (const e of (exp.data ?? []) as { date: string | null; category: string | null; montant_ttc: number | null }[]) {
         const day = e.date?.slice(0, 10)
@@ -124,6 +127,7 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
     <div data-testid="fiscal-by-year" style={{ flex: 1, overflow: 'auto', padding: '28px 32px' }}>
       <div className="t-label" style={{ marginBottom: 4 }}>{t('fiscal_by_year_heading')}</div>
       <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '0 0 16px' }}>{t('fiscal_by_year_hint')}</p>
+      <MoneyApart held={moneyApart.held} toRefund={moneyApart.toRefund} fmtEur={fmtEur} />
       {error ? <p style={{ color: 'var(--rust)', fontSize: 12 }}>{`${t('error_prefix')} ${error}`}</p> : null}
 
       {flows === null ? (

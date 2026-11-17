@@ -11,7 +11,9 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useSearchParams } from 'next/navigation'
 import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
 import { thumbUrl } from '@/lib/data'
-import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, returnSaleOrder, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { returnDaysLeft, returnLastDay, saleMoneyState } from '@/lib/sales/sale-money'
+import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { NewOrderForm, orderErrorText, type NewOrderInitial, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
@@ -244,6 +246,18 @@ export function Orders({ openWork, contacts }: Props) {
     }
   }
 
+  async function runReturn(o: WorkOrderView) {
+    if (!confirm(t('ord_confirm_return'))) return
+    setStepBusy(true); setStepErr(null)
+    try {
+      const res = await returnSaleOrder(o.id)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      await load()
+    } finally {
+      setStepBusy(false)
+    }
+  }
+
   async function runStep(o: WorkOrderView, to: string | 'cancel') {
     if (!confirm(t(to === 'cancel' ? 'ord_confirm_cancel' : 'ord_confirm_step'))) return
     setStepBusy(true); setStepErr(null)
@@ -302,7 +316,13 @@ export function Orders({ openWork, contacts }: Props) {
     )
   }
 
-  const statusText = (o: WorkOrderView) => t(o.status === 'cancelled' ? 'ord_st_cancelled' : stepLabelKey(o.kind, o.status))
+  const statusText = (o: WorkOrderView) => t(o.status === 'cancelled' ? (isReturned(o) ? 'ord_st_returned' : 'ord_st_cancelled') : stepLabelKey(o.kind, o.status))
+  /** Phone card / list: « Retour : N j » while a delivered sale can still come back, then « Définitive ». */
+  const returnTag = (o: WorkOrderView): string | null => {
+    if (o.kind !== 'sale' || o.status !== 'delivered') return null
+    const n = returnDaysLeft(o)
+    return n != null ? t('ord_card_days_left').replace('{n}', String(n)) : saleMoneyState(o) === 'definitive' ? t('ord_card_definitive') : null
+  }
 
   const thumbs = (o: WorkOrderView, size: number, max: number) => (
     <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', minWidth: 0 }}>
@@ -387,7 +407,15 @@ export function Orders({ openWork, contacts }: Props) {
         </div>
 
         <Section label={t('ord_steps')}>
-          {o.status === 'cancelled' && <div style={{ fontSize: 13, color: 'var(--rust)', marginBottom: 6 }}>{`${t('ord_st_cancelled')} · ${fmtDate(o.cancelled_at) ?? ''}`}</div>}
+          {o.status === 'cancelled' && <div style={{ fontSize: 13, color: 'var(--rust)', marginBottom: 6 }}>{`${t(isReturned(o) ? 'ord_st_returned' : 'ord_st_cancelled')} · ${fmtDate(isReturned(o) ? o.returned_at : o.cancelled_at) ?? ''}`}</div>}
+          {o.kind === 'sale' && ['signed', 'deposit_paid', 'paid'].includes(o.status) && (
+            <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 6 }}>{t('ord_return_from_delivery')}</div>
+          )}
+          {o.kind === 'sale' && returnDaysLeft(o) != null && (
+            <div data-testid="order-return-until" style={{ fontSize: 13, color: 'var(--yellow, var(--ac))', marginBottom: 6 }}>
+              {t('ord_return_until').replace('{date}', fmtDate(returnLastDay(o)) ?? '').replace('{n}', String(returnDaysLeft(o)))}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: narrow ? 0 : 0 }}>
             {steps.map((s, i) => {
               const done = i < idx || (i === idx && FINISHED.has(o.status))
@@ -408,7 +436,7 @@ export function Orders({ openWork, contacts }: Props) {
               )
             })}
           </div>
-          {((NEXT[o.kind][o.status] ?? []).length > 0 || CANCEL_FROM[o.kind].includes(o.status)) && (
+          {((NEXT[o.kind][o.status] ?? []).length > 0 || CANCEL_FROM[o.kind].includes(o.status) || canReturn(o)) && (
             <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
               {canPay(o) && (
                 <button type="button" disabled={stepBusy} onClick={() => openPay(o)} className="btn primary" style={{ minHeight: 44 }}>
@@ -421,6 +449,11 @@ export function Orders({ openWork, contacts }: Props) {
                   {stepBusy ? t('ord_working') : t(actionKey(o.kind, to))}
                 </button>
               ))}
+              {canReturn(o) && (
+                <button type="button" disabled={stepBusy} onClick={() => { void runReturn(o) }} className="btn ghost" style={{ minHeight: 44, color: 'var(--rust)' }}>
+                  {t('ord_do_return')}
+                </button>
+              )}
               {CANCEL_FROM[o.kind].includes(o.status) && (
                 <button type="button" disabled={stepBusy} onClick={() => { void runStep(o, 'cancel') }} className="btn ghost" style={{ minHeight: 44, color: 'var(--rust)' }}>
                   {t('ord_do_cancel')}
@@ -501,6 +534,18 @@ export function Orders({ openWork, contacts }: Props) {
                 </>
               )}
             </div>
+            {o.kind === 'sale' && (o.paid_total > 0 || ['paid', 'delivered'].includes(o.status)) && (() => {
+              // House rule (LEGAL_POLICY decision 6): held until delivered + 14 days without return.
+              const state = saleMoneyState(o)
+              const last = returnLastDay(o)
+              const text = state === 'refund'
+                ? (o.paid_total > 0 ? t('ord_money_refund').replace('{amount}', fmtMoney(o.paid_total, o.currency)) : null)
+                : state === 'definitive' ? t('ord_money_definitive_on').replace('{date}', fmtDate(last ? addCalendarDaysIso(last, 1) : o.delivered_at) ?? '')
+                : t('ord_money_held')
+              return text ? (
+                <div data-testid="order-money-state" style={{ marginTop: 8, fontSize: 12, color: state === 'refund' ? 'var(--rust)' : state === 'definitive' ? 'var(--sage)' : 'var(--tx2)' }}>{text}</div>
+              ) : null
+            })()}
             {o.payments.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>{t('ord_payments')}</div>
@@ -604,6 +649,7 @@ export function Orders({ openWork, contacts }: Props) {
             <span style={{ display: 'block', marginTop: 8 }}>{thumbs(o, 36, 5)}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12, color: 'var(--tx3)' }}>
               {stepDots(o)}<span>{statusText(o)}</span>
+              {returnTag(o) && <span data-testid="order-card-return" style={{ marginLeft: 'auto', color: returnDaysLeft(o) != null ? 'var(--yellow, var(--ac))' : 'var(--sage)' }}>{returnTag(o)}</span>}
             </span>
           </button>
         ))}
@@ -625,7 +671,8 @@ export function Orders({ openWork, contacts }: Props) {
           {o.party_place && <span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{o.party_place}</span>}
         </td>
         <td style={{ ...CELL, whiteSpace: 'nowrap' }}>{datesCell(o)}</td>
-        <td style={CELL}>{stepDots(o)}<span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{statusText(o)}</span></td>
+        <td style={CELL}>{stepDots(o)}<span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{statusText(o)}</span>
+          {returnTag(o) && <span style={{ display: 'block', fontSize: 11, color: returnDaysLeft(o) != null ? 'var(--yellow, var(--ac))' : 'var(--sage)' }}>{returnTag(o)}</span>}</td>
         <td style={CELL}>{paperCell(o)}</td>
       </tr>
     )
@@ -676,6 +723,10 @@ export function Orders({ openWork, contacts }: Props) {
 function clearUrlIntent() {
   if (new URLSearchParams(window.location.search).has('new')) window.history.replaceState(null, '', window.location.pathname)
 }
+
+const isReturned = (o: WorkOrderView) => o.kind === 'sale' && o.status === 'cancelled' && !!o.returned_at
+/** « Retour »: a paid sale before delivery, or a delivered one still inside its 14-day period. */
+const canReturn = (o: WorkOrderView) => o.kind === 'sale' && (o.status === 'paid' || (o.status === 'delivered' && returnDaysLeft(o) != null))
 
 const canPay = (o: WorkOrderView) => o.kind === 'sale' && (o.status === 'signed' || o.status === 'deposit_paid')
 const payLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', minWidth: 0 } as const

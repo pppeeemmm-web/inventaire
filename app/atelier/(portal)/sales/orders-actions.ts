@@ -17,6 +17,7 @@ import { buildOrderPaper, PAPER_SLUG, PAPER_TITLE, type PaperParty } from '@/lib
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
+import { saleMoneyState } from '@/lib/sales/sale-money'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
 export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
@@ -69,6 +70,10 @@ export interface WorkOrderView {
   paper_path: string | null
   /** The Pipeline process or exhibition the order came from. */
   process_id: string | null
+  /** Sale: the 14-day return period (house rule, LEGAL_POLICY decision 6), from delivery. */
+  return_window_days: number
+  return_window_starts_at: string | null
+  return_window_skipped: boolean
   works: WorkOrderLineView[]
   papers: WorkOrderPaperView[]
   /** Money received (sale), newest first; counted in Revenue & expenses. */
@@ -87,7 +92,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const { data: orders, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id')
+    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped')
     .order('created_at', { ascending: false })
   if (error) return { error: error.message }
   if (!orders || orders.length === 0) return { ok: true, orders: [] }
@@ -715,6 +720,62 @@ export async function findOrderForWork(oeuvreId: number): Promise<(ProcessOrderL
   return { id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status, party }
 }
 const FINISHED_STATUSES = ['closed', 'delivered', 'handed_over']
+
+// ── Return within the 14-day period (house rule, LEGAL_POLICY decision 6) ─────────────────────
+// « Retour » on a paid sale (before delivery) or a delivered one still inside its period: the sale
+// is cancelled (returned_at stamped, so it reads « Retournée »), the works go back to Pem
+// (« Disponible », owner and holder Pem, history lines) and what was paid shows « à rembourser ».
+// The app moves no money.
+
+export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResult> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { supabase } = g
+  const { data: o, error } = await supabase
+    .from('work_order')
+    .select('id, ref, kind, status, party_id, notes, return_window_days, return_window_starts_at, return_window_skipped')
+    .eq('id', orderId).single()
+  if (error || !o) return { error: error?.message ?? 'Order not found' }
+  if (o.kind !== 'sale' || !['paid', 'delivered'].includes(o.status)) return { error: 'ord_err_step' }
+  if (o.status === 'delivered' && saleMoneyState(o) !== 'held') return { error: 'ord_err_return_closed' }
+
+  const { data: lineRows } = await supabase.from('work_order_work').select('oeuvre_id').eq('order_id', o.id).eq('line_status', 'active')
+  const ids = (lineRows ?? []).map((l) => l.oeuvre_id)
+  const { data: paidRows } = await supabase.from('payments').select('amount').eq('work_order_id', o.id)
+  const paid = (paidRows ?? []).reduce((sum, p) => sum + Number(p.amount), 0)
+  const day = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
+  const line = resolveMessage('fr', 'ord_return_note').replace('{date}', day).replace('{amount}', paid.toLocaleString('fr-FR'))
+
+  const { error: stepErr } = await supabase.from('work_order')
+    .update({ status: 'cancelled', returned_at: new Date().toISOString(), notes: [o.notes, line].filter(Boolean).join('\n') })
+    .eq('id', o.id)
+  if (stepErr) return { error: stepErr.message }
+
+  // Only works still sold / reserved to this buyer come back.
+  const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).in('statusId', [4, 6]).eq('ContactID', o.party_id)
+  const { data: reserved } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('statusId', 4).eq('AcheteurID', o.party_id)
+  const back = [...new Set([...(still ?? []), ...(reserved ?? [])].map((w) => w.OeuvreID))]
+  const moveErr = await moveWorks(supabase, back,
+    { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null },
+    () => ({ statusId: 2, contactId: PEM, localisationId: PEM }))
+  if (moveErr) {
+    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
+    return { error: moveErr }
+  }
+  if (ids.length) {
+    await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
+      .eq('order_id', o.id).eq('line_status', 'active')
+  }
+  // The end-of-period reminder no longer applies.
+  if (o.ref) {
+    await supabase.from('suivi_reminder').update({ lu: true }).like('message', `%vente ${o.ref} %`).eq('lu', false)
+    revalidateTag('reminders')
+  }
+  await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: o.id, oldValue: o.status, newValue: 'returned', metadata: { ref: o.ref, works: back, to_refund: paid } })
+  revalidatePath('/atelier/sales')
+  revalidatePath('/atelier/fiscal')
+  return { ok: true }
+}
 
 export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null; price: number | null }
 

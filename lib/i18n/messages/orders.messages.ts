@@ -173,8 +173,8 @@ export const ordersMessages = defineMessages({
     en: 'A gift is an order: a draft and its deed first, then « Deed signed » and « Handed over » in Orders.',
   },
   ord_reminder_cooling_off: {
-    fr: 'Fin du délai de rétractation — vente {ref} ({works}) : l’acheteur ne peut plus rendre l’œuvre.',
-    en: 'Cooling-off ends — sale {ref} ({works}): the buyer can no longer return the work.',
+    fr: 'Fin du délai de retour — vente {ref} ({works}) : l’acheteur ne peut plus rendre l’œuvre, l’argent devient définitif.',
+    en: 'Return period ends — sale {ref} ({works}): the buyer can no longer return the work, the money becomes definitive.',
   },
   ord_card_intro: {
     fr: 'Depuis la fiche, une sortie est une commande en brouillon : rien ne bouge avant qu’elle soit signée dans Commandes. Un brouillon fait par l’équipe arrive dans le Fil de Pem.',
@@ -214,4 +214,23 @@ export const ordersMessages = defineMessages({
     en: 'The work keeps its stage; it is with the craftsperson until it comes back. Open its order {ref}.',
   },
   ord_line_value_hint: { fr: 'vide = le prix de l’œuvre aujourd’hui.', en: 'empty = the work’s price today.' },
+  // ── 14-day return on every sale, money held until definitive (LEGAL_POLICY decision 6) ──
+  ord_return_note: {
+    fr: 'Retournée le {date} (droit de retour de 14 jours) — œuvres revenues à l’atelier ; {amount} € reçus à rembourser.',
+    en: 'Returned on {date} (14-day return right) — works back at the studio; €{amount} received to refund.',
+  },
+  ord_err_return_closed: { fr: 'Le délai de retour de 14 jours est passé : la vente est définitive.', en: 'The 14-day return period is over: the sale is definitive.' },
+  ord_do_return: { fr: 'Retour (droit de 14 jours)', en: 'Return (14-day right)' },
+  ord_confirm_return: {
+    fr: 'Enregistrer le retour ? La vente est annulée, les œuvres reviennent à l’atelier (Disponible) avec une ligne d’historique, et l’argent reçu est marqué à rembourser — l’application ne vire rien.',
+    en: 'Record the return? The sale is cancelled, the works come back to the studio (Available) with a history line, and the money received is marked to refund — the app moves no money.',
+  },
+  ord_st_returned: { fr: 'Retournée', en: 'Returned' },
+  ord_return_until: { fr: 'Retour possible jusqu’au {date} ({n} j)', en: 'Return possible until {date} ({n} d)' },
+  ord_return_from_delivery: { fr: 'Délai de retour : 14 jours à partir de la livraison ou de la remise.', en: 'Return period: 14 days from delivery or hand-over.' },
+  ord_money_held: { fr: 'Argent en attente — pas encore définitif', en: 'Money held — not definitive yet' },
+  ord_money_definitive_on: { fr: 'Argent définitif depuis le {date} (délai de retour passé)', en: 'Money definitive since {date} (return period over)' },
+  ord_money_refund: { fr: 'À rembourser : {amount} — l’application ne vire rien', en: 'To refund: {amount} — the app moves no money' },
+  ord_card_days_left: { fr: 'Retour : {n} j', en: 'Return: {n} d' },
+  ord_card_definitive: { fr: 'Définitive', en: 'Definitive' },
 })

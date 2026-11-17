@@ -16,6 +16,7 @@ import { buildPivot } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { fetchSalesIncome } from '@/lib/sales/income'
 import { FiscalSales } from './FiscalSales'
+import { MoneyApart } from './MoneyApart'
 import { FiscalByYear } from './FiscalByYear'
 import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from '@/app/atelier/(portal)/fiscal/cost-actions'
 
@@ -157,12 +158,15 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
 
   // Recettes: money received this year — sale orders + payments are the truth, not Oeuvres status.
   const [recettes, setRecettes] = useState(0)
+  // House rule (LEGAL_POLICY decision 6): only definitive money counts; the rest is shown apart.
+  const [moneyApart, setMoneyApart] = useState({ held: 0, toRefund: 0 })
   useEffect(() => {
     let cancelled = false
     void fetchSalesIncome(createClient(), year).then((income) => {
       if (cancelled) return
       if (income.error) console.error('[Fiscal] sales income error:', income.error)
       setRecettes(income.total)
+      setMoneyApart({ held: income.held, toRefund: income.toRefund })
     })
     return () => { cancelled = true }
   }, [year])
@@ -342,6 +346,7 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
             <StatCard label={t('expenses')} value={fmtEur(totalDepenses)} sub={`TTC (${expenses.length})`} />
             <StatCard label="BNC" value={fmtEur(bnc)} sub={regime === 'micro' ? 'Net (abattement 34%)' : 'Réel (CA - Frais)'} />
           </div>
+          <MoneyApart held={moneyApart.held} toRefund={moneyApart.toRefund} fmtEur={fmtEur} />
 
           {/* Thresholds */}
           <div style={{ marginBottom: 24 }}>

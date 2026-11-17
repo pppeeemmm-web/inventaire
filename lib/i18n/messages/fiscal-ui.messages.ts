@@ -103,4 +103,10 @@ export const fiscalUiMessages = defineMessages({
   fiscal_pivot_net: { fr: 'Solde (recettes − dépenses)', en: 'Net (income − expenses)' },
   fiscal_pivot_sales: { fr: 'Ventes', en: 'Sales' },
   fiscal_sales_tab: { fr: 'Ventes', en: 'Sales' },
+  fiscal_money_held: { fr: 'En attente (pas encore définitif) :', en: 'Held (not definitive yet):' },
+  fiscal_money_refund: { fr: 'À rembourser (ventes annulées ou retournées) :', en: 'To refund (cancelled or returned sales):' },
+  fiscal_money_definitive_hint: {
+    fr: 'Les recettes ne comptent que l’argent définitif : la vente est livrée (ou remise en main propre) et son délai de retour de 14 jours est passé sans retour. Jusque-là, l’argent reçu reste en attente. Chaque paiement définitif compte à sa date de paiement.',
+    en: 'Income counts only definitive money: the sale is delivered (or handed over) and its 14-day return period is over with no return. Until then the money received is held. Each definitive payment counts on its payment date.',
+  },
 })
