@@ -77,6 +77,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'orders_values_gift_handover', day: '2026-11-17' },
   { id: 'timeline_map_previews', day: '2026-11-17' },
   { id: 'archive_shelf', day: '2026-11-17' },
   { id: 'orders_everywhere', day: '2026-11-17' },

@@ -16,7 +16,12 @@ export const whatsNewMessages = defineMessages({
     fr: 'Une œuvre part en archive seulement une fois cataloguée (une fiche partielle suffit) : sinon « Archive » reste fermé sur la fiche. En archive, ses tâches ouvertes (Cataloguer, Photographier…) sont mises en pause : elles quittent la Production sans être cochées. Pour la ressortir, choisir « Artiste » puis son étape : En production (les tâches reviennent) ou Disponible si la photo est faite.',
     en: 'A work goes to the archive only once catalogued (a partial record is enough): otherwise « Archive » stays closed on the card. In the archive, its open tasks (Catalogue, Photograph…) are paused: they leave Production without being ticked. To bring it back, choose « Artist » then its stage: In production (the tasks come back) or Available if the photo is done.',
   },
-  // 3.1.49 (2026-11-17) — R4 build v1.
+  // 3.1.49 (2026-11-17) — R4 build v1; R7 values + gift at handover.
+  wn_orders_values_gift_handover_t: { fr: 'Commandes : une valeur par œuvre, le don se fait à la remise', en: 'Orders: a value per work, a gift happens at handover' },
+  wn_orders_values_gift_handover_d: {
+    fr: 'Chaque œuvre d’une commande a sa valeur : valeur d’assurance pour un prêt, prix convenu pour un dépôt, valeur de référence pour un don (jamais imprimée sur l’acte). Un don se fait à la remise : signer l’acte ne change rien, la remise rend le bénéficiaire propriétaire et refait l’acte daté. Les chiffres de l’ancien onglet Ventes sont dans Revenus & dépenses ; changer l’étape d’une œuvre à la main crée une commande en brouillon dans le Fil.',
+    en: 'Each work on an order has its value: insurance value for a loan, agreed price for a deposit, reference value for a gift (never printed on the deed). A gift happens at handover: signing the deed changes nothing, the handover makes the recipient the owner and remakes the dated deed. The old Sales tab figures are in Revenue & expenses; changing a work’s stage by hand makes a draft order in the Fil.',
+  },
   wn_timeline_map_previews_t: { fr: 'Chronologie, carte « Création », et un numéro d’œuvre montre toujours l’œuvre', en: 'Timeline, map « Création », and a work number always shows the work' },
   wn_timeline_map_previews_d: {
     fr: 'Nouvel onglet Chronologie (Catalogue, sur ordinateur) : les œuvres, séances, jours du Journal et commandes dans le temps ; choisir une période ouvre ce qu’elle contient, « Voir sur la carte » passe à la Carte. La Carte gagne le mode Création : où les œuvres ont été faites. Partout où un numéro #1234 apparaît (Journal, Aujourd’hui, Fil, fiche, Broadcast, Revenus & dépenses), il vient avec sa vignette et son titre ; un appui long ou le survol ouvre la grande image avec sa légende.',
