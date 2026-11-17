@@ -66,7 +66,8 @@
 // '3.1.48' (2026-11-17): a destroyed / lost work — card shows the fate, report writes the history; R7 step 2 — every way of starting a sale / deposit / loan / gift makes an order.
 // '3.1.49' (2026-11-17): Archive = the shelf — catalogued first, tasks paused, back out by choice.
 // '3.1.50' (2026-11-17): R7 closes — « Confié » orders, 14-day return on every sale with the money held until definitive; work state follows one rule (WORK_RULES batch 1).
-export const WHATS_NEW_RELEASE = '3.1.50'
+// '3.1.51' (2026-11-17): work rules batch 2 — history kept on save, photo validation asks first, batch edit needs a photo, Audit → Règles.
+export const WHATS_NEW_RELEASE = '3.1.51'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -78,6 +79,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'work_rules_checked', day: '2026-11-17' },
   { id: 'work_state_one_rule', day: '2026-11-17' },
   { id: 'return_14_days_confie', day: '2026-11-17' },
   { id: 'orders_values_gift_handover', day: '2026-11-17' },

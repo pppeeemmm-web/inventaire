@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.51 (2026-11-17) — work rules batch 2.
+  wn_work_rules_checked_t: { fr: 'L’historique ne se perd plus, et la photo validée prévient', en: 'History is no longer lost, and validating a photo warns first' },
+  wn_work_rules_checked_d: {
+    fr: 'Enregistrer une fiche ne fait plus disparaître une ligne d’historique écrite entre-temps. Valider la photo d’une œuvre de l’atelier demande d’abord : elle passera Disponible et sera visible sur le site. La modification en lot refuse « Catalogué » sans photo. Audit → Règles liste les œuvres qui ne suivent pas une règle (vérifié aussi chaque nuit).',
+    en: 'Saving a work card no longer drops a history line written meanwhile. Validating the photo of a studio work asks first: it will become Available and show on the website. Batch edit refuses « Catalogued » without a photo. Audit → Rules lists the works that break a rule (also checked every night).',
+  },
   // 3.1.50 (2026-11-17) — R7 closes: Confié, 14-day return; work state batch 1.
   wn_work_state_one_rule_t: { fr: 'Une seule règle pour l’état d’une œuvre', en: 'One rule for a work’s state' },
   wn_work_state_one_rule_d: {
