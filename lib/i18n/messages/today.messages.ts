@@ -25,5 +25,7 @@ export const todayMessages = defineMessages({
   today_doc_qr: { fr: 'Étiquette QR', en: 'QR label' },
   today_doc_qr_sub: { fr: 'Scanner l’étiquette d’une œuvre', en: 'Scan a work’s label' },
   today_doc_close: { fr: 'Fermer', en: 'Close' },
+  today_bureau: { fr: 'Bureau', en: 'Desk' },
+  today_bureau_sub: { fr: 'Pipeline · Vente · Triage · Contact · Document · Problème', en: 'Pipeline · Sale · Triage · Contact · Document · Issue' },
   today_load_error: { fr: 'Une partie de la journée n’a pas pu se charger.', en: 'Part of the day could not load.' },
 })

@@ -14,6 +14,7 @@ test.describe('Hub desktop redirect', () => {
 
   test('desktop hub opens Atelier overview', async ({ page }) => {
     await page.goto('/hub')
-    await expect(page).toHaveURL(/\/atelier\?tab=overview/, { timeout: 45_000 })
+    // Segment route since the tab split; `?tab=overview` was the old form.
+    await expect(page).toHaveURL(/\/atelier(\/overview|\?tab=overview)/, { timeout: 45_000 })
   })
 })

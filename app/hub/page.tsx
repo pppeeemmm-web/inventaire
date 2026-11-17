@@ -1,9 +1,6 @@
-// Hub home — thin launcher redirecting into Atelier tab rooms.
-// Executive dashboard lives at /atelier/overview (canonical).
-import { HubLauncherClient } from '@/components/hub/HubLauncherClient'
-import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
+// Hub home = the phone « Aujourd'hui » (R2 design: « /hub on the phone shows Aujourd'hui »; the PWA
+// opens here, `start_url`). The former launcher rows live in its « Bureau » fold; a desktop-wide
+// window goes on to /atelier/overview (TodayFrame). Same page as /hub/today.
+export { default } from './today/page'
 
-export default async function HubPage() {
-  const fieldPulse = await getFieldPulseData()
-  return <HubLauncherClient fieldPulse={fieldPulse} />
-}
+export const dynamic = 'force-dynamic'

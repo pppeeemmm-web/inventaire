@@ -2,9 +2,15 @@
 
 // R2 « Aujourd'hui » v1 — light view of the day (docs/design/2026-11-17/PhoneToday.notes.md).
 // Read-only first screen + the sticky input bar; actions open the existing full screens.
+// Streaming (Speed first, rule 2): `TodayFrame` (header, bar) is in the first HTML; each section below
+// is its own component, filled by app/hub/today/page.tsx as its query finishes (Suspense).
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
+import { AccountActions } from '@/components/shared/AccountActions'
 import type { FieldPulseMetric, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
 import type { SeeAgainSlots, SeeAgainWork } from '@/app/atelier/see-again/actions'
 import type { JournalDayEntry } from '@/app/atelier/(portal)/journal/entry-actions'
@@ -53,112 +59,171 @@ function WorkChip({ work }: { work: SeeAgainWork | TodayWork }) {
   )
 }
 
-export function TodayClient({
-  day,
-  metrics,
-  seeAgain,
-  entries,
-  voiceCount,
-  works,
-  partialError,
-}: {
-  day: string
-  metrics: FieldPulseMetric[]
-  seeAgain: SeeAgainSlots | null
-  entries: JournalDayEntry[]
-  voiceCount: number
-  works: TodayWork[]
-  partialError: boolean
-}) {
+/** Former /hub launcher rows (owner 2026-11-17: « Bureau », folded). */
+const BUREAU_ROWS: Array<{ testId: string; emoji: string; labelKey: DictKey; href: string }> = [
+  { testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', href: '/atelier/pipeline' },
+  { testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', href: '/atelier/sale/new' },
+  { testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', href: '/atelier/triage' },
+  { testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', href: '/atelier/capture?mode=card' },
+  { testId: 'hub-field-verb-document', emoji: '✍️', labelKey: 'hub_field_document', href: '/atelier/documents/new' },
+  { testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', href: '/atelier/issue/new' },
+]
+
+export function TodayFrame({ day, children }: { day: string; children: ReactNode }) {
   const { t, lang } = useI18n()
-  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const router = useRouter()
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const [mounted, setMounted] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+
+  useEffect(() => {
+    setMounted(true)
+    // The voice sheet's code, fetched in the background so the tap never waits on it.
+    void import('@/components/shared/VoiceNoteSheet')
+  }, [])
+  // Phone page: a desktop-wide window goes on to Overview (as the old /hub launcher did).
+  useEffect(() => {
+    if (mounted && !narrow) router.replace(atelierTabHref('overview'))
+  }, [mounted, narrow, router])
 
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
-  const summary = t('today_summary')
-    .replace('{e}', String(entries.length))
-    .replace('{w}', String(works.length))
-    .replace('{v}', String(voiceCount))
-  const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px 4px' }}>
+    <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: 'hidden', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
+      {/* Right padding keeps 📅 clear of the floating signed-in badge (LoggedInBar). */}
+      <header style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 48px 4px 16px' }}>
         <Link href="/atelier" aria-label={t('today_menu')} style={{ minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 20 }}>☰</Link>
         <h1 style={{ fontSize: 22, margin: 0, flex: 1, textTransform: 'capitalize' }}>{date}</h1>
         <Link href="/atelier/journal" aria-label={t('today_days')} style={{ minWidth: 44, minHeight: 44, display: 'grid', placeItems: 'center', color: 'var(--tx)', textDecoration: 'none', fontSize: 18 }}>📅</Link>
       </header>
-      <p style={{ ...muted, padding: '0 16px 8px' }}>{summary}</p>
 
-      <nav style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', padding: '0 16px 12px', fontSize: 13 }}>
-        {metrics.map((m) => (
-          <Link key={m.key} href={m.href} style={{ minHeight: 32, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: m.count === 0 ? 'var(--tx3)' : m.tone === 'urgent' ? 'var(--rust)' : 'var(--tx)' }}>
-            <b>{m.count}</b>
-            {t(METRIC_LABELS[m.key])}
+      {children}
+
+      <details className="pem-fold" data-testid="hub-today-bureau" style={{ ...section }}>
+        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <span style={{ fontSize: 14, color: 'var(--tx2)' }}>{t('today_bureau')}</span>
+          <span style={{ fontSize: 11, color: 'var(--tx3)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('today_bureau_sub')}</span>
+        </summary>
+        {BUREAU_ROWS.map((row) => (
+          <Link key={row.testId} href={row.href} data-testid={row.testId} style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--bd)', color: 'var(--tx)', textDecoration: 'none', fontSize: 15 }}>
+            <span aria-hidden="true" style={{ width: 22, textAlign: 'center' }}>{row.emoji}</span>
+            {t(row.labelKey)}
           </Link>
         ))}
-      </nav>
-
-      {partialError ? <p style={{ ...muted, padding: '0 16px 12px', color: 'var(--rust)' }}>{t('today_load_error')}</p> : null}
-
-      {seeAgain && (seeAgain.then || seeAgain.alone || seeAgain.close) ? (
-        <section style={section}>
-          <h2 style={heading}>{t('today_see_again')}</h2>
-          {seeAgain.then ? (
-            <Link href={`/atelier/journal?day=${seeAgain.then.day}`} style={{ display: 'block', color: 'var(--tx)', textDecoration: 'none', fontSize: 14, lineHeight: 1.4, minHeight: 44 }}>
-              <span style={{ color: 'var(--tx3)' }}>{t(seeAgain.then.sameWeek ? 'sa_then_week' : 'sa_then_older')}</span>
-              <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {seeAgain.then.snippet}
-              </span>
-            </Link>
-          ) : seeAgain.alone ? (
-            <WorkChip work={seeAgain.alone} />
-          ) : seeAgain.close ? (
-            <div style={{ display: 'grid', gap: 6 }}>
-              <WorkChip work={seeAgain.close.a} />
-              <WorkChip work={seeAgain.close.b} />
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section style={section}>
-        <h2 style={heading}>{t('today_works')}</h2>
-        {works.length ? (
-          <div style={{ display: 'grid', gap: 6 }}>{works.map((w) => <WorkChip key={w.id} work={w} />)}</div>
-        ) : (
-          <p style={muted}>{t('today_works_empty')}</p>
-        )}
-      </section>
-
-      <section style={section}>
-        <h2 style={heading}>{t('today_entries')}</h2>
-        {entries.length ? (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
-            {entries.map((e) => (
-              <li key={e.id} style={{ fontSize: 14, lineHeight: 1.45 }}>
-                <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
-                  {time(e.created_at)}
-                  {' · '}
-                  {e.author}
-                  {e.voiceNoteId ? <>{' · '}{t('today_voice_note')}</> : null}
-                </span>
-                <br />
-                {e.body.length > 220 ? `${e.body.slice(0, 220)}…` : e.body}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p style={muted}>{t('today_entries_empty')}</p>
-        )}
-        <Link href="/atelier/journal?today=1" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
-          {t('today_open_full')}
-        </Link>
-      </section>
+        <AccountActions compact style={{ justifyContent: 'center', marginTop: 12 }} />
+      </details>
 
       <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" />
 
       {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
     </div>
+  )
+}
+
+/** Grey bars while a section's query runs (fixed heights: nothing jumps when it arrives). */
+export function TodaySkeleton({ rows = 2 }: { rows?: number }) {
+  return (
+    <div aria-hidden="true" style={{ ...section, display: 'grid', gap: 8 }}>
+      {Array.from({ length: rows }, (_, i) => (
+        <span key={i} style={{ display: 'block', height: i === 0 ? 12 : 44, width: i === 0 ? '40%' : '100%', borderRadius: 6, background: 'var(--bg2)' }} />
+      ))}
+    </div>
+  )
+}
+
+export function TodayLoadError() {
+  const { t } = useI18n()
+  return <p style={{ ...muted, padding: '0 16px 12px', color: 'var(--rust)' }}>{t('today_load_error')}</p>
+}
+
+export function TodaySummary({ entries, works, voices }: { entries: number; works: number; voices: number }) {
+  const { t } = useI18n()
+  const summary = t('today_summary').replace('{e}', String(entries)).replace('{w}', String(works)).replace('{v}', String(voices))
+  return <p data-testid="hub-today-summary" style={{ ...muted, padding: '0 16px 8px' }}>{summary}</p>
+}
+
+export function TodayPulse({ metrics }: { metrics: FieldPulseMetric[] }) {
+  const { t } = useI18n()
+  return (
+    <nav data-testid="hub-field-pulse" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', padding: '0 16px 12px', fontSize: 13 }}>
+      {metrics.map((m) => (
+        <Link key={m.key} href={m.href} style={{ minHeight: 32, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: m.count === 0 ? 'var(--tx3)' : m.tone === 'urgent' ? 'var(--rust)' : 'var(--tx)' }}>
+          <b>{m.count}</b>
+          {t(METRIC_LABELS[m.key])}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+export function TodaySeeAgain({ seeAgain }: { seeAgain: SeeAgainSlots }) {
+  const { t } = useI18n()
+  if (!seeAgain.then && !seeAgain.alone && !seeAgain.close) return null
+  return (
+    <section data-testid="hub-today-see-again" style={section}>
+      <h2 style={heading}>{t('today_see_again')}</h2>
+      {seeAgain.then ? (
+        <Link href={`/atelier/journal?day=${seeAgain.then.day}`} style={{ display: 'block', color: 'var(--tx)', textDecoration: 'none', fontSize: 14, lineHeight: 1.4, minHeight: 44 }}>
+          <span style={{ color: 'var(--tx3)' }}>{t(seeAgain.then.sameWeek ? 'sa_then_week' : 'sa_then_older')}</span>
+          <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {seeAgain.then.snippet}
+          </span>
+        </Link>
+      ) : seeAgain.alone ? (
+        <WorkChip work={seeAgain.alone} />
+      ) : seeAgain.close ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <WorkChip work={seeAgain.close.a} />
+          <WorkChip work={seeAgain.close.b} />
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+export function TodayWorks({ works }: { works: TodayWork[] }) {
+  const { t } = useI18n()
+  return (
+    <section data-testid="hub-today-works" style={section}>
+      <h2 style={heading}>{t('today_works')}</h2>
+      {works.length ? (
+        <div style={{ display: 'grid', gap: 6 }}>{works.map((w) => <WorkChip key={w.id} work={w} />)}</div>
+      ) : (
+        <p style={muted}>{t('today_works_empty')}</p>
+      )}
+    </section>
+  )
+}
+
+export function TodayEntries({ entries }: { entries: JournalDayEntry[] }) {
+  const { t, lang } = useI18n()
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  return (
+    <section data-testid="hub-today-entries" style={section}>
+      <h2 style={heading}>{t('today_entries')}</h2>
+      {entries.length ? (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+          {entries.map((e) => (
+            <li key={e.id} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+              <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
+                {time(e.created_at)}
+                {' · '}
+                {e.author}
+                {e.voiceNoteId ? <>{' · '}{t('today_voice_note')}</> : null}
+              </span>
+              <br />
+              {e.body.length > 220 ? `${e.body.slice(0, 220)}…` : e.body}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p style={muted}>{t('today_entries_empty')}</p>
+      )}
+      <Link href="/atelier/journal?today=1" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
+        {t('today_open_full')}
+      </Link>
+    </section>
   )
 }

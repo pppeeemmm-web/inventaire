@@ -37,14 +37,14 @@
 | Path | Purpose |
 |------|---------|
 | `/login` | Sign-in; `?next=` return path after success |
-| `/login/reset-password` | Set a new password: from the emailed reset link (via `/auth/callback?next=`), or **Change password** for a signed-in email account. Sign out / Change password: [`AccountActions`](components/shared/AccountActions.tsx) in the Atelier header (desktop + phone drawer) and at the bottom of `/hub`; Change password hidden for Google-only accounts (`app_metadata.providers` without `email`); Sign out = `signOut()` + full load of `/login` |
+| `/login/reset-password` | Set a new password: from the emailed reset link (via `/auth/callback?next=`), or **Change password** for a signed-in email account. Sign out / Change password: [`AccountActions`](components/shared/AccountActions.tsx) in the Atelier header (desktop + phone drawer) and in the Bureau fold of `/hub`; Change password hidden for Google-only accounts (`app_metadata.providers` without `email`); Sign out = `signOut()` + full load of `/login` |
 | `/auth/callback` | Supabase OAuth callback |
 
 ### Team (login required — see middleware)
 
 | Path | Purpose |
 |------|---------|
-| `/hub` | Executive dashboard: stats, feeds (`system_log` audit rows + `studio_task` suggestions), tiles into Atelier & public site |
+| `/hub`, `/hub/today` | **Phone « Aujourd'hui »** (R2, [design](docs/design/2026-11-17/PhoneToday.notes.md)), outside the Atelier shell: header (☰ → `/atelier`, date, 📅 days list), summary, pulse, « À revoir » (one item), works of the day, writings + notes of the day, **Bureau** fold (Pipeline · Vente · Triage · Contact · Document · Problème + account actions), shared [`PhoneInputBar`](components/shared/PhoneInputBar.tsx). Streams: header + bar first, each section as its query finishes (Suspense, [`app/hub/today/page.tsx`](app/hub/today/page.tsx)). Width ≥ 768 px → `/atelier/overview`. The old launcher ([`HubLauncherClient`](components/hub/HubLauncherClient.tsx)) is no longer routed. |
 | `/atelier` | Redirect hub: bare `/atelier` → `/atelier/overview`; legacy `?tab=<id>` → `/atelier/<id>` (other query params preserved, e.g. `?contact=`); `?map=<uuid>` → `/atelier/constellation?map=`; see §3 |
 | `/atelier/overview` | **Slice 3B — Vue d’ensemble** (`routeTab=overview`); panel [`OverviewTab.tsx`](../components/atelier/overview/OverviewTab.tsx) |
 | `/atelier/map` | **Slice 3B — Carte** (`routeTab=map`; sidebar Commercial since 2026-11-02); [`WorldMapTab.tsx`](../components/atelier/WorldMapTab.tsx) |

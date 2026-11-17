@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Hub + atelier narrow flows. Hub uses Ring B.1 field launcher (see hub-field-launcher.spec.ts).
+ * Hub + atelier narrow flows. Hub = phone « Aujourd'hui » (R2, see hub-field-launcher.spec.ts).
  * Requires authenticated session — same as other ATELIER_E2E tests.
  */
 test.describe('Hub mobile + atelier narrow', () => {
@@ -12,15 +12,16 @@ test.describe('Hub mobile + atelier narrow', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('hub field launcher is visible on small viewport', async ({ page }) => {
+  test('hub today page is visible on small viewport', async ({ page }) => {
     await page.goto('/hub')
-    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByTestId('hub-field-verb-pipeline')).toBeVisible()
+    await expect(page.getByTestId('hub-today-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('phone-input-bar')).toBeVisible()
   })
 
-  test('pipeline field row opens pipeline tab', async ({ page }) => {
+  test('pipeline row in Bureau opens pipeline tab', async ({ page }) => {
     await page.goto('/hub')
-    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('hub-today-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('hub-today-bureau').locator('summary').click()
     await page.getByTestId('hub-field-verb-pipeline').click()
     await expect(page).toHaveURL(/\/atelier\/pipeline/)
   })
