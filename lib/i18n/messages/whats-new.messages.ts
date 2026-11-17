@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.50 (2026-11-17) — R7 closes: Confié, 14-day return.
+  wn_return_14_days_confie_t: { fr: 'Retour de 14 jours sur chaque vente, et les commandes « Confié »', en: '14-day return on every sale, and « Entrusted » orders' },
+  wn_return_14_days_confie_d: {
+    fr: 'Chaque vente a 14 jours de retour à partir de la livraison (ou de la remise en main propre) : la commande, la fiche et le téléphone montrent les jours restants. L’argent reçu reste « en attente » jusqu’à la fin du délai ; les totaux de l’année dans Revenus & dépenses ne comptent que l’argent définitif. « Retour » annule la vente, ramène les œuvres à l’atelier et indique le montant à rembourser (l’application ne vire rien). Le bon de commande porte le droit de retour et un formulaire à découper. Nouveau type de commande « Confié » : une œuvre chez un encadreur, un restaurateur ou un photographe garde son étape et affiche « chez … » jusqu’à son retour.',
+    en: 'Every sale has 14 days to return from delivery (or handover in person): the order, the work card and the phone show the days left. Money received stays « held » until the period ends; the year totals in Revenue & expenses count only definitive money. « Return » cancels the sale, brings the works back to the studio and shows the amount to refund (the app moves no money). The purchase order carries the return right and a cut-off form. New order kind « Entrusted »: a work at a framer, restorer or photographer keeps its stage and shows « at … » until it comes back.',
+  },
   // 3.1.49 (2026-11-17) — Archive = the shelf (archive_shelf.sql).
   wn_archive_shelf_t: { fr: 'Archive : on range, on peut ressortir', en: 'Archive: put away, and back out when you want' },
   wn_archive_shelf_d: {
