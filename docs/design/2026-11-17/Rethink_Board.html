@@ -1,0 +1,244 @@
+<title>Rethink Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one row per R — name + state on the left, a step bar, then what is left and who it waits on; steps folded. */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1d1c1a; --ink2:#5d5a54; --ink3:#8c877f; --line:#e2dfd8;
+  --accent:#a4502f;
+  --done:#4f7a4a; --run:#3e6a99; --you:#c08a1e; --todo:#d6d2ca; --park:#b9b3a8;
+  --display:'Instrument Serif',Georgia,'Times New Roman',serif;
+  --body:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171614; --panel:#201f1c; --ink:#ecebe7; --ink2:#b4b0a8; --ink3:#857f76; --line:#34322e;
+  --accent:#d27a55; --done:#7fae78; --run:#78a3d1; --you:#e0ad48; --todo:#3c3a35; --park:#5a564f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171614; --panel:#201f1c; --ink:#ecebe7; --ink2:#b4b0a8; --ink3:#857f76; --line:#34322e;
+  --accent:#d27a55; --done:#7fae78; --run:#78a3d1; --you:#e0ad48; --todo:#3c3a35; --park:#5a564f; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--display);font-weight:400;font-size:40px;line-height:1.05;margin:0;text-wrap:balance}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:65ch}
+.meta{font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:8px;border-radius:2px;display:inline-block}
+.s-done{background:var(--done)}.s-run{background:var(--run)}.s-you{background:var(--you)}.s-todo{background:var(--todo)}.s-park{background:var(--park);background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.35) 3px 5px)}
+.you-box{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--you);border-radius:6px;padding:14px 16px}
+.you-box h2,.docs h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 8px}
+.you-box ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.you-box b{font-weight:600}
+.board{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.r{display:grid;grid-template-columns:200px minmax(0,1fr);gap:8px 20px;padding:16px;border-top:1px solid var(--line)}
+.r:first-child{border-top:0}
+.id{display:flex;flex-direction:column;gap:6px;min-width:0}
+.code{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.name{font-family:var(--display);font-size:22px;line-height:1.1}
+.pill{align-self:flex-start;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid currentColor}
+.p-closed{color:var(--done)}.p-you{color:var(--you)}.p-run{color:var(--run)}.p-next{color:var(--ink3)}
+.main{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bar{display:flex;gap:3px;height:12px}
+.bar i{flex:1;border-radius:2px}
+.count{font-family:var(--mono);font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.left{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.left li{display:flex;gap:8px;align-items:baseline}
+.who{flex:0 0 auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;padding:1px 6px;border-radius:3px}
+.w-you{background:color-mix(in srgb,var(--you) 22%,transparent);color:var(--ink)}
+.w-me{background:color-mix(in srgb,var(--run) 22%,transparent);color:var(--ink)}
+.w-park{background:color-mix(in srgb,var(--park) 30%,transparent);color:var(--ink2)}
+details{font-size:13px;color:var(--ink2)}
+summary{cursor:pointer;color:var(--ink2);font-size:12px}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.steps{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 16px}
+.steps li{display:flex;gap:8px;align-items:baseline}
+.steps .sw{flex:0 0 auto;transform:translateY(-1px)}
+code,.ref{font-family:var(--mono);font-size:12px}
+.docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.docs>div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.docs h3{margin:0 0 4px;font-size:13px;font-weight:600}
+.docs p{margin:0;color:var(--ink2);font-size:13px}
+@media (max-width:640px){.r{grid-template-columns:1fr}.id{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px}h1{font-size:32px}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Rethink Board</h1>
+    <p class="sub">Every R of the rethink, step by step. Built means on <code>main</code>; each R stays open only for what waits on you. Updated by the lead session at each landing.</p>
+    <p class="meta">Updated 2026-11-17 · main = origin + 5 local commits (R6 notes, R7 build 1, old-notes preview) · What's new 3.1.46</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="sw s-done"></i>Built</span>
+    <span><i class="sw s-run"></i>Being built now</span>
+    <span><i class="sw s-you"></i>Waits on you</span>
+    <span><i class="sw s-todo"></i>Not started</span>
+    <span><i class="sw s-park"></i>Parked</span>
+  </div>
+
+  <section class="you-box" aria-labelledby="you-h">
+    <h2 id="you-h">Waiting on you</h2>
+    <ol>
+      <li><b>R1 · Old notes → lines:</b> the preview is ready (98 lines across 96 works). GO to write them?</li>
+      <li><b>R1 / R2 · Phone checks:</b> Aujourd'hui on 4G, a Journal day with a voice note and « Relier… », the Fil rows on Overview, one sign-out.</li>
+      <li><b>R2 · Inspiration photo:</b> SQL GO.</li>
+      <li><b>R2 · Servers in Stockholm, next to the database:</b> GO.</li>
+      <li><b>R4:</b> 10 questions in the brief.</li>
+      <li><b>R7:</b> how papers are sent, a gift's price, a lawyer / accountant read of the paper wording.</li>
+      <li><b>R8:</b> look decisions A (big painting vs true-scale wall), then B (a work's page), C (landing), D (one name).</li>
+    </ol>
+  </section>
+
+  <main class="board">
+
+    <article class="r">
+      <div class="id"><span class="code">R1</span><span class="name">Inputs → outputs</span><span class="pill p-you">Built · your checks</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R1: 9 of 10 steps built, 1 waits on you">
+          <i class="s-done" title="Brief"></i><i class="s-done" title="Swipe deck"></i><i class="s-done" title="SQL: lines, ideas, feed log"></i><i class="s-done" title="The Fil"></i><i class="s-done" title="Audit « Retirés du Fil »"></i><i class="s-done" title="Idées"></i><i class="s-done" title="Work-note lines, Overview Fil, Pour vous"></i><i class="s-done" title="Quieter ✦"></i><i class="s-done" title="Voice notes in the Journal"></i><i class="s-you" title="Old notes → lines (GO to write)"></i>
+        </div>
+        <span class="count">9 / 10 built · pushed</span>
+        <ul class="left">
+          <li><span class="who w-you">You</span>GO to write the old notes as lines; your look on the phone as admin.</li>
+          <li><span class="who w-you">You</span>Storing the ✦ match score needs SQL (optional).</li>
+          <li><span class="who w-me">Me</span>Run the AI linking script once with the quieter settings.</li>
+        </ul>
+        <details><summary>Steps</summary>
+          <ul class="steps">
+            <li><i class="sw s-done"></i>Brief, all questions answered</li>
+            <li><i class="sw s-done"></i>Swipe deck (← discard, → keep, 6 s undo)</li>
+            <li><i class="sw s-done"></i>SQL: note lines, idea weight + maturity, feed log</li>
+            <li><i class="sw s-done"></i>The Fil, Pem's sorting deck</li>
+            <li><i class="sw s-done"></i>Audit « Retirés du Fil » + Rappeler</li>
+            <li><i class="sw s-done"></i>Idées: Petite / Recherche, Graine · Pousse · Mûre</li>
+            <li><i class="sw s-done"></i>Work notes as lines, Fil on Overview, « Pour vous »</li>
+            <li><i class="sw s-done"></i>Quieter ✦ (closest work + idea)</li>
+            <li><i class="sw s-done"></i>Voice notes in the Journal, Notes screen gone</li>
+            <li><i class="sw s-you"></i>Old notes → lines (preview ready)</li>
+          </ul>
+          <p class="ref">docs/design/2026-11-17/R1_InputsFeed.notes.md</p>
+        </details>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R2</span><span class="name">Phone terminal</span><span class="pill p-you">Built · your checks</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R2: 8 built, 1 being built, 3 wait on you, 1 parked">
+          <i class="s-done" title="Design v3"></i><i class="s-done" title="Aujourd'hui page"></i><i class="s-done" title="Input bar"></i><i class="s-done" title="Hub opens on Aujourd'hui"></i><i class="s-done" title="À revoir actions"></i><i class="s-done" title="Œuvre + Vocal sheets"></i><i class="s-done" title="Days, ✦ rows, folds, phone menu"></i><i class="s-done" title="Speed safeguards"></i><i class="s-run" title="One language per page (JS)"></i><i class="s-you" title="4G measure on your phone"></i><i class="s-you" title="Inspiration photo (SQL GO)"></i><i class="s-you" title="Servers in Stockholm (GO)"></i><i class="s-park" title="Team's phone"></i>
+        </div>
+        <span class="count">8 / 13 built · pushed · 1 running</span>
+        <ul class="left">
+          <li><span class="who w-me">Me</span>Ship one language per page, not both (−141 kB gzip): running.</li>
+          <li><span class="who w-you">You</span>4G measure on your phone; Inspiration photo (SQL GO); Stockholm servers (GO).</li>
+          <li><span class="who w-park">Parked</span>The team's phone.</li>
+        </ul>
+        <details><summary>Steps</summary>
+          <ul class="steps">
+            <li><i class="sw s-done"></i>Design v3, your 5 answers</li>
+            <li><i class="sw s-done"></i>« Aujourd'hui » light page, streamed</li>
+            <li><i class="sw s-done"></i>One input bar on every phone screen</li>
+            <li><i class="sw s-done"></i>Hub opens on Aujourd'hui, « Bureau » fold</li>
+            <li><i class="sw s-done"></i>« À revoir » actions, « Plus tard »</li>
+            <li><i class="sw s-done"></i>Œuvre and Vocal sheets</li>
+            <li><i class="sw s-done"></i>‹ › days, ✦ rows, folds, phone menu</li>
+            <li><i class="sw s-done"></i>Speed: cached copy, parallel reads, JS budget</li>
+            <li><i class="sw s-run"></i>One language per page</li>
+            <li><i class="sw s-you"></i>4G measure on your phone</li>
+            <li><i class="sw s-you"></i>Inspiration photo (SQL GO)</li>
+            <li><i class="sw s-you"></i>Servers in Stockholm (GO)</li>
+            <li><i class="sw s-park"></i>Team's phone</li>
+          </ul>
+          <p class="ref">docs/design/2026-11-17/PhoneToday.notes.md</p>
+        </details>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R3</span><span class="name">Work card</span><span class="pill p-closed">Closed</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R3: 3 of 3 built"><i class="s-done" title="Card re-laid out"></i><i class="s-done" title="Objet"></i><i class="s-done" title="Phone recording screen"></i></div>
+        <span class="count">3 / 3 built · closed 2026-11-17</span>
+        <ul class="left"><li><span class="who w-you">You</span>Leftovers in TODO 22 (place dates SQL).</li></ul>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R4</span><span class="name">Timeline, map, previews</span><span class="pill p-you">Drafted · your answers</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R4: drafted, questions wait on you"><i class="s-done" title="Brief + mockup"></i><i class="s-you" title="10 questions"></i><i class="s-todo" title="Build"></i><i class="s-todo" title="Build"></i><i class="s-todo" title="Build"></i></div>
+        <span class="count">Brief + mockup done · build not started</span>
+        <ul class="left"><li><span class="who w-you">You</span>10 questions in the brief.</li></ul>
+        <details><summary>Steps</summary><p class="ref">docs/design/2026-11-17/R4_TimelineMap.notes.md · R4_TimelineMap.mockup.html</p></details>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R5</span><span class="name">Slideshow</span><span class="pill p-closed">Closed</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R5: built"><i class="s-done"></i><i class="s-done"></i><i class="s-done"></i></div>
+        <span class="count">Built 2026-11-15 · GIF / frames export, QR labels</span>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R6</span><span class="name">Exhibitions &amp; events, editions</span><span class="pill p-next">Drafted · after R7</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R6: drafted and answered, build not started"><i class="s-done" title="Brief + mockup"></i><i class="s-done" title="Your answers, round 1"></i><i class="s-done" title="Round 2 + mockup"></i><i class="s-todo" title="Build"></i><i class="s-todo" title="Build"></i><i class="s-todo" title="Build"></i></div>
+        <span class="count">Design answered · build waits on R7's orders</span>
+        <ul class="left"><li><span class="who w-me">Me</span>Build on the R7 orders model, with the « Confié » kind, once R7's old entry points have moved.</li></ul>
+        <details><summary>Steps</summary><p class="ref">docs/design/2026-11-17/R6_Events.notes.md · R6_Events.mockup.html</p></details>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R7</span><span class="name">Orders and their papers</span><span class="pill p-run">Building</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R7: 2 built, 3 to do, 2 wait on you">
+          <i class="s-done" title="Brief + answers"></i><i class="s-done" title="Commandes + papers (local)"></i><i class="s-todo" title="Move old entry points"></i><i class="s-todo" title="Payments: Encaisser"></i><i class="s-todo" title="Menu: Business / Commandes"></i><i class="s-you" title="Drop old tables (your OK)"></i><i class="s-you" title="Paper wording read"></i>
+        </div>
+        <span class="count">2 / 7 · build 1 committed locally</span>
+        <ul class="left">
+          <li><span class="who w-me">Me</span>Next: move the work card « Don… », Pipeline, Exhibitions and the phone sale onto the new orders.</li>
+          <li><span class="who w-you">You</span>How papers are sent; a gift's price; a lawyer / accountant read of the wording.</li>
+        </ul>
+        <details><summary>Steps</summary>
+          <ul class="steps">
+            <li><i class="sw s-done"></i>Brief, your answers, mock orders tested</li>
+            <li><i class="sw s-done"></i>« Commandes », create form, steps, papers in the Vault</li>
+            <li><i class="sw s-todo"></i>Old entry points onto the new orders</li>
+            <li><i class="sw s-todo"></i>« Encaisser » payments in Revenus &amp; dépenses</li>
+            <li><i class="sw s-todo"></i>Menu: Commercial → Business, Ventes → Commandes</li>
+            <li><i class="sw s-you"></i>Drop the old order tables (your OK)</li>
+            <li><i class="sw s-you"></i>Paper wording read</li>
+          </ul>
+          <p class="ref">docs/design/2026-11-17/R7_Orders.notes.md</p>
+        </details>
+      </div>
+    </article>
+
+    <article class="r">
+      <div class="id"><span class="code">R8</span><span class="name">Public site</span><span class="pill p-run">Building</span></div>
+      <div class="main">
+        <div class="bar" aria-label="R8: assessed, first batch running, look decisions wait on you">
+          <i class="s-done" title="Assessment"></i><i class="s-run" title="First batch (6 fixes)"></i><i class="s-you" title="Look decisions A–G"></i><i class="s-todo" title="Big view"></i><i class="s-todo" title="One page per work"></i><i class="s-todo" title="Landing"></i><i class="s-todo" title="FR / EN on the server"></i><i class="s-todo" title="Carnet (SQL GO)"></i>
+        </div>
+        <span class="count">1 / 8 · first batch running</span>
+        <ul class="left">
+          <li><span class="who w-me">Me</span>First batch: /works text card, faster /works, About readable by search, link previews, captions + enquiry reasons, dead settings.</li>
+          <li><span class="who w-you">You</span>Look decisions A → D before the big view, a work's page and the landing.</li>
+        </ul>
+        <details><summary>Steps</summary><p class="ref">docs/design/2026-11-17/R8_SiteAssessment.notes.md · R8_SiteLooks.html</p></details>
+      </div>
+    </article>
+
+  </main>
+
+  <section class="docs" aria-label="Docs">
+    <div><h3>Live checklist</h3><p><code>docs/TODO.md</code>: one line per R, updated at each landing.</p></div>
+    <div><h3>Build plans</h3><p>One notes file per R in <code>docs/design/2026-11-17/</code>, with progress lines.</p></div>
+    <div><h3>For the team</h3><p>What's new 3.1.46 in Kaizen → What's new.</p></div>
+  </section>
+</div>
