@@ -371,6 +371,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const catalogued   = formData.get('catalogued')    === '1'
   const isCommission   = formData.get('is_commission') === '1'
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
+  const returnDate     = (formData.get('return_date') as string | null)?.trim() || null
   const needsPhotograph = formData.get('needs_photograph') === '1'
   const anonymityLevel = numOrNull(formData.get('anonymity_level')) ?? 0
   const adminOverrideAnonymity = formData.get('admin_override_anonymity') === '1'
@@ -609,6 +610,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Catalogué:         catalogued,
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
+      ReturnDate:        returnDate,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
       admin_override_anonymity: adminOverrideAnonymity,
@@ -628,7 +630,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // Keep in sync with the form fields in WorkForm.tsx / work-drawer/DrawerContent.tsx.
     const OPTIONAL_UPDATE_COLUMNS: Record<string, string> = {
       LocalisationDetail:       'localisation_detail', // sent by neither form
-      DateLivraison:            'date_livraison',      // sent by neither form
+      DateLivraison:            'date_livraison',      // drawer only (Objet › Logistique)
+      ReturnDate:               'return_date',         // drawer only (Objet › Logistique)
       Montee:                   'montee',              // drawer only
       Encadree:                 'encadree',            // drawer only
       IsCommission:             'is_commission',       // drawer only
@@ -1553,7 +1556,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, Montee, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing

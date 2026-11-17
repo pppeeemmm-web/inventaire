@@ -5,6 +5,7 @@ import { openReadOr } from '@/lib/atelier/open-reads'
 import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/(portal)/sales/actions'
 import { useI18n } from '@/lib/i18n/context'
+import { useCaption } from './WorkCardCaption'
 
 export function SaleReturnWindowBanner({ oeuvreId }: { oeuvreId: number }) {
   const { t } = useI18n()
@@ -27,55 +28,40 @@ export function SaleReturnWindowBanner({ oeuvreId }: { oeuvreId: number }) {
 
   if (hint === undefined || hint === null) return null
 
-  if (hint.skipped) {
-    return (
-      <div
-        style={{
-          marginBottom: 14,
-          padding: '10px 12px',
-          fontSize: 12,
-          color: 'var(--tx2)',
-          border: '1px solid var(--bd)',
-          borderRadius: 8,
-          background: 'var(--bg2)',
-        }}
-      >
-        {t('wf_return_window_skipped')}
-      </div>
-    )
-  }
+  // R3: a warning chip in the top block (sold works only), its caption on hover / long-press.
+  const text = hint.skipped
+    ? t('wf_return_window_skipped')
+    : !hint.startsAt
+      ? t('wf_return_window_no_start')
+      : t('wf_return_window_banner_fmt').replace(/\{days\}/g, String(hint.daysLeft ?? 0))
+  const live = !hint.skipped && !!hint.startsAt
+  return <ReturnWindowChip text={text} live={live} caption={t('wc_return_window_tt')} />
+}
 
-  if (!hint.startsAt) {
-    return (
-      <div
-        style={{
-          marginBottom: 14,
-          padding: '10px 12px',
-          fontSize: 12,
-          color: 'var(--tx2)',
-          border: '1px solid var(--bd)',
-          borderRadius: 8,
-          background: 'var(--bg2)',
-        }}
-      >
-        {t('wf_return_window_no_start')}
-      </div>
-    )
-  }
-
+function ReturnWindowChip({ text, live, caption }: { text: string; live: boolean; caption: string }) {
+  const { bind, node } = useCaption(caption)
   return (
-    <div
-      style={{
-        marginBottom: 14,
-        padding: '10px 12px',
-        fontSize: 12,
-        color: 'var(--tx2)',
-        border: '1px solid var(--dust)',
-        borderRadius: 8,
-        background: 'var(--dust)11',
-      }}
-    >
-      {t('wf_return_window_banner_fmt').replace(/\{days\}/g, String(hint.daysLeft ?? 0))}
-    </div>
+    <>
+      <span
+        data-testid="work-card-return-window"
+        tabIndex={0}
+        {...bind}
+        style={{
+          display: 'inline-block',
+          padding: '3px 9px',
+          fontSize: 12,
+          lineHeight: 1.3,
+          color: live ? 'var(--yellow)' : 'var(--tx2)',
+          border: `1px solid ${live ? 'var(--yellow)' : 'var(--bd2)'}`,
+          borderRadius: 12,
+          overflowWrap: 'anywhere',
+          cursor: 'help',
+          WebkitTouchCallout: 'none',
+        }}
+      >
+        {text}
+      </span>
+      {node}
+    </>
   )
 }

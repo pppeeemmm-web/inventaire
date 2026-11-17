@@ -626,3 +626,19 @@ html[data-high-contrast] { filter: contrast(1.35); }
   outline: 1px solid var(--ac);
   outline-offset: 2px;
 }
+
+/* ── Work card R3 (docs/design/2026-11-16/WorkCard.notes.md « compact rows ») ──
+   Sections embedded in Création / Objet keep their own 44 px taps on the phone; on desktop the
+   card's rows are compact (28 px controls). A stylesheet !important wins over their inline sizes,
+   so the shared sections need no per-component density prop. */
+.wc-self > :first-child { margin-top: 0 !important; border-top: none !important; padding-top: 0 !important; }
+@media (min-width: 768px) {
+  .wc-dense button.btn,
+  .wc-dense select.input,
+  .wc-dense input.input:not([type='checkbox']):not([type='radio']) { min-height: 28px !important; }
+  .wc-dense button.btn { padding-top: 0 !important; padding-bottom: 0 !important; }
+  .wc-dense input.input:not([type='checkbox']):not([type='radio']),
+  .wc-dense select.input { font-size: 12px !important; }
+  .wc-dense details > summary { min-height: 0 !important; }
+  .wc-dense a[style*='min-height: 44'] { min-height: 28px !important; }
+}

@@ -126,6 +126,108 @@ export const workCardMessages = defineMessages({
   wc_sum_fate: { fr: 'détruite / perdue', en: 'destroyed / lost' },
   wc_sum_label: { fr: 'étiquette', en: 'label' },
 
+  // ── Step 2 — Objet › Logistique / Valeur « Commande » / Présentation gates ──
+  wc_p_logistics: { fr: 'Logistique', en: 'Logistics' },
+  wc_p_logistics_tt: {
+    fr: 'Les envois liés à l’œuvre (aussi dans l’onglet Logistique) et ses dates de livraison / retour.',
+    en: 'Shipments linked to the work (also in the Logistics tab) and its delivery / return dates.',
+  },
+  wc_ship_none: { fr: 'aucun envoi', en: 'no shipment' },
+  wc_ship_delivery: { fr: 'Livraison', en: 'Delivery' },
+  wc_ship_delivery_empty: { fr: 'date de livraison', en: 'delivery date' },
+  wc_ship_return: { fr: 'Retour', en: 'Return' },
+  wc_ship_return_empty: { fr: 'date de retour', en: 'return date' },
+  wc_ship_open_tab: { fr: 'Logistique ↗', en: 'Logistics ↗' },
+  wc_ship_chip_tt: {
+    fr: 'Un envoi de cette œuvre est en cours (statut → destinataire · date). Toucher : voir la partie Logistique.',
+    en: 'A shipment of this work is under way (status → recipient · date). Tap: see the Logistics part.',
+  },
+  wc_ship_status_tt: {
+    fr: 'Statut de l’envoi : conditionné → prêt → planifié → en transit → livré. Se change dans l’onglet Logistique.',
+    en: 'Shipment status: packed → ready → scheduled → in transit → delivered. Changed in the Logistics tab.',
+  },
+  wc_sum_shipping: { fr: 'envoi en cours', en: 'shipment under way' },
+
+  wc_commission: { fr: 'Commande', en: 'Commission' },
+  wc_commission_tt: {
+    fr: 'Œuvre faite sur commande pour un client. Le lien avec le pipeline commercial viendra avec la refonte des dossiers.',
+    en: 'Work made to order for a client. The link to the sales pipeline comes with the dossier overhaul.',
+  },
+  wc_commission_client: { fr: 'client', en: 'client' },
+  wc_commission_client_tt: {
+    fr: 'Le client de la commande — enregistré comme acheteur de l’œuvre (le même qu’à la réservation / vente).',
+    en: 'The commission’s client — saved as the work’s buyer (the same as at reservation / sale).',
+  },
+  wc_commission_later: { fr: '· pipeline : avec la refonte des dossiers', en: '· pipeline: with the dossier overhaul' },
+  wc_sum_commission: { fr: 'commande', en: 'commission' },
+
+  wc_p_presentation_tt: {
+    fr: 'Les portes du pipeline : l’œuvre est-elle montée, encadrée, exposable, prête à diffuser ? « Cataloguée » = l’étape Catalogué.',
+    en: 'The pipeline gates: is the work mounted, framed, showable, ready to share? « Catalogued » = the Catalogué stage.',
+  },
+  wc_gate_mounted: { fr: 'Montée', en: 'Mounted' },
+  wc_gate_mounted_tt: {
+    fr: 'Montée sur châssis / support. Aussi cochée par les tâches de l’onglet Production.',
+    en: 'Mounted on a stretcher / backing. Also ticked by the Production tab tasks.',
+  },
+  wc_gate_framed: { fr: 'Encadrée', en: 'Framed' },
+  wc_gate_framed_tt: {
+    fr: 'Encadrée. Aussi cochée par les tâches de l’onglet Production.',
+    en: 'Framed. Also ticked by the Production tab tasks.',
+  },
+  wc_gate_exposable: { fr: 'Exposable', en: 'Showable' },
+  wc_gate_exposable_tt: {
+    fr: 'Physiquement prête à montrer : montée, encadrée, vernie. ≠ Disponible, qui veut dire la fiche prête (cataloguée + photo).',
+    en: 'Physically ready to show: mounted, framed, varnished. ≠ Available, which means the record is ready (catalogued + photo).',
+  },
+  wc_gate_exposable_archive_tt: {
+    fr: 'Fermé : une œuvre de l’archive de l’artiste n’est pas exposable. Changer d’abord la propriété.',
+    en: 'Closed: a work in the artist’s archive is not showable. Change the ownership first.',
+  },
+  wc_gate_broadcast_tt: {
+    fr: 'Prête pour une publication (Diffusion) : photo validée, texte de légende relu.',
+    en: 'Ready for a post (Broadcast): picture validated, caption text checked.',
+  },
+  wc_sum_gates_fmt: { fr: '{n}/4 portes', en: '{n}/4 gates' },
+
+  // ── Captions on the top block ──
+  wc_own_closed_order_tt: {
+    fr: 'Fermé : dépôt, prêt et vente passent par leur dossier (onglets Ventes / Dépôts), pas par la fiche.',
+    en: 'Closed: consignment, loan and sale go through their order (Sales / Consignments tabs), not the card.',
+  },
+  wc_own_closed_gift_tt: {
+    fr: 'Fermé : un don se prépare avec « Don… » — la propriété passe au donataire à la signature de l’acte.',
+    en: 'Closed: a gift is prepared with « Gift… » — ownership moves to the recipient when the deed is signed.',
+  },
+  wc_own_closed_locked_tt: {
+    fr: 'Fermé : l’œuvre est détruite / perdue — rouvrir le constat d’abord.',
+    en: 'Closed: the work is destroyed / lost — reopen the condition report first.',
+  },
+  wc_own_label_tt: {
+    fr: 'Qui possède l’œuvre. Elle quitte Pem par un dossier (dépôt, prêt, vente) ou par un don signé.',
+    en: 'Who owns the work. It leaves Pem through an order (consignment, loan, sale) or a signed gift.',
+  },
+  wc_prod_label_tt: {
+    fr: 'Où en est la fiche : Atelier (en cours) → Catalogué (photo à faire) → Disponible (fiche prête). Toucher l’étape suivante pour avancer.',
+    en: 'Where the record stands: Atelier (in progress) → Catalogué (picture to take) → Available (record ready). Tap the next stage to move on.',
+  },
+  wc_return_window_tt: {
+    fr: 'Délai de rétractation de la vente : l’acheteur peut encore rendre l’œuvre jusqu’à cette date.',
+    en: 'Sale withdrawal period: the buyer can still return the work until this date.',
+  },
+
+  // ── Owner / custodian hover card ──
+  wc_hc_card: { fr: 'Fiche ↗', en: 'Card ↗' },
+  wc_hc_change: { fr: 'Changer…', en: 'Change…' },
+  wc_hc_address: { fr: 'Adresse ▾', en: 'Address ▾' },
+  wc_hc_change_locked_tt: {
+    fr: 'Se change par le dossier (vente, dépôt, prêt) ou par « Don… ».',
+    en: 'Changed through the order (sale, consignment, loan) or « Gift… ».',
+  },
+  wc_hc_no_address: { fr: 'pas d’adresse', en: 'no address' },
+
+  wc_modified_by_fmt: { fr: 'modifié par {who} · {date}', en: 'changed by {who} · {date}' },
+
   wc_empty_fmt: { fr: '{n} champ(s) vide(s) — {list}', en: '{n} empty field(s) — {list}' },
   wc_empty_see: { fr: 'voir', en: 'show' },
 

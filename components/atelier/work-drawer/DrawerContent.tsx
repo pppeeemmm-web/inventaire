@@ -42,8 +42,9 @@ import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
 import { SaleReturnWindowBanner } from './SaleReturnWindowBanner'
 import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
 import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
-import { ContactConfidentialityPart } from './WorkDrawerPipelineSection'
+import { CommissionClient, ContactConfidentialityPart } from './WorkDrawerPipelineSection'
 import { CardDrawer, Chip, Part, PickChips } from './WorkCardParts'
+import { ShipmentTopChip, WorkLogisticsPart, isShipmentOpen, useWorkShipments } from './WorkCardLogistics'
 import { WorkCardIdentity, emptyIdentityLabels } from './WorkCardIdentity'
 import { WorkCreationHistory } from './WorkCreationHistory'
 import { WorkVersionHistory } from '../WorkVersionHistory'
@@ -70,6 +71,26 @@ const WORK_CARD_VIEW_KEY = 'pem.workCard.view'
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
   return `${src}${src.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
+}
+
+
+/**
+ * Fields the card saves that live outside the guarded draft (lib/mobile/work-form-draft): Encadrée,
+ * Montée, Commande, Logistique dates, presentation type, caption seed. Their own baseline = the work
+ * as loaded, then what was last sent (a pending save keeps them clean too).
+ */
+type ExtraFields = { encadree: boolean; montee: boolean; isCommission: boolean; dateLivraison: string; returnDate: string; presentationId: string; seed: string }
+function extraFromOeuvre(o: object): ExtraFields {
+  const r = o as { Encadree?: boolean | null; Montee?: boolean | null; IsCommission?: boolean | null; DateLivraison?: string | null; ReturnDate?: string | null; PresentationID?: number | null; broadcast_caption_seed?: string | null }
+  return {
+    encadree: !!r.Encadree,
+    montee: !!r.Montee,
+    isCommission: !!r.IsCommission,
+    dateLivraison: String(r.DateLivraison ?? '').slice(0, 10),
+    returnDate: String(r.ReturnDate ?? '').slice(0, 10),
+    presentationId: String(r.PresentationID ?? ''),
+    seed: String(r.broadcast_caption_seed ?? ''),
+  }
 }
 
 export function DrawerContent({
@@ -167,6 +188,12 @@ export function DrawerContent({
   const [broadcastReady, setBroadcastReady] = useState(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
   const [broadcastCaptionSeed, setBroadcastCaptionSeed] = useState(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
   const [encadree,    setEncadree]    = useState(!!o.Encadree)
+  // R3 step 2 — Présentation « Montée », Valeur « Commande », Logistique dates (saved with the card).
+  const [montee, setMontee] = useState(!!(o as { Montee?: boolean | null }).Montee)
+  const [isCommission, setIsCommission] = useState(!!(o as { IsCommission?: boolean | null }).IsCommission)
+  const [dateLivraison, setDateLivraison] = useState(String((o as { DateLivraison?: string | null }).DateLivraison ?? '').slice(0, 10))
+  const [returnDate, setReturnDate] = useState(String((o as { ReturnDate?: string | null }).ReturnDate ?? '').slice(0, 10))
+  const [extraBase, setExtraBase] = useState(() => JSON.stringify(extraFromOeuvre(o)))
   const [prix,        setPrix]        = useState(String(o.Prix ?? '0'))
   const [tvaRate, setTvaRate] = useState(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
   const [discount, setDiscount] = useState(String((o as { Discount?: number | null }).Discount ?? '0'))
@@ -200,6 +227,29 @@ export function DrawerContent({
   const [longTextReady, setLongTextReady] = useState(false)
   /** Increment so long-text reload runs after discard-in-place (same OeuvreID). */
   const [longTextReloadNonce, setLongTextReloadNonce] = useState(0)
+  /** Objet › Logistique + Top chip: the work's shipments (read-only). */
+  const shipments = useWorkShipments(o.OeuvreID)
+  /** Header « modifié par »: `edited_by` (auth uuid) → the team member's contact name. Read-only, one row. */
+  const [editInfo, setEditInfo] = useState<{ at: string | null; who: string } | null>(null)
+  useEffect(() => {
+    let alive = true
+    setEditInfo(null)
+    void (async () => {
+      const sb = createClient()
+      const { data: row } = await sb.from('Oeuvres').select('edited_at, edited_by').eq('OeuvreID', o.OeuvreID).maybeSingle()
+      if (!alive || !row) return
+      let who = ''
+      if (row.edited_by) {
+        const { data: cs } = await sb.from('Contact').select('NomInstitution, "Prénom", Nom').eq('auth_user_id', row.edited_by).limit(1)
+        const c = cs?.[0]
+        if (c) who = [c.Prénom, c.Nom].filter(Boolean).join(' ') || c.NomInstitution || ''
+      }
+      if (alive) setEditInfo({ at: row.edited_at, who })
+    })().catch(() => { /* the name is optional; the header keeps the date */ })
+    return () => {
+      alive = false
+    }
+  }, [o.OeuvreID, longTextReloadNonce])
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [savingExit, setSavingExit]             = useState(false)
@@ -504,6 +554,11 @@ export function DrawerContent({
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
     setEncadree(!!o.Encadree)
+    setMontee(!!(o as { Montee?: boolean | null }).Montee)
+    setIsCommission(!!(o as { IsCommission?: boolean | null }).IsCommission)
+    setDateLivraison(String((o as { DateLivraison?: string | null }).DateLivraison ?? '').slice(0, 10))
+    setReturnDate(String((o as { ReturnDate?: string | null }).ReturnDate ?? '').slice(0, 10))
+    setExtraBase(JSON.stringify(extraFromOeuvre(o)))
     const loadedPrix = loadedOwn === 'gift' ? '0' : String(o.Prix ?? '0')
     const loadedDiscount = loadedOwn === 'gift' ? '0' : String((o as { Discount?: number | null }).Discount ?? '0')
     setPrix(loadedPrix)
@@ -741,7 +796,9 @@ export function DrawerContent({
     return !workFormDraftContentEquals(captureDrawerDraftContent(), editorBaseline)
   }, [editorBaseline, captureDrawerDraftContent])
 
-  isDirtyRef.current = isDirty
+  const extraNow: ExtraFields = { encadree, montee, isCommission, dateLivraison, returnDate, presentationId, seed: broadcastCaptionSeed ?? '' }
+  const extraDirty = JSON.stringify(extraNow) !== extraBase
+  isDirtyRef.current = isDirty || extraDirty
 
   const guardDiagRef = useRef<{ cap: () => WorkFormDraftContent; base: WorkFormDraftContent | null }>({
     cap: captureDrawerDraftContent,
@@ -852,8 +909,11 @@ export function DrawerContent({
     fd.append('broadcast_ready', broadcastReady ? '1' : '0')
     fd.append('broadcast_caption_seed', broadcastCaptionSeed ?? '')
     fd.append('encadree', encadree ? '1' : '0')
-    fd.append('montee', (o as { Montee?: boolean }).Montee ? '1' : '0')
-    fd.append('is_commission', (o as { IsCommission?: boolean }).IsCommission ? '1' : '0')
+    // A row loaded without the Montee column (older cache) must not clear it: send it only when known or set.
+    if ('Montee' in o || montee) fd.append('montee', montee ? '1' : '0')
+    fd.append('is_commission', isCommission ? '1' : '0')
+    fd.append('date_livraison', dateLivraison)
+    fd.append('return_date', returnDate)
     fd.append('prix', prix)
     fd.append('discount', discount)
     fd.append('prix_final', String(prixFinalComputed))
@@ -897,6 +957,7 @@ export function DrawerContent({
         setEditorBaseline(snap)
         onJunctionSaved?.(oid, snap.selThemes, snap.selGroups)
         emitJunctionSaved({ oeuvreId: oid, themeIds: snap.selThemes, groupIds: snap.selGroups })
+        setExtraBase(JSON.stringify(extraNow))
       }
       if (res.pending) {
         commitEditorAfterSave()
@@ -973,6 +1034,10 @@ export function DrawerContent({
     broadcastReady,
     broadcastCaptionSeed,
     encadree,
+    montee,
+    isCommission,
+    dateLivraison,
+    returnDate,
     prix,
     discount,
     tvaRate,
@@ -1000,11 +1065,11 @@ export function DrawerContent({
       guardApiRef.current.isDirty = () => isDirtyRef.current
       guardApiRef.current.performSave = performSave
     }
-  }, [guardApiRef, isDirty, performSave])
+  }, [guardApiRef, isDirty, extraDirty, performSave])
 
   useLayoutEffect(() => {
-    onDrawerDirtyChange?.(isDirty)
-  }, [isDirty, onDrawerDirtyChange])
+    onDrawerDirtyChange?.(isDirty || extraDirty)
+  }, [isDirty, extraDirty, onDrawerDirtyChange])
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
@@ -1267,15 +1332,22 @@ export function DrawerContent({
   }
 
   const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
+  const openShipment = shipments?.find(isShipmentOpen) ?? null
+  const gatesOn = [montee, encadree, exposable, broadcastReady].filter(Boolean).length
   const folded = view === 'folded'
   const twoCol = !!wide && !narrow
   /** Parts stack their label over the content where the card is one narrow column. */
   const stacked = narrow || (isPanel && !twoCol)
   const startedLabel = o.production_started_on ? formatPartialDate(o.production_started_on, o.production_started_precision, loc) : ''
   const completedLabel = o.production_completed_on ? formatPartialDate(o.production_completed_on, o.production_completed_precision, loc) : ''
-  const editedAt = (o as { edited_at?: string | null }).edited_at
+  const editedAt = editInfo?.at ?? (o as { edited_at?: string | null }).edited_at
   const editedLabel = editedAt
     ? new Date(editedAt).toLocaleString(loc, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : ''
+  const editedText = editedLabel
+    ? editInfo?.who
+      ? t('wc_modified_by_fmt').replace('{who}', editInfo.who).replace('{date}', editedLabel)
+      : t('wc_modified_fmt').replace('{date}', editedLabel)
     : ''
   const when = workWhen({
     Année: annee,
@@ -1304,8 +1376,9 @@ export function DrawerContent({
     !priceEmpty && !isGiftStage ? t('wc_sum_price_fmt').replace('{p}', `€ ${prixFinalComputed.toLocaleString(loc)}`) : '',
     paymentDone ? t('wc_sum_paid') : '',
     selGroups.size ? t('wc_sum_groups_fmt').replace('{n}', String(selGroups.size)) : '',
-    encadree ? t('wc_sum_framed') : '',
-    broadcastReady ? t('wc_sum_broadcast') : '',
+    openShipment ? t('wc_sum_shipping') : '',
+    t('wc_sum_gates_fmt').replace('{n}', String(gatesOn)),
+    isCommission ? t('wc_sum_commission') : '',
     o.fate ? t('wc_sum_fate') : '',
     t('wc_sum_label'),
   ].filter(Boolean).join(' · ')
@@ -1318,11 +1391,6 @@ export function DrawerContent({
     ...(priceEmpty ? [t('wf_price').toLowerCase()] : []),
     ...(selGroups.size ? [] : [t('wc_p_groups').toLowerCase()]),
   ]
-  /** Fields outside the guarded draft (Encadrée, presentation type, caption seed): shown on the bar too. */
-  const extraDirty =
-    encadree !== !!o.Encadree
-    || presentationId !== String((o as { PresentationID?: number | null }).PresentationID ?? '')
-    || (broadcastCaptionSeed ?? '') !== String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? '')
   const barDirty = isDirty || extraDirty
   const hdrBtn = { minHeight: narrow ? 44 : 36, minWidth: narrow ? 44 : 36, background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18, padding: 0, fontFamily: 'inherit' } as const
   const segBtn = (on: boolean) => ({
@@ -1362,7 +1430,7 @@ export function DrawerContent({
           title={t('auditAttributedHint')}
           style={{ fontSize: 11, color: 'var(--tx3)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'help' }}
         >
-          {editedLabel ? t('wc_modified_fmt').replace('{date}', editedLabel) : null}
+          {editedText || null}
           <span style={{ color: 'var(--ac)', marginLeft: 4 }}>◈</span>
         </span>
         <span style={{ flex: 1 }} />
@@ -1523,6 +1591,9 @@ export function DrawerContent({
             <Chip narrow={narrow} tone={o.is_public ? 'ok' : 'muted'} title={t('wc_public_tt')} testId="work-card-public">
               {o.is_public ? t('wc_public_on') : t('wc_public_off')}
             </Chip>
+            {openShipment ? (
+              <ShipmentTopChip shipment={openShipment} narrow={narrow} onClick={() => setObjectOpen(true)} />
+            ) : null}
             {stagedCount > 0 ? (
               <Chip
                 narrow={narrow}
@@ -1621,16 +1692,38 @@ export function DrawerContent({
           />
           <WorkVersionHistory oeuvreId={o.OeuvreID} onRestored={() => router.refresh()} />
         </Part>
-        <Part label={t('wc_p_confidentiality')} hint={t('wc_p_confidentiality_tt')} stacked={stacked}>
-          <ContactConfidentialityPart anonymityLevel={anonymityLevel} setAnonymityLevel={setAnonymityLevel} narrow={narrow} />
+        <Part label={t('wc_p_logistics')} hint={t('wc_p_logistics_tt')} stacked={stacked} muted={!shipments?.length && !dateLivraison && !returnDate} testId="work-card-logistics">
+          <WorkLogisticsPart
+            shipments={shipments}
+            narrow={narrow}
+            onOpenLogistics={() => runGuarded(() => router.push('/atelier/logistics'))}
+            dateLivraison={dateLivraison}
+            setDateLivraison={setDateLivraison}
+            returnDate={returnDate}
+            setReturnDate={setReturnDate}
+          />
         </Part>
-        <Part label={t('wc_p_presentation')} stacked={stacked} muted={!encadree && !broadcastReady && !presentationId}>
+        <Part label={t('wc_p_presentation')} hint={t('wc_p_presentation_tt')} stacked={stacked} muted={gatesOn === 0 && !presentationId} testId="work-card-presentation">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: narrow ? 44 : undefined }}>
-            <Chip narrow={narrow} tone="ok" active={encadree} onClick={() => setEncadree(!encadree)} testId="wc-gate-framed">
-              {encadree ? '☑ ' : '☐ '}{t('framed')}
+            <Chip narrow={narrow} tone="ok" active={montee} onClick={() => setMontee(!montee)} title={t('wc_gate_mounted_tt')} testId="wc-gate-mounted">
+              {montee ? '✓ ' : ''}{t('wc_gate_mounted')}
             </Chip>
-            <Chip narrow={narrow} tone="ok" active={broadcastReady} onClick={() => setBroadcastReady(!broadcastReady)} title={t('wf_broadcast_ready_hint')} testId="wf-broadcast-ready-switch">
-              {broadcastReady ? '☑ ' : '☐ '}{t('wf_broadcast_ready')}
+            <Chip narrow={narrow} tone="ok" active={encadree} onClick={() => setEncadree(!encadree)} title={t('wc_gate_framed_tt')} testId="wc-gate-framed">
+              {encadree ? '✓ ' : ''}{t('wc_gate_framed')}
+            </Chip>
+            <Chip
+              narrow={narrow}
+              tone="ok"
+              active={exposable}
+              disabled={ownStage === 'artist_archive'}
+              onClick={() => { if (ownStage !== 'artist_archive') setExposable(!exposable) }}
+              title={ownStage === 'artist_archive' ? t('wc_gate_exposable_archive_tt') : t('wc_gate_exposable_tt')}
+              testId="wc-gate-exposable"
+            >
+              {exposable ? '✓ ' : ''}{t('wc_gate_exposable')}
+            </Chip>
+            <Chip narrow={narrow} tone="ok" active={broadcastReady} onClick={() => setBroadcastReady(!broadcastReady)} title={t('wc_gate_broadcast_tt')} testId="wf-broadcast-ready-switch">
+              {broadcastReady ? '✓ ' : ''}{t('wf_broadcast_ready')}
             </Chip>
           </div>
           {broadcastReady ? (
@@ -1648,9 +1741,9 @@ export function DrawerContent({
               />
             </div>
           ) : null}
-          <details style={{ marginTop: 6 }}>
-            <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx3)' }}>{t('presentation')}</summary>
-            <select className="input" value={presentationId} onChange={(e) => setPresentationId(e.target.value)} style={{ ...FIS, marginTop: 4, height: narrow ? 44 : 32 }}>
+          <details style={{ marginTop: 4 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--mt)', minHeight: narrow ? 44 : undefined, display: 'flex', alignItems: 'center' }}>{t('presentation')}</summary>
+            <select className="input" value={presentationId} onChange={(e) => setPresentationId(e.target.value)} style={{ ...FIS, marginTop: 4, height: narrow ? 44 : 28 }}>
               <option value="">—</option>
               {initialPresentations.map((p) => (
                 <option key={p.PresentationID} value={p.PresentationID}>{p.Nom}</option>
@@ -1658,7 +1751,26 @@ export function DrawerContent({
             </select>
           </details>
         </Part>
-        <Part selfTitled stacked={stacked} muted={priceEmpty}>
+        <Part label={t('wc_p_confidentiality')} hint={t('wc_p_confidentiality_tt')} stacked={stacked}>
+          <ContactConfidentialityPart anonymityLevel={anonymityLevel} setAnonymityLevel={setAnonymityLevel} narrow={narrow} />
+        </Part>
+        <Part label={t('wc_p_value')} stacked={stacked} muted={priceEmpty && !isCommission} testId="work-card-value">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 6, minHeight: narrow ? 44 : undefined }}>
+            <Chip narrow={narrow} tone="ac" active={isCommission} onClick={() => setIsCommission(!isCommission)} title={t('wc_commission_tt')} testId="wc-commission">
+              {isCommission ? '✓ ' : ''}{t('wc_commission')}
+            </Chip>
+            {isCommission ? (
+              <CommissionClient
+                buyerId={buyerId}
+                setBuyerId={setBuyerId}
+                contacts={sortedContacts}
+                cName={cName}
+                narrow={narrow}
+                onOpenContact={(cid) => setQuickContactId(cid)}
+              />
+            ) : null}
+            <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('wc_commission_later')}</span>
+          </div>
           <DrawerContentFinanceSection
             narrow={stacked}
             lang={lang}
@@ -1675,8 +1787,8 @@ export function DrawerContent({
             ownStage={ownStage}
           />
           {isAdmin ? (
-            <details style={{ marginTop: 6 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx3)' }}>{t('wc_p_costs')}</summary>
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--tx3)', minHeight: narrow ? 44 : undefined, display: 'flex', alignItems: 'center' }}>{t('wc_p_costs')}</summary>
               <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
             </details>
           ) : null}

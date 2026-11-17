@@ -5,8 +5,9 @@
 // ownership as cyan chips incl. « Don… », owner / custodian as links ↗ (contact card over the work),
 // the custodian's address. Contact confidentiality lives in Objet (`ContactConfidentialityPart`).
 
-import type { Dispatch, SetStateAction } from 'react'
-import { useMemo } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n/context'
 import { PROD_STAGE_COLOR, type OwnStageId, type ProdStageId } from '@/lib/work-editor-model'
 import type { DrawerContactRow } from './drawer-content-props'
@@ -15,6 +16,7 @@ import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicke
 import { PEM_CONTACT_ID } from '@/lib/data'
 import { FIS } from './drawer-widgets'
 import { Chip, TopLabel, chipH } from './WorkCardParts'
+import { WithCaption } from './WorkCardCaption'
 
 export type WorkDrawerPipelineSectionProps = {
   /** Open a contact's card from the drawer (Kaizen #34: bounce work → contact → work). */
@@ -181,12 +183,14 @@ export function WorkDrawerPipelineSection({
     </div>
   )
 
+  const chosenAddress = locationAddresses.find((a) => String(a.id) === localisationAddressId) ?? (locationAddresses.length === 1 ? locationAddresses[0] : undefined)
+  const addressText = chosenAddress ? [chosenAddress.label, chosenAddress.ville].filter(Boolean).join(' — ') : ''
   const kvGrid = { display: 'grid', gridTemplateColumns: '96px minmax(0,1fr)', gap: '4px 12px', alignItems: 'center' } as const
 
   return (
     <div data-testid="work-drawer-status-bar" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       <div>
-        <TopLabel>{t('wc_prod_label')}</TopLabel>
+        <TopLabel title={t('wc_prod_label_tt')}>{t('wc_prod_label')}</TopLabel>
         <div style={{ display: 'flex', marginTop: 5, minWidth: 0 }}>
           {PRODUCTION_STAGES.map((s, i) => {
             const on = s.id === prodStage
@@ -202,15 +206,20 @@ export function WorkDrawerPipelineSection({
                       .filter(Boolean)
                       .join(' · ')
                   : ''
+            const caption = [
+              closed ? t('wc_stage_locked_tt') : on ? s.desc : `${s.desc} — ${t('wc_stage_next_tt')}`,
+              s.id === 'catalogued' && on && needsPhoto ? t('wc_stage_photo_needed_tt') : '',
+            ].filter(Boolean).join(' ')
             return (
+              <WithCaption key={s.id} text={caption}>{(cap) => (
               <button
-                key={s.id}
                 type="button"
                 data-testid={`work-drawer-stage-${s.id}`}
                 aria-pressed={on}
-                disabled={closed}
-                title={closed ? t('wc_stage_locked_tt') : on ? s.desc : `${s.desc} — ${t('wc_stage_next_tt')}`}
+                aria-disabled={closed}
+                {...cap}
                 onClick={() => {
+                  if (closed) return
                   if (prodLocked) return
                   if (on && s.id === 'catalogued' && needsPhoto) {
                     // « photo requise » → picture done = Disponible (same as unticking « Photo requise »).
@@ -235,39 +244,63 @@ export function WorkDrawerPipelineSection({
                   cursor: closed ? 'not-allowed' : 'pointer',
                   position: 'relative',
                   zIndex: on ? 1 : 0,
+                  WebkitTouchCallout: 'none',
                 }}
               >
                 <span style={{ fontWeight: on ? 700 : 500 }}>{done ? '✓ ' : ''}{s.label}</span>
                 {small ? (
-                  <span
-                    title={s.id === 'catalogued' && needsPhoto && on ? t('wc_stage_photo_needed_tt') : undefined}
-                    style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', marginTop: 1, overflowWrap: 'anywhere' }}
-                  >
+                  <span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', marginTop: 1, overflowWrap: 'anywhere' }}>
                     {small}
                   </span>
                 ) : null}
               </button>
+              )}</WithCaption>
             )
           })}
         </div>
       </div>
 
       <div>
-        <TopLabel title={lockedByOrder ? t('custody_by_order_hint') : isGift ? t('custody_gift_override_hint') : undefined}>
+        <TopLabel title={[t('wc_own_label_tt'), lockedByOrder ? t('custody_by_order_hint') : isGift ? t('custody_gift_override_hint') : ''].filter(Boolean).join(' ')}>
           {t('wc_own_label')}
-          {lockedByOrder || isGift ? <span style={{ fontWeight: 400 }}> ⓘ</span> : null}
         </TopLabel>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 5, alignItems: 'center', minHeight: narrow ? 44 : undefined }}>
           {OWNERSHIP_STAGES.map((s) => {
-            const dis = stageDisabled(s.id)
+            const isOn = s.id === ownStage
+            // One control for the gift (mockup): « Don » when given, otherwise the « Don… » action.
+            if (s.id === 'gift' && !isOn) {
+              const canGift = !locked && !lockedByOrder && ownStage !== 'artist_archive'
+              return (
+                <Chip
+                  key={s.id}
+                  narrow={narrow}
+                  tone="own"
+                  dashed
+                  disabled={!canGift}
+                  onClick={canGift ? onGift : undefined}
+                  title={canGift ? t('wc_gift_chip_tt') : `${t('wc_gift_chip_tt')} — ${locked ? t('wc_own_closed_locked_tt') : lockedByOrder ? t('wc_own_closed_order_tt') : t('wf_own_archive_d')}`}
+                  testId="work-drawer-gift"
+                >
+                  {t('wc_gift_chip')}
+                </Chip>
+              )
+            }
+            const dis = stageDisabled(s.id) && !isOn
+            const why = !dis
+              ? ''
+              : locked
+                ? t('wc_own_closed_locked_tt')
+                : lockedByOrder || BY_ORDER.includes(s.id)
+                  ? t('wc_own_closed_order_tt')
+                  : t('wc_own_closed_gift_tt')
             return (
               <Chip
                 key={s.id}
                 narrow={narrow}
                 tone="own"
-                active={s.id === ownStage}
-                disabled={dis && s.id !== ownStage}
-                title={dis && s.id !== ownStage ? `${s.desc} — ${lockedByOrder ? t('custody_by_order_hint') : t('custody_gift_override_hint')}` : s.desc}
+                active={isOn}
+                disabled={dis}
+                title={why ? `${s.desc} — ${why}` : s.desc}
                 testId={`work-drawer-own-${s.id}`}
                 onClick={() => { if (!dis) setOwnStage(s.id) }}
               >
@@ -275,11 +308,6 @@ export function WorkDrawerPipelineSection({
               </Chip>
             )
           })}
-          {!(ownStage === 'sold' || ownStage === 'gift' || ownStage === 'artist_archive') && !locked ? (
-            <Chip narrow={narrow} tone="own" dashed onClick={onGift} title={t('wc_gift_chip_tt')} testId="work-drawer-gift">
-              {t('wc_gift_chip')}
-            </Chip>
-          ) : null}
         </div>
       </div>
 
@@ -287,31 +315,283 @@ export function WorkDrawerPipelineSection({
         <TopLabel>{ownStage === 'reserved' ? t('custody_buyer') : t('custody_owner')}</TopLabel>
         <div style={{ minWidth: 0 }}>
           {ownStage === 'reserved'
-            ? contactSelect(buyerId, setBuyerId, t('custody_buyer'))
-            : isGift
-              ? contactSelect(ownerId, setOwnerId, t('custody_owner'))
-              : contactLink(ownerId, ownStage === 'artist' || ownStage === 'artist_archive' ? pemName : nameOf(ownerId))}
+            ? (
+                <ContactWho
+                  id={buyerId}
+                  name={nameOf(buyerId)}
+                  narrow={narrow}
+                  onOpen={onOpenContact}
+                  select={contactSelect(buyerId, setBuyerId, t('custody_buyer'))}
+                  canChange
+                  testId="work-card-buyer"
+                />
+              )
+            : (
+                <ContactWho
+                  id={ownerId}
+                  name={ownStage === 'artist' || ownStage === 'artist_archive' ? pemName : nameOf(ownerId)}
+                  narrow={narrow}
+                  onOpen={onOpenContact}
+                  select={isGift ? contactSelect(ownerId, setOwnerId, t('custody_owner')) : null}
+                  canChange={isGift}
+                  testId="work-card-owner"
+                />
+              )}
           {ownStage === 'reserved' ? (
             <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('custody_owner')} : {pemName}</div>
           ) : null}
         </div>
         <TopLabel>{t('custody_custodian')}</TopLabel>
         <div style={{ minWidth: 0 }}>
-          {isGift
-            ? contactSelect(contactId, setContactId, t('custody_custodian'))
-            : (
-                <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                  {contactLink(contactId, isPem(contactId) ? pemName : currentLoc)}
-                  {isArchived ? <span style={{ fontSize: 11, color: 'var(--tx3)' }}>· {t('wc_custodian_auto')}</span> : null}
-                </span>
-              )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, minHeight: chipH(narrow), minWidth: 0 }}>
-            <span style={{ fontSize: 10, color: 'var(--tx3)', flexShrink: 0 }}>{t('custody_address')}</span>
-            <LocationAddressPicker addresses={locationAddresses} value={localisationAddressId} onChange={setLocalisationAddressId} />
-          </div>
+          <ContactWho
+            id={contactId}
+            name={isPem(contactId) ? pemName : isGift ? nameOf(contactId) : currentLoc}
+            narrow={narrow}
+            onOpen={onOpenContact}
+            select={isGift ? contactSelect(contactId, setContactId, t('custody_custodian')) : null}
+            canChange={isGift}
+            address={addressText}
+            addressPicker={
+              locationAddresses.length > 1 ? (
+                <LocationAddressPicker addresses={locationAddresses} value={localisationAddressId} onChange={setLocalisationAddressId} />
+              ) : null
+            }
+            note={isArchived ? t('wc_custodian_auto') : ''}
+            testId="work-card-custodian"
+          />
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Owner / custodian name as a link ↗ with its hover card (mockup: address, « Fiche ↗ », « Changer… »,
+ * « Adresse ▾ »). Desktop: hover shows the card, a click opens the contact card. Touch: a tap shows the
+ * card. « Changer… » / « Adresse ▾ » swap the name for the select in place (no inputs in the card).
+ */
+function ContactWho({
+  id,
+  name,
+  narrow,
+  onOpen,
+  select,
+  canChange,
+  address,
+  addressPicker,
+  note,
+  testId,
+}: {
+  id: string
+  name: string
+  narrow: boolean
+  onOpen?: (contactId: number) => void
+  /** The select to show for « Changer… » (null = not changeable here). */
+  select: ReactNode
+  canChange: boolean
+  address?: string
+  addressPicker?: ReactNode
+  note?: string
+  testId?: string
+}) {
+  const { t } = useI18n()
+  const n = Number.parseInt(id, 10)
+  const known = Number.isFinite(n) && n > 0
+  const [editing, setEditing] = useState(!known && !!select)
+  const [pickAddr, setPickAddr] = useState(false)
+  const [card, setCard] = useState<{ left: number; top: number } | null>(null)
+  const anchorRef = useRef<HTMLButtonElement | null>(null)
+  const showT = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideT = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastPointer = useRef<string>('mouse')
+  const clearT = () => {
+    if (showT.current) clearTimeout(showT.current)
+    if (hideT.current) clearTimeout(hideT.current)
+  }
+  const open = () => {
+    const el = anchorRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const w = Math.min(240, window.innerWidth - 16)
+    setCard({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: r.bottom + 4 })
+  }
+  const close = () => setCard(null)
+  useEffect(() => {
+    if (!card) return
+    const off = (e: Event) => {
+      const tgt = e.target as Node | null
+      if (tgt && (anchorRef.current?.contains(tgt) || document.getElementById('wc-contact-hovercard')?.contains(tgt))) return
+      close()
+    }
+    window.addEventListener('pointerdown', off, true)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      window.removeEventListener('pointerdown', off, true)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [card])
+  useEffect(() => clearT, [])
+
+  if (editing && select) {
+    return (
+      <div data-testid={testId} style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{select}</div>
+        {known ? (
+          <button type="button" className="btn ghost sm" onClick={() => setEditing(false)} style={{ minHeight: narrow ? 44 : 28, padding: '0 8px' }}>
+            {t('wc_done')}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
+  const btn = { height: narrow ? 36 : 24, padding: '0 7px', fontSize: 11 } as const
+  const cardNode =
+    card && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            id="wc-contact-hovercard"
+            data-testid="work-card-hovercard"
+            onPointerEnter={(e) => { if (e.pointerType === 'mouse') clearT() }}
+            onPointerLeave={(e) => { if (e.pointerType === 'mouse') hideT.current = setTimeout(close, 200) }}
+            style={{
+              position: 'fixed',
+              left: card.left,
+              top: card.top,
+              width: 'max-content',
+              maxWidth: 'min(240px, calc(100vw - 16px))',
+              zIndex: 10040,
+              background: 'var(--bg2)',
+              border: '1px solid var(--bd3)',
+              borderRadius: 4,
+              padding: 10,
+              boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+              fontSize: 12,
+              color: 'var(--tx2)',
+            }}
+          >
+            <div style={{ color: 'var(--tx)', fontSize: 13, fontWeight: 600, overflowWrap: 'anywhere' }}>{name || '—'}</div>
+            {address !== undefined ? (
+              <div style={{ marginTop: 2, color: address ? 'var(--tx2)' : 'var(--mt)', overflowWrap: 'anywhere' }}>{address || t('wc_hc_no_address')}</div>
+            ) : null}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+              {known && onOpen ? (
+                <button type="button" className="btn ghost sm" data-testid="work-card-hc-open" style={btn} onClick={() => { close(); onOpen(n) }}>
+                  {t('wc_hc_card')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn ghost sm"
+                data-testid="work-card-hc-change"
+                aria-disabled={!canChange}
+                title={canChange ? undefined : t('wc_hc_change_locked_tt')}
+                style={{ ...btn, opacity: canChange ? 1 : 0.45, cursor: canChange ? 'pointer' : 'not-allowed' }}
+                onClick={() => { if (!canChange) return; close(); setEditing(true) }}
+              >
+                {t('wc_hc_change')}
+              </button>
+              {addressPicker ? (
+                <button type="button" className="btn ghost sm" data-testid="work-card-hc-address" style={btn} onClick={() => { close(); setPickAddr((v) => !v) }}>
+                  {t('wc_hc_address')}
+                </button>
+              ) : null}
+            </div>
+            {!canChange ? <div style={{ marginTop: 6, fontSize: 10, color: 'var(--tx3)' }}>{t('wc_hc_change_locked_tt')}</div> : null}
+          </div>,
+          document.body,
+        )
+      : null
+
+  return (
+    <div data-testid={testId} style={{ minWidth: 0 }}>
+      <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, minWidth: 0 }}>
+        <button
+          ref={anchorRef}
+          type="button"
+          data-testid="work-drawer-open-contact"
+          aria-haspopup="dialog"
+          aria-expanded={!!card}
+          onPointerDown={(e) => { lastPointer.current = e.pointerType }}
+          onPointerEnter={(e) => {
+            if (e.pointerType !== 'mouse') return
+            clearT()
+            showT.current = setTimeout(open, 300)
+          }}
+          onPointerLeave={(e) => {
+            if (e.pointerType !== 'mouse') return
+            clearT()
+            hideT.current = setTimeout(close, 200)
+          }}
+          onClick={() => {
+            if (lastPointer.current !== 'mouse') {
+              if (card) close()
+              else open()
+              return
+            }
+            clearT()
+            close()
+            if (known && onOpen) onOpen(n)
+          }}
+          style={{ background: 'none', border: 'none', padding: 0, minHeight: narrow ? 44 : undefined, color: 'var(--tx)', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer', textAlign: 'left', overflowWrap: 'anywhere', minWidth: 0 }}
+        >
+          <span style={{ borderBottom: '1px solid var(--bd3)' }}>{name || '—'}</span>
+          <span style={{ color: 'var(--tx3)', fontSize: 11, marginLeft: 4 }}>↗</span>
+        </button>
+        {address ? <span style={{ fontSize: 11, color: 'var(--tx3)', overflowWrap: 'anywhere' }}>· {address}</span> : null}
+        {note ? <span style={{ fontSize: 11, color: 'var(--tx3)' }}>· {note}</span> : null}
+      </span>
+      {pickAddr && addressPicker ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, minHeight: chipH(narrow), minWidth: 0 }}>{addressPicker}</div>
+      ) : null}
+      {cardNode}
+    </div>
+  )
+}
+
+/** Objet › Valeur « Commande » client: the work's buyer (AcheteurID), picked like the owner. */
+export function CommissionClient({
+  buyerId,
+  setBuyerId,
+  contacts,
+  cName,
+  narrow,
+  onOpenContact,
+}: {
+  buyerId: string
+  setBuyerId: Dispatch<SetStateAction<string>>
+  contacts: DrawerContactRow[]
+  cName: (c: DrawerContactRow) => string
+  narrow: boolean
+  onOpenContact: (contactId: number) => void
+}) {
+  const { t } = useI18n()
+  const c = contacts.find((x) => String(x.ContactID) === buyerId)
+  const select = (
+    <select
+      className="input"
+      aria-label={t('wc_commission_client')}
+      title={t('wc_commission_client_tt')}
+      value={buyerId}
+      onChange={(e) => setBuyerId(e.target.value)}
+      style={{ ...FIS, minWidth: 0, maxWidth: 260, height: narrow ? 44 : 26, padding: '0 6px', fontSize: 12 }}
+    >
+      <option value="">{t('wc_commission_client')}</option>
+      {contacts.map((x) => (
+        <option key={x.ContactID} value={x.ContactID}>{cName(x)}</option>
+      ))}
+    </select>
+  )
+  return (
+    <ContactWho
+      id={buyerId}
+      name={c ? cName(c) : ''}
+      narrow={narrow}
+      onOpen={onOpenContact}
+      select={select}
+      canChange
+      testId="wc-commission-client"
+    />
   )
 }
 

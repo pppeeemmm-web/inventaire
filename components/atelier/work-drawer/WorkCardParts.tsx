@@ -6,6 +6,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { InfoDot, useCaption } from './WorkCardCaption'
 
 /** Chip height: 24 px desktop, 32 px on the phone (inside a 44 px tap row). */
 export const chipH = (narrow: boolean) => (narrow ? 32 : 24)
@@ -61,17 +62,33 @@ export function Chip({
     fontFamily: 'inherit',
     flexShrink: 0,
   }
+  // `title` = the hover caption (long-press on touch), never the browser's native tooltip.
+  const { bind, node } = useCaption(title)
   if (onClick) {
     return (
-      <button type="button" data-testid={testId} title={title} aria-pressed={active} disabled={disabled} onClick={onClick} style={st}>
-        {children}
-      </button>
+      <>
+        <button
+          type="button"
+          data-testid={testId}
+          aria-pressed={active}
+          aria-disabled={disabled || undefined}
+          onClick={disabled ? undefined : onClick}
+          style={{ ...st, WebkitTouchCallout: 'none' }}
+          {...bind}
+        >
+          {children}
+        </button>
+        {node}
+      </>
     )
   }
   return (
-    <span data-testid={testId} title={title} style={st}>
-      {children}
-    </span>
+    <>
+      <span data-testid={testId} tabIndex={title ? 0 : undefined} style={{ ...st, cursor: title ? 'help' : st.cursor, WebkitTouchCallout: 'none' }} {...bind}>
+        {children}
+      </span>
+      {node}
+    </>
   )
 }
 
@@ -175,7 +192,7 @@ export function CardDrawer({
         </span>
         <span aria-hidden style={{ color: 'var(--tx3)', fontSize: 12, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
       </button>
-      <div hidden={!open} style={{ paddingBottom: 8 }}>{children}</div>
+      <div hidden={!open} className="wc-dense" style={{ paddingBottom: 8 }}>{children}</div>
     </section>
   )
 }
@@ -204,12 +221,12 @@ export function Part({
   labelColor?: string
 }) {
   const row: CSSProperties = {
-    padding: '6px 0',
+    padding: '5px 0',
     borderTop: '1px solid color-mix(in srgb, var(--bd) 60%, transparent)',
     minWidth: 0,
   }
   if (selfTitled || !label) {
-    return <div data-testid={testId} style={{ ...row, opacity: muted ? 0.6 : 1 }}>{children}</div>
+    return <div data-testid={testId} className="wc-self" style={{ ...row, opacity: muted ? 0.6 : 1 }}>{children}</div>
   }
   return (
     <div
@@ -222,12 +239,9 @@ export function Part({
         alignItems: 'start',
       }}
     >
-      <div
-        title={hint}
-        style={{ fontSize: 12, fontWeight: 600, color: labelColor ?? (muted ? 'var(--mt)' : 'var(--tx2)'), paddingTop: 4, cursor: hint ? 'help' : undefined }}
-      >
+      <div style={{ fontSize: 12, fontWeight: 600, color: labelColor ?? (muted ? 'var(--mt)' : 'var(--tx2)'), paddingTop: stacked ? 0 : 4 }}>
         {label}
-        {hint ? <span style={{ color: 'var(--tx3)', fontWeight: 400 }}> ⓘ</span> : null}
+        {hint ? <InfoDot text={hint} narrow={stacked} /> : null}
       </div>
       <div style={{ minWidth: 0, color: muted ? 'var(--mt)' : undefined }}>{children}</div>
     </div>
@@ -237,8 +251,9 @@ export function Part({
 /** Small uppercase label (top block). */
 export function TopLabel({ children, title }: { children: ReactNode; title?: string }) {
   return (
-    <div title={title} style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--tx3)', fontWeight: 600, cursor: title ? 'help' : undefined }}>
+    <div style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--tx3)', fontWeight: 600 }}>
       {children}
+      {title ? <InfoDot text={title} /> : null}
     </div>
   )
 }
