@@ -4,6 +4,7 @@ import { todayMessages } from './today.messages'
 import { swipeDeckMessages } from './swipe-deck.messages'
 import { filMessages } from './fil.messages'
 import { ideasMessages } from './ideas.messages'
+import { noteLinesMessages } from './note-lines.messages'
 import { mobileSaleMessages } from './mobile-sale.messages'
 import { portfolioPdfMessages } from './portfolio-pdf.messages'
 import { publicMessages } from './public.messages'
@@ -61,6 +62,7 @@ export const featureMessages = {
   ...swipeDeckMessages,
   ...filMessages,
   ...ideasMessages,
+  ...noteLinesMessages,
   ...portfolioPdfMessages,
   ...mobileSaleMessages,
   ...siteBlocksMessages,

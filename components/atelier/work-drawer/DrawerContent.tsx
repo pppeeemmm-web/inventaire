@@ -59,6 +59,7 @@ import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
 import { WorkCostBlock } from './WorkCostBlock'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
+import { WorkNoteLines } from './WorkNoteLines'
 import { ConditionReportsSection } from './ConditionReportsSection'
 import { WorkPeriodSourceSection } from './WorkPeriodSourceSection'
 import { WorkAiDescriptionSection } from './WorkAiDescriptionSection'
@@ -1658,7 +1659,9 @@ export function DrawerContent({
             rows={commentaires.trim() ? 3 : 1}
             style={textareaSt}
             placeholder={t('wf_comments_placeholder')}
+            aria-label={t('nl_old_field')}
           />
+          <WorkNoteLines oeuvreId={o.OeuvreID} isAdmin={isAdmin} narrow={narrow} />
           <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} card onCount={setVoiceCount} />
         </Part>
         <Part label={t('wc_p_themes')} stacked={stacked} muted={selThemes.size === 0}>

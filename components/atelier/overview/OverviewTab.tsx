@@ -2,9 +2,11 @@
 
 // Overview — one-glance dashboard (B1, design pass 2026-11-13, mock
 // `docs/archive/design/2026-11-13/Overview.dc.html`, build notes `docs/archive/HANDOFF_2026-11-13_DESIGN_BUILD.md` §2).
-// Desktop: header · a row of signal cells in fixed positions (signal first, number second) · four
-// columns of panels filling the window (no page scroll) · status bar. Panels with more to show open
-// in place when the pointer rests on them ("liquid grid"). Phone: signal rows, worst first.
+// Desktop (R1 step 6 slice 4b, docs/design/2026-11-17/R1_InputsFeed.notes.md « Where the feed lives »):
+// header · one compact strip of signals in fixed positions (counts and links kept) · the main column —
+// Pem's Fil (`OverviewFil`, admin) or a team member's own lines and what happened to them
+// (`OverviewMine`) — beside a side rail of the other panels, folded by default · status bar.
+// Phone: signal rows, worst first (+ the team member's own lines).
 // Counts over the whole catalogue come from one server read while the catalogue is still loading (TODO 18).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
@@ -18,6 +20,8 @@ import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { useLocalJobs, LocalJobsControls, ARCHIVE_STALE_DAYS } from '@/components/atelier/overview/EmbeddingIndexCard'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
+import { OverviewFil } from '@/components/atelier/overview/OverviewFil'
+import { OverviewMine } from '@/components/atelier/overview/OverviewMine'
 import { SignalMark, SIGNAL_COLOR, SIGNAL_RANK, type SignalKind } from '@/components/atelier/SignalMark'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
@@ -277,7 +281,6 @@ export function OverviewTab({
 
   // ── Layout measurement: fill the window under the Atelier chrome ──────
   const narrow = useMediaQuery('(max-width: 767px)')
-  const canHover = useMediaQuery('(hover: hover)')
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const rootRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
@@ -303,33 +306,23 @@ export function OverviewTab({
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => { setNow(new Date()) }, [])
 
-  // ── Liquid grid: one panel open at a time, by resting the pointer on it ──
+  // « + n more » inside an opened panel (the hover « liquid grid » left with the four columns, R1 4b).
   const [openPanel, setOpenPanel] = useState<string | null>(null)
   const [flashed, setFlashed] = useState<string | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
-  const hoverable = fixed && canHover
-  const enter = (id: string) => {
-    if (!hoverable) return
-    clearTimeout(timer.current)
-    if (openPanel === id) return
-    timer.current = setTimeout(() => setOpenPanel(id), openPanel ? 250 : 700)
-  }
-  const leave = (id: string) => {
-    if (!hoverable) return
-    clearTimeout(timer.current)
-    if (openPanel === id) timer.current = setTimeout(() => setOpenPanel(null), 300)
-  }
-  const toggle = (id: string) => { clearTimeout(timer.current); setOpenPanel(p => (p === id ? null : id)) }
+  const toggle = (id: string) => setOpenPanel(p => (p === id ? null : id))
+  // Side rail (R1 4b): every panel starts folded (header + count); a tap opens it.
+  const [unfolded, setUnfolded] = useState<Set<string>>(() => new Set())
+  const foldToggle = (id: string) => setUnfolded(p => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggleAllPanels = () => setUnfolded(p => (p.size ? new Set() : new Set(RAIL_PANELS)))
   function flash(id: string) {
+    setUnfolded(p => new Set(p).add(id))
     setFlashed(id)
     document.getElementById(`ov-panel-${id}`)?.scrollIntoView({ block: 'nearest' })
     setTimeout(() => setFlashed(f => (f === id ? null : f)), 1200)
   }
   const panelProps = (id: string, more: number) => ({
-    id, fixed, hdrH, open: openPanel === id, flashed: flashed === id, more, reduceMotion,
-    onEnter: more > 0 ? () => enter(id) : undefined,
-    onLeave: more > 0 ? () => leave(id) : undefined,
+    id, fixed: false, hdrH, open: openPanel === id, flashed: flashed === id, more, reduceMotion,
+    folded: !unfolded.has(id), onFold: () => foldToggle(id),
     onToggle: more > 0 ? () => toggle(id) : undefined,
     moreLabel: fmt('od_more', { n: more }),
     moreTitle: openPanel === id ? t('od_less_title') : fmt('od_more_title', { n: more }),
@@ -429,6 +422,11 @@ export function OverviewTab({
             </div>
           )
         })}
+        {!isAdmin && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--bd)' }}>
+            <OverviewMine onGoIdeas={() => onGoTab('concepts')} narrow />
+          </div>
+        )}
         {/* Mobile action bar scrolls here (TeamPortalClient `openFieldReminders`). */}
         <div id="atelier-field-reminders" style={{ scrollMarginTop: 96, marginTop: 12 }}>
           <div style={{ ...SECTION, height: 28, padding: '0 16px', background: 'var(--bg1)' }}>{t('ov_reminders_title')} · {reminders.length}</div>
@@ -452,12 +450,6 @@ export function OverviewTab({
   const thumbsBase = recentWorks.slice(0, compact ? 3 : 4)
   const thumbsMore = recentWorks.slice(compact ? 3 : 4)
   const fmtDay = (d: Date) => d.toLocaleDateString(localeTag, { day: 'numeric', month: 'short' })
-  const column = (children: ReactNode, last = false): ReactNode => (
-    <section style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: fixed ? 'hidden' : undefined, borderRight: last ? undefined : '1px solid var(--bd)' }}>
-      {children}
-      {fixed && <div style={{ flex: '1 1 0', minHeight: 0 }} />}
-    </section>
-  )
   const cell = (label: string, value: ReactNode, opts?: { color?: string; last?: boolean; title?: string }) => (
     <div title={opts?.title} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: compact ? '5px 12px' : '8px 12px', minWidth: 0, borderRight: opts?.last ? undefined : '1px solid var(--bg2)', borderBottom: '1px solid var(--bg2)' }}>
       <span style={{ fontSize: 11, color: 'var(--tx2)', ...ELLIPSIS }}>{label}</span>
@@ -490,30 +482,40 @@ export function OverviewTab({
         )}
       </header>
 
-      {/* Signal row — fixed positions: the eye learns where each signal lives */}
+      {/* Signal strip (R1 4b): the signals shrink to one line above the Fil; fixed positions, counts and links kept */}
       <nav aria-label={t('od_signals')} data-testid="atelier-overview-executive"
-        style={{ flex: 'none', height: compact ? 96 : 112, display: 'grid', gridTemplateColumns: `repeat(${signals.length}, minmax(0, 1fr))`, borderBottom: '1px solid var(--bd)' }}>
+        style={{ flex: 'none', display: 'grid', gridTemplateColumns: `repeat(${signals.length}, minmax(0, 1fr))`, borderBottom: '1px solid var(--bd)' }}>
         {signals.map((s, i) => (
-          <button key={s.id} type="button" onClick={s.go} aria-label={`${s.label}: ${t(`od_${s.kind}`)}, ${s.value}`}
+          <button key={s.id} type="button" onClick={s.go} aria-label={`${s.label}: ${t(`od_${s.kind}`)}, ${s.value}`} title={s.detail}
             style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0, padding: compact ? '7px 12px' : '10px 12px',
-              border: 0, borderRight: i < signals.length - 1 ? '1px solid var(--bd)' : 0, borderTop: `3px solid ${s.kind === 'info' ? 'var(--bd2)' : SIGNAL_COLOR[s.kind]}`,
+              display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, height: compact ? 34 : 40, padding: '0 10px',
+              border: 0, borderRight: i < signals.length - 1 ? '1px solid var(--bd)' : 0, borderTop: `2px solid ${s.kind === 'info' ? 'var(--bd2)' : SIGNAL_COLOR[s.kind]}`,
               background: tint(s.kind) ?? 'transparent', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer',
             }}>
-            <span style={{ ...SECTION, gap: 7, maxWidth: '100%' }}><SignalMark kind={s.kind} /><span style={ELLIPSIS}>{s.label}</span></span>
-            <span style={{ fontSize: s.value.length > 7 ? (compact ? 22 : 26) : (compact ? 28 : 34), fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.value}</span>
-            <span style={{ ...ELLIPSIS, maxWidth: '100%', fontSize: 12, color: 'var(--tx2)' }} title={s.detail}>{s.detail}</span>
+            <SignalMark kind={s.kind} />
+            <span style={{ ...ELLIPSIS, flex: '1 1 auto', fontSize: 12, color: 'var(--tx2)' }}>{s.label}</span>
+            <b style={{ fontSize: compact ? 14 : 16, whiteSpace: 'nowrap' }}>{s.value}</b>
           </button>
         ))}
       </nav>
 
-      {/* Detail columns */}
+      {/* Main column (R1 4b): Pem's Fil, or a team member's own lines; every other panel folds into the side rail */}
       <main style={{
         flex: fixed ? '1 1 0' : undefined, minHeight: 0, display: 'grid',
-        gridTemplateColumns: fixed ? 'minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr)' : 'repeat(2, minmax(0, 1fr))',
+        gridTemplateColumns: fixed ? 'minmax(0, 1fr) minmax(300px, 380px)' : 'minmax(0, 1fr)',
       }}>
-        {/* Col 1 — act */}
-        {column(<>
+        <section style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, maxHeight: fixed ? undefined : '70vh', borderRight: fixed ? '1px solid var(--bd)' : undefined, borderBottom: fixed ? undefined : '1px solid var(--bd)' }}>
+          {isAdmin ? <OverviewFil /> : <OverviewMine onGoIdeas={() => onGoTab('concepts')} />}
+        </section>
+        <aside aria-label={t('ofil_side')} data-testid="overview-side-rail" style={{ minWidth: 0, minHeight: 0, overflowY: fixed ? 'auto' : undefined }}>
+          <div style={{ ...SECTION, height: 28, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)' }}>
+            <span style={{ flex: 1 }}>{t('ofil_side')}</span>
+            <button type="button" data-testid="overview-side-toggle-all" onClick={toggleAllPanels}
+              style={{ background: 'none', border: 0, padding: 0, fontSize: 11, color: 'var(--tx2)', cursor: 'pointer', font: 'inherit', textTransform: 'none', letterSpacing: 0 }}>
+              {unfolded.size ? t('ofil_collapse_all') : t('ofil_expand_all')}
+            </button>
+          </div>
+        {/* act */}
           <Panel {...panelProps('needs', 0)} kind={sig('needs').kind} title={t('ov_needs_you')} count={num(needsTotal)}>
             {needsRows.map(r => countLine(r, 'attention'))}
           </Panel>
@@ -538,10 +540,8 @@ export function OverviewTab({
               </Line>
             ))}
           </Panel>
-        </>)}
 
-        {/* Col 2 — time */}
-        {column(<>
+        {/* time */}
           <Panel {...panelProps('pipeline', dlMore.length)} kind={sig('deadlines').kind} title={t('od_pipeline')}
             extra={fmt('od_active_n', { n: deadlines.length })} link={{ label: t('od_calendar_link'), onClick: () => onGoTab('pipeline') }}
             moreContent={dlMore.map((d, i) => deadlineLine(d, i + 5))}>
@@ -574,10 +574,8 @@ export function OverviewTab({
               {remBase.length ? remBase.map(reminderLine) : reminders.length === 0 ? <Empty h={rowH}>{t('od_no_reminder')}</Empty> : null}
             </div>
           </Panel>
-        </>)}
 
-        {/* Col 3 — money + collection */}
-        {column(<>
+        {/* money + collection */}
           <Panel {...panelProps('money', 0)} kind={sig('money').kind} title={fmt('od_money', { year: thisYear })} titleTip={t('od_money_note')}
             link={{ label: t('od_fiscal_link'), onClick: () => onGoTab('fiscal') }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
@@ -621,10 +619,8 @@ export function OverviewTab({
               </div>
             </div>
           </Panel>
-        </>)}
 
-        {/* Col 4 — studio life */}
-        {column(<>
+        {/* studio life */}
           {isAdmin && (
             <Panel {...panelProps('jobs', 0)} kind={sig('jobs').kind} title={t('od_sig_jobs')} testId="overview-embedding-index">
               <Line h={rowH} dim={(jobs.voice ?? 0) === 0}>
@@ -665,7 +661,7 @@ export function OverviewTab({
             moreContent={<div style={{ display: 'grid', gridTemplateColumns: `repeat(${compact ? 3 : 4}, minmax(0, 1fr))`, gap: 4, padding: '0 12px 8px' }}>{thumbsMore.map(thumb)}</div>}>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${compact ? 3 : 4}, minmax(0, 1fr))`, gap: 4, padding: '8px 12px 4px' }}>{thumbsBase.map(thumb)}</div>
           </Panel>
-        </>, true)}
+        </aside>
       </main>
 
       {/* Status bar */}
@@ -679,14 +675,19 @@ export function OverviewTab({
 
 // ── Building blocks (module level so they keep identity between renders) ──
 
+/** Side-rail panels, in rail order (« Tout ouvrir »). */
+const RAIL_PANELS = ['needs', 'catalogue', 'pipeline', 'week', 'reminders', 'money', 'collection', 'jobs', 'ideas', 'seeagain', 'latest']
+
 const ELLIPSIS: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 const SECTION: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--tx2)' }
 
 function Panel({
   id, domId, fixed, hdrH, open, flashed, more, reduceMotion, onEnter, onLeave, onToggle, moreLabel, moreTitle,
-  kind, title, titleTip, count, extra, link, children, moreContent, testId, shrink = 50, scroll = false,
+  kind, title, titleTip, count, extra, link, children, moreContent, testId, shrink = 50, scroll = false, folded = false, onFold,
 }: {
   id: string; domId?: string; fixed: boolean; hdrH: number; open: boolean; flashed: boolean; more: number; reduceMotion: boolean
+  /** Side rail: header only until opened. */
+  folded?: boolean; onFold?: () => void
   onEnter?: () => void; onLeave?: () => void; onToggle?: () => void; moreLabel: string; moreTitle: string
   kind?: SignalKind; title: string; titleTip?: string; count?: string; extra?: string
   link?: { label: string; onClick: () => void }; children: ReactNode; moreContent?: ReactNode; testId?: string
@@ -709,12 +710,25 @@ function Panel({
         scrollMarginTop: 96,
       }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8, height: hdrH, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)', boxShadow: open ? 'inset 0 2px 0 var(--ac)' : undefined }}>
-        {kind && <SignalMark kind={kind} />}
-        <h2 title={titleTip ?? title} style={{ ...SECTION, margin: 0, ...ELLIPSIS, flex: '0 1 auto' }}>{title}</h2>
-        {count != null && <b>{count}</b>}
-        {extra && <span title={extra} style={{ ...ELLIPSIS, flex: '0 20 auto', color: 'var(--tx3)' }}>{extra}</span>}
-        <span style={{ flex: 1 }} />
-        {more > 0 && onToggle && (
+        {onFold ? (
+          <button type="button" onClick={onFold} aria-expanded={!folded} data-testid={`overview-panel-fold-${id}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto', height: '100%', background: 'none', border: 0, padding: 0, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+            <span aria-hidden="true" style={{ color: 'var(--tx3)', fontSize: 10, width: 8 }}>{folded ? '▸' : '▾'}</span>
+            {kind && <SignalMark kind={kind} />}
+            <h2 title={titleTip ?? title} style={{ ...SECTION, margin: 0, ...ELLIPSIS, flex: '0 1 auto' }}>{title}</h2>
+            {count != null && <b>{count}</b>}
+            {extra && <span title={extra} style={{ ...ELLIPSIS, flex: '0 20 auto', color: 'var(--tx3)' }}>{extra}</span>}
+          </button>
+        ) : (
+          <>
+            {kind && <SignalMark kind={kind} />}
+            <h2 title={titleTip ?? title} style={{ ...SECTION, margin: 0, ...ELLIPSIS, flex: '0 1 auto' }}>{title}</h2>
+            {count != null && <b>{count}</b>}
+            {extra && <span title={extra} style={{ ...ELLIPSIS, flex: '0 20 auto', color: 'var(--tx3)' }}>{extra}</span>}
+            <span style={{ flex: 1 }} />
+          </>
+        )}
+        {!folded && more > 0 && onToggle && (
           <button type="button" onClick={onToggle} title={moreTitle} aria-expanded={open}
             style={{ background: 'none', border: 0, padding: '0 2px', fontSize: 11, color: open ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>
             {open ? '−' : moreLabel}
@@ -724,8 +738,8 @@ function Panel({
           <button type="button" onClick={link.onClick} style={{ background: 'none', border: 0, padding: 0, fontSize: 12, color: 'var(--tx2)', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>{link.label}</button>
         )}
       </div>
-      {children}
-      {moreContent != null && more > 0 && (
+      {!folded && children}
+      {!folded && moreContent != null && more > 0 && (
         <div aria-hidden={!open} style={{
           maxHeight: open ? 4000 : 0, opacity: open ? 1 : 0, overflow: 'hidden',
           transition: reduceMotion ? undefined : 'max-height 380ms ease, opacity 380ms ease',

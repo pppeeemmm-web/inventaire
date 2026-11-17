@@ -10,8 +10,8 @@ export const overviewDashMessages = defineMessages({
   od_legend: { fr: 'Légende', en: 'Legend' },
   od_signals: { fr: 'Signaux', en: 'Signals' },
   od_status_hint: {
-    fr: 'Cliquez un signal pour aller le corriger · laissez la souris sur un panneau « +N » pour l’ouvrir.',
-    en: 'Click a signal to go and fix it · rest the pointer on a “+N” panel to open it.',
+    fr: 'Cliquez un signal pour aller le corriger · cliquez un panneau à droite pour l’ouvrir.',
+    en: 'Click a signal to go and fix it · click a panel on the right to open it.',
   },
   od_loaded_at: { fr: 'Chargé à {time}', en: 'Loaded at {time}' },
   od_more: { fr: '+{n}', en: '+{n}' },
