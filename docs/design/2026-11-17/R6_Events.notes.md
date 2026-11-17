@@ -13,7 +13,41 @@ Design only, nothing built, no SQL run (reads only). Inputs: TODO R6 (Pem 2026-1
 - **Collaborations are blurry, and the screen must let the blur be recorded** (Q8). So nothing is forced: a collaboration's people have free roles (above); each work in its selection has an optional free **relation** (« faite ensemble », « prêtée », « montrée », « en réponse à… », or typed); a work may carry a free **authorship note** (« avec Artiste B ») that shows on its card and its history. Ownership rules do not change: Pem stays the owner unless an order says otherwise.
 - **Past events fill the About « Expositions » list** (Q9, Pem: « Excellent… a way to select them afterwards »). Every ended event gets a « sur le site » switch (off by default); the About block shows the switched-on events (year, title, venue) **plus** the rows typed by hand today, for shows from before the app. Choosing happens in the site editor's Expositions block, at display time.
 - **Build after R7** (Q12, Pem: « Pipeline is quite important to make sure data doesn't get lost … after R7 »). Agreed: R7 first, including its entry points (step 4: Pipeline and Exhibitions link to orders instead of making them) and the « Confié » kind; then R6. R6 also adds Pipeline « Créer l'événement » on a won process, so an accepted application never loses its trail.
-- **Still open:** Q10 (the per-work prep columns) and Q11 (what the phone does at the venue). The work card « Expositions » list (Q9, first half) is taken as yes.
+- ~~Still open: Q10, Q11~~ → answered in round 2 below. The work card « Expositions » list (Q9, first half) is taken as yes.
+
+### Round 2 (Pem, 2026-11-17)
+
+- Confirmed as written: open studio = event, works « montrées sur place », no order · the event's people with roles, all offered as the order's other party · collaborations recorded with their blur · the « sur le site » switch for the About list.
+- **« Créer une sélection » from the event.** The Œuvres section gets two actions: **« Créer la sélection »** — makes a new work group named after the event (« Dunamis — Galerie X 2026 »), filled from the current Inventory selection or a search, already linked to the event — and **« Lier un groupe existant »** (pick « Montrouge restreinte », « carte sete »…). An event has one selection; changing it later edits that group.
+- **« Confié » fixes a bigger problem** (Pem: « we can fix a bigger problem then by doing that »): today nothing says where a work is while it is at the framer, the photographer, the restorer or the printer. One order kind answers that everywhere — from the work card (« Confier… »), not only from an edition. It belongs to R7 (hand-over note left for the R7 session).
+- **Q10, prep per work — suggestion (Pem: « make suggestions »).** Three moments, six default columns, each column switchable per event, defaults set by kind:
+
+  | Moment | Column | What « done » means | Comes from |
+  |---|---|---|---|
+  | Before | **Présentation** | framed / mounted / hanging system ready | ticks `Oeuvres.Encadree` when « framed » |
+  | Before | **Cartel** | label text checked (title, year, technique, size, price or « collection particulière ») | generated from the work; one tick = « printed » |
+  | Before | **Constat ↗** | condition report out, with photos | the existing condition-report capture |
+  | At the venue | **Accrochée** | hung / installed | phone tick |
+  | At the venue | **Photo** | installation photo taken | a trace attached to the event |
+  | After | **Constat ↙** | condition report back, compared with ↗ | condition-report capture |
+
+  Off by default, switchable: **Emballage** (crate / packing), **Assurance** (value agreed — the column is already in the table), **Prix affiché**. Defaults by kind: Exposition = the six; Collaboration = Présentation · Cartel · Photo; Open studio = Présentation · Cartel · Photo (no constats: nothing leaves); Lancement d'édition = Constat ↗ · Constat ↙ (the Confié order carries the rest, e.g. « numérisée », « BAT validé » as event steps).
+- **Q11, the phone at the venue — suggestion (Pem: « make suggestions »).** Four moments, one event screen with the works as 64 px rows:
+  1. **Arrivée** — the list is the packing list: tick each work as unpacked; « Constat » opens the condition-report capture (photo of the work, issue photos). When all are checked, one sticky button: the order's next step « Marquer sorties — n œuvres » (if not already done at departure).
+  2. **Accrochage** — tick « Accrochée »; « Photo » adds an installation photo to the event's traces (via the share sheet, like other phone images; a quick snapshot is a trace, not a diffusion image).
+  3. **Pendant** — a **« Fiche de salle »** view: each work with title, year, technique, size, price and « disponible / vendue / réservée » — what you need when a visitor asks; a buyer's interest or a voice note recorded from the R2 input bar lands **linked to the event** (and to the work if one is open).
+  4. **Décrochage** — tick « Décrochée », « Constat ↙ » (the phone shows the departure photos next to the camera to compare), then one button « Marquer rentrées — n œuvres » closes the lines on the order. A sold work shows « vendue — reste chez X » and is skipped.
+  Creating an event or an order stays on the desktop.
+
+### Speed of the tab (Pem: « kind of clunky … there could be improvement »)
+
+Read in the code (not yet measured — a build starts by measuring, per STRATEGY / usage-driven priorities), _verified against live code 2026-11-17_:
+
+6. **Every keystroke in « Éditer » is a server call and a full reload.** The info inputs call `onUpdate` on each `onChange` ([`ExhibitionDetail.tsx`](../../../components/atelier/exhibitions/ExhibitionDetail.tsx) lines 193–249) → `updateExhibitionProcess` (server action) → `setSelected({...})` → `load` is a `useCallback` on `[selected, deepLinkId]` ([`Exhibitions.tsx`](../../../app/atelier/(portal)/exhibitions/_components/Exhibitions.tsx) lines 70–84), so the effect **re-fetches every exhibition and every step** after each change — and again on every click in the list.
+7. **One step toggle rewrites every step, one after another.** `updateExhibitionProcess` loops over all steps with an awaited `insert` / `update` each ([`actions.ts`](../../../app/atelier/(portal)/exhibitions/actions.ts) lines 338–346): ticking 1 of 11 steps = 11 sequential round trips.
+8. **Works come from the Atelier shell's loaded batch** (`oeuvres` prop; the shell loads the first keyset chunk, then the rest after paint): the « Œuvres » tab and the floor plan filter that array, so a work not yet loaded is missing, and the whole array is re-filtered on each render.
+
+**How the new tab avoids it (part of the R6 build, not a separate layer):** edits kept locally and saved on blur / a short pause, one field patch per save, no list re-fetch after a save or a click (update the one row in place); a step tick = one `update` of that step; the list loads names, dates and counts only, the event loads its own selection and order lines by id (independent of the shell batch); folded sections (plan, traces, commandes) load when opened; the floor plan's canvas mounts only when its section opens. First step of the build: time today's tab (open, select, tick a step, type a field) so the gain is shown, not assumed. Fixes 6–7 are small enough for a bug batch before R6 if the clunk bothers now — own GO.
 
 ## The problem, in Pem's words
 
