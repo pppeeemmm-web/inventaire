@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte &amp; temps — R4 mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);--cyan:oklch(0.78 0.12 200);
+  --pw:oklch(0.76 0.11 150);--pt:oklch(0.74 0.11 220);--pm:#d4b886;
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:22px}
+.caption{max-width:1280px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px;max-width:375px}
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600}
+.btn{height:32px;padding:0 12px;border:1px solid var(--bd2);border-radius:3px;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);white-space:nowrap}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.q{color:var(--tx3)}
+.pill{height:30px;padding:0 12px;border:1px solid var(--bd2);border-radius:15px;display:inline-flex;align-items:center;font-size:13px;color:var(--tx2);white-space:nowrap}
+.pill.on{background:var(--bg3);color:var(--tx);border-color:var(--ac2)}
+.ut{color:var(--tx3)}
+.sub{display:block;font-size:11px;color:var(--tx3)}
+.tiny{font-size:10px;fill:var(--tx2)}.tiny.q{fill:var(--tx3)}.tiny.r{fill:var(--rust)}.tiny.a{fill:var(--ac)}
+
+/* preview rule pieces */
+.wrow{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;min-width:0}
+.wt{object-fit:cover;border-radius:3px;background:var(--bg3);flex:none;border:1px solid var(--bd)}
+.wtx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.wn{color:var(--tx3);font-weight:600}
+.wchip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px 0 2px;border:1px solid var(--bd2);border-radius:3px;font-size:12px;color:var(--tx2);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.wchip img{width:22px;height:22px;object-fit:cover;border-radius:2px}
+.wchip b{color:var(--tx3);font-weight:600}
+.inl img{width:16px;height:16px;object-fit:cover;border-radius:2px;vertical-align:-3px;margin-right:3px}
+.inl b{color:var(--ac);font-weight:600}
+
+/* map */
+.sea{fill:#08090b}
+.land{fill:#212226;stroke:#3a3b42;stroke-width:1}
+.grat{stroke:#15171b;stroke-width:1}
+.route{fill:none;stroke:var(--ac);stroke-width:1.5;stroke-dasharray:5 4;opacity:.75}
+.rd{font-size:10px;fill:var(--ac)}
+.pin circle{stroke-width:1.5}
+.pin.dim{opacity:.35}
+.pin.sel circle:first-child{stroke:var(--tx)!important;stroke-width:2.5}
+.pin.empty circle{fill:var(--bd3)}
+.pn{font-size:10px;font-weight:700;fill:var(--tx);text-anchor:middle}
+.pl{font-size:11px;fill:var(--tx);paint-order:stroke;stroke:#0b0d10;stroke-width:3px}
+.pl.q{fill:var(--tx3)}
+.pc{stroke-width:1.5}.pe{fill:var(--bd3)}
+
+/* timeline */
+.tl text{font-family:var(--font-ui)}
+.bn{font-size:11px;fill:var(--tx);font-weight:600}.bn.q{fill:var(--tx3)}
+.yl{font-size:11px;fill:var(--tx2)}.yl.a{fill:var(--ac)}
+.yt{stroke:var(--bd);stroke-width:1}
+.ln{font-size:12px;fill:var(--tx2);font-weight:600}
+.lsep{stroke:var(--bd);stroke-width:1}
+.stub{fill:var(--bg2);stroke:var(--bd2);stroke-dasharray:3 3}
+.shelf{fill:color-mix(in srgb, var(--tx) 9%, transparent);stroke:color-mix(in srgb, var(--tx) 18%, transparent)}
+.bar{fill:var(--ac)}
+.und{fill:url(#hatch);stroke:var(--rust);stroke-width:1}
+.dot{fill:var(--sage)}
+.tick{stroke:var(--cyan);stroke-width:1.5}
+.step{fill:color-mix(in srgb, var(--pm) 60%, var(--sage))}
+.out.hollow{fill:none;stroke:var(--rust);stroke-width:1.3}
+.brush{fill:color-mix(in srgb, var(--ac) 9%, transparent);stroke:var(--ac);stroke-width:1}
+.today{stroke:var(--ac);stroke-width:1.5}
+
+/* desktop */
+.desk{width:1280px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;overflow:hidden;display:flex}
+.side{width:200px;flex:none;border-right:1px solid var(--bd);padding:14px 0;font-size:13px;color:var(--tx3)}
+.side .g{padding:12px 16px 4px}
+.side a{display:block;padding:6px 16px;color:var(--tx2);text-decoration:none}
+.side a.on{color:var(--tx);background:var(--bg3);border-left:2px solid var(--ac);padding-left:14px}
+.side a.mv{color:var(--mt);text-decoration:line-through}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:10px;height:56px;padding:0 20px;border-bottom:1px solid var(--bd)}
+.hdr h3{font-family:var(--font-serif);font-weight:400;font-size:26px;margin:0 10px 0 0}
+.strip{display:flex;align-items:center;height:34px;padding:0 20px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--tx2);white-space:nowrap}
+.strip b{color:var(--tx);margin-right:3px}
+.strip .dot{color:var(--mt);margin:0 9px}
+.strip .urg,.strip .urg b{color:var(--rust)}
+.mrow{display:flex;border-bottom:1px solid var(--bd)}
+.mapbox{position:relative;width:600px;height:392px;flex:none;border-right:1px solid var(--bd)}
+.mapbox .legend{position:absolute;right:48px;top:10px;background:color-mix(in srgb, var(--bg0) 85%, transparent);border:1px solid var(--bd);padding:6px 9px;font-size:11px;color:var(--tx2);display:grid;gap:3px}
+.lg{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+.mapbox .inset{position:absolute;left:10px;bottom:10px;border:1px solid var(--bd2);background:var(--bg0)}
+.mapbox .inset .lbl{position:absolute;left:6px;top:4px}
+.mapbox .zoom{position:absolute;right:10px;top:10px;display:grid;gap:2px}
+.mapbox .zoom span{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--bd2);background:var(--bg1);color:var(--tx2)}
+.panel{flex:1;min-width:0;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.panel .ttl{font-family:var(--font-serif);font-size:24px}
+.panel .meta{font-size:12px;color:var(--tx3)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+.tlbox{padding:6px 8px 4px}
+.tlhead{display:flex;align-items:center;gap:8px;padding:6px 12px 0;font-size:12px;color:var(--tx3)}
+.tlhead .sp{flex:1}
+.zoomseg{display:inline-flex;border:1px solid var(--bd2);border-radius:3px;overflow:hidden}
+.zoomseg span{padding:3px 9px;font-size:11px;color:var(--tx3);border-left:1px solid var(--bd2)}
+.zoomseg span:first-child{border-left:0}
+.zoomseg span.on{background:var(--bg3);color:var(--tx)}
+
+/* phone */
+.phone{position:relative;width:375px;height:812px;background:var(--bg1);border:1px solid var(--bd2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
+.status{flex:none;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:600}
+.ptop{display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--bd);flex:none}
+.ptop .ttl{font-family:var(--font-serif);font-size:24px;flex:1}
+.ib{width:44px;height:44px;display:grid;place-items:center;color:var(--tx2);font-size:20px;flex:none}
+.seg{display:flex;margin:8px 16px 0;border:1px solid var(--bd2);border-radius:4px;overflow:hidden;flex:none}
+.seg span{flex:1;height:36px;display:grid;place-items:center;font-size:14px;color:var(--tx3);border-left:1px solid var(--bd2)}
+.seg span:first-child{border-left:0}
+.seg span.on{background:var(--bg3);color:var(--tx)}
+.ppills{display:flex;gap:6px;padding:8px 16px;overflow:hidden;flex:none}
+.ppills .pill{height:32px}
+.pmap{position:relative;flex:none;height:250px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+.sheet{position:absolute;left:0;right:0;top:486px;bottom:0;background:var(--bg2);border-top:1px solid var(--bd2);border-radius:14px 14px 0 0;padding:6px 16px calc(var(--safe-b) + 70px);overflow:hidden}
+.handle{width:40px;height:4px;border-radius:2px;background:var(--bd3);margin:2px auto 8px}
+.sheet .ttl{font-family:var(--font-serif);font-size:20px}
+.inbar{position:absolute;left:0;right:0;bottom:0;padding:6px 8px max(6px,var(--safe-b));border-top:1px solid var(--bd);background:var(--bg1);display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.inbar span{height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:var(--tx3);gap:2px}
+.inbar span b{font-size:17px;color:var(--tx2);font-weight:400}
+.vt{flex:1;min-height:0;overflow:hidden;padding:0 16px}
+.mh{position:sticky;top:0;display:flex;align-items:baseline;gap:8px;padding:12px 0 6px;border-bottom:1px solid var(--bd2);background:var(--bg1)}
+.mh b{font-family:var(--font-serif);font-weight:400;font-size:20px}
+.mh span{font-size:12px;color:var(--tx3)}
+.dh{display:flex;align-items:center;gap:8px;padding:10px 0 2px;font-size:12px;color:var(--tx3)}
+.dh .go{margin-left:auto;color:var(--ac);font-size:12px;min-height:32px;display:inline-flex;align-items:center}
+.kind{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:10px;flex:none}
+.kind.s{background:color-mix(in srgb, var(--sage) 25%, transparent);color:var(--sage)}
+.kind.j{background:color-mix(in srgb, var(--cyan) 25%, transparent);color:var(--cyan)}
+.kind.w{background:color-mix(in srgb, var(--ac) 25%, transparent);color:var(--ac)}
+.fold{display:flex;align-items:center;gap:8px;min-height:48px;border-bottom:1px solid var(--bd);font-size:14px;color:var(--tx2)}
+.fold .n{margin-left:auto;font-size:12px;color:var(--tx3)}
+.pdiv{margin:10px 0 0;padding:6px 10px;border-left:3px solid var(--pm);background:color-mix(in srgb, var(--pm) 8%, transparent);font-size:12px;color:var(--tx2)}
+
+/* loupe */
+.veil{position:absolute;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.veil img{max-width:100%;max-height:520px;object-fit:contain;border:1px solid var(--bd2)}
+.cap{margin-top:10px;width:100%;background:var(--bg0);border:1px solid var(--bd2);padding:8px 10px;font-size:13px}
+.cap .sub{margin-top:2px}
+
+/* rule panel */
+.rule{width:1280px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px}
+.rule h3{grid-column:1/-1;font-family:var(--font-serif);font-weight:400;font-size:24px;margin:0 0 4px}
+.ba{display:grid;grid-template-columns:150px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
+.ba .where{font-size:11px;color:var(--tx3)}
+.before{font-size:13px;color:var(--tx2);text-decoration:line-through;text-decoration-color:var(--rust)}
+.lp{position:relative;display:flex;gap:14px;align-items:flex-start}
+.lp .big{width:250px;border:1px solid var(--bd2);background:var(--bg0)}
+.lp .big img{width:100%;display:block}
+.lp .big .cap{margin:0;border:0;border-top:1px solid var(--bd2)}
+.note{max-width:1280px;color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:12px}
+.note b{color:var(--tx2)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="color-mix(in srgb, oklch(0.72 0.16 35) 12%, transparent)"/><line x1="0" y1="0" x2="0" y2="5" stroke="oklch(0.72 0.16 35)" stroke-width="1.2"/></pattern></defs></svg>
+<div class="page">
+<div class="caption">
+  <h1>Carte &amp; temps — R4 mockup (2026-11-17, v1)</h1>
+  <b>Où et quand, pour toutes les œuvres :</b> la carte en haut (mode <b>Création</b> = où elles ont été faites), la frise en bas (œuvres, séances, Journal, lignes de création, sorties), filtrées ensemble. Et la règle des aperçus : <b>chaque numéro d'œuvre montre sa vignette et son titre, la loupe à l'appui long</b>. Note : <code>R4_TimelineMap.notes.md</code>.<br>
+  <b>Données réelles</b> (lecture seule, 2026-11-17) : les 8 lieux et leurs coordonnées, les 4 périodes, les comptes par année / mois, les séances, les vignettes. Le nom « Carte &amp; temps » est une proposition (question 1). Carte dessinée à la main (pas de tuiles).
+</div>
+
+<div class="col">
+  <h2>Desktop — « Carte & temps », mode Création, Rutali sélectionné</h2>
+  <div class="desk">
+    <nav class="side">
+      <div class="g lbl">Kaizen</div><a>Création</a><a>Opérations &amp; Stratégie</a>
+      <div class="g lbl">Catalogue</div>
+      <a>Inventaire</a><a class="on">Carte &amp; temps</a><a>Rapports</a><a>Thèmes</a><a>Constellation</a>
+      <div class="g lbl">Terrain</div><a>Production</a><a>Journal</a><a>Notes</a>
+      <div class="g lbl">Studio</div><a>Vue d'ensemble</a><a>Pipeline</a><a>Expositions</a>
+      <div class="g lbl">Commercial</div><a>Ventes</a><a>Contacts</a><a class="mv">Carte</a><a>Logistique</a>
+    </nav>
+    <div class="main">
+      <div class="hdr">
+        <h3>Carte &amp; temps</h3>
+        <span class="pill on">Création</span><span class="pill">Où elles sont</span><span class="pill">Contacts</span>
+        <span style="flex:1"></span>
+        <span class="btn q">⌕ Œuvre, lieu…</span>
+        <span class="btn pri">Ouvrir les 9 dans l'Inventaire</span>
+      </div>
+      <div class="strip">
+        <span><b>mai → nov. 2026</b></span><span class="dot">·</span>
+        <span><b>1 176</b>œuvres</span><span class="dot">·</span>
+        <span><b>1 167</b>situées (<b>11</b>lieu précis · <b>1 156</b>par période)</span><span class="dot">·</span>
+        <span><b>56</b>séances</span><span class="dot">·</span>
+        <span><b>20</b>entrées de Journal</span><span class="dot">|</span>
+        <span class="urg"><b>579</b>sans année →</span><span class="dot">·</span>
+        <span class="urg"><b>9</b>sans lieu →</span>
+      </div>
+      <div class="mrow">
+        <div class="mapbox">
+          <svg class="map" viewBox="0 0 600 392" width="600" height="392" xmlns="http://www.w3.org/2000/svg">
+    <rect width="600" height="392" class="sea"/><line class="grat" x1="65.6" y1="0" x2="65.6" y2="392"/><line class="grat" x1="147.6" y1="0" x2="147.6" y2="392"/><line class="grat" x1="229.6" y1="0" x2="229.6" y2="392"/><line class="grat" x1="311.6" y1="0" x2="311.6" y2="392"/><line class="grat" x1="393.6" y1="0" x2="393.6" y2="392"/><line class="grat" x1="475.6" y1="0" x2="475.6" y2="392"/><line class="grat" x1="557.6" y1="0" x2="557.6" y2="392"/><line class="grat" x1="0" y1="274.4" x2="600" y2="274.4"/><line class="grat" x1="0" y1="151.9" x2="600" y2="151.9"/><line class="grat" x1="0" y1="29.4" x2="600" y2="29.4"/><polygon class="land" points="108.2,19.6 127.9,24.5 139.4,44.1 129.6,66.2 131.2,88.2 124.6,98 105,105.4 91.8,112.7 72.2,115.2 60.7,105.4 67.2,88.2 75.4,76 64,68.6 67.2,49 88.6,46.6 91.8,31.9"/><polygon class="land" points="136.1,149.5 172.2,142.1 213.2,134.8 252.6,122.5 257.5,85.8 234.5,66.2 226.3,49 203.4,14.7 195.2,-9.8 200.1,-34.3 178.8,-58.8 147.6,-58.8 127.9,-31.8 137.8,-2.4 137.8,22.1 149.2,34.3 173.8,31.9 178.8,56.4 178.8,71.1 154.2,71.1 160.7,93.1 142.7,107.8 160.7,112.7 180.4,117.6 160.7,122.5"/><polygon class="land" points="270.6,125 255.8,129.9 255.8,147 232.9,159.3 208.3,161.7 198.4,159.3 203.4,186.2 180.4,181.3 152.5,191.1 157.4,205.8 188.6,218.1 209.9,245 208.3,284.2 200.1,313.6 167.3,311.2 98.4,306.3 77.1,323.4 83.6,347.9 86.9,396.9 237.8,396.9 244.4,372.4 265.7,362.6 282.1,350.4 282.1,338.1 280.4,321 305,313.6 318.2,318.5 337.8,321 352.6,303.8 373.9,289.1 396.9,301.4 401.8,325.9 411.6,338.1 433,355.3 455.9,367.5 464.1,379.8 475.6,396.9 511.7,396.9 506.8,370 490.4,350.4 462.5,338.1 452.6,311.2 431.3,286.7 433,264.6 454.3,257.3 467.4,269.5 490.4,311.2 515,323.4 533,338.1 547.8,350.4 549.4,396.9 885.6,396.9 885.6,-93.1 590.4,-93.1 590.4,-19.6 577.3,12.3 551,44.1 500.2,41.7 462.5,56.4 433,44.1 408.4,55.1 393.6,39.2 401.8,4.9 401.8,-31.8 362.4,-19.6 362.4,4.9 370.6,19.6 375.6,53.9 360.8,63.7 344.4,66.2 311.6,68.6 305,90.7 295.2,105.4 285.4,117.6"/><polygon class="land" points="383.8,323.4 387,333.2 385.4,357.7 380.5,362.6 370.6,350.4 372.3,333.2"/><polygon class="land" points="380.5,366.3 390.3,374.9 388.7,396.9 367.4,396.9 364.1,374.9"/>
+    <path class="route" d="M112.7,96.7 Q88.5,97.7 92.3,78.7 Q245.1,167.4 317.9,316.2"/><text class="rd" x="128.7" y="92.7">déc. 2019</text><text class="rd" x="122.3" y="64.7">déc. 2021</text><text class="rd" x="247.89999999999998" y="274.2">juin 2024 →</text>
+    <g class="pin empty"><circle cx="268.1" cy="179.6" r="2.5"/><text x="274.1" y="182.6" class="pl q">Paris</text></g>
+    <g class="pin">
+    <circle cx="112.7" cy="96.7" r="10.4" style="stroke:var(--pw);fill:color-mix(in srgb, var(--pw) 14%, transparent)"/>
+    <text x="112.7" y="100.7" class="pn">51</text>
+    <text x="112.7" y="120.12728558568857" text-anchor="middle" class="pl">Waterford Atelier</text>
+  </g>
+    <g class="pin">
+    <circle cx="92.3" cy="78.7" r="26.9" style="stroke:var(--pt);fill:color-mix(in srgb, var(--pt) 14%, transparent)"/>
+    <text x="92.3" y="82.7" class="pn">648</text>
+    <text x="92.3" y="45.789740289555866" text-anchor="middle" class="pl">Tooreeney Atelier</text>
+  </g>
+    <g class="pin">
+    <circle cx="317.9" cy="316.2" r="23.3" style="stroke:var(--pm);fill:color-mix(in srgb, var(--pm) 14%, transparent)"/><circle cx="317.9" cy="316.2" r="3" style="fill:var(--pm)"/>
+    <text x="317.9" y="320.2" class="pn">458</text>
+    <text x="317.9" y="352.46084110312944" text-anchor="middle" class="pl">Marseille Atelier</text>
+  </g>
+    <g class="pin">
+    <circle cx="308.5" cy="304" r="4.9" style="fill:var(--pm);stroke:var(--pm)"/>
+    
+    
+  </g>
+    <g class="pin sel">
+    <circle cx="384.5" cy="330.8" r="6.7" style="fill:var(--pm);stroke:var(--pm)"/>
+    
+    <text x="396.2" y="334.8" text-anchor="start" class="pl">Rutali · 9</text>
+  </g>
+  </svg>
+          <div class="zoom"><span>+</span><span>−</span></div>
+          <div class="legend">
+            <span><span class="lg" style="background:var(--pm)"></span>lieu précis (Historique de création)</span>
+            <span><span class="lg" style="border:1.5px solid var(--pm);background:color-mix(in srgb,var(--pm) 14%,transparent)"></span>par période (atelier de la période)</span>
+            <span style="color:var(--ac)">- - - la route : Waterford → Tooreeney → Marseille</span>
+            <span><span class="lg" style="background:var(--pw)"></span>Waterford <span class="lg" style="background:var(--pt);margin-left:8px"></span>Tooreeney <span class="lg" style="background:var(--pm);margin-left:8px"></span>Marseille</span>
+          </div>
+          <div class="inset"><span class="lbl">Provence</span><svg viewBox="0 0 170 150" width="170" height="150">
+    <rect width="170" height="150" class="sea"/><polygon class="land" points="-8,118.4 48,124.9 64,107.4 80,124.9 104,124.9 120,118.4 129.6,138.1 139.2,153.4 168,160 184,164.4 184,-21.9 -8,-21.9"/>
+    <circle cx="133.4" cy="133.3" r="9" style="stroke:var(--pm);fill:color-mix(in srgb, var(--pm) 14%, transparent)" class="pc"/><circle cx="133.4" cy="133.3" r="2.5" style="fill:var(--pm)"/><text x="121.4" y="121.30000000000001" text-anchor="end" class="pl">Marseille Atelier</text><circle cx="42.2" cy="23.9" r="4" style="fill:var(--pm);stroke:var(--pm)" class="pc"/><text x="49.2" y="27.9" text-anchor="start" class="pl">Lac du Peiroo · 1</text><circle cx="39.2" cy="34.2" r="2" class="pe"/><text x="44.2" y="38.2" class="pl q">Les Baux</text><circle cx="63.8" cy="42.1" r="2" class="pe"/><text x="68.8" y="46.1" class="pl q">Aureille</text>
+  </svg></div>
+        </div>
+        <div class="panel">
+          <div><span class="lbl">Lieu</span></div>
+          <div class="ttl">Rutali</div>
+          <div class="meta">Corse · 9 œuvres · lieu précis (une ligne « Création » chacune, non datée) · période Marseille</div>
+          <div class="grid">
+            <div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1617_01_20240915-_PE14194_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1617</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1618_01_20240915-_PE14200_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1618</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1619_01_20240915-_PE14203_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1619</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1620_01_20240915-_PE14209_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1620</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1621_01_20240915-_PE14239_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1621</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1622_01_20240915-_PE14248_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1622</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1623_01_20240915-_PE14248_-_pe_moulin-HDR-2.avif" alt=""><span class="wtx"><span class="wn">#1623</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1624_01_20240915-_PE14251_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1624</span> <span class="ut">Sans titre · sans date · crayons</span></span></div><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1625_01_20240915-_PE14257_-_pe_moulin-HDR-2.avif" alt=""><span class="wtx"><span class="wn">#1625</span> <span class="ut">Sans titre · sans date · crayons</span></span></div>
+          </div>
+          <div class="meta">Survol d'une vignette = la loupe (image + légende). Clic = la fiche, comme aujourd'hui.</div>
+          <div style="display:flex;gap:8px;margin-top:auto"><span class="btn">Inventaire</span><span class="btn">Constellation</span><span class="btn q">Sur la frise</span></div>
+        </div>
+      </div>
+      <div class="tlhead">
+        <span class="lbl">Frise</span><span>périodes en fond · glisser pour choisir une plage · clic sur un jour = Aujourd'hui de ce jour</span>
+        <span class="sp"></span>
+        <span class="zoomseg"><span>Tout</span><span class="on">Années</span><span>Mois</span><span>Jours</span></span>
+      </div>
+      <div class="tlbox"><svg class="tl" viewBox="0 0 1064 282" width="1064" height="282"><rect x="232.9" y="22" width="236.0" height="260" style="fill:color-mix(in srgb, var(--pw) 7%, transparent)"/><rect x="232.9" y="22" width="236.0" height="16" style="fill:color-mix(in srgb, var(--pw) 30%, transparent)"/><text x="238.9" y="34" class="bn">Rebirth – Waterford</text><rect x="469.2" y="22" width="295.3" height="260" style="fill:color-mix(in srgb, var(--pt) 7%, transparent)"/><rect x="469.2" y="22" width="295.3" height="16" style="fill:color-mix(in srgb, var(--pt) 30%, transparent)"/><text x="475.2" y="34" class="bn">Tooreeney</text><rect x="764.8" y="22" width="299.2" height="260" style="fill:color-mix(in srgb, var(--pm) 7%, transparent)"/><rect x="764.8" y="22" width="299.2" height="16" style="fill:color-mix(in srgb, var(--pm) 30%, transparent)"/><text x="770.8" y="34" class="bn">Marseille</text><line class="yt" x1="242.7" y1="38" x2="242.7" y2="282"/><text x="245.7" y="16" class="yl">2020</text><line class="yt" x1="360" y1="38" x2="360" y2="282"/><text x="363" y="16" class="yl">2021</text><line class="yt" x1="477.3" y1="38" x2="477.3" y2="282"/><text x="480.3" y="16" class="yl">2022</text><line class="yt" x1="594.7" y1="38" x2="594.7" y2="282"/><text x="597.7" y="16" class="yl">2023</text><line class="yt" x1="712" y1="38" x2="712" y2="282"/><text x="715" y="16" class="yl">2024</text><line class="yt" x1="829.3" y1="38" x2="829.3" y2="282"/><text x="832.3" y="16" class="yl">2025</text><line class="yt" x1="946.7" y1="38" x2="946.7" y2="282"/><text x="949.7" y="16" class="yl">2026</text><rect x="124" y="22" width="52" height="260" class="stub"/><text x="130" y="34" class="bn q">Youth</text><text x="130" y="16" class="yl">1997–2000</text><text x="130" y="70" class="tiny">2 œuvres</text><text x="130" y="274" class="tiny q">≈ ≈</text><line class="lsep" x1="0" y1="44" x2="1064" y2="44"/><text x="10" y="62" class="ln">Œuvres</text><line class="lsep" x1="0" y1="90" x2="1064" y2="90"/><text x="10" y="108" class="ln">Séances</text><line class="lsep" x1="0" y1="136" x2="1064" y2="136"/><text x="10" y="154" class="ln">Journal & notes</text><line class="lsep" x1="0" y1="182" x2="1064" y2="182"/><text x="10" y="200" class="ln">Création</text><line class="lsep" x1="0" y1="228" x2="1064" y2="228"/><text x="10" y="246" class="ln">Sorties</text><text x="10" y="77" class="tiny q">barre = mois</text><text x="10" y="87" class="tiny q">voile = année</text><rect x="243.7" y="69.22224513175402" width="115.3" height="16.8" class="shelf"/><text x="356" y="79.22224513175402" text-anchor="end" class="tiny">24</text><rect x="361" y="69" width="115.3" height="17.0" class="shelf"/><text x="473.3" y="79" text-anchor="end" class="tiny">25</text><rect x="478.3" y="65.40685092243623" width="115.4" height="20.6" class="shelf"/><text x="590.7" y="75.40685092243623" text-anchor="end" class="tiny">44</text><rect x="595.7" y="68.56846467004542" width="115.3" height="17.4" class="shelf"/><text x="708" y="78.56846467004542" text-anchor="end" class="tiny">27</text><rect x="713" y="56.40762835152006" width="115.3" height="29.6" class="shelf"/><text x="825.3" y="66.40762835152006" text-anchor="end" class="tiny">115</text><rect x="830.3" y="52.61022088442479" width="115.4" height="33.4" class="shelf"/><text x="942.7" y="62.61022088442479" text-anchor="end" class="tiny">155</text><rect x="947.7" y="48.50079366079202" width="115.3" height="37.5" class="shelf"/><text x="1060" y="58.50079366079202" text-anchor="end" class="tiny">205</text><rect x="242.7" y="68.6" width="8.3" height="17.4" class="bar"/><rect x="252.4" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="262.2" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="272" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="281.8" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="291.6" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="311.1" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="320.9" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="330.7" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="340.4" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="350.2" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="360" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="369.8" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="379.6" y="68.6" width="8.3" height="17.4" class="bar"/><rect x="389.3" y="71" width="8.3" height="15.0" class="bar"/><rect x="399.1" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="408.9" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="418.7" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="428.4" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="448" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="477.3" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="487.1" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="496.9" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="506.7" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="516.4" y="56.6" width="8.3" height="29.4" class="bar"/><rect x="526.2" y="66.2" width="8.3" height="19.8" class="bar"/><rect x="536" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="545.8" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="565.3" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="575.1" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="584.9" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="594.7" y="68.6" width="8.3" height="17.4" class="bar"/><rect x="604.4" y="71" width="8.3" height="15.0" class="bar"/><rect x="633.8" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="643.6" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="653.3" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="672.9" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="682.7" y="78.2" width="8.3" height="7.8" class="bar"/><rect x="692.4" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="702.2" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="712" y="71" width="8.3" height="15.0" class="bar"/><rect x="721.8" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="731.6" y="66.2" width="8.3" height="19.8" class="bar"/><rect x="741.3" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="751.1" y="71" width="8.3" height="15.0" class="bar"/><rect x="760.9" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="770.7" y="61.400000000000006" width="8.3" height="24.6" class="bar"/><rect x="780.4" y="54.2" width="8.3" height="31.8" class="bar"/><rect x="790.2" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="819.6" y="75.8" width="8.3" height="10.2" class="bar"/><rect x="946.7" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="995.6" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="1015.1" y="80.6" width="8.3" height="5.4" class="bar"/><rect x="1024.9" y="73.4" width="8.3" height="12.6" class="bar"/><rect x="1044.4" y="50" width="8.3" height="36.0" class="bar"/><rect x="453.7" y="50" width="14" height="34" class="und"/><text x="451.7" y="60" text-anchor="end" class="tiny r">2 sans date</text><rect x="752.9" y="50" width="14" height="34" class="und"/><text x="750.9" y="60" text-anchor="end" class="tiny r">556 sans date</text><rect x="1049.5" y="50" width="14" height="34" class="und"/><circle cx="990.3" cy="113" r="5.3" class="dot"/><circle cx="1000.1" cy="113" r="6.9" class="dot"/><circle cx="1009.9" cy="113" r="6.7" class="dot"/><circle cx="1019.7" cy="113" r="8.1" class="dot"/><circle cx="1029.5" cy="113" r="6.9" class="dot"/><circle cx="1039.2" cy="113" r="4.5" class="dot"/><circle cx="1049" cy="113" r="5.6" class="dot"/><text x="790.2" y="117" class="tiny q">les séances existent depuis mai 2026 →</text><line class="tick" x1="995.9" y1="150" x2="995.9" y2="168"/><line class="tick" x1="996.9" y1="150" x2="996.9" y2="168"/><line class="tick" x1="997.8" y1="150" x2="997.8" y2="168"/><line class="tick" x1="998.8" y1="150" x2="998.8" y2="168"/><line class="tick" x1="999.8" y1="150" x2="999.8" y2="168"/><line class="tick" x1="1000.8" y1="150" x2="1000.8" y2="168"/><line class="tick" x1="1001.7" y1="150" x2="1001.7" y2="168"/><line class="tick" x1="1002.7" y1="150" x2="1002.7" y2="168"/><line class="tick" x1="1003.7" y1="150" x2="1003.7" y2="168"/><text x="995.9" y="179" class="tiny">18</text><line class="tick" x1="1015.4" y1="150" x2="1015.4" y2="168"/><text x="1015.4" y="179" class="tiny">1</text><line class="tick" x1="1044.8" y1="150" x2="1044.8" y2="168"/><text x="1044.8" y="179" class="tiny">1</text><rect x="985.8" y="199" width="8.3" height="5" class="step"/><rect x="995.6" y="199" width="8.3" height="11" class="step"/><rect x="1005.3" y="199" width="8.3" height="14" class="step"/><rect x="1015.1" y="199" width="8.3" height="16" class="step"/><rect x="1024.9" y="199" width="8.3" height="15" class="step"/><text x="712" y="210" class="tiny q">46 lignes datées (Historique de création) →</text><path class="out hollow" d="M990.7 258 l-5 8 h10 z" transform="rotate(180 990.7 262)"/><path class="out hollow" d="M992.3 258 l-5 8 h10 z" transform="rotate(180 992.3 262)"/><path class="out hollow" d="M1011.2 258 l-5 8 h10 z" transform="rotate(180 1011.2 262)"/><path class="out hollow" d="M1043.8 258 l-5 8 h10 z" transform="rotate(180 1043.8 262)"/><text x="360" y="256" class="tiny q">7 dons — aucune date de don. △ creux = date de saisie dans l'app, pas du départ →</text><rect x="985.8" y="38" width="68.4" height="244" class="brush"/><text x="981.8" y="276" text-anchor="end" class="tiny a">sélection · mai → nov. 2026</text><line class="today" x1="1049.7" y1="22" x2="1049.7" y2="282"/><text x="1046.7" y="16" text-anchor="end" class="yl a">aujourd'hui</text></svg></div>
+    </div>
+  </div>
+</div>
+<div class="row">
+
+<div class="col">
+  <h2>Phone — Carte, mode Création</h2>
+  <p>Période « Marseille » choisie : la carte se resserre sur la Provence et la Corse. Le panneau du bas = les œuvres du lieu touché, vignette + titre ; appui long = la loupe.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="ptop"><span class="ib">☰</span><span class="ttl">Carte &amp; temps</span><span class="ib">⌕</span></div>
+    <div class="seg"><span class="on">Carte</span><span>Temps</span></div>
+    <div class="ppills"><span class="pill on">Création</span><span class="pill">Où elles sont</span><span class="pill">Contacts</span></div>
+    <div class="pmap"><svg class="map" viewBox="0 0 375 250" width="375" height="250" xmlns="http://www.w3.org/2000/svg">
+    <rect width="375" height="250" class="sea"/><line class="grat" x1="150" y1="0" x2="150" y2="250"/><line class="grat" x1="337.5" y1="0" x2="337.5" y2="250"/><line class="grat" x1="0" y1="33.6" x2="375" y2="33.6"/><polygon class="land" points="-315,-548.8 -270,-537.6 -243.8,-492.8 -266.3,-442.4 -262.5,-392 -277.5,-369.6 -322.5,-352.8 -352.5,-336 -397.5,-330.4 -423.8,-352.8 -408.8,-392 -390,-420 -416.3,-436.8 -408.8,-481.6 -360,-487.2 -352.5,-520.8"/><polygon class="land" points="-251.3,-252 -168.8,-268.8 -75,-285.6 15,-313.6 26.3,-397.6 -26.3,-442.4 -45,-481.6 -97.5,-560 -116.3,-616 -105,-672 -153.8,-728 -225,-728 -270,-666.4 -247.5,-599.2 -247.5,-543.2 -221.3,-515.2 -165,-520.8 -153.8,-464.8 -153.8,-431.2 -210,-431.2 -195,-380.8 -236.3,-347.2 -195,-336 -150,-324.8 -195,-313.6"/><polygon class="land" points="56.3,-308 22.5,-296.8 22.5,-257.6 -30,-229.6 -86.3,-224 -108.8,-229.6 -97.5,-168 -150,-179.2 -213.8,-156.8 -202.5,-123.2 -131.3,-95.2 -82.5,-33.6 -86.3,56 -105,123.2 -180,117.6 -337.5,106.4 -386.3,145.6 -371.3,201.6 -363.8,313.6 -18.8,313.6 -3.7,257.6 45,235.2 82.5,207.2 82.5,179.2 78.8,140 135,123.2 165,134.4 210,140 243.8,100.8 292.5,67.2 345,95.2 356.3,151.2 378.8,179.2 427.5,218.4 480,246.4 498.8,274.4 525,313.6 607.5,313.6 596.3,252 558.8,207.2 495,179.2 472.5,117.6 423.8,61.6 427.5,11.2 476.3,-5.6 506.3,22.4 558.8,117.6 615,145.6 656.3,179.2 690,207.2 693.8,313.6 1462.5,313.6 1462.5,-806.4 787.5,-806.4 787.5,-638.4 757.5,-565.6 697.5,-492.8 581.3,-498.4 495,-464.8 427.5,-492.8 371.3,-467.6 337.5,-504 356.3,-582.4 356.3,-666.4 266.3,-638.4 266.3,-582.4 285,-548.8 296.3,-470.4 262.5,-448 225,-442.4 150,-436.8 135,-386.4 112.5,-352.8 90,-324.8"/><polygon class="land" points="315,145.6 322.5,168 318.8,224 307.5,235.2 285,207.2 288.8,168"/><polygon class="land" points="307.5,243.6 330,263.2 326.3,313.6 277.5,313.6 270,263.2"/>
+    <path class="route" d="M-304.8,-372.6 Q-342.1,-383.1 -351.5,-413.6 Q-53.5,-172.2 164.4,129.2"/>
+    <g class="pin empty"><circle cx="50.5" cy="-183.1" r="2.5"/></g>
+    <g class="pin dim">
+    <circle cx="-304.8" cy="-372.6" r="10.4" style="stroke:var(--pw);fill:color-mix(in srgb, var(--pw) 14%, transparent)"/>
+    <text x="-304.8" y="-368.6" class="pn">51</text>
+    <text x="-304.8" y="-349.1727144143115" text-anchor="middle" class="pl">Waterford Atelier</text>
+  </g>
+    <g class="pin dim">
+    <circle cx="-351.5" cy="-413.6" r="26.9" style="stroke:var(--pt);fill:color-mix(in srgb, var(--pt) 14%, transparent)"/>
+    <text x="-351.5" y="-409.6" class="pn">648</text>
+    <text x="-351.5" y="-446.5102597104442" text-anchor="middle" class="pl">Tooreeney Atelier</text>
+  </g>
+    <g class="pin">
+    <circle cx="164.4" cy="129.2" r="23.3" style="stroke:var(--pm);fill:color-mix(in srgb, var(--pm) 14%, transparent)"/><circle cx="164.4" cy="129.2" r="3" style="fill:var(--pm)"/>
+    <text x="164.4" y="133.2" class="pn">458</text>
+    <text x="164.4" y="165.4608411031294" text-anchor="middle" class="pl">Marseille Atelier</text>
+  </g>
+    <g class="pin">
+    <circle cx="143" cy="101.3" r="4.9" style="fill:var(--pm);stroke:var(--pm)"/>
+    
+    <text x="133.1" y="105.3" text-anchor="end" class="pl">Lac du Peiroo · 1</text>
+  </g>
+    <g class="pin">
+    <circle cx="316.8" cy="162.6" r="6.7" style="fill:var(--pm);stroke:var(--pm)"/>
+    
+    <text x="305.1" y="166.6" text-anchor="end" class="pl">Rutali · 9</text>
+  </g>
+  </svg></div>
+    <div class="ppills" style="padding-top:8px"><span class="pill">Tout</span><span class="pill">Waterford</span><span class="pill">Tooreeney</span><span class="pill on">Marseille</span></div>
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="ttl">Marseille Atelier</div>
+      <div class="sub" style="margin-bottom:4px">458 œuvres · par période, 1 lieu précis · depuis juin 2024</div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2381_03_66f8195e.avif" alt=""><span class="wtx"><span class="wn">#2381</span> Pot chinois<span class="sub">16 nov. 2026 · mixte</span></span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2405_02_ce64767a.avif" alt=""><span class="wtx"><span class="wn">#2405</span> Mulberry portrait<span class="sub">9 nov. 2026 · séance</span></span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2406_01_833e9bb7.avif" alt=""><span class="wtx"><span class="wn">#2406</span> Tintoretto matrix<span class="sub">9 nov. 2026 · huile</span></span></div>
+    </div>
+    <div class="inbar"><span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span></div>
+  </div>
+</div>
+
+<div class="col">
+  <h2>Phone — Temps (frise verticale)</h2>
+  <p>Plus récent en haut, un en-tête par mois. Toucher un jour ouvre « Aujourd'hui » de ce jour (les ‹ › d'Aujourd'hui restent le pas à pas).</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="ptop"><span class="ib">☰</span><span class="ttl">Carte &amp; temps</span><span class="ib">⌕</span></div>
+    <div class="seg"><span>Carte</span><span class="on">Temps</span></div>
+    <div class="vt">
+      <div class="mh"><b>novembre 2026</b><span>5 séances · 32 œuvres datées · 1 entrée</span></div>
+      <div class="dh"><span class="kind s">●</span>16 nov. · séance<span class="go">Aujourd'hui ›</span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2381_03_66f8195e.avif" alt=""><span class="wtx"><span class="wn">#2381</span> Pot chinois<span class="sub">mixte · en production</span></span></div>
+      <div class="dh"><span class="kind w">▣</span>15 nov. · œuvre datée<span class="go">›</span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2233_01_20260411-20260411-_PE16305_-_pe_moulin_-_pe_moulin.avif" alt=""><span class="wtx"><span class="wn">#2233</span> <span class="ut">Sans titre · 2026 · crayons</span><span class="sub">en production</span></span></div>
+      <div class="dh"><span class="kind s">●</span>9 nov. · séance · 3 œuvres<span class="go">›</span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2405_02_ce64767a.avif" alt=""><span class="wtx"><span class="wn">#2405</span> Mulberry portrait<span class="sub">mixte</span></span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2406_01_833e9bb7.avif" alt=""><span class="wtx"><span class="wn">#2406</span> Tintoretto matrix<span class="sub">huile</span></span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2407_02_a24c93e8.avif" alt=""><span class="wtx"><span class="wn">#2407</span> Emasciated head<span class="sub">pierre noire</span></span></div>
+      <div class="dh"><span class="kind s">●</span>8 nov. · séance · 2 œuvres<span class="go">›</span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2403_01_cb6d7417.avif" alt=""><span class="wtx"><span class="wn">#2403</span> Mother and me<span class="sub">pierre noire</span></span></div>
+      <div class="fold"><b style="font-family:var(--font-serif);font-weight:400;font-size:18px;color:var(--tx)">octobre 2026</b><span class="n">2 séances ▸</span></div>
+      <div class="fold"><b style="font-family:var(--font-serif);font-weight:400;font-size:18px;color:var(--tx)">septembre 2026</b><span class="n">10 séances · 4 œuvres · 12 lignes ▸</span></div>
+      <div class="pdiv">Marseille · depuis le 13 juin 2024 · 458 œuvres</div>
+    </div>
+    <div class="inbar"><span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span></div>
+  </div>
+</div>
+
+<div class="col">
+  <h2>Phone — la règle, Notes « Trier »</h2>
+  <p>Avant : « #2357 · Les mortes marguerites » en texte seul. Après : vignette + titre ; appui long = l'image en grand avec sa légende.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="ptop"><span class="ib">‹</span><span class="ttl">Trier la note</span><span class="ib">⋯</span></div>
+    <div style="padding:12px 16px;display:grid;gap:8px">
+      <div class="lbl">Œuvre liée</div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2357_05_43770fb6.avif" alt=""><span class="wtx"><span class="wn">#2357</span> Les mortes marguerites<span class="sub">huile · 70 × 70 · en production</span></span></div>
+      <div class="lbl" style="margin-top:8px">Ou lier à une autre</div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2381_03_66f8195e.avif" alt=""><span class="wtx"><span class="wn">#2381</span> Pot chinois</span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2233_01_20260411-20260411-_PE16305_-_pe_moulin_-_pe_moulin.avif" alt=""><span class="wtx"><span class="wn">#2233</span> <span class="ut">Sans titre · 2026 · crayons</span></span></div>
+      <div class="wrow "><img class="wt" style="width:44px;height:44px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1316_01_20230823_PE10773_copy.avif" alt=""><span class="wtx"><span class="wn">#1316</span> <span class="ut">Sans titre · sans date · mixte</span></span></div>
+    </div>
+    <div class="veil">
+      <img src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_2357_05_43770fb6.avif" alt="">
+      <div class="cap"><b>#2357</b> Les mortes marguerites<span class="sub">2026 · huile · 70 × 70 cm · en production</span></div>
+      <div class="sub" style="margin-top:10px">toucher n'importe où pour fermer</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="rule">
+  <h3>La règle des aperçus — « un numéro ne voyage jamais seul »</h3>
+  <div>
+    <div class="lbl" style="margin-bottom:4px">Avant → après, endroits réels (liste complète dans la note)</div>
+    <div class="ba"><span class="where">Notes · Trier<br><code>NoteTriagePanel.tsx:165</code></span><span><span class="before">#2357 · Les mortes marguerites</span><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2357_05_43770fb6.avif" alt=""><span class="wtx"><span class="wn">#2357</span> Les mortes marguerites</span></div></span></div>
+    <div class="ba"><span class="where">Journal (bureau) · ✦ suggestions<br><code>JournalDayExtras.tsx:377</code></span><span><span class="before">✦ #1316 Sans titre</span><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1316_01_20230823_PE10773_copy.avif" alt=""><span class="wtx"><span class="wn">#1316</span> <span class="ut">Sans titre · sans date · mixte</span><span class="sub">✦ suggestion · ✓ ✕</span></span></div></span></div>
+    <div class="ba"><span class="where">Aujourd'hui · « Attributs modifiés »<br><code>TodayClient.tsx:371</code></span><span><span class="before">#2336 — Statut</span><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2336_01_20251021-PA210059_-_pe_moulin.avif" alt=""><span class="wtx"><span class="wn">#2336</span> <span class="ut">Sans titre · 2025 · sculpture</span><span class="sub">ex. : Statut</span></span></div></span></div>
+    <div class="ba"><span class="where">Fiche · Liens (puce, 24 px)<br><code>WorkLinksSection.tsx:77</code></span><span><span class="before">#335</span> <span class="wchip"><img src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_0335_01_PE15830.avif" alt=""><b>#335</b> Fos</span> <span class="wchip"><img src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_0372_01_PE19471.avif" alt=""><b>#372</b> Study * Shadows</span></span></div>
+    <div class="ba"><span class="where">Dans une phrase (Journal, note)</span><span class="inl" style="font-size:14px;color:var(--tx2)">Repris ce matin <img src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2357_05_43770fb6.avif" alt=""><b>#2357</b> Les mortes marguerites, le fond plus sombre.</span></div>
+    <div class="ba" style="border-bottom:0"><span class="where">Sans titre (912 œuvres)</span><span><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_1617_01_20240915-_PE14194_-_pe_moulin-HDR.avif" alt=""><span class="wtx"><span class="wn">#1617</span> <span class="ut">Sans titre · sans date · crayons</span></span></div></span></div>
+  </div>
+  <div>
+    <div class="lbl" style="margin-bottom:6px">Un seul geste : survol (bureau) / appui long (téléphone) = la loupe avec sa légende</div>
+    <div class="lp">
+      <div style="flex:1;display:grid;gap:4px">
+        <div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2405_02_ce64767a.avif" alt=""><span class="wtx"><span class="wn">#2405</span> Mulberry portrait</span></div>
+        <div style="background:var(--bg3);margin:0 -6px;padding:0 6px"><div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_0377_01_PE19479.avif" alt=""><span class="wtx"><span class="wn">#377</span> Cytherea<span class="sub">← survolé</span></span></div></div>
+        <div class="wrow "><img class="wt" style="width:40px;height:40px" src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2310_01_IMG_0417.avif" alt=""><span class="wtx"><span class="wn">#2310</span> Peiroo</span></div>
+      </div>
+      <div class="big"><img src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/W_0377_01_PE19479.avif" alt=""><div class="cap"><b>#377</b> Cytherea<span class="sub">2023 · huile · 27 × 38 cm · disponible · Tooreeney</span></div></div>
+    </div>
+    <div class="note" style="border:0;padding-top:10px">
+      <b>Trois formes, un composant</b> : ligne (40 px, 44 px de cible au téléphone) · puce (24 px) · dans le texte (16 px).
+      Sans titre → « Sans titre · année · technique », plus discret — jamais le numéro seul.
+      Le clic / la touche va où chaque endroit allait déjà. Les listes demandent vignettes + titres <b>en un seul appel</b> pour tous leurs numéros.
+      La petite carte d'aperçu actuelle (<code>WorkRef</code>) et la loupe (<code>ImageLoupe</code>) deviennent un seul geste (question 4).
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Lecture de la frise.</b> Voile gris = œuvres datées à l'année (pas posées sur un faux 1er janvier) · barres dorées = œuvres datées au jour / mois · bloc hachuré = œuvres <b>sans année</b> rangées à la main dans la période (556 pour Tooreeney) · points verts = séances (depuis mai 2026) · traits bleus = Journal · « Création » = lignes de l'Historique de création · △ creux = date où le changement a été <b>saisi</b> dans l'app (aucune date de don n'est enregistrée, question 7).
+  <b>Carte.</b> Rond plein = lieu précis (11 œuvres) · anneau = lieu déduit de la période (1 156) · taille = nombre d'œuvres · pointillé doré = la route de Pem entre ses ateliers.
+  Le mode « Où elles sont » (non dessiné) place chaque œuvre à l'<b>adresse</b> de son gardien (corrige #1653, montrée à Marseille au lieu de Rutali) et trace un arc « faite à → est à » pour les œuvres parties.
+</div>
+</div>
+</body>
+</html>
