@@ -10,6 +10,8 @@ export const noteLinesMessages = defineMessages({
   nl_add: { fr: 'Ajouter', en: 'Add' },
   nl_adding: { fr: 'Ajout…', en: 'Adding…' },
   nl_team: { fr: 'Équipe', en: 'Team' },
+  // Old work notes with no date anywhere (moved by scripts/old-notes-to-lines.mjs, lib/note-line-dates.ts).
+  nl_before_may_2026: { fr: 'avant mai 2026', en: 'before May 2026' },
   nl_discarded: { fr: 'retirée du Fil', en: 'taken out of the feed' },
   nl_flag: { fr: 'Une idée pour Pem ?', en: 'An idea for Pem?' },
   nl_flag_hint: {

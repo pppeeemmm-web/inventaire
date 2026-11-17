@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { listMyNoteLines, type MyNoteLine } from '@/app/atelier/fil/note-lines-actions'
+import { isUndatedOldNote } from '@/lib/note-line-dates'
 
 const ELLIPSIS: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 
@@ -34,7 +35,10 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
     }
   }, [])
 
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' })
+  const date = (iso: string) =>
+    isUndatedOldNote(iso)
+      ? t('nl_before_may_2026')
+      : new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' })
   const out = lines?.filter((l) => l.discardedAt).length ?? 0
 
   return (

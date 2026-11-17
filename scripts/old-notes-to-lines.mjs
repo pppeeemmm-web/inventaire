@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Old work notes → note lines: PREVIEW ONLY (R1 step 7, 2026-11-17). Reads, never writes.
+ * Old work notes → note lines (R1 step 7, 2026-11-17). Dry run by default; `--apply` writes (Pem's GO
+ * 2026-11-17, « go all »). The old `Oeuvres.Commentaires` / `Historique` text is never touched.
  *
  * Shows the `note_line` rows (target_kind 'work') the old `Oeuvres.Commentaires` / `Oeuvres.Historique`
  * text would become, under Pem's answers (2026-11-17, preview docs/design/2026-11-17/R1_OldNotes.preview.md):
@@ -10,14 +11,17 @@
  *   3. Commentaires → ONE row per work, paragraphs kept together (line breaks kept), for readability.
  *   4. `?`-only placeholders are dropped (a whole field, or a `?`-only paragraph inside it).
  * Date: a date written in the text when there is one (`[22/04/2026] …`, `2026/06/03 - …`, `13/10/2026`),
- * else the day the text first appeared in `oeuvre_versions` (history since 2026-05-12), else none (the
- * row would then carry the day of the move). Author: whoever saved that change, else Pem.
+ * else the day the text first appeared in `oeuvre_versions` (history since 2026-05-12), else none: the row
+ * then carries OLD_NOTE_UNDATED_AT (2026-05-01T00:00Z), shown by the app as « avant mai 2026 »
+ * (lib/note-line-dates.ts). Author: whoever saved that change, else Pem.
  *
  * Usage (from the repo root, needs NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env.local):
  *   node scripts/old-notes-to-lines.mjs                 summary + every work, before → after
  *   node scripts/old-notes-to-lines.mjs --json out.json the full proposal (rows as they would be inserted)
  *   node scripts/old-notes-to-lines.mjs --work 2287     one work
- * There is no write mode yet: `--apply` refuses. Writing the rows needs Pem's separate GO.
+ *   node scripts/old-notes-to-lines.mjs --apply --expect 98
+ *       writes the rows in ONE insert (all or nothing). Refuses when the row count isn't `--expect`, with
+ *       `--work`, or when any of these lines is already on its work (a second run inserts nothing).
  */
 import { config as loadDotenv } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
@@ -26,16 +30,24 @@ import { writeFile } from 'node:fs/promises'
 loadDotenv({ path: '.env.local', override: false, quiet: true })
 
 const args = process.argv.slice(2)
-if (args.some((a) => /^--(apply|write|commit)$/.test(a))) {
-  console.error('old-notes-to-lines: read-only preview. Writing the rows needs Pem\'s separate GO; nothing written.')
-  process.exit(2)
-}
 const argVal = (name) => {
   const i = args.indexOf(name)
   return i >= 0 ? args[i + 1] : null
 }
 const onlyWork = argVal('--work') ? Number(argVal('--work')) : null
 const jsonOut = argVal('--json')
+const apply = args.includes('--apply')
+const expect = argVal('--expect') != null ? Number(argVal('--expect')) : null
+const refuse = (msg) => {
+  console.error(`old-notes-to-lines: ${msg} Nothing written.`)
+  process.exit(2)
+}
+if (args.some((a) => /^--(write|commit)$/.test(a))) refuse('use --apply --expect <n>.')
+if (apply && onlyWork != null) refuse('--apply moves every work at once; drop --work.')
+if (apply && !Number.isInteger(expect)) refuse('--apply needs --expect <row count from the dry run>.')
+
+/** Same value as OLD_NOTE_UNDATED_AT in lib/note-line-dates.ts: the app shows it as « avant mai 2026 ». */
+const OLD_NOTE_UNDATED_AT = '2026-05-01T00:00:00.000Z'
 
 const env = (name) => {
   const v = process.env[name]?.trim()
@@ -143,11 +155,12 @@ function row(work, field, body, own, seen) {
       oeuvre_id: work.OeuvreID,
       body,
       author_id: authorId,
-      created_at: own ?? seen?.at ?? null, // null → the day of the move
+      // Noon UTC keeps the Paris calendar day; no date at all → « avant mai 2026 ».
+      created_at: own || seen?.at ? `${own ?? seen.at}T12:00:00.000Z` : OLD_NOTE_UNDATED_AT,
     },
     author: nameOf.get(authorId) ?? 'compte inconnu',
     authorFrom: seen?.by ? 'history' : 'pem-default',
-    dateFrom: own ? 'text' : seen?.at ? 'history' : 'move-day',
+    dateFrom: own ? 'text' : seen?.at ? 'history' : 'before-may-2026',
   }
 }
 
@@ -215,7 +228,7 @@ const stats = {
   multi_paragraph_rows: count((r) => r.insert.body.includes('\n')),
   dated_from_text: count((r) => r.dateFrom === 'text'),
   dated_from_history: count((r) => r.dateFrom === 'history'),
-  dated_move_day: count((r) => r.dateFrom === 'move-day'),
+  undated_before_may_2026: count((r) => r.dateFrom === 'before-may-2026'),
   author_from_history: count((r) => r.authorFrom === 'history'),
   author_pem_default: count((r) => r.authorFrom === 'pem-default'),
   historique_lines_staying_as_log: dropped.historiqueKept,
@@ -223,8 +236,8 @@ const stats = {
   placeholder_paragraphs_dropped: dropped.placeholderParagraphs,
 }
 
-const fmtDate = (d) => (d ? d.split('-').reverse().join('/') : 'jour du déplacement')
-console.log('old-notes-to-lines — DRY RUN, nothing written')
+const fmtDate = (iso) => (iso === OLD_NOTE_UNDATED_AT ? 'avant mai 2026' : iso.slice(0, 10).split('-').reverse().join('/'))
+console.log(apply ? 'old-notes-to-lines — APPLY' : 'old-notes-to-lines — DRY RUN, nothing written')
 console.log(JSON.stringify(stats, null, 2))
 for (const p of proposal) {
   console.log(`\n#${p.oeuvre_id} ${p.title ?? ''}`.trimEnd())
@@ -238,4 +251,23 @@ for (const p of proposal) {
 if (jsonOut) {
   await writeFile(jsonOut, JSON.stringify({ stats, proposal }, null, 2))
   console.log(`\nJSON written to ${jsonOut} (local file only)`)
+}
+
+// ── Write (--apply) ─────────────────────────────────────────────────────────────
+
+if (apply) {
+  const rows = all.map((r) => r.insert)
+  if (rows.length !== expect) refuse(`${rows.length} rows to write, --expect says ${expect}.`)
+  // Idempotent: any of these lines already on its work (same work, same text) → stop.
+  const existing = await readAll('note_line', 'oeuvre_id, body', (q) =>
+    q.eq('target_kind', 'work').in('oeuvre_id', [...new Set(rows.map((r) => r.oeuvre_id))]),
+  )
+  const key = (r) => `${r.oeuvre_id}|${r.body}`
+  const have = new Set(existing.map(key))
+  const already = rows.filter((r) => have.has(key(r)))
+  if (already.length) refuse(`${already.length} of these lines are already on their work (moved before?).`)
+  // One INSERT statement: all rows or none.
+  const { data, error } = await sb.from('note_line').insert(rows).select('id')
+  if (error) refuse(`insert failed: ${error.message}.`)
+  console.log(`\nAPPLIED: ${data.length} note_line rows inserted (ids ${data[0]?.id}–${data[data.length - 1]?.id}).`)
 }

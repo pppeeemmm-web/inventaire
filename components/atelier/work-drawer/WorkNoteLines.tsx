@@ -8,6 +8,7 @@
 
 import { useEffect, useState, type MutableRefObject } from 'react'
 import { addWorkNoteLine, listWorkNoteLines, type WorkNoteLine } from '@/app/atelier/fil/note-lines-actions'
+import { isUndatedOldNote } from '@/lib/note-line-dates'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { stringifyError } from '@/lib/error'
@@ -107,7 +108,11 @@ export function WorkNoteLines({
             <li key={l.id} data-testid="work-note-line" style={{ padding: '6px 0', borderBottom: '1px solid var(--bd)', opacity: l.discarded ? 0.5 : 1 }}>
               <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ color: 'var(--tx2)', fontWeight: 500 }}>{l.author ?? t('nl_team')}</span>
-                <span>{new Date(l.createdAt).toLocaleDateString(dateLoc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' })}</span>
+                <span>
+                  {isUndatedOldNote(l.createdAt)
+                    ? t('nl_before_may_2026')
+                    : new Date(l.createdAt).toLocaleDateString(dateLoc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' })}
+                </span>
                 {l.flagged && <span style={{ color: 'var(--ac)' }}>{t('nl_flagged')}</span>}
                 {l.discarded && <span style={{ fontStyle: 'italic' }}>· {t('nl_discarded')}</span>}
               </div>
