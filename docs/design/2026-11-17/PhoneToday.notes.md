@@ -1,6 +1,8 @@
-# Phone « Aujourd'hui » (R2): mockup notes, 2026-11-17 (v1)
+# Phone « Aujourd'hui » (R2): mockup notes, 2026-11-17 (v3)
 
-Design only, nothing built. Mockup: [PhoneToday.phone.html](./PhoneToday.phone.html), six phones at 375 px. Inputs: Pem's priorities and annotated mockups in [RETHINK](../../RETHINK_2026-11-14.md) (« Mobile terminal (R2) », 2026-11-14 eve), TODO R2. Live code read 2026-11-17: `app/hub/page.tsx` + `components/hub/HubLauncherClient.tsx` (launcher, Field pulse), `components/atelier/SessionJournalTab.tsx` (day page 580–665, « ← Jours » 1216), `components/atelier/journal/JournalDayExtras.tsx` (quick row 241–285, « À revoir » 287, entries, folds 532–625), `components/atelier/SeeAgainCard.tsx`, `components/atelier/TeamPortalClient.tsx` (`MobileActionBar` 244+), `app/manifest.ts` (`start_url: '/hub'`).
+**v3 (2026-11-17, later): R1's questions are all answered — see « v3: R1's final answers » below; it overrides v2 where they differ.** The mockup still shows v2 (phone 7 tabs, menu Triage); v3 changes are listed, not redrawn.
+
+Design only, nothing built. Mockup: [PhoneToday.phone.html](./PhoneToday.phone.html), eight phones at 375 px. **v2 = rearranged around the R1 brief** ([R1_InputsFeed.notes.md](./R1_InputsFeed.notes.md), same day). What moved is in « v2: what R1 changes here » below. Inputs: Pem's priorities and annotated mockups in [RETHINK](../../RETHINK_2026-11-14.md) (« Mobile terminal (R2) », 2026-11-14 eve), TODO R2. Live code read 2026-11-17: `app/hub/page.tsx` + `components/hub/HubLauncherClient.tsx` (launcher, Field pulse), `components/atelier/SessionJournalTab.tsx` (day page 580–665, « ← Jours » 1216), `components/atelier/journal/JournalDayExtras.tsx` (quick row 241–285, « À revoir » 287, entries, folds 532–625), `components/atelier/SeeAgainCard.tsx`, `components/atelier/TeamPortalClient.tsx` (`MobileActionBar` 244+), `app/manifest.ts` (`start_url: '/hub'`).
 
 ## What the screen is for
 
@@ -11,11 +13,48 @@ The phone opens on **today's page**, in Pem's order:
 
 Sales, pipeline and the other desktop work leave the first screen and go to the menu.
 
-## The six phones
+## v2: what R1 changes here (2026-11-17)
+
+The R1 model: the **Journal** is Pem's notebook (only Pem writes, the team reads); a voice note is a Journal entry spoken, so there is no separate « Notes » place; **Idées** = concepts, two weights (Petite / Recherche); the team's creative entry is one button, **« Proposer une idée »**; everything the team writes anywhere reaches Pem in **one feed** (« le Fil »), accepted by default, Pem flicks off what he disagrees with, Kaizen in its own section.
+
+| R2 v1 | R2 v2 |
+|---|---|
+| One bar for everyone: Écrire · Vocal · Œuvre · Photo · doc | **Two bars, by role.** Pem: unchanged (all four write into his Journal). Team: **💡 Idée · 🛠 Kaizen · 📄 Photo · doc** — the team can't write in the Journal; « Idée » = « Proposer une idée » (phone 8). |
+| Pulse line: en retard · aujourd'hui · à valider · boîte | **Fil first:** `Fil 4 · 10 en retard · 1 aujourd'hui`. « À valider » and « boîte » go into the Fil (the triages merge there, R1 rule list). |
+| — | **Phone 7, Fil:** Pem's sorting screen on the phone, one card at a time, the Hub Triage swipe gesture (R1 « Gesture »). Two tabs: Création · Kaizen. |
+| Menu: Field = Inventaire, Production, Journal, Notes | **Notes leaves** (merged into the Journal). Top of the menu: Aujourd'hui · **Fil** (count) · **Idées**. |
+| Photo · doc › Inspiration: link to a work or a concept | « … à une œuvre ou une **idée** » (concepts = idées). |
+| Vocal sheet: chip « Mémo · Général » | The chip goes: a voice note is a Journal entry; where it belongs is set later, like any entry (R1). |
+| Bureau: … Triage … | Triage leaves Bureau; it becomes part of the Fil (order of merging = R1 question 7). |
+| ✦ AI suggestion rows | Kept, **quieter**: only the most confident (R1 « AI »). |
+
+## v3: R1's final answers (2026-11-17)
+
+From the R1 brief, all answered by Pem the same day:
+
+| v2 said | v3 |
+|---|---|
+| Triages merge into the Fil; Triage leaves Bureau | **The three triages stay as they are in v1** — different functions (Hub Triage = outgoing social drafts + site enquiries; Notes / Share triage = Pem filing his own inputs). Triage **stays in Bureau**. The Fil holds only what **others** put in. |
+| Pulse: « à valider » and « boîte » go into the Fil | « **À valider** » (team edits to a work's facts) **goes into the Fil**: facts keep Pem's approval, given there. « **Boîte** » stays on the pulse line (field inbox; not team input). |
+| Phone 7 tabs: Création · Kaizen | **Création · Fiches · Kaizen.** Fiches = work-fact approvals (title, size, price, status, location…), same swipe: left = reject, right = approve. |
+| ✕ Retirer (flick left) · flick right = « vu » | **One global swipe, every deck in the app: left = discard, right = keep** (= today's Hub Triage). **Undo toast ~5–6 s.** Every discard is logged and recallable in **Audit, now the system ledger** (« Rappeler »). → Idée and # Lier stay as buttons. |
+| A note on a work = text in the notes field | **Work notes become separate lines** (author + date); a discard hides that line only. The Fil card reads « A. a ajouté une ligne à #2233 ». |
+| — | **Ideas can become discussions:** the team reads **and annotates** Idées; the Fil shows **one card per idea** (« Le tore · 3 nouvelles lignes »), never one per line; Pem's own lines never enter his Fil; Pem can close a discussion. |
+| « Idées brûlantes », énergie 1–5 | **Maturity, not heat: Graine · Pousse · Mûre.** No red, no counter. Idées list on phone shows the maturity word. |
+| Team menu: Idées unknown (R1 Q5) | **Idées in the team menu** (read, annotate, propose). Journal read-only for the team. |
+| Fil on the phone only | Desktop: **the Fil is Overview's main column** (grows out of « Pour vous »; the other signals become one strip). Team members' « Pour vous » = their proposals and what happened to them (the notification). |
+
+Still open in R2: the team bar (does the team need Œuvre?), and a team member's landing (read-only Aujourd'hui, or Kaizen) — « New R2 questions » below.
+
+**À revoir stays on Aujourd'hui.** It is Pem's own past (works and days to look at again), not team input; the Fil is the team's input. Two decks, two jobs.
+
+**A team member's phone** opens on the same Aujourd'hui, read-only: Pem's day (if shared — Journal visibility `team`), today's works, the Fil and À revoir hidden. Their bar is the team bar.
+
+## The eight phones
 
 1. **Aujourd'hui, top (landing).**
    - One header row: ☰ · date · ‹ › · 📅.
-   - A pulse line: 4 counters in one 32 px row (was a 4-tile block, « too big »).
+   - A pulse line, one 32 px row (was a 4-tile block, « too big »): **Fil** count first, then en retard · aujourd'hui (v2).
    - **À revoir aujourd'hui**: one card at a time.
    - **Œuvres du jour.**
    - The input bar is sticky at the bottom.
@@ -25,9 +64,9 @@ Sales, pipeline and the other desktop work leave the first screen and go to the 
    - Two folds, closed: **Attributs d'œuvres modifiés** (was « Fiches modifiées ce jour ») and **Création (Kaizen)**.
 3. **Vocal sheet.** One spoken input: Dictate folds into it (Pem: « Dictate goes into Vocal »).
    - Tap = record. Live words show while recording when the phone can, and are kept as a first draft. The audio is always kept and transcribed on the PC as today.
-   - The kind / project choice stays as it is today (default Mémo · Général). Changing it is R1's question, not R2's.
+   - v2: no kind / project chip. The note is a Journal entry; linking it to a work or an idea happens after, like any entry (R1).
 4. **Photo · doc sheet.** The new separate input button (Pem: « add photo / doc capture with scan capability »). Four choices:
-   - **Inspiration**: a photo added to today's entries.
+   - **Inspiration**: a photo added to today's entries; can also link to a work or an idée (Pem, answer 3).
    - **Document**: a scan, several pages, text read later on the PC (`/atelier/capture?mode=doc`, today's « Scan doc » launcher row).
    - **Carte de visite**: today's `?mode=card`.
    - **Étiquette QR**: the bar's « Scanner QR » today.
@@ -37,15 +76,24 @@ Sales, pipeline and the other desktop work leave the first screen and go to the 
    - **Photos de la séance**: today's session capture, Lightroom → Share.
 
    Because the sheet starts with the choice, « Nouvelle / Ancienne » can't be skipped any more (closes the R2 question). Mockup [WorkCard.phone.html](../2026-11-16/WorkCard.phone.html) phones 1–2: not redrawn here.
-6. **Menu (☰).**
-   - **Aujourd'hui** first, then the Field group in today's order (Inventaire, Production, Journal = the list of days, Notes).
+6. **Menu (☰).** (v2)
+   - **Aujourd'hui · Fil · Idées** on top.
+   - Then the Field group: Inventaire, Production, Journal = the list of days (**Notes merged into the Journal**).
    - Then **Kaizen**.
-   - Then **Bureau**, folded by default (collapse-by-default rule). It holds the old launcher rows (Pipeline, Vente, Triage, Contact, Document, Problème) and the desktop groups (Studio, Catalogue, Commercial, Public).
+   - Then **Bureau**, folded by default (Pem: all folded). It holds the old launcher rows (Pipeline, Vente, Contact, Document, Problème) and the desktop groups (Studio, Catalogue, Commercial, Public). Triage left for the Fil.
+7. **Fil (Pem).** (v2, from R1)
+   - Tabs **Création · Kaizen** with counts; « Refroidies » folded at the bottom (R1 rule 5).
+   - One card at a time: who, where it was written (« dans les notes de #2233 », « Proposer une idée », « Kaizen »), the text, the work thumbnail when there is one.
+   - Actions: **✕ Retirer** (flick left), **→ Idée** (Petite / Recherche), **# Lier** to a work; doing nothing = accepted (flick right = « vu »).
+   - Light route like Aujourd'hui; the deck loads 10 cards, then more.
+8. **Team member, « Proposer une idée ».** (v2, from R1)
+   - Aujourd'hui read-only behind; the team bar: **💡 Idée · 🛠 Kaizen · 📄 Photo · doc**.
+   - The Idée sheet: one text box, optional `#œuvre`, optional photo, « Envoyer à Pem ». Goes straight into Pem's Fil.
 
 ## Rules shown
 
-- **One input bar, sticky, everywhere on the phone:** Écrire · Vocal · Œuvre · Photo · doc.
-  - 4 × 25 % wide, 56 px tall, safe-area padding.
+- **One input bar, sticky, everywhere on the phone:** Écrire · Vocal · Œuvre · Photo · doc for Pem; Idée · Kaizen · Photo · doc for the team (v2).
+  - 4 (or 3) equal columns, 56 px tall, safe-area padding.
   - Hidden while a work card is open, like today's bar.
   - It **replaces** today's `MobileActionBar` (Capture session · Scanner QR · Note · Rappels): Scanner QR moves into Photo · doc; Rappels moves to the pulse line.
   - One bar = one place for inputs: the phone side of R1.
@@ -53,8 +101,8 @@ Sales, pipeline and the other desktop work leave the first screen and go to the 
   - The day header is one line; the big serif date drops to 22 px.
   - The day summary (« 2 entrées · 1 œuvre · 3 notes ») is a small line under it.
   - « ← Jours » leaves the top: ‹ › step through days, 📅 opens the list of days (Pem: « move ← Days below »; it moved into the header icons instead, which takes no height).
-- **Pulse line:** `10 en retard · 1 aujourd'hui · 0 à valider · 0 boîte`.
-  - Zeros are grey; the whole line opens the field inbox.
+- **Pulse line:** `Fil 4 · 10 en retard · 1 aujourd'hui` (v2; « à valider » and « boîte » fold into the Fil).
+  - Zeros are grey; « Fil » opens the Fil, the rest opens the field inbox.
   - Overdue in rust when > 0.
   - The « next card » block of the Hub goes away. The inbox already lists those cards.
 - **À revoir rotates, nothing is final** (Pem: « Ne plus montrer » too harsh, « keep the ball rolling »).
@@ -187,6 +235,9 @@ The slow « À revoir » query runs first and holds back the day's own entries.
 | Fold « Création (Kaizen) » | Unchanged, folded |
 | Admin « Modifier la séance » (date / notes / delete) | Unchanged, under the day's summary line |
 | `/atelier/works/new` two columns at 375 px (old 4b) | On the phone it opens the R3 recording drawer instead |
+| Hub « Triage » deck, Notes triage, Share triage | **Unchanged in v1** (v3); Triage stays in Bureau. The Fil (phone 7) is new and holds team input + work-fact approvals + Kaizen |
+| Phone menu « Notes » (v2) | Merged into the Journal (R1: a voice note is a Journal entry spoken) |
+| Team quick row on the Journal day (Écrire etc., team can write today) (v2) | Team bar: Idée · Kaizen · Photo · doc; the Journal is read-only for the team (R1) |
 
 ## Pem's answers (2026-11-17)
 
@@ -196,12 +247,22 @@ The slow « À revoir » query runs first and holds back the day's own entries.
 4. **Bureau** — Pem asked what it is: the folded bottom group of the phone menu, holding what the phone rarely needs (Pipeline, Vente, Triage, Contacts, Documents, Studio, Catalogue, Commercial, Public). Pem: **all folded**. (Name « Plus » kept as an option if « Bureau » reads unclear in use.)
 5. **Plus tard** — Pem: no preference → default **7 days**, one constant, easy to change after use.
 
-**All five questions answered 2026-11-17.** Speed added as a first rule the same day (section above). Baseline measured 2026-11-17 (Speed › Baseline). Waiting on Pem's GO to build.
+**All five questions answered 2026-11-17.** Speed added as a first rule the same day (section above). Baseline measured 2026-11-17 (Speed › Baseline).
+
+## Open after v3 (R1 and R2 together)
+
+R1's questions are all answered (v3 table above). New R2 questions:
+1. **Team bar** — Idée · Kaizen · Photo · doc right? (Does the team need Œuvre on the phone? Today capture is admin-only.)
+2. **A team member's landing** — read-only Aujourd'hui (Pem's day + today's works), or straight to Kaizen?
+
+Waiting on Pem's GO to build — R1 and R2 designed together (R1 brief, « Needs a GO »).
 
 ## For the build (after Pem's say)
 
 - No SQL for the screen itself. A « Plus tard » with a return date needs a column on the see-again dismissal (SQL GO).
-- An inspiration photo needs a home: a journal entry with an image, linkable to a work and / or a concept (answer 3). Likely SQL.
+- An inspiration photo needs a home: a journal entry with an image, linkable to a work and / or an idée (answer 3). Likely SQL.
+- The Fil and the team bar need R1's SQL (feed seen / dismissed state, idea weight, team notification) — one migration with R1.
+- Speed: the Fil count on Aujourd'hui is one cheap count query, part of the day's single request; the Fil itself is a light route too.
 - Copy: new keys in `journal-entry.messages.ts` / `hub.messages.ts`, FR + EN.
 - What's new item when it ships.
 - Smoke: WorkForm, WorkDrawer and Inventory at 375 px (`/hub` entry rule in `CLAUDE.md`).

@@ -44,6 +44,27 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
 .pulse .urg b,.pulse .urg{color:var(--rust)}
 .pulse .z,.pulse .z b{color:var(--mt)}
 .pulse .go{margin-left:auto;color:var(--tx3)}
+.pulse .fil{color:var(--ac);font-weight:600}.pulse .fil b{color:var(--ac);margin:0 0 0 3px}
+/* Fil deck (phone 7) */
+.tabs{display:flex;margin:8px 16px 0;border:1px solid var(--bd2);border-radius:3px;overflow:hidden}
+.tabs span{flex:1;height:40px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;color:var(--tx3)}
+.tabs span.on{background:var(--bg3);color:var(--tx)}
+.tabs b{font-size:11px;color:var(--ac)}
+.deck{position:relative;margin:12px 16px 0;height:360px}
+.deck .card{position:absolute;inset:0;margin:0;display:flex;flex-direction:column}
+.deck .behind{transform:translate(6px,8px);opacity:.45}
+.deck .who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx2)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--bg3);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--tx2)}
+.deck .where{font-size:11px;color:var(--tx3);margin-top:2px}
+.deck .body2{font-size:16px;line-height:1.45;margin-top:12px;flex:1}
+.swipe{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 16px 0}
+.swipe span{height:48px;border:1px solid var(--bd2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.swipe .x{color:var(--rust);border-color:color-mix(in srgb,var(--rust) 50%,var(--bd2))}
+.swipe .i{color:var(--ac);border-color:var(--ac2)}
+.flickhint{margin:8px 16px 0;font-size:11px;color:var(--tx3);text-align:center}
+.bar.b3{grid-template-columns:repeat(3,1fr)}
+textarea.ta{width:100%;min-height:110px;background:var(--bg1);border:1px solid var(--bd2);border-radius:4px;color:var(--tx);font:inherit;font-size:15px;padding:10px;resize:none}
+.ro{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;border:1px solid var(--bd2);border-radius:3px;padding:2px 6px;margin-left:8px}
 
 .sec{padding:14px 16px 0}
 .lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;display:flex;align-items:center;gap:6px}
@@ -146,8 +167,8 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
 <body>
 <div class="page">
 <div class="caption">
-  <h1>Phone « Aujourd'hui » — R2 mockup, 2026-11-17 (v1)</h1>
-  Design only. The phone opens on <b>today's page</b>: capture inputs → scan documents → today's work. One sticky input bar <b>Écrire · Vocal · Œuvre · Photo · doc</b>. Sales and pipeline move to the menu. Spec, field map and questions: <a href="./PhoneToday.notes.md" style="color:var(--ac)">PhoneToday.notes.md</a>. Sample day: Monday 17 Nov. 2026.
+  <h1>Phone « Aujourd'hui » — R2 mockup, 2026-11-17 (v2)</h1>
+  Design only. The phone opens on <b>today's page</b>: capture inputs → scan documents → today's work. Pem's sticky bar <b>Écrire · Vocal · Œuvre · Photo · doc</b>; the team's <b>Idée · Kaizen · Photo · doc</b>. <b>v2</b> = rearranged around the R1 brief: the <b>Fil</b> (phone 7) where Pem sorts what the team puts in, « Proposer une idée » for the team (phone 8), Notes merged into the Journal, concepts = idées. Sales and pipeline move to the menu. Spec, field map and questions: <a href="./PhoneToday.notes.md" style="color:var(--ac)">PhoneToday.notes.md</a>. Sample day: Monday 17 Nov. 2026.
 </div>
 
 <div class="row">
@@ -161,7 +182,7 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
     <div class="body">
       <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="today">aujourd'hui</span><span class="sp"></span><span class="ib">‹</span><span class="ib" style="color:var(--mt)">›</span><span class="ib">📅</span></div>
       <div class="sum">2 écrits · 3 notes vocales · 2 œuvres · 1 photo à valider</div>
-      <div class="pulse"><span class="urg"><b>10</b>en retard</span><span class="dot">·</span><span><b>1</b>aujourd'hui</span><span class="dot">·</span><span class="z"><b>0</b>à valider</span><span class="dot">·</span><span class="z"><b>0</b>boîte</span><span class="go">›</span></div>
+      <div class="pulse"><span class="fil">Fil <b>4</b></span><span class="dot">·</span><span class="urg"><b>10</b>en retard</span><span class="dot">·</span><span><b>1</b>aujourd'hui</span><span class="go">›</span></div>
 
       <div class="sec">
         <div class="lbl">À revoir aujourd'hui<span class="sp"></span><span class="pg">1 / 3 ›</span></div>
@@ -248,7 +269,7 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
         <div class="wave"><i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:30px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:9px"></i><i style="height:24px"></i><i style="height:16px"></i><i style="height:6px"></i></div>
         <div class="rec"></div>
         <div class="live">penser à rapprocher les marguerites de deux mille dix-neuf de la reprise <em>…</em></div>
-        <div class="meta">Mots en direct = premier jet · <span class="chip">Mémo · Général ▾</span></div>
+        <div class="meta">Mots en direct = premier jet · devient une entrée du Journal</div>
         <div class="row2"><span class="big">Annuler</span><span class="big pri">Arrêter et garder</span></div>
       </div>
     </div>
@@ -268,7 +289,7 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
         <div class="grab"></div>
         <h3>Photo · doc</h3>
         <div class="sub">Ajouté à la journée du 17 nov.</div>
-        <div class="opt main"><i>📷</i><div><b>Inspiration</b><small>Rejoint les notes du jour · lier à une œuvre ou un concept (option)</small></div><span class="arr">›</span></div>
+        <div class="opt main"><i>📷</i><div><b>Inspiration</b><small>Rejoint les notes du jour · lier à une œuvre ou une idée (option)</small></div><span class="arr">›</span></div>
         <div class="opt"><i>📄</i><div><b>Document</b><small>Manuscrit ou imprimé, plusieurs pages — le texte est lu sur le PC</small></div><span class="arr">›</span></div>
         <div class="opt"><i>👤</i><div><b>Carte de visite</b><small>Crée ou complète un contact</small></div><span class="arr">›</span></div>
         <div class="opt"><i>▦</i><div><b>Étiquette QR</b><small>Ouvre la fiche de l'œuvre étiquetée</small></div><span class="arr">›</span></div>
@@ -310,21 +331,71 @@ body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font
         <div class="mhdr">Atelier<span class="sp"></span><span class="ib">✕</span></div>
         <div class="mg">
           <div class="mi on"><i>☀</i>Aujourd'hui</div>
+          <div class="mi"><i>⇆</i>Fil<span class="bdg r">4</span></div>
+          <div class="mi"><i>💡</i>Idées</div>
           <div class="lbl" style="margin-top:12px">Terrain</div>
           <div class="mi"><i>▤</i>Inventaire</div>
           <div class="mi"><i>◷</i>Production</div>
           <div class="mi"><i>📓</i>Journal — les jours</div>
-          <div class="mi"><i>🎤</i>Notes<span class="bdg">3</span></div>
           <div class="lbl" style="margin-top:12px">Kaizen</div>
           <div class="mi"><i>✦</i>Création<span class="bdg">2</span></div>
           <div class="mi"><i>⚙</i>Opérations &amp; Stratégie</div>
           <div class="mi"><i>⌕</i>Audit<span class="bdg r">5</span></div>
-          <div class="mfold">Bureau<small>Pipeline · Vente · Triage · Contacts · Documents · Studio · Catalogue · Commercial · Public</small></div>
+          <div class="mfold">Bureau<small>Pipeline · Vente · Contacts · Documents · Studio · Catalogue · Commercial · Public</small></div>
           <div class="mfold" style="margin-top:0">Compte</div>
         </div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- 7. FIL -->
+<div class="col">
+  <h2>7 · Fil (Pem)</h2>
+  <p>R1: everything the team puts in, one card at a time. Accepted by default; Pem flicks off what he disagrees with. Kaizen in its own tab.</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">Fil</span><span class="sp"></span><span class="ib" style="font-size:14px;color:var(--tx3)">1 / 4</span></div>
+      <div class="tabs"><span class="on">Création <b>3</b></span><span>Kaizen <b>1</b></span></div>
+      <div class="deck">
+        <div class="card behind"></div>
+        <div class="card">
+          <div class="who"><span class="av">M</span><div><div>Marion · hier 18:20</div><div class="where">dans les notes de l'œuvre</div></div></div>
+          <div class="wk" style="margin-top:10px"><span class="th"></span><div><div class="t"><span class="num">#2233</span>Brume sur l'étang</div><div class="m">huile · 2025</div></div></div>
+          <div class="body2">La brume rappelle les tirages au cyanotype de la série de 2016 — et si on montrait les deux côte à côte au salon ?</div>
+          <div class="chip" style="align-self:flex-start">★ signalée « idée pour Pem »</div>
+        </div>
+      </div>
+      <div class="swipe"><span class="x">✕ Retirer</span><span class="i">→ Idée</span><span># Lier</span></div>
+      <div class="flickhint">← retirer · glisser → vu (reste tel quel)</div>
+      <div class="sec"><div class="fold">Refroidies <span class="c">6</span></div></div>
+      <div class="bar"><span><i>✍️</i>Écrire</span><span><i>🎤</i>Vocal</span><span><i>🖼</i>Œuvre</span><span><i>📄</i>Photo · doc</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 8. TEAM -->
+<div class="col">
+  <h2>8 · Team member — Proposer une idée</h2>
+  <p>R1: the team's one creative entry. Team bar Idée · Kaizen · Photo · doc; the Journal is read-only for them (open question 2 in the notes: their landing).</p>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="dayhdr"><span class="ib">☰</span><span class="date">lun. 17 nov.</span><span class="ro">lecture</span></div>
+      <div class="sum">Journal de Pem · 2 œuvres du jour</div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h3>Proposer une idée</h3>
+        <div class="sub">Arrive directement dans le Fil de Pem</div>
+        <textarea class="ta">Essayer le bleu du fabricant de Lyon sur la série des étangs ?</textarea>
+        <div class="acts" style="margin-top:8px"><span class="btn"># œuvre</span><span class="btn">📷 photo</span></div>
+        <div class="row2"><span class="big">Annuler</span><span class="big pri">Envoyer à Pem</span></div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:4px">Behind the sheet, the team bar: <b style="color:var(--tx)">💡 Idée · 🛠 Kaizen · 📄 Photo · doc</b>.</p>
 </div>
 
 </div>
