@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
-import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
@@ -17,25 +16,37 @@ function hasContent(html: string | null | undefined): boolean {
   return html.replace(/<[^>]*>/g, '').trim().length > 0
 }
 
-export default function PracticeClient({ siteTheme }: { siteTheme: PublicSiteTheme }) {
+/** Slice of the migrated Site config the Practice page needs — loaded on the server (`app/practice/page.tsx`). */
+export type PublicPracticeConfig = {
+  practice: {
+    approach_fr: string
+    approach_en: string
+    themes: string[]
+    materials_fr: string
+    materials_en: string
+  }
+  site_blocks: SiteBlock[]
+}
+
+export default function PracticeClient({
+  siteTheme,
+  config,
+}: {
+  siteTheme: PublicSiteTheme
+  config: PublicPracticeConfig | null
+}) {
   const { t, lang } = useI18n()
-  const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
     void trackView('/practice', null, null, getOrCreatePublicVisitorId())
-    async function fetchData() {
-      const result = await loadPortfolioConfig()
-      if ('ok' in result) setConfig(result.config)
-    }
-    fetchData()
   }, [])
 
   const hidden = useMemo(
-    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks as SiteBlock[]) : [],
+    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks) : [],
     [config],
   )
   const navOrder = useMemo(
-    () => config?.site_blocks ? orderedNavRoutes(config.site_blocks as SiteBlock[]) : undefined,
+    () => config?.site_blocks ? orderedNavRoutes(config.site_blocks) : undefined,
     [config],
   )
   const approach = lang === 'en'

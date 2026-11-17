@@ -94,3 +94,30 @@ Items 5, 7, 10 and the bugs above need no look decision.
 Then, after Pem's A–C: big view (#1), one page per work (#2) with per-work OG + sitemap, the landing (#3), FR / EN on the server (#7). Then the Carnet (F).
 
 Not checked: Lighthouse / real-phone timings, the module's own screens rendered (read from code only), the live `portfolio_sections.json` contents beyond what the public HTML shows.
+
+## First batch — built
+
+Side session, worktree `epic-hellman-22e516`, 2026-11-17. Uncommitted, for the lead to land. Verified against live code 2026-11-17.
+
+What changed:
+
+1. **`/works` text card** — `richTextToPlain` (`components/public/works-utils.ts`) now decodes HTML entities (`&amp;`, `&nbsp;`, `&rsquo;`, numeric…), so « Fire & Brilliance » reads right in teasers and collection labels. The « Texte de clôture — aperçu » / « Déclaration — aperçu » line is gone (it read like an editor note); the teaser + « Lire le texte » stay. Keys `pub_works_text_preview_hint`, `pub_practice_text_preview_hint` removed.
+2. **`/works` speed** — reads the cached JSON (`loadPortfolioSectionsCached`, tag `portfolio`) and a cookie-free anon client (`createPublicAnonClient` in `lib/supabase/server.ts`, same rows a logged-out visitor sees), plus `export const revalidate = 900` as a safety net. Saving the Site module and work edits already call `revalidatePath('/works')`. Image domain untouched.
+3. **`/about`, `/practice` server-rendered** — the page loads the cached JSON and passes a slice (`PublicAboutConfig`, `PublicPracticeConfig`) to the client; no more `loadPortfolioConfig()` server action in `useEffect`. The saved CV / bio is now in the HTML (checked: « CURRICULUM VITAE » in the `/about` response). `/practice`'s statement is in the HTML as the collapsed teaser + RSC payload (the card collapses long text — full text visible after « Lire le texte »).
+4. **Social previews** — `app/opengraph-image.ts`, `app/works/opengraph-image.ts`, `app/about/opengraph-image.ts` → `lib/seo/og-image.ts`: 1200×630 JPEG (sharp), the landing hero work whole on the page's own sky gradient, no text, `revalidate = 3600`. The old 400×400 AVIF `og:image` on `/` is removed. `/practice` and `/enquiry` have none (not in scope).
+5. **Captions + enquiry** — medium from `Oeuvres.Support` on the carousel cartel, grid lightbox and letter layout (`lib/public-work-medium.ts`: FR/EN label per Support id, unknown ids show the Atelier label). Zoom hint now follows the input (mouse → « Cliquer pour zoomer », touch → « Pincer ou toucher ») instead of window width. Enquiry reasons: Acquérir une œuvre / Commande / Exposition / Presse / Question / Autre (+ Livraison / Réclamation only with an order ref); « Acquérir » preselected when `?oeuvre_id=` is set. Email, phone and the new Instagram link (`general.instagram`, handle or URL → `lib/public-instagram.ts`) come from the server page, no client action.
+6. **Dead knobs hidden** — `type.scale_pct` and `motion.parallax_mult` rows removed from `KnobsPanel`; values stay in the JSON.
+
+New copy: `lib/i18n/messages/public-site.messages.ts` (FR + EN).
+
+Checks: `npm run typecheck`, `npm run lint` (0 errors; new `no-silent-catch` warnings on the about / practice page catches, same pattern as the existing enquiry / home pages), `npm run i18n:check` (0 hotspots), `npm run atelier:chrome:check` pass. Dev server (port 3001) in the built-in browser: `/works` desktop + 375 px (medium « Papier huile » shown, right zoom wording, no « aperçu », no horizontal scroll), `/enquiry?oeuvre_id=…` 375 px (reasons, preselect), `/about` 375 px, `/practice` desktop; the three `opengraph-image` URLs return `image/jpeg` 1200×630.
+
+Not checked / open:
+
+- **`/works` static**: local `next build` lists `○ /works` (Static, revalidate 15 m) — was dynamic. Real TTFB / cache headers only provable after deploy.
+- **Instagram, email, phone are empty in the saved JSON** (`general.contact_email`, `phone`, `instagram` all ""), so `/enquiry` shows no contact block today — Pem fills them in Site → Général. The Instagram link was not seen rendered (no test row written; prod DB / R2).
+- **New reasons are stored as `category = 'general'`** with « Motif : … » as the message's first line: `inquiry_category_check` only allows general / question / complaint / shipping / other. Adding buy / commission / show / press to the check = SQL, needs Pem's OK.
+- Medium labels for « P. huile » (→ Papier huile / Oil paper) and « Yupo/Legion » (→ Papier Yupo) are my reading — Pem to confirm. Map / motion / procession / timeline layouts still show year only.
+- No real enquiry submitted (would write a production row).
+- `KnobsPanel` not seen rendered (Atelier needs sign-in); typecheck only.
+- **Bigger finding, not fixed:** `loadPortfolioSectionsFromR2` rebuilds `config` from a fixed key list that drops `pages` and `knobs`. So the editor and every public page always get `migrate()` defaults: knob changes are lost on reload and never reach the site, and the next save writes the defaults back (live JSON's `knobs.site` = defaults, `pages` = derived defaults). Passing the two keys through is two lines, but it changes what the PagesEditor's « auto_ » blocks mean (they carry copies of the bio / statement that would then go stale against `about.intro_*`) — a decision for Pem / the lead before wiring. Until then every knob in the panel is effectively dead, not only the two hidden here.

@@ -7,6 +7,7 @@ import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import type { Work, WorksMode } from '@/components/public/works-utils'
 import type { WorksLightResolved } from '@/lib/works-mode-light'
 import OutroCard from './OutroCard'
+import { publicWorkMedium } from '@/lib/public-work-medium'
 
 interface Props {
   works: Work[]
@@ -151,7 +152,7 @@ export default function WorksLetterLayout({ works, mode, bevelShadow, light, sit
             </div>
             <h2 className="w-letter-title">{current.Titre ?? t('pub_untitled')}</h2>
             <div className="w-letter-meta">
-              {[yearOf(current.Annee), current.Hauteur && current.Largeur ? `${current.Hauteur} × ${current.Largeur} cm` : null]
+              {[yearOf(current.Annee), publicWorkMedium(current, t), current.Hauteur && current.Largeur ? `${current.Hauteur} × ${current.Largeur} cm` : null]
                 .filter(Boolean).join(' · ')}
             </div>
             <div className="w-letter-nav">

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import EnquiryClient from '@/components/public/EnquiryClient'
+import EnquiryClient, { type PublicEnquiryContact } from '@/components/public/EnquiryClient'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 import { loadPublicSiteTheme } from '@/lib/public-site-theme.server'
 import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
@@ -12,9 +12,15 @@ export const metadata: Metadata = routeMetadata('enquiry', 'en')
 export default async function EnquiryPage() {
   const siteTheme = await loadPublicSiteTheme()
   let landingPartial: Partial<LandingConfig> | undefined
+  const contact: PublicEnquiryContact = { email: '', phone: '', instagram: '' }
   try {
     const { config } = await loadPortfolioSectionsCached()
     landingPartial = config.landing as Partial<LandingConfig> | undefined
+    const g = config.general as Record<string, unknown> | undefined
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+    contact.email = str(g?.contact_email)
+    contact.phone = str(g?.phone)
+    contact.instagram = str(g?.instagram)
   } catch (e) {
     console.error('[EnquiryPage] portfolio sections load failed', e)
   }
@@ -25,7 +31,7 @@ export default async function EnquiryPage() {
   )
   return (
     <Suspense fallback={null}>
-      <EnquiryClient siteTheme={siteTheme} shadowTuning={shadowTuning} />
+      <EnquiryClient siteTheme={siteTheme} shadowTuning={shadowTuning} contact={contact} />
     </Suspense>
   )
 }

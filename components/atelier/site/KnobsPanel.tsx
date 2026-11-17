@@ -216,7 +216,7 @@ export function KnobsPanel({
       { k: 'knob', family: 'mat', field: 'vignette_pct', label: t('site_knobs_mat_vignette'), min: 0, max: 100, step: 1, unit: '%' },
     ] },
     { family: 'type', label: t('site_knobs_family_type'), rows: [
-      { k: 'knob', family: 'type', field: 'scale_pct', label: t('site_knobs_type_scale'), min: 75, max: 200, step: 25, unit: '%' },
+      // `scale_pct` hidden (R8 2026-11-17): no public page reads it. Value stays in the JSON.
       { k: 'enum', family: 'type', field: 'weight', label: t('site_knobs_family_type'), options: [
         { value: 'light', label: t('site_knobs_type_light') },
         { value: 'regular', label: t('site_knobs_type_regular') },
@@ -224,7 +224,7 @@ export function KnobsPanel({
       ] },
     ] },
     { family: 'motion', label: t('site_knobs_family_motion'), rows: [
-      { k: 'knob', family: 'motion', field: 'parallax_mult', label: t('site_knobs_motion_parallax'), min: 0, max: 3, step: 0.25 },
+      // `parallax_mult` hidden (R8 2026-11-17): no public page reads it. Value stays in the JSON.
       { k: 'knob', family: 'motion', field: 'sway_speed_mult', label: t('site_knobs_motion_sway'), min: 0, max: 3, step: 0.25 },
       { k: 'bool', family: 'motion', field: 'reduce_motion', label: t('site_knobs_motion_reduce') },
     ] },

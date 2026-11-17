@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
-import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
+import { instagramProfile } from '@/lib/public-instagram'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -18,22 +19,49 @@ import {
 } from '@/lib/landing-text-shadow'
 import type { CSSProperties } from 'react'
 
+/** Contact details from the Site module (`general`) — read on the server (`app/enquiry/page.tsx`). */
+export type PublicEnquiryContact = {
+  email: string
+  phone: string
+  instagram: string
+}
+
+/**
+ * Reasons offered to visitors. `inquiry.category` only accepts
+ * general / question / complaint / shipping / other (check constraint), so the four
+ * prospect reasons are stored as `general` with the reason as the message's first line.
+ */
+const PROSPECT_REASONS = ['buy', 'commission', 'show', 'press'] as const
+type ProspectReason = (typeof PROSPECT_REASONS)[number]
+const PROSPECT_REASON_KEYS: Record<ProspectReason, DictKey> = {
+  buy: 'enquiry_reason_buy',
+  commission: 'enquiry_reason_commission',
+  show: 'enquiry_reason_show',
+  press: 'enquiry_reason_press',
+}
+function isProspectReason(v: string): v is ProspectReason {
+  return (PROSPECT_REASONS as readonly string[]).includes(v)
+}
+
 type EnquiryClientProps = {
   siteTheme: PublicSiteTheme
   shadowTuning: LandingShadowTuning
+  contact: PublicEnquiryContact
 }
 
 export default function EnquiryClient({
   siteTheme,
   shadowTuning,
+  contact,
 }: EnquiryClientProps) {
   const { lang, setLang, t } = useI18n()
   const searchParams = useSearchParams()
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', message: '' })
-  const [category, setCategory] = useState('general')
-  const [config, setConfig] = useState<any>(null)
+  const [category, setCategory] = useState(() =>
+    /^\d+$/.test(searchParams.get('oeuvre_id') ?? '') ? 'buy' : 'question',
+  )
   const [chromeShadow, setChromeShadow] = useState<LandingChromeTextShadow>(() =>
     landingChromeTextShadowNow(new Date(), { tuning: shadowTuning }),
   )
@@ -42,11 +70,6 @@ export default function EnquiryClient({
 
   useEffect(() => {
     void trackView('/enquiry', null, null, getOrCreatePublicVisitorId())
-    async function fetchData() {
-      const result = await loadPortfolioConfig()
-      if ('ok' in result) setConfig(result.config)
-    }
-    fetchData()
   }, [])
 
   useEffect(() => {
@@ -75,8 +98,9 @@ export default function EnquiryClient({
     }
   }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx])
 
-  const contactEmail = config?.general?.contact_email
-  const contactPhone = config?.general?.phone
+  const contactEmail = contact.email.trim()
+  const contactPhone = contact.phone.trim()
+  const instagram = instagramProfile(contact.instagram)
 
   const oeuvreParam = searchParams.get('oeuvre_id')
   const orderParam = searchParams.get('sale_order_id')
@@ -87,11 +111,14 @@ export default function EnquiryClient({
     setLoading(true)
     const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
     const saleOrderId = orderParam && orderParam.length > 10 ? orderParam : null
+    const message = isProspectReason(category)
+      ? `${t('enquiry_reason_message_prefix').replace('{reason}', t(PROSPECT_REASON_KEYS[category]))}\n\n${form.message}`
+      : form.message
     const row: Record<string, unknown> = {
       name: form.name,
       email: form.email,
-      message: form.message,
-      category,
+      message,
+      category: isProspectReason(category) ? 'general' : category,
       status: 'open',
     }
     if (oeuvreId != null) row.oeuvre_id = oeuvreId
@@ -222,7 +249,7 @@ export default function EnquiryClient({
           <div className="form-container">
             <span className="label enquiry-chrome-shadow">{t('pub_enquiry')}</span>
 
-            {(contactEmail || contactPhone) && (
+            {(contactEmail || contactPhone || instagram) && (
               <div className="contact-info enquiry-body-shadow">
                 {contactEmail && (
                   <div>
@@ -232,6 +259,12 @@ export default function EnquiryClient({
                 {contactPhone && (
                   <div>
                     {t('enquiry_kicker_phone')} &nbsp; {contactPhone}
+                  </div>
+                )}
+                {instagram && (
+                  <div>
+                    {t('enquiry_kicker_instagram')} &nbsp;{' '}
+                    <a href={instagram.url} target="_blank" rel="noopener noreferrer">{instagram.handle}</a>
                   </div>
                 )}
               </div>
@@ -261,10 +294,16 @@ export default function EnquiryClient({
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
-                    <option value="general">{t('enquiry_category_general')}</option>
+                    {PROSPECT_REASONS.map((r) => (
+                      <option key={r} value={r}>{t(PROSPECT_REASON_KEYS[r])}</option>
+                    ))}
                     <option value="question">{t('enquiry_category_question')}</option>
-                    <option value="complaint">{t('enquiry_category_complaint')}</option>
-                    <option value="shipping">{t('enquiry_category_shipping')}</option>
+                    {orderParam && (
+                      <>
+                        <option value="shipping">{t('enquiry_category_shipping')}</option>
+                        <option value="complaint">{t('enquiry_category_complaint')}</option>
+                      </>
+                    )}
                     <option value="other">{t('enquiry_category_other')}</option>
                   </select>
                 </div>

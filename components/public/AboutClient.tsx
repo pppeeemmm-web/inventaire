@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
-import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
-import { migrate, type SiteBlock, type Block } from '@/lib/portfolio-config-types'
+import type { SiteBlock, Block } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -21,27 +20,33 @@ function hasContent(html: string | null | undefined): boolean {
   return html.replace(/<[^>]*>/g, '').trim().length > 0
 }
 
-export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme }) {
+/** Slice of the migrated Site config the About page needs — loaded on the server (`app/about/page.tsx`). */
+export type PublicAboutConfig = {
+  general: { artist_name: string }
+  about: { intro_fr: string; intro_en: string }
+  site_blocks: SiteBlock[]
+  pages: { about: Block[] }
+}
+
+export default function AboutClient({
+  siteTheme,
+  config,
+}: {
+  siteTheme: PublicSiteTheme
+  config: PublicAboutConfig | null
+}) {
   const { t, lang } = useI18n()
-  const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
     void trackView('/about', null, null, getOrCreatePublicVisitorId())
-    async function fetchData() {
-      const result = await loadPortfolioConfig()
-      if (!('ok' in result)) return
-      // Migrate so `pages` is populated for the registry-iteration pass below.
-      setConfig(migrate(result.config))
-    }
-    fetchData()
   }, [])
 
   const hidden = useMemo(
-    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks as SiteBlock[]) : [],
+    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks) : [],
     [config],
   )
   const navOrder = useMemo(
-    () => config?.site_blocks ? orderedNavRoutes(config.site_blocks as SiteBlock[]) : undefined,
+    () => config?.site_blocks ? orderedNavRoutes(config.site_blocks) : undefined,
     [config],
   )
   const artistName = config?.general?.artist_name || 'the pem workshop'

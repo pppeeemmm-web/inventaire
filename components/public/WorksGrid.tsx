@@ -14,6 +14,7 @@ import {
   worksForCollection,
 } from './works-utils'
 import type { Work, WorksMode } from './works-utils'
+import { publicWorkMedium } from '@/lib/public-work-medium'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
 
@@ -339,6 +340,7 @@ export default function WorksGrid({
               <p className="wg-lb-title">{lightbox.Titre ?? t('pub_untitled')}</p>
               <div className="wg-lb-details">
                 {yearOf(lightbox.Annee) && <span>{yearOf(lightbox.Annee)}</span>}
+                {publicWorkMedium(lightbox, t) && <span>{publicWorkMedium(lightbox, t)}</span>}
                 {lightbox.Hauteur && lightbox.Largeur && (
                   <span>
                     {Number(lightbox.Hauteur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}

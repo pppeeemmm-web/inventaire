@@ -38,6 +38,7 @@ import {
   resolveWorksMobileLayout,
 } from '@/lib/works-mode-light'
 import { applyCircadianToKnobs } from '@/lib/circadian-knobs'
+import { publicWorkMedium } from '@/lib/public-work-medium'
 import {
   parseDimensionCm,
   physicalArtDisplaySize,
@@ -204,6 +205,16 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
   }, [])
 
   useEffect(() => { setMounted(true) }, [])
+
+  /** Zoom hint wording follows the input (mouse vs touch), not the window width. */
+  const [touchInput, setTouchInput] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none), (pointer: coarse)')
+    const sync = () => setTouchInput(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
 
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -374,8 +385,8 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
   useEffect(() => { centerImgLoadedRef.current = centerImgLoaded }, [centerImgLoaded])
   useEffect(() => { isMobileRef.current = isMobile }, [isMobile])
 
-  const zoomEnterHint = t(isMobile ? 'pub_works_zoom_hint_enter_mobile' : 'pub_works_zoom_hint_enter_desktop')
-  const zoomAdjustHint = t(isMobile ? 'pub_works_zoom_hint_adjust_mobile' : 'pub_works_zoom_hint_adjust_desktop')
+  const zoomEnterHint = t(touchInput ? 'pub_works_zoom_hint_enter_mobile' : 'pub_works_zoom_hint_enter_desktop')
+  const zoomAdjustHint = t(touchInput ? 'pub_works_zoom_hint_adjust_mobile' : 'pub_works_zoom_hint_adjust_desktop')
 
   const touchDistance = (touches: React.TouchList) => {
     const a = touches[0]
@@ -1126,6 +1137,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
                   </h3>
                   <div className="w-work-details" style={{ fontSize: 7, letterSpacing: 2, textTransform: 'uppercase', color: '#6a6660', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                     {yearOf(activeWork.Annee) && <span>{yearOf(activeWork.Annee)}</span>}
+                    {publicWorkMedium(activeWork, t) && <span>{publicWorkMedium(activeWork, t)}</span>}
                     {activeWork.Hauteur && activeWork.Largeur && (
                       <span>
                         {Number(activeWork.Hauteur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}

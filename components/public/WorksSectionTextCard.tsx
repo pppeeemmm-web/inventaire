@@ -46,7 +46,6 @@ export function WorksSectionTextCard({
   const chrome = siteTheme?.chromeBorder ?? 'rgba(0,0,0,0.08)'
   const body = siteTheme?.bodyText ?? '#1a1816'
   const ariaKey = variant === 'prose' ? 'pub_practice_statement_aria' : 'pub_works_text_card_aria'
-  const hintKey = variant === 'prose' ? 'pub_practice_text_preview_hint' : 'pub_works_text_preview_hint'
 
   return (
     <>
@@ -91,7 +90,6 @@ export function WorksSectionTextCard({
           color: ${muted};
         }
         .wstc-prose .wstc-body p + p { margin-top: 1.6em; }
-        .wstc-prose .wstc-hint { color: ${muted}; opacity: 0.65; }
         .wstc-prose .wstc-toggle {
           color: ${muted};
           border-bottom-color: ${chrome};
@@ -137,19 +135,11 @@ export function WorksSectionTextCard({
           font-family: inherit;
         }
         .wstc-toggle:hover { color: #1a1816; }
-        .wstc-hint {
-          font-size: 8px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: #9a9690;
-          margin: 0 0 8px 0;
-        }
       `}</style>
       <article className={rootClass} aria-label={t(ariaKey)}>
         {title && <h3 className="wstc-title">{title}</h3>}
         {!expanded && needsCollapse ? (
           <>
-            <p className="wstc-hint">{t(hintKey)}</p>
             <p className="wstc-teaser">{teaser}</p>
             <button
               type="button"

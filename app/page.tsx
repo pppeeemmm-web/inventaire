@@ -28,13 +28,10 @@ import type { KnobsConfig } from '@/lib/portfolio-config-types'
 
 export async function generateMetadata(): Promise<Metadata> {
   const base = getMetadataBase()
-  let heroUrl = LANDING_HERO_IMAGE_URL
   let siteName = resolveArtistDisplayName(undefined)
   try {
     const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
-    const l = config.landing as { hero_image_url?: string; hero_image_key?: string } | undefined
-    heroUrl = resolveLandingHeroImageUrl(l ?? undefined)
     siteName = resolveArtistDisplayName(g?.artist_name)
   } catch (e) {
     console.error('[HomePage] generateMetadata: portfolio sections load failed', e)
@@ -53,20 +50,12 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName,
       title: dict.en.seo_home_meta_title,
       description: dict.en.seo_home_meta_description,
-      images: [
-        {
-          url: heroUrl,
-          width: 400,
-          height: 400,
-          alt: siteName,
-        },
-      ],
+      // og:image = `app/opengraph-image.ts` (1200×630 JPEG); X falls back to it.
     },
     twitter: {
       card: 'summary_large_image',
       title: dict.en.seo_home_meta_title,
       description: dict.en.seo_home_meta_description,
-      images: [heroUrl],
     },
   }
 }

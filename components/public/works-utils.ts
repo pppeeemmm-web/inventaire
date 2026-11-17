@@ -20,6 +20,9 @@ export interface Work {
   txtImageNameLink: string | null
   themes: string[]
   isRound: boolean
+  /** `Oeuvres.Support` id + its Atelier label — caption medium via `publicWorkMedium`. */
+  supportId?: number | null
+  supportLabel?: string | null
 }
 
 export interface Collection {
@@ -78,10 +81,33 @@ export type ForestPin = {
   label: string | null
 }
 
-/** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */
+/** Named entities the RichEditor / pasted text produce (anything else is left as-is). */
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
+  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“',
+  laquo: '«', raquo: '»', hellip: '…', ndash: '–', mdash: '—',
+  eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â',
+  ccedil: 'ç', ocirc: 'ô', ucirc: 'û', ugrave: 'ù', icirc: 'î',
+  iuml: 'ï', euml: 'ë', oelig: 'œ', Eacute: 'É', Agrave: 'À',
+}
+
+/** Decode HTML entities in already-tag-stripped text (no DOM; runs on the server too). */
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (match, body: string) => {
+    if (body[0] === '#') {
+      const code = body[1] === 'x' || body[1] === 'X'
+        ? parseInt(body.slice(2), 16)
+        : parseInt(body.slice(1), 10)
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match
+    }
+    return NAMED_ENTITIES[body] ?? match
+  })
+}
+
+/** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line), entities decoded. */
 export function richTextToPlain(html: string): string {
   if (!html) return ''
-  return html.replace(/<[^>]*>/gi, ' ').replace(/\s+/g, ' ').trim()
+  return decodeHtmlEntities(html.replace(/<[^>]*>/gi, ' ')).replace(/\s+/g, ' ').trim()
 }
 
 // ── Theme matching ───────────────────────────────────────────────────────

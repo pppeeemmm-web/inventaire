@@ -1,6 +1,8 @@
 // Server client — use in Server Components, Server Actions, Route Handlers
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/types/supabase.generated'
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -22,6 +24,17 @@ export async function createClient() {
         },
       },
     }
+  )
+}
+
+// Anon client without cookies — public pages that must stay static / ISR
+// (reading cookies() would make the route dynamic). Sees exactly what a
+// logged-out visitor sees (anon role + RLS).
+export function createPublicAnonClient() {
+  return createSupabaseJsClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    { auth: { persistSession: false, autoRefreshToken: false } },
   )
 }
 

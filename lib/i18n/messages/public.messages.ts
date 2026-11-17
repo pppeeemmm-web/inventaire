@@ -57,10 +57,6 @@ export const publicMessages = defineMessages({
     fr: 'Texte de la séquence',
     en: 'Section text',
   },
-  pub_works_text_preview_hint: {
-    fr: 'Texte de clôture — aperçu',
-    en: 'Closing text — preview',
-  },
   pub_works_text_expand: {
     fr: 'Lire le texte',
     en: 'Read full text',
@@ -72,10 +68,6 @@ export const publicMessages = defineMessages({
   pub_practice_statement_aria: {
     fr: 'Déclaration d’approche',
     en: 'Approach statement',
-  },
-  pub_practice_text_preview_hint: {
-    fr: 'Déclaration — aperçu',
-    en: 'Statement — preview',
   },
   pub_salon_count_works: {
     fr: 'œuvres',

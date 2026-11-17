@@ -9,6 +9,7 @@ import { noteLinesMessages } from './note-lines.messages'
 import { mobileSaleMessages } from './mobile-sale.messages'
 import { portfolioPdfMessages } from './portfolio-pdf.messages'
 import { publicMessages } from './public.messages'
+import { publicSiteMessages } from './public-site.messages'
 import { siteBlocksMessages } from './site-blocks.messages'
 import { systemMessages } from './system.messages'
 import { workFormMessages } from './work-form.messages'
@@ -60,6 +61,7 @@ import { versionFieldsMessages } from './version-fields.messages'
 export const featureMessages = {
   ...atelierMessages,
   ...publicMessages,
+  ...publicSiteMessages,
   ...hubMessages,
   ...todayMessages,
   ...todayCacheMessages,

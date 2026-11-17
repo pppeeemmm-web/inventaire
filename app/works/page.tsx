@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createPublicAnonClient, createServiceClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
-import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
+import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import { fetchPublicOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
 import {
   canonicalCollectionTheme,
@@ -39,6 +39,13 @@ import {
   resolvePublicSiteThemeForPage,
 } from '@/lib/public-site-theme'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
+
+/**
+ * Static + ISR: no cookies / headers here. Saving the Site module and work edits
+ * already call `revalidatePath('/works')` + `revalidateTag('portfolio')`; the
+ * timer only catches changes that bypass those actions.
+ */
+export const revalidate = 900
 
 export function generateMetadata(): Metadata {
   const base = routeMetadata('works', 'en')
@@ -156,7 +163,7 @@ function mapCollections(
 }
 
 export default async function WorksPage() {
-  const supabase = await createClient()
+  const supabase = createPublicAnonClient()
 
   const { data: themeRecords } = await supabase.from('theme').select('id, name')
   const catalogueThemes: ThemeNameRecord[] = (themeRecords ?? []).flatMap((row) => {
@@ -164,9 +171,9 @@ export default async function WorksPage() {
     return [{ id: row.id, name: row.name }]
   })
 
-  // 1. Config — fresh R2 read (portfolio JSON must match last save; avoid stale unstable_cache).
+  // 1. Config — cached R2 read; `savePortfolioConfig` revalidates tag `portfolio` + this path.
   let modes: WorksMode[] = []
-  const { config: cfg } = await loadPortfolioSectionsFromR2()
+  const { config: cfg } = await loadPortfolioSectionsCached()
   /** /works modes come from Diffusion (atelier); separate from card-page section blocks. */
   const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
   if (rawModes.length > 0) {
@@ -237,7 +244,15 @@ export default async function WorksPage() {
     .eq('is_public', true)
     .order('Année', { ascending: false })
 
-  const oeuvreThemeMap = await fetchPublicOeuvreThemeNamesMap(supabase)
+  const [oeuvreThemeMap, { data: supportRows }] = await Promise.all([
+    fetchPublicOeuvreThemeNamesMap(supabase),
+    supabase.from('Support').select('SupportID, Support'),
+  ])
+  const supportLabelById = new Map<number, string>(
+    ((supportRows ?? []) as Array<{ SupportID: number; Support: string | null }>)
+      .filter((r) => typeof r.SupportID === 'number' && r.Support?.trim())
+      .map((r) => [r.SupportID, r.Support!.trim()]),
+  )
 
   const ROUND_SUPPORT_ID = 16
   const works = Array.isArray(rawWorks)
@@ -253,6 +268,8 @@ export default async function WorksPage() {
           txtImageNameLink: w.txtImageNameLink ?? null,
           themes: oeuvreThemeMap.get(w.OeuvreID) ?? [],
           isRound: w.Support === ROUND_SUPPORT_ID,
+          supportId: typeof w.Support === 'number' ? w.Support : null,
+          supportLabel: typeof w.Support === 'number' ? supportLabelById.get(w.Support) ?? null : null,
         }]
       })
     : []
