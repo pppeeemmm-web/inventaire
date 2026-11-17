@@ -10,6 +10,17 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.43 (2026-11-17) — R1 6.4b: work notes as lines, « Pour vous » (the Fil on Overview is admin-only: not here); readable field names.
+  wn_work_note_lines_t: { fr: 'Notes d’œuvre : une ligne par personne', en: 'Work notes: one line per person' },
+  wn_work_note_lines_d: {
+    fr: 'Sur la fiche d’une œuvre, les notes deviennent des lignes séparées, chacune avec son auteur et sa date ; on en ajoute une sans toucher aux autres. « Une idée pour Pem ? » envoie la ligne directement à Pem. Sur la Vue d’ensemble, « Pour vous » montre vos lignes et ce qu’elles sont devenues.',
+    en: 'On a work’s card, notes become separate lines, each with its author and date; you add one without touching the others. « An idea for Pem? » sends the line straight to Pem. On Overview, « For you » shows your lines and what became of them.',
+  },
+  wn_field_names_readable_t: { fr: 'Champs modifiés : des noms lisibles', en: 'Changed fields: readable names' },
+  wn_field_names_readable_d: {
+    fr: 'Quand un attribut d’œuvre change (Aujourd’hui, Journal, comparaison de séance, historique des versions), son nom s’affiche en clair — Année, Statut, Dépositaire, Taux de TVA… — et non plus le nom de la colonne en base.',
+    en: 'When a work attribute changes (Today, Journal, session compare, version history), its name shows in plain words — Year, Status, Custodian, VAT rate… — instead of the database column name.',
+  },
   // 3.1.42 (2026-11-17) — R2: days, ✦ rows, folds, phone menu.
   wn_today_days_menu_t: { fr: 'Aujourd’hui : d’un jour à l’autre', en: 'Today: day to day' },
   wn_today_days_menu_d: {
