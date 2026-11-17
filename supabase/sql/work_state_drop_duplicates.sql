@@ -1,3 +1,4 @@
+-- APPLIED 2026-11-17 (Pem: « Drop them »), migration work_state_drop_duplicates, after x-build-sha showed 4471256.
 -- The same fact stored twice (docs/WORK_RULES.md §4, Pem 2026-11-17: « as you see fit »).
 --   is_gift            — status 11 says « Don »; the flag disagreed once (#2339).
 --   StageProduction    — old stage text, read by no screen; 305 works said « wip » while Disponible,

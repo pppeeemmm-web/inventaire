@@ -1553,7 +1553,6 @@ export type Database = {
           broadcast_ready: boolean
           Catalogué: boolean | null
           Commentaires: string | null
-          commercial_status: string | null
           ContactID: number | null
           created_by: string | null
           DateLivraison: string | null
@@ -1570,7 +1569,6 @@ export type Database = {
           Format: number | null
           Hauteur: string | null
           Historique: string | null
-          is_gift: boolean | null
           is_paid: boolean | null
           is_public: boolean
           IsCommission: boolean | null
@@ -1591,7 +1589,6 @@ export type Database = {
           production_started_precision: string | null
           Profondeur: string | null
           ReturnDate: string | null
-          StageProduction: string | null
           status_before_fate: number | null
           statusId: number | null
           Support: number | null
@@ -1609,7 +1606,6 @@ export type Database = {
           broadcast_ready?: boolean
           Catalogué?: boolean | null
           Commentaires?: string | null
-          commercial_status?: string | null
           ContactID?: number | null
           created_by?: string | null
           DateLivraison?: string | null
@@ -1626,7 +1622,6 @@ export type Database = {
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
-          is_gift?: boolean | null
           is_paid?: boolean | null
           is_public?: boolean
           IsCommission?: boolean | null
@@ -1647,7 +1642,6 @@ export type Database = {
           production_started_precision?: string | null
           Profondeur?: string | null
           ReturnDate?: string | null
-          StageProduction?: string | null
           status_before_fate?: number | null
           statusId?: number | null
           Support?: number | null
@@ -1665,7 +1659,6 @@ export type Database = {
           broadcast_ready?: boolean
           Catalogué?: boolean | null
           Commentaires?: string | null
-          commercial_status?: string | null
           ContactID?: number | null
           created_by?: string | null
           DateLivraison?: string | null
@@ -1682,7 +1675,6 @@ export type Database = {
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
-          is_gift?: boolean | null
           is_paid?: boolean | null
           is_public?: boolean
           IsCommission?: boolean | null
@@ -1703,7 +1695,6 @@ export type Database = {
           production_started_precision?: string | null
           Profondeur?: string | null
           ReturnDate?: string | null
-          StageProduction?: string | null
           status_before_fate?: number | null
           statusId?: number | null
           Support?: number | null
