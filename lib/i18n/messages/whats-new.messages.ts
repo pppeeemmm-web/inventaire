@@ -16,6 +16,12 @@ export const whatsNewMessages = defineMessages({
     fr: 'Une œuvre part en archive seulement une fois cataloguée (une fiche partielle suffit) : sinon « Archive » reste fermé sur la fiche. En archive, ses tâches ouvertes (Cataloguer, Photographier…) sont mises en pause : elles quittent la Production sans être cochées. Pour la ressortir, choisir « Artiste » puis son étape : En production (les tâches reviennent) ou Disponible si la photo est faite.',
     en: 'A work goes to the archive only once catalogued (a partial record is enough): otherwise « Archive » stays closed on the card. In the archive, its open tasks (Catalogue, Photograph…) are paused: they leave Production without being ticked. To bring it back, choose « Artist » then its stage: In production (the tasks come back) or Available if the photo is done.',
   },
+  // 3.1.49 (2026-11-17) — R4 build v1.
+  wn_timeline_map_previews_t: { fr: 'Chronologie, carte « Création », et un numéro d’œuvre montre toujours l’œuvre', en: 'Timeline, map « Création », and a work number always shows the work' },
+  wn_timeline_map_previews_d: {
+    fr: 'Nouvel onglet Chronologie (Catalogue, sur ordinateur) : les œuvres, séances, jours du Journal et commandes dans le temps ; choisir une période ouvre ce qu’elle contient, « Voir sur la carte » passe à la Carte. La Carte gagne le mode Création : où les œuvres ont été faites. Partout où un numéro #1234 apparaît (Journal, Aujourd’hui, Fil, fiche, Broadcast, Revenus & dépenses), il vient avec sa vignette et son titre ; un appui long ou le survol ouvre la grande image avec sa légende.',
+    en: 'New Timeline tab (Catalogue, on a computer): works, sessions, Journal days and orders over time; picking a span opens what it holds, « See on the map » goes to the Map. The Map gains a Création mode: where the works were made. Wherever a #1234 number shows (Journal, Today, Fil, work card, Broadcast, Revenue & expenses), it comes with its thumbnail and title; a long press or hover opens the big picture with its caption.',
+  },
   // 3.1.48 (2026-11-17) — destroyed / lost works on the card and in the history; R7 step 2.
   wn_orders_everywhere_t: { fr: 'Une vente, un dépôt, un prêt ou un don passe toujours par une commande', en: 'A sale, deposit, loan or gift always goes through an order' },
   wn_orders_everywhere_d: {
