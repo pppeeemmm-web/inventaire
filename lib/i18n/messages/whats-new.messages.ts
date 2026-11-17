@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.37 (2026-11-17) — R2: the Hub opens on « Aujourd'hui », streamed; Bureau fold; Journal quick row → bar.
+  wn_hub_opens_today_t: { fr: 'Le Hub s’ouvre sur Aujourd’hui', en: 'The Hub opens on Today' },
+  wn_hub_opens_today_d: {
+    fr: 'Sur le téléphone, le Hub (et l’app) s’ouvre directement sur « Aujourd’hui ». La date et la barre de saisie arrivent tout de suite ; « À revoir », les œuvres et les écrits du jour suivent dès qu’ils sont prêts. Pipeline, Vente, Triage, Contact, Document, Problème et la déconnexion sont rangés dans « Bureau », replié en bas. Dans la journée du Journal, les boutons Écrire · Dicter · Note vocale · Capture laissent la place à la barre du bas.',
+    en: 'On the phone, the Hub (and the app) opens straight on « Today ». The date and the input bar come at once; « See again », the works and the writings of the day follow as soon as they are ready. Pipeline, Sale, Triage, Contact, Document, Issue and sign-out sit in « Desk », folded at the bottom. On a Journal day, the Write · Dictate · Voice note · Capture buttons give way to the bottom bar.',
+  },
   // 3.1.36 (2026-11-17) — R2: « Aujourd'hui » light phone page + one input bar on every phone screen.
   wn_phone_today_bar_t: { fr: 'Au téléphone : Aujourd’hui et une barre de saisie', en: 'On the phone: Today and one input bar' },
   wn_phone_today_bar_d: {
