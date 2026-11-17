@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-17 — R3 step 2: what the work card gains in « Objet » (What's new 3.1.33)
+
+- Built by side session r3-build-2, landed `d59702c`. **Objet › Logistique**: the work's shipments (kind, status, dates, recipient) + delivery / return dates, editable and saved with the card (`DateLivraison` / `ReturnDate`, also in pending changes), « Logistique ↗ »; a **top chip** while a shipment is open (`WorkCardLogistics.tsx`). **Objet › Valeur « Commande »**: `IsCommission` + client, saved as the work's buyer (`AcheteurID`) — Pem's choice, no SQL. **Présentation gates**: Montée / Encadrée / Exposable / Prêt à diffuser. **Hover captions** on every chip, gate and stage (`WorkCardCaption.tsx`; long-press on touch). Step 1 leftovers: one gift control, owner / custodian hover card (Fiche ↗ / Changer / Adresse), the editor's name in « modifié par », denser rows.
+- **Fix:** `Montee` was missing from the catalogue selects, so every card save wrote « not mounted » (live since the drawer sent `montee`). Now loaded and only sent when known. Checked in the DB 2026-11-17: all 11 501 version snapshots carry `Montee` and none is true, no work is Montée → nothing was lost.
+- Checked: 4 checks pass; side panel at 1440 px; Commande toggle → unsaved → Annuler → clean. Not seen: 820 px overlay and 375 px after step 2, a real hover caption, the admin view → live check after push.
+
 ## 2026-11-16 — R3 step 1: the work card re-laid out (What's new 3.1.32)
 
 - Built by side session r3-build-1 from the approved spec (`docs/design/2026-11-16/WorkCard.notes.md`), landed `9522678`. Header: `#id` large, Replié / Développé (Replié default, remembered), ☆ selection, ⤢, × — « ⋯ » removed (☆ in header, gift → « Don… » ownership chip with its override, trash in Objet for everyone, permanent delete in Objet › Zone admin). Top block: picture with ↓ / ⟳ / 🗑 (admin), cover-first strip with ⠿ drag-to-reorder, swatches with hex + share, coloured production stages with dates (tap the next one; « photo requise »), cyan ownership chips, owner / custodian links ↗ + address, technique · support · dimensions + format · Période « … terminée … ». Création and Objet drawers in the agreed order, « N champ(s) vide(s) … voir » line in Replié, sticky Annuler / Enregistrer always there. Save, guard, draft restore, offline queue and upload retry untouched. New: `WorkCardParts.tsx`, `WorkCardIdentity.tsx`, `work-card.messages.ts`.

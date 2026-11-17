@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.33 (2026-11-17) — R3 step 2: the card's « Objet » part.
+  wn_work_card_objet_t: { fr: 'Fiche œuvre : logistique, commande, présentation', en: 'Work card: logistics, commission, presentation' },
+  wn_work_card_objet_d: {
+    fr: 'Dans « Objet » : les envois de l’œuvre et ses dates de livraison et de retour (un repère en haut tant qu’un envoi est en cours), « Commande » avec son client, et les étapes de présentation Montée / Encadrée / Exposable / Prêt à diffuser. Chaque pastille explique son sens au survol (appui long sur téléphone). « Montée » n’est plus effacée à l’enregistrement.',
+    en: 'In « Objet »: the work’s shipments and its delivery and return dates (a marker on top while a shipment is open), « Commande » with its client, and the presentation steps Mounted / Framed / Exhibitable / Ready to share. Every chip explains itself on hover (long press on the phone). « Mounted » is no longer cleared on save.',
+  },
   // 3.1.32 (2026-11-16) — R3 step 1: the work card re-laid out.
   wn_work_card_r3_t: { fr: 'Nouvelle fiche œuvre', en: 'New work card' },
   wn_work_card_r3_d: {
