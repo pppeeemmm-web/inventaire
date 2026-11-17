@@ -165,13 +165,45 @@ td.grpL{border-left:1px solid var(--bd)}
 .sticky{position:absolute;left:0;right:0;bottom:0;padding:10px 16px max(10px,var(--safe-b));background:var(--bg1);border-top:1px solid var(--bd);display:flex;gap:8px}
 .sticky .btn{height:48px;flex:1;justify-content:center;font-size:15px}
 .note{max-width:1280px;color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:12px}
+
+/* ── round 2 ─────────────────────────────────────────── */
+.r2{width:1280px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.r2 > div{padding:16px 20px}
+.r2 > div + div{border-left:1px solid var(--bd)}
+.r2 h4{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+.empty{margin-top:12px;border:1px dashed var(--bd3);border-radius:4px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.empty .big{font-size:14px;color:var(--tx2)}
+.empty .acts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{display:flex;align-items:center;gap:8px;min-height:30px;font-size:13px;border-bottom:1px solid var(--bd);color:var(--tx2)}
+.opt .sp{flex:1}
+.sw{width:30px;height:18px;border-radius:9px;background:var(--bd2);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--tx3)}
+.sw.on{background:color-mix(in srgb,var(--sage) 45%,var(--bd2))}
+.sw.on::after{left:14px;background:var(--tx)}
+.mom{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ac);font-weight:600;padding:10px 0 2px}
+.kd{display:grid;grid-template-columns:150px repeat(6,1fr);font-size:12px;margin-top:8px}
+.kd div{padding:5px 4px;border-bottom:1px solid var(--bd);text-align:center;color:var(--tx3)}
+.kd div:nth-child(7n+1){text-align:left;color:var(--tx2)}
+.kd .h{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+.kd .y{color:var(--sage)}
+.fs{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.fs .th{width:64px;height:64px}
+.fs .nm{flex:1;min-width:0}
+.fs .tt{font-size:15px}
+.fs .px{font-size:15px;font-weight:600;margin-top:4px}
+.av{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;border:1px solid var(--bd2);margin-left:6px;font-weight:500}
+.av.ok{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 50%,var(--bd2))}
+.av.sold{color:var(--rust);border-color:color-mix(in srgb,var(--rust) 50%,var(--bd2))}
+.moments{display:flex;gap:4px;padding:8px 16px 0}
+.moments span{flex:1;height:32px;border:1px solid var(--bd2);border-radius:3px;display:grid;place-items:center;font-size:12px;color:var(--tx3)}
+.moments span.on{color:var(--tx);background:var(--bg3);border-color:var(--bd3)}
 </style>
 </head>
 <body>
 <div class="page">
 
 <div class="caption">
-  <h1>Expositions &amp; événements — R6 mockup (v2, 2026-11-17)</h1>
+  <h1>Expositions &amp; événements — R6 mockup (v3, 2026-11-17)</h1>
   Design only. Brief: <b>R6_Events.notes.md</b>. Names, places and works are placeholders; the tab is empty today (0 exhibitions). An event = <b>accepted + involves works</b>: Exposition <span class="e x">E</span>, Collaboration <span class="e c">Co</span>, Lancement d'édition <span class="e ed">É</span>. Its works move only through <b>R7 orders</b> (<span class="k p">P</span> prêt, <span class="k d">D</span> dépôt, <span class="k v">V</span> vente, <span class="k f">C</span> confié — new fifth kind, Pem v2); the event never makes a paper.
 </div>
 
@@ -374,6 +406,130 @@ td.grpL{border-left:1px solid var(--bd)}
     </div>
   </div>
 </div>
+
+
+<!-- ═══════════════ ROUND 2 (Pem 2026-11-17) ═══════════════ -->
+<div class="caption" style="margin-top:12px">
+  <h1 style="font-size:24px">Round 2 — what you asked to see (Pem, 2026-11-17)</h1>
+  A new event before it has works (« Créer la sélection »), the prep columns and their defaults per kind (Q10), and the phone at the venue in four moments (Q11). Suggestions to look at, not decisions.
+</div>
+
+<div class="r2">
+  <div>
+    <h4><span class="e x">E</span>Salon de printemps <span class="sub" style="font-family:var(--font-ui)">— just created</span></h4>
+    <div class="sub">Lieu Z · Lyon · 3–20 mai 2027 · Personnes : Lieu Z <span class="sub">lieu</span> · Commissaire E <span class="sub">commissaire</span></div>
+    <div class="empty">
+      <div class="lbl">Œuvres · pas encore de sélection</div>
+      <div class="big">An event is about works. Gather them as a work group linked to this event:</div>
+      <div class="acts">
+        <span class="btn pri">Créer la sélection — 4 œuvres sélectionnées dans l'Inventaire</span>
+        <span class="btn">Créer la sélection vide</span>
+        <span class="btn q">Lier un groupe existant ▾</span>
+      </div>
+      <div class="sub">« Créer » makes the group « Salon de printemps — Lieu Z 2027 », already linked. « Lier » offers your groups: Montrouge restreinte (18) · carte sete (8) · Liquid (10) · 1411. δύναμις (33)…</div>
+    </div>
+    <div class="lbl" style="margin-top:16px">À préparer · modèle Exposition (11 étapes) — <span style="color:var(--ac)">appliquer ▸</span></div>
+  </div>
+
+  <div>
+    <h4>Colonnes de préparation <span class="sub" style="font-family:var(--font-ui)">— this event</span></h4>
+    <div class="mom">Avant</div>
+    <div class="opt"><span class="sw on"></span>Présentation<span class="sp"></span><span class="sub">cadre, montage, système d'accroche</span></div>
+    <div class="opt"><span class="sw on"></span>Cartel<span class="sp"></span><span class="sub">texte vérifié + imprimé</span></div>
+    <div class="opt"><span class="sw on"></span>Constat ↗<span class="sp"></span><span class="sub">au départ, avec photos</span></div>
+    <div class="mom">Sur place</div>
+    <div class="opt"><span class="sw on"></span>Accrochée<span class="sp"></span><span class="sub">tick on the phone</span></div>
+    <div class="opt"><span class="sw on"></span>Photo<span class="sp"></span><span class="sub">photo d'accrochage → traces</span></div>
+    <div class="mom">Après</div>
+    <div class="opt"><span class="sw on"></span>Constat ↙<span class="sp"></span><span class="sub">au retour, comparé au départ</span></div>
+    <div class="mom">En plus</div>
+    <div class="opt"><span class="sw"></span>Emballage<span class="sp"></span><span class="sub">caisse, protection</span></div>
+    <div class="opt"><span class="sw on"></span>Assurance<span class="sp"></span><span class="sub">valeur convenue</span></div>
+    <div class="opt"><span class="sw"></span>Prix affiché<span class="sp"></span><span class="sub">pour la fiche de salle</span></div>
+
+    <div class="lbl" style="margin-top:14px">Defaults by kind</div>
+    <div class="kd">
+      <div class="h"></div><div class="h">Prés.</div><div class="h">Cartel</div><div class="h">Const. ↗</div><div class="h">Accr.</div><div class="h">Photo</div><div class="h">Const. ↙</div>
+      <div><span class="e x" style="transform:scale(.8)">E</span> Exposition</div><div class="y">●</div><div class="y">●</div><div class="y">●</div><div class="y">●</div><div class="y">●</div><div class="y">●</div>
+      <div><span class="e c" style="transform:scale(.8)">Co</span> Collaboration</div><div class="y">●</div><div class="y">●</div><div>—</div><div>—</div><div class="y">●</div><div>—</div>
+      <div><span class="e x" style="transform:scale(.8)">E</span> Atelier ouvert</div><div class="y">●</div><div class="y">●</div><div>—</div><div>—</div><div class="y">●</div><div>—</div>
+      <div><span class="e ed" style="transform:scale(.8)">É</span> Édition</div><div>—</div><div>—</div><div class="y">●</div><div>—</div><div>—</div><div class="y">●</div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col">
+    <h2>Phone 3 — Arrivée</h2>
+    <p>The list is the packing list: tick each work as unpacked, « Constat » opens the condition-report capture. When all are checked, one button moves the order.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl2">Dunamis</span><span class="ref" style="margin-right:12px">P-2026-003</span></div>
+        <div class="moments"><span class="on">Arrivée</span><span>Accrochage</span><span>Salle</span><span>Décroch.</span></div>
+        <div class="psec">
+          <div class="lbl">3 / 5 déballées · 2 constats</div>
+          <div class="pw"><span class="th c"></span><div class="nm"><div class="tt">δύναμις I</div><div class="sub">#1411</div></div><span class="tick on">✓<br>déballée</span><span class="tick on">◎<br>constat</span></div>
+          <div class="pw"><span class="th b"></span><div class="nm"><div class="tt">δύναμις II</div><div class="sub">#1412</div></div><span class="tick on">✓<br>déballée</span><span class="tick on">◎<br>constat</span></div>
+          <div class="pw"><span class="th d"></span><div class="nm"><div class="tt">δύναμις V</div><div class="sub">#1415</div></div><span class="tick on">✓<br>déballée</span><span class="tick">◎<br>constat</span></div>
+          <div class="pw"><span class="th"></span><div class="nm"><div class="tt">Étude pour δύναμις</div><div class="sub">#1418</div></div><span class="tick">déballée</span><span class="tick">◎<br>constat</span></div>
+          <div class="pw"><span class="th c"></span><div class="nm"><div class="tt">Étude II</div><div class="sub">#1420</div></div><span class="tick">déballée</span><span class="tick">◎<br>constat</span></div>
+        </div>
+        <div class="sticky"><span class="btn" style="color:var(--tx3)">Marquer sorties — 5 œuvres (après les 5)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Phone 4 — Accrochage</h2>
+    <p>Tick « Accrochée »; « Photo » adds an installation shot to the event's traces (share sheet, like other phone images). Today's prep steps below.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl2">Dunamis</span><span class="ref" style="margin-right:12px">P-2026-003</span></div>
+        <div class="moments"><span>Arrivée</span><span class="on">Accrochage</span><span>Salle</span><span>Décroch.</span></div>
+        <div class="psec">
+          <div class="lbl">4 / 5 accrochées · 2 photos</div>
+          <div class="pw"><span class="th c"></span><div class="nm"><div class="tt">δύναμις I</div><div class="sub">Mur A</div></div><span class="tick on">✓<br>accrochée</span><span class="tick on">▣<br>photo</span></div>
+          <div class="pw"><span class="th b"></span><div class="nm"><div class="tt">δύναμις II</div><div class="sub">Mur A</div></div><span class="tick on">✓<br>accrochée</span><span class="tick on">▣<br>photo</span></div>
+          <div class="pw"><span class="th d"></span><div class="nm"><div class="tt">δύναμις V</div><div class="sub">Mur B</div></div><span class="tick on">✓<br>accrochée</span><span class="tick">▣<br>photo</span></div>
+          <div class="pw"><span class="th"></span><div class="nm"><div class="tt">Étude pour δύναμις</div><div class="sub">Mur C</div></div><span class="tick on">✓<br>accrochée</span><span class="tick">▣<br>photo</span></div>
+          <div class="pw"><span class="th c"></span><div class="nm"><div class="tt">Étude II</div><div class="sub">Mur C</div></div><span class="tick">accrochée</span><span class="tick">▣<br>photo</span></div>
+        </div>
+        <div class="psec">
+          <div class="lbl">Aujourd'hui</div>
+          <div class="pi"><span class="t"></span>Cartels posés<span class="d">avant 18 h</span></div>
+          <div class="pi"><span class="t"></span>Photos d'accrochage<span class="d">ce soir</span></div>
+        </div>
+        <div class="inbar">
+          <span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Phone 5 — Fiche de salle</h2>
+    <p>What you need when a visitor asks: title, year, technique, size, price, availability. A voice note from the input bar lands linked to this event (and to the work if one is open).</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="pbody">
+        <div class="ptop"><span class="ib">‹</span><span class="ttl2">Dunamis</span><span class="ib">⌕</span></div>
+        <div class="moments"><span>Arrivée</span><span>Accrochage</span><span class="on">Salle</span><span>Décroch.</span></div>
+        <div class="psec">
+          <div class="fs"><span class="th c"></span><div class="nm"><div class="tt">δύναμις I</div><div class="sub">2026 · huile sur toile · 100 × 81 cm</div><div class="px">4 800 €<span class="av ok">disponible</span></div></div></div>
+          <div class="fs"><span class="th b"></span><div class="nm"><div class="tt">δύναμις II</div><div class="sub">2026 · huile sur toile · 100 × 81 cm</div><div class="px">4 800 €<span class="av ok">disponible</span></div></div></div>
+          <div class="fs"><span class="th d"></span><div class="nm"><div class="tt">δύναμις V</div><div class="sub">2026 · huile sur toile · 65 × 54 cm</div><div class="px" style="color:var(--tx3)">—<span class="av sold">vendue</span></div></div></div>
+          <div class="fs"><span class="th"></span><div class="nm"><div class="tt">Étude pour δύναμις</div><div class="sub">2026 · pierre noire · 50 × 65 cm</div><div class="px">1 200 €<span class="av ok">disponible</span></div></div></div>
+        </div>
+        <div class="inbar">
+          <span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sub" style="max-width:1280px">Phone 2 above is the fourth moment, « Décrochage » (tick taken down, return condition report next to the departure photos, one button « Marquer rentrées »).</div>
 
 <div class="note">
   <b>Not shown:</b> « + Nouvel événement » (kind first — Exposition / Collaboration / Lancement d'édition — then name, place, dates; or « Créer l'événement » from a won Pipeline process) · « Créer la commande » opening the R7 form prefilled (Prêt, the venue and its address, the event dates, the event link) → a draft in Pem's feed · the floor plan (today's tool, fed by the selection) · the work card « Expositions » list and history line · the past-events list feeding the About « Expositions » block (question 9).

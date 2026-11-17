@@ -39,7 +39,7 @@ Design only, nothing built, no SQL run (reads only). Inputs: TODO R6 (Pem 2026-1
   4. **Décrochage** — tick « Décrochée », « Constat ↙ » (the phone shows the departure photos next to the camera to compare), then one button « Marquer rentrées — n œuvres » closes the lines on the order. A sold work shows « vendue — reste chez X » and is skipped.
   Creating an event or an order stays on the desktop.
 
-**Pem 2026-11-17 on Q10 and Q11: « We'll go with that for now, until I see what it looks like. »** Both suggestions stand as the v1 to build; revisit once seen on screen.
+**Pem 2026-11-17 on Q10 and Q11: « We'll go with that for now, until I see what it looks like. »** Both suggestions stand as the v1 to build; revisit once seen on screen. Drawn in the mockup's « Round 2 » part: a new event with no selection yet (« Créer la sélection » / « Lier un groupe existant »), the prep-column switches + defaults by kind, and phones 3–5 (Arrivée, Accrochage, Fiche de salle; phone 2 is Décrochage).
 
 ### Speed of the tab (Pem: « kind of clunky … there could be improvement »)
 
