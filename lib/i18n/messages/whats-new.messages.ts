@@ -10,6 +10,12 @@ export const whatsNewMessages = defineMessages({
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
   // 3.1.30 (2026-11-16) — the rest of the catalogue in one request (TODO 19).
+  // 3.1.49 (2026-11-17) — Archive = the shelf (archive_shelf.sql).
+  wn_archive_shelf_t: { fr: 'Archive : on range, on peut ressortir', en: 'Archive: put away, and back out when you want' },
+  wn_archive_shelf_d: {
+    fr: 'Une œuvre part en archive seulement une fois cataloguée (une fiche partielle suffit) : sinon « Archive » reste fermé sur la fiche. En archive, ses tâches ouvertes (Cataloguer, Photographier…) sont mises en pause : elles quittent la Production sans être cochées. Pour la ressortir, choisir « Artiste » puis son étape : En production (les tâches reviennent) ou Disponible si la photo est faite.',
+    en: 'A work goes to the archive only once catalogued (a partial record is enough): otherwise « Archive » stays closed on the card. In the archive, its open tasks (Catalogue, Photograph…) are paused: they leave Production without being ticked. To bring it back, choose « Artist » then its stage: In production (the tasks come back) or Available if the photo is done.',
+  },
   // 3.1.48 (2026-11-17) — destroyed / lost works on the card and in the history; R7 step 2.
   wn_orders_everywhere_t: { fr: 'Une vente, un dépôt, un prêt ou un don passe toujours par une commande', en: 'A sale, deposit, loan or gift always goes through an order' },
   wn_orders_everywhere_d: {

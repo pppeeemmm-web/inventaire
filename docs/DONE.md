@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-17 — Archive = the shelf (Pem's rule, What's new 3.1.49)
+
+- Pem 2026-11-17 (data-integrity review): Archive is put away, out of circulation, reversible. Built: catalogued first — the database refuses otherwise (`archive_requires_catalogue`) and no longer ticks « Catalogué » by itself (owner rule of 2026-11-03 replaced); open tasks paused on the way in (`work_action.paused_at`), back on the way out to the studio; straight to Disponible only with the photo done (`archive_exit_requires_photo`). SQL [`archive_shelf.sql`](../supabase/sql/archive_shelf.sql) applied live with Pem's GO; 25 open tasks on 25 archived works paused. Screens: work card + new-work form keep « Archive » closed at the Atelier stage; batch edit names the works that block; Production board + pending-tasks report ignore paused tasks. Rules map: [`ARCHITECTURE.md`](./ARCHITECTURE.md) §2.
+- Checked: the 7 rules on live works inside a rolled-back test (refused / paused / back / Disponible allowed with photo, refused without; new task on an archived work paused, cleared when done); 4 checks pass. Not seen: the card's closed « Archive » pill and batch message in a browser.
+
 ## 2026-11-17 — R1 (inputs → outputs) and R2 (phone terminal) closed — built and pushed; leftovers wait on Pem
 
 - Closed by Pem's « go all » 2026-11-17: an R closes once its code is built and pushed; what waits on Pem moves to one TODO item (« R1 / R2 leftovers »). R1 build plan steps 1–7 built (last: `0f52cd8`), R2 v3 built incl. speed safeguards (`36f81ed`) and one language per page (`b16c5cb`, /hub 334.7 → 271.4 kB gzip). Lines below unchanged from TODO.
