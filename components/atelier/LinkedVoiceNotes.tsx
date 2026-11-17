@@ -13,9 +13,15 @@ import { linkedVoiceNotesKey } from '@/lib/atelier/open-read-keys'
 export function LinkedVoiceNotes({
   field,
   value,
+  card = false,
+  onCount,
 }: {
   field: 'concept_id' | 'oeuvre_id' | 'process_id'
   value: string | number
+  /** Work card R3: no heading; each note = a cyan « ● note vocale date » chip + its transcript. */
+  card?: boolean
+  /** How many notes are linked (the card's Création summary). */
+  onCount?: (n: number) => void
 }) {
   const { t, lang } = useI18n()
   const [rows, setRows] = useState<LinkedVoiceNote[]>([])
@@ -23,21 +29,27 @@ export function LinkedVoiceNotes({
   useEffect(() => {
     let live = true
     void openReadOr(linkedVoiceNotesKey(field, value), () => listLinkedVoiceNotes(field, value)).then((r) => {
-      if (live) setRows(r)
+      if (live) {
+        setRows(r)
+        onCount?.(r.length)
+      }
     })
     return () => {
       live = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onCount is a state setter from the parent
   }, [field, value])
 
   if (rows.length === 0) return null
   const loc = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
   return (
-    <div data-testid={`linked-voice-notes-${field}`} style={{ marginTop: 12 }}>
-      <div className="t-label" style={{ marginBottom: 6 }}>
-        {t('linked_notes_title_fmt').replace('{n}', String(rows.length))}
-      </div>
+    <div data-testid={`linked-voice-notes-${field}`} style={{ marginTop: card ? 6 : 12 }}>
+      {card ? null : (
+        <div className="t-label" style={{ marginBottom: 6 }}>
+          {t('linked_notes_title_fmt').replace('{n}', String(rows.length))}
+        </div>
+      )}
       {rows.map((n) => {
         const tx = (n.transcript ?? '').replace(/\s+/g, ' ').trim()
         return (
@@ -54,9 +66,15 @@ export function LinkedVoiceNotes({
               fontSize: 12,
             }}
           >
-            <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-              {new Date(n.created_at).toLocaleDateString(loc)}
-            </span>{' '}
+            {card ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--cyan)', border: '1px solid color-mix(in srgb, var(--cyan) 40%, transparent)', borderRadius: 999, padding: '1px 7px', marginRight: 6 }}>
+                ● {t('wc_voice_note_fmt').replace('{date}', new Date(n.created_at).toLocaleDateString(loc, { day: 'numeric', month: 'short' }))}
+              </span>
+            ) : (
+              <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                {new Date(n.created_at).toLocaleDateString(loc)}
+              </span>
+            )}{' '}
             <strong style={{ fontWeight: 600 }}>{n.subject?.trim() || t('linked_notes_untitled')}</strong>
             {tx ? (
               <span style={{ display: 'block', color: 'var(--tx2)', lineHeight: 1.4 }}>

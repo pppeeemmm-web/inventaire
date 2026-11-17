@@ -143,6 +143,8 @@ export function DrawerContent({
   const [creationOpen, setCreationOpen] = useState(false)
   const [objectOpen, setObjectOpen] = useState(false)
   const [stagedCount, setStagedCount] = useState(0)
+  const [voiceCount, setVoiceCount] = useState(0)
+  const [aiToJudge, setAiToJudge] = useState(false)
   useEffect(() => {
     let v: string | null = null
     try { v = localStorage.getItem(WORK_CARD_VIEW_KEY) } catch { /* ignore */ }
@@ -158,7 +160,7 @@ export function DrawerContent({
     setObjectOpen(v === 'open')
     try { localStorage.setItem(WORK_CARD_VIEW_KEY, v) } catch { /* ignore */ }
   }, [])
-  useEffect(() => { setStagedCount(0) }, [o.OeuvreID])
+  useEffect(() => { setStagedCount(0); setVoiceCount(0); setAiToJudge(false) }, [o.OeuvreID])
   /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
   const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
@@ -1372,7 +1374,10 @@ export function DrawerContent({
   const creationSummary = [
     yearOf(annee) != null ? t('wc_sum_period_fmt').replace('{p}', String(yearOf(annee))) : '',
     commentaires.trim() ? t('wc_sum_comments') : '',
+    voiceCount ? t('wc_sum_voice_fmt').replace('{n}', String(voiceCount)) : '',
     selThemes.size ? t('wc_sum_themes_fmt').replace('{n}', String(selThemes.size)) : '',
+    stagedCount ? t('wc_session_photos_fmt').replace('{n}', String(stagedCount)) : '',
+    aiToJudge ? t('wc_sum_ai_to_judge') : '',
   ].filter(Boolean).join(' · ') || t('wc_sum_none')
   const objectSummary = [
     historique.trim() ? t('wc_sum_provenance') : '',
@@ -1654,7 +1659,7 @@ export function DrawerContent({
             style={textareaSt}
             placeholder={t('wf_comments_placeholder')}
           />
-          <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
+          <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} card onCount={setVoiceCount} />
         </Part>
         <Part label={t('wc_p_themes')} stacked={stacked} muted={selThemes.size === 0}>
           <PickChips
@@ -1669,11 +1674,11 @@ export function DrawerContent({
         <Part selfTitled stacked={stacked}>
           <WorkLinksSection oeuvreId={o.OeuvreID} />
         </Part>
-        <Part selfTitled stacked={stacked}>
-          <DrawerWorkSessionsSection oeuvreId={o.OeuvreID} isAdmin={isAdmin} lang={lang} t={t} defaultOpen={false} onStagedCount={setStagedCount} />
+        <Part label={t('wc_p_sessions')} stacked={stacked}>
+          <DrawerWorkSessionsSection oeuvreId={o.OeuvreID} isAdmin={isAdmin} lang={lang} t={t} defaultOpen={false} onStagedCount={setStagedCount} card />
         </Part>
         <Part selfTitled stacked={stacked}>
-          <WorkAiDescriptionSection oeuvreId={o.OeuvreID} />
+          <WorkAiDescriptionSection oeuvreId={o.OeuvreID} onToJudge={setAiToJudge} />
         </Part>
       </CardDrawer>
 

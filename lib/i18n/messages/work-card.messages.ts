@@ -68,6 +68,10 @@ export const workCardMessages = defineMessages({
     en: 'Field-session photos wait for your sorting: add them to the work or set them aside. See Création › Field sessions.',
   },
 
+  wc_voice_note_fmt: { fr: 'note vocale {date}', en: 'voice note {date}' },
+  wc_sessions_fmt: { fr: '{n} session(s)', en: '{n} session(s)' },
+  wc_sum_voice_fmt: { fr: '{n} note(s) vocale(s)', en: '{n} voice note(s)' },
+  wc_sum_ai_to_judge: { fr: 'IA à juger', en: 'AI to judge' },
   wc_creation: { fr: 'Création', en: 'Création' },
   wc_object: { fr: 'Objet', en: 'Object' },
   wc_p_period: { fr: 'Période & sources', en: 'Period & sources' },

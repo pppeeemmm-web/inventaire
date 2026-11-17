@@ -18,7 +18,8 @@ const LEVEL_KEY = ['wd_level_0', 'wd_level_1', 'wd_level_2', 'wd_level_3', 'wd_l
 /** The same work can be open twice (Inventory side card + drawer): a rating reloads every copy. */
 const RATED_EVENT = 'pem:work-description-rated'
 
-export function WorkAiDescriptionSection({ oeuvreId }: { oeuvreId: number }) {
+/** `onToJudge`: the work card's Création summary says « IA à juger » while no one has rated it. */
+export function WorkAiDescriptionSection({ oeuvreId, onToJudge }: { oeuvreId: number; onToJudge?: (toJudge: boolean) => void }) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const [desc, setDesc] = useState<WorkDescription | null>(null)
@@ -42,6 +43,10 @@ export function WorkAiDescriptionSection({ oeuvreId }: { oeuvreId: number }) {
     window.addEventListener(RATED_EVENT, onRated)
     return () => window.removeEventListener(RATED_EVENT, onRated)
   }, [load, oeuvreId])
+
+  useEffect(() => {
+    onToJudge?.(!!desc && desc.usefulness == null)
+  }, [desc, onToJudge])
 
   if (!desc) return null
 

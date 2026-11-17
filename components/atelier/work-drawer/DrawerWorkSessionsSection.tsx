@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { openReadOr } from '@/lib/atelier/open-reads'
 import { drawerOpenKey } from '@/lib/atelier/open-read-keys'
 import { deleteWorkSessionAdmin, listWorkSessionsForOeuvre } from '@/app/atelier/session/actions'
@@ -35,7 +35,10 @@ export function DrawerWorkSessionsSection({
   t,
   defaultOpen = true,
   onStagedCount,
+  card = false,
 }: {
+  /** Work card R3: one folded line « N session(s) · K photo(s) de session à valider ». */
+  card?: boolean
   oeuvreId: number
   isAdmin: boolean
   lang: Lang
@@ -67,26 +70,40 @@ export function DrawerWorkSessionsSection({
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
-  useEffect(() => {
-    if (loading || !onStagedCount) return
+  const stagedTotal = useMemo(() => {
     let n = 0
     for (const row of rows) {
       const payload = parseWorkSessionPayload(row.payload)
       n += payload.items.reduce((sum, item) => sum + (item.oeuvre_id === oeuvreId ? item.shots.length : 0), 0)
         + (row.oeuvre_id === oeuvreId ? payload.shots.length : 0)
     }
-    onStagedCount(n)
-  }, [loading, rows, oeuvreId, onStagedCount])
+    return n
+  }, [rows, oeuvreId])
+  useEffect(() => {
+    if (loading || !onStagedCount) return
+    onStagedCount(stagedTotal)
+  }, [loading, stagedTotal, onStagedCount])
 
   return (
     <details
       data-testid="drawer-work-sessions-section"
       open={defaultOpen}
-      style={{ marginTop: 14, borderTop: '1px solid var(--bd)', paddingTop: 12 }}
+      style={card ? undefined : { marginTop: 14, borderTop: '1px solid var(--bd)', paddingTop: 12 }}
     >
-      <summary className="t-eyebrow" style={{ cursor: 'pointer', userSelect: 'none' }}>
-        {t('drawer_work_sessions_heading')}
-      </summary>
+      {card ? (
+        <summary style={{ cursor: 'pointer', userSelect: 'none', fontSize: 12, color: rows.length ? 'var(--tx3)' : 'var(--mt)' }}>
+          {loading
+            ? '…'
+            : [
+                t('wc_sessions_fmt').replace('{n}', String(rows.length)),
+                stagedTotal ? t('wc_session_photos_fmt').replace('{n}', String(stagedTotal)) : '',
+              ].filter(Boolean).join(' · ')}
+        </summary>
+      ) : (
+        <summary className="t-eyebrow" style={{ cursor: 'pointer', userSelect: 'none' }}>
+          {t('drawer_work_sessions_heading')}
+        </summary>
+      )}
       <div
         className="t-mono-sm"
         style={{ marginTop: 10, color: 'var(--tx2)' }}
