@@ -1,19 +1,14 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
-import { dict, type Lang } from '@/lib/i18n/dictionary'
+import { useI18n } from '@/lib/i18n/context'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { InlineSpinner } from '@/components/ui/InlineSpinner'
 
-/** next/dynamic `loading` can render outside <I18nProvider>; mirror provider lang sync. */
+/** The splash renders inside the root layout's <I18nProvider> (no `dict` here: it would ship FR + EN to the browser). */
 function AtelierBootSplash() {
-  const [lang, setLang] = useState<Lang>('fr')
-  useEffect(() => {
-    const stored = localStorage.getItem('pem_lang') as Lang | null
-    if (stored === 'fr' || stored === 'en') setLang(stored)
-  }, [])
-  const label = dict[lang].loadingAtelier
+  const { t } = useI18n()
+  const label = t('loadingAtelier')
   return (
     <div
       data-testid="atelier-boot-splash"

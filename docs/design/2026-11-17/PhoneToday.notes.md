@@ -306,6 +306,20 @@ Checked there:
 - The biggest file (141 kB gzip) is the whole app's FR + EN message dictionary, sent to every page. Sending only the page's language and messages is the largest saving left: a proposal, not done.
 - CI (`.github/workflows/ci.yml`) does not build, so the budget is not in CI; it is a script. Putting it into `npm run build` (Vercel) would block a deploy that grows the phone's JS: Pem's call.
 
+**One language per page: built 2026-11-17 (side session, not on production yet).** Before, every page shipped the whole app's copy in French and English (`I18nProvider` → `resolveMessage` → every `defineMessages` module + legacy `fr.ts` + `en.ts`). The server renders French and the page starts in French; a viewer who chose English (`pem_lang` in the browser) switched after load, as before.
+- `lib/i18n/catalog/fr.ts` / `en.ts`: one language each, flat, same order as `resolveMessage` (feature text, its French, legacy text, legacy French). In the production browser build a small loader (`scripts/i18n-catalog-loader.cjs`, set in `next.config.ts`) runs them at build time and keeps only the result. Dev, the server and `tsc` run them as plain code (both languages: same text, bigger). How copy is written is unchanged; server code (`dict`, `resolveMessage`) is unchanged.
+- The page ships French; English is its own file (73 kB gzip), fetched when the viewer chose English or presses EN (the page stays French until it is in, a fraction of a second; then cached).
+- Checked in the browser: the public site and `/login` on the production build (French page, no English file loaded; EN → English, English file loaded; reload stays English; FR → French); the Atelier (Inventaire, Journal) and `/hub`, `/hub/fil` on dev, signed in (EN chosen in the Atelier → `/hub` in English at 375 px; back to FR). No console errors.
+
+| Route | Before (raw / gzip) | After (raw / gzip) | New budget (raw / gzip) |
+|---|---|---|---|
+| `/hub` | 1,108.5 / 334.7 kB (16 files) | **920.1 / 271.4 kB** (15 files) | 950 / 280 kB |
+| `/hub/today` | 1,108.5 / 334.7 kB | **920.1 / 271.4 kB** | 950 / 280 kB |
+| `/hub/fil` | 856.3 / 265.9 kB (10 files) | **667.8 / 203.4 kB** (10 files) | 690 / 210 kB |
+
+- The copy file went from 143.0 to 80.9 kB gzip: −63 kB on every page. Still the biggest file, and still far from **< 150 kB**: it is the whole app's French copy. Next lever if wanted: copy per screen (the phone pages need a small part of it), a bigger change.
+- An English viewer still downloads the French copy with the page (the server renders French first, as before) plus the English file. Making the server render the viewer's language needs the choice in a cookie, which makes every page, the public site included, rendered per request: not done.
+
 ### How we prove it
 
 - **Baseline:** done 2026-11-17, warm and unthrottled (above). Still to do once: the same pages on Pem's real phone over 4G, for the true floor-to-ceiling gap.

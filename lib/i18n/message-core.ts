@@ -20,6 +20,17 @@ export function flattenMessages<T extends BilingualMessages>(
   ) as { [K in keyof T]: string }
 }
 
+const warnedKeys = new Set<string>()
+
+/** Dev only: one console warning per missing key and language. */
+export function warnMissingI18nKey(key: string, lang: keyof BilingualMessage): void {
+  if (process.env.NODE_ENV === 'production') return
+  const token = `${lang}:${key}`
+  if (warnedKeys.has(token)) return
+  warnedKeys.add(token)
+  console.warn(`[i18n] missing key "${key}" (${lang})`)
+}
+
 export function interpolateMessage(message: string, vars?: MessageVars): string {
   if (!vars) return message
 

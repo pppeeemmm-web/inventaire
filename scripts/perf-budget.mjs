@@ -19,13 +19,14 @@ import { fileURLToPath } from 'node:url'
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const next = path.join(root, '.next')
 
-/** kB = 1000 bytes. Measured 2026-11-17 (this script, build of main + R2 speed safeguards), plus ~3 %. */
+/** kB = 1000 bytes. Measured 2026-11-17 (this script, build of main + one-language copy), plus ~3 %. */
 const BUDGETS = {
-  // Measured: 1101.0 raw / 332.2 gzip (16 files). The design target is < 150 kB gzip: not met yet.
-  '/hub': { segments: ['/layout', '/hub/layout', '/hub/page'], rawKB: 1135, gzipKB: 342 },
-  '/hub/today': { segments: ['/layout', '/hub/layout', '/hub/today/page'], rawKB: 1135, gzipKB: 342 },
-  // Measured: 849.8 raw / 263.8 gzip (10 files).
-  '/hub/fil': { segments: ['/layout', '/hub/layout', '/hub/fil/page'], rawKB: 875, gzipKB: 272 },
+  // Measured: 920.1 raw / 271.4 gzip (15 files); was 1108.5 / 334.7 before the copy shipped one language.
+  // The design target is < 150 kB gzip: not met yet.
+  '/hub': { segments: ['/layout', '/hub/layout', '/hub/page'], rawKB: 950, gzipKB: 280 },
+  '/hub/today': { segments: ['/layout', '/hub/layout', '/hub/today/page'], rawKB: 950, gzipKB: 280 },
+  // Measured: 667.8 raw / 203.4 gzip (10 files); was 856.3 / 265.9.
+  '/hub/fil': { segments: ['/layout', '/hub/layout', '/hub/fil/page'], rawKB: 690, gzipKB: 210 },
 }
 
 function readJson(file) {

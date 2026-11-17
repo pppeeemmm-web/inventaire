@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import path from 'node:path'
 import type { NextConfig } from 'next'
 import withSerwistInit from '@serwist/next'
 
@@ -67,6 +68,19 @@ const nextConfig: NextConfig = {
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       config.output = { ...config.output, chunkLoadTimeout: 300_000 }
+    }
+    /**
+     * Production browser build: lib/i18n/catalog/{fr,en}.ts become one language's JSON each, computed at build time
+     * (scripts/i18n-catalog-loader.cjs), so a page ships French only and English is its own chunk. Dev and the server
+     * run the modules as they are (both languages: same text, just bigger).
+     */
+    if (!dev && !isServer) {
+      config.module.rules.push({
+        test: /[\\/]lib[\\/]i18n[\\/]catalog[\\/](fr|en)\.ts$/,
+        resourceQuery: { not: [/i18n-catalog-eval/] },
+        enforce: 'pre',
+        use: [{ loader: path.join(__dirname, 'scripts', 'i18n-catalog-loader.cjs') }],
+      })
     }
     return config
   },

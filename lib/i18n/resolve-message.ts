@@ -1,4 +1,4 @@
-import { flattenMessages } from './message-core'
+import { flattenMessages, warnMissingI18nKey } from './message-core'
 import { featureMessages } from './messages'
 import { en } from './dictionary/en'
 import { fr } from './dictionary/fr'
@@ -14,15 +14,7 @@ export const featureMessagesByLang: Record<Lang, Record<string, string>> = {
   en: flattenMessages(featureMessages, 'en'),
 }
 
-const warnedKeys = new Set<string>()
-
-export function warnMissingI18nKey(key: string, lang: Lang): void {
-  if (process.env.NODE_ENV === 'production') return
-  const token = `${lang}:${key}`
-  if (warnedKeys.has(token)) return
-  warnedKeys.add(token)
-  console.warn(`[i18n] missing key "${key}" (${lang})`)
-}
+export { warnMissingI18nKey }
 
 /**
  * Resolve copy: `defineMessages` first, then legacy `fr.ts` / `en.ts`, then key as fallback.
