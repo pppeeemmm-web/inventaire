@@ -209,14 +209,14 @@ export function OverviewFil() {
             {item.newLines ? <span>{item.newLines === 1 ? t('fil_new_line_one') : t('fil_new_lines').replace('{n}', String(item.newLines))}</span> : null}
           </div>
           {item.title ? <div style={{ fontWeight: 600, fontSize: 13, ...ELLIPSIS }}>{item.title}</div> : null}
-          {item.body ? (
+          {item.body.trim() ? (
             <div
               style={{
                 fontSize: 13, lineHeight: 1.4, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                 ...(on ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }),
               }}
             >
-              {item.body}
+              {item.body.trim()}
             </div>
           ) : null}
           {item.changes?.length ? (
@@ -270,7 +270,7 @@ export function OverviewFil() {
   }
 
   return (
-    <div data-testid="overview-fil" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+    <div data-testid="overview-fil" style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
         <h2 style={{ margin: 0, fontFamily: 'var(--font-instrument-next), serif', fontWeight: 400, fontSize: 20 }}>{t('ofil_title')}</h2>
         <b data-testid="overview-fil-count">{items ? live.length : '…'}</b>
@@ -279,7 +279,7 @@ export function OverviewFil() {
         <Link href="/hub/fil" style={{ fontSize: 12, color: 'var(--tx2)', whiteSpace: 'nowrap' }}>{t('ofil_open_phone')}</Link>
       </div>
 
-      <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}>
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
         {failed ? (
           <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('fil_load_error')}</p>
         ) : !items ? (

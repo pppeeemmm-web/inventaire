@@ -6,7 +6,7 @@
 // line of text offers « Une idée pour Pem ? » (flagged_for_pem → first in the Fil). A line Pem took out
 // of the Fil comes back from RLS only to Pem and its author; it shows dimmed, marked « retirée du Fil ».
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MutableRefObject } from 'react'
 import { addWorkNoteLine, listWorkNoteLines, type WorkNoteLine } from '@/app/atelier/fil/note-lines-actions'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
@@ -17,13 +17,31 @@ import { FIS } from './drawer-widgets'
 const NUDGE_CHARS = 90
 const isLong = (s: string) => s.includes('\n') || s.length > NUDGE_CHARS
 
-export function WorkNoteLines({ oeuvreId, isAdmin, narrow }: { oeuvreId: number; isAdmin: boolean; narrow: boolean }) {
+/** The draft lives in the work card (DrawerContent) so its unsaved guard covers it: Save adds the line
+ *  through `submitRef`, Discard clears it. */
+export function WorkNoteLines({
+  oeuvreId,
+  isAdmin,
+  narrow,
+  draft,
+  onDraft,
+  flag,
+  onFlag,
+  submitRef,
+}: {
+  oeuvreId: number
+  isAdmin: boolean
+  narrow: boolean
+  draft: string
+  onDraft: (v: string) => void
+  flag: boolean
+  onFlag: (v: boolean) => void
+  submitRef: MutableRefObject<(() => Promise<boolean>) | null>
+}) {
   const { t, lang } = useI18n()
   const dateLoc = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const [lines, setLines] = useState<WorkNoteLine[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [flag, setFlag] = useState(false)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -47,19 +65,26 @@ export function WorkNoteLines({ oeuvreId, isAdmin, narrow }: { oeuvreId: number;
   const text = draft.trim()
   const nudge = !isAdmin && isLong(text)
 
-  async function add() {
-    if (!text || busy) return
+  /** True when the line is in (or there was nothing to send). */
+  async function add(): Promise<boolean> {
+    if (!text) return true
+    if (busy) return false
     setBusy(true)
     const res = await addWorkNoteLine(oeuvreId, text, nudge && flag)
     setBusy(false)
     if ('error' in res) {
       toast.error(t('nl_err').replace('{e}', stringifyError(res.error)))
-      return
+      return false
     }
-    setDraft('')
-    setFlag(false)
+    onDraft('')
+    onFlag(false)
     setLines((prev) => [...(prev ?? []), res.line])
+    return true
   }
+  submitRef.current = add
+  useEffect(() => () => {
+    submitRef.current = null
+  }, [submitRef])
 
   const tap = narrow ? 44 : 32
 
@@ -98,7 +123,7 @@ export function WorkNoteLines({ oeuvreId, isAdmin, narrow }: { oeuvreId: number;
           data-testid="work-note-line-input"
           aria-label={t('nl_add_ph')}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => onDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault()
@@ -127,7 +152,7 @@ export function WorkNoteLines({ oeuvreId, isAdmin, narrow }: { oeuvreId: number;
           title={t('nl_flag_hint')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: tap, fontSize: 12, color: flag ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}
         >
-          <input type="checkbox" checked={flag} onChange={(e) => setFlag(e.target.checked)} style={{ width: 18, height: 18 }} />
+          <input type="checkbox" checked={flag} onChange={(e) => onFlag(e.target.checked)} style={{ width: 18, height: 18 }} />
           {t('nl_flag')}
         </label>
       )}

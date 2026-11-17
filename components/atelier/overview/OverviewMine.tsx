@@ -38,7 +38,7 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
   const out = lines?.filter((l) => l.discardedAt).length ?? 0
 
   return (
-    <div data-testid="overview-mine" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+    <div data-testid="overview-mine" style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: narrow ? '8px 16px' : '8px 12px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
         <h2 style={{ margin: 0, fontFamily: 'var(--font-instrument-next), serif', fontWeight: 400, fontSize: 20 }}>{t('my_title')}</h2>
         <b>{lines ? lines.length : '…'}</b>
@@ -46,7 +46,7 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
         <span style={{ fontSize: 12, color: 'var(--tx3)', flex: '1 1 200px', minWidth: 0 }}>{t('my_intro')}</span>
       </div>
 
-      <div style={{ flex: '1 1 0', minHeight: 0, overflowY: narrow ? undefined : 'auto' }}>
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: narrow ? undefined : 'auto' }}>
         {failed ? (
           <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('my_load_error')}</p>
         ) : !lines ? (

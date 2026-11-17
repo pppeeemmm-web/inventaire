@@ -804,7 +804,20 @@ export function DrawerContent({
 
   const extraNow: ExtraFields = { encadree, montee, isCommission, dateLivraison, returnDate, presentationId, seed: broadcastCaptionSeed ?? '' }
   const extraDirty = JSON.stringify(extraNow) !== extraBase
-  isDirtyRef.current = isDirty || extraDirty
+  // R1 4b: an unsent line in « Lignes » counts as unsaved too (Save adds it, Discard drops it).
+  const [lineDraft, setLineDraft] = useState('')
+  const [lineFlag, setLineFlag] = useState(false)
+  const lineSubmitRef = useRef<(() => Promise<boolean>) | null>(null)
+  const lineDirty = lineDraft.trim() !== ''
+  const lineDirtyRef = useRef(false)
+  lineDirtyRef.current = lineDirty
+  useEffect(() => {
+    setLineDraft('')
+    setLineFlag(false)
+  }, [o.OeuvreID])
+  const formDirtyRef = useRef(false)
+  formDirtyRef.current = isDirty || extraDirty
+  isDirtyRef.current = isDirty || extraDirty || lineDirty
 
   const guardDiagRef = useRef<{ cap: () => WorkFormDraftContent; base: WorkFormDraftContent | null }>({
     cap: captureDrawerDraftContent,
@@ -1066,16 +1079,26 @@ export function DrawerContent({
   ])
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  /** Save = the unsent line first (if any), then the work form — skipped when only the line was unsaved. */
+  const saveAll = useCallback(async (): Promise<boolean> => {
+    const lineOnly = lineDirtyRef.current && !formDirtyRef.current
+    if (lineDirtyRef.current && lineSubmitRef.current) {
+      const ok = await lineSubmitRef.current()
+      if (!ok) return false
+    }
+    return lineOnly ? true : performSave()
+  }, [performSave])
+
   useLayoutEffect(() => {
     if (guardApiRef) {
       guardApiRef.current.isDirty = () => isDirtyRef.current
-      guardApiRef.current.performSave = performSave
+      guardApiRef.current.performSave = saveAll
     }
-  }, [guardApiRef, isDirty, extraDirty, performSave])
+  }, [guardApiRef, isDirty, extraDirty, lineDirty, saveAll])
 
   useLayoutEffect(() => {
-    onDrawerDirtyChange?.(isDirty || extraDirty)
-  }, [isDirty, extraDirty, onDrawerDirtyChange])
+    onDrawerDirtyChange?.(isDirty || extraDirty || lineDirty)
+  }, [isDirty, extraDirty, lineDirty, onDrawerDirtyChange])
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
@@ -1147,14 +1170,14 @@ export function DrawerContent({
 
   function handleSubmit() {
     startSave(async () => {
-      await performSave()
+      await saveAll()
     })
   }
 
   async function handleSaveAndClose() {
     setSavingExit(true)
     try {
-      const ok = await performSave()
+      const ok = await saveAll()
       if (ok) {
         setShowUnsavedModal(false)
         const run = pendingAfterGuardRef.current
@@ -1174,6 +1197,8 @@ export function DrawerContent({
     setEditorBaseline(null)
     syncFormFieldsFromOeuvre()
     setLongTextReloadNonce((n) => n + 1)
+    setLineDraft('')
+    setLineFlag(false)
     setShowUnsavedModal(false)
     const run = pendingAfterGuardRef.current
     pendingAfterGuardRef.current = null
@@ -1189,6 +1214,8 @@ export function DrawerContent({
     setEditorBaseline(null)
     syncFormFieldsFromOeuvre()
     setLongTextReloadNonce((n) => n + 1)
+    setLineDraft('')
+    setLineFlag(false)
   }
 
   // ── Delete ─────────────────────────────────────────────
@@ -1400,7 +1427,7 @@ export function DrawerContent({
     ...(priceEmpty ? [t('wf_price').toLowerCase()] : []),
     ...(selGroups.size ? [] : [t('wc_p_groups').toLowerCase()]),
   ]
-  const barDirty = isDirty || extraDirty
+  const barDirty = isDirty || extraDirty || lineDirty
   const hdrBtn = { minHeight: narrow ? 44 : 36, minWidth: narrow ? 44 : 36, background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18, padding: 0, fontFamily: 'inherit' } as const
   const segBtn = (on: boolean) => ({
     padding: '0 10px',
@@ -1661,7 +1688,16 @@ export function DrawerContent({
             placeholder={t('wf_comments_placeholder')}
             aria-label={t('nl_old_field')}
           />
-          <WorkNoteLines oeuvreId={o.OeuvreID} isAdmin={isAdmin} narrow={narrow} />
+          <WorkNoteLines
+            oeuvreId={o.OeuvreID}
+            isAdmin={isAdmin}
+            narrow={narrow}
+            draft={lineDraft}
+            onDraft={setLineDraft}
+            flag={lineFlag}
+            onFlag={setLineFlag}
+            submitRef={lineSubmitRef}
+          />
           <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} card onCount={setVoiceCount} />
         </Part>
         <Part label={t('wc_p_themes')} stacked={stacked} muted={selThemes.size === 0}>
