@@ -35,6 +35,7 @@ const Vault = dynamic(() => import('@/app/atelier/(portal)/vault/_components/Vau
 const ProductionTab = dynamic(() => import('@/app/atelier/(portal)/production/_components/Production').then((m) => ({ default: m.Production })), { loading: () => <TabPanelFallback />, ssr: false })
 const Logistics = dynamic(() => import('@/app/atelier/(portal)/logistics/_components/Logistics').then((m) => ({ default: m.Logistics })), { loading: () => <TabPanelFallback />, ssr: false })
 const SalesTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components/Sales').then((m) => ({ default: m.Sales })), { loading: () => <TabPanelFallback />, ssr: false })
+const OrdersTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components/Orders').then((m) => ({ default: m.Orders })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/app/atelier/(portal)/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
 const Fiscal = dynamic(() => import('@/app/atelier/(portal)/fiscal/_components/Fiscal').then((m) => ({ default: m.Fiscal })), { loading: () => <TabPanelFallback />, ssr: false })
 const Kaizen = dynamic(() => import('@/app/atelier/(portal)/kaizen/_components/Kaizen').then((m) => ({ default: m.Kaizen })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -339,14 +340,26 @@ export function SegmentRoutePanel({
     case 'logistics':
       return <Logistics cM={cM} />
     case 'sales':
+      // R7: the tab opens on Orders (all four kinds); the former Sales tab stays folded below
+      // until its figures move to Revenue & expenses (docs/design/2026-11-17/R7_Orders.notes.md).
       return (
-        <SalesTab
-          oeuvres={oeuvres}
-          statusLabelMap={statusLabelMap}
+        <OrdersTab
           contacts={contacts}
-          groups={groups}
-          cM={cM}
-          tM={tM}
+          openWork={(id) => {
+            const o = oeuvres.find((w) => w.OeuvreID === id)
+            if (o) onOpen(o)
+            else window.location.assign(`/atelier?work=${id}`)
+          }}
+          renderLegacy={() => (
+            <SalesTab
+              oeuvres={oeuvres}
+              statusLabelMap={statusLabelMap}
+              contacts={contacts}
+              groups={groups}
+              cM={cM}
+              tM={tM}
+            />
+          )}
         />
       )
     case 'exhibitions':

@@ -740,6 +740,7 @@ export type Database = {
           process_id: string | null
           source: string
           storage_path: string | null
+          work_order_id: string | null
         }
         Insert: {
           cert_hash?: string | null
@@ -762,6 +763,7 @@ export type Database = {
           process_id?: string | null
           source?: string
           storage_path?: string | null
+          work_order_id?: string | null
         }
         Update: {
           cert_hash?: string | null
@@ -784,6 +786,7 @@ export type Database = {
           process_id?: string | null
           source?: string
           storage_path?: string | null
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -819,6 +822,13 @@ export type Database = {
             columns: ["process_id"]
             isOneToOne: false
             referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
             referencedColumns: ["id"]
           },
         ]
@@ -1069,6 +1079,7 @@ export type Database = {
           oeuvre_id: number | null
           sale_order_id: string | null
           status: string
+          work_order_id: string | null
         }
         Insert: {
           category?: string
@@ -1080,6 +1091,7 @@ export type Database = {
           oeuvre_id?: number | null
           sale_order_id?: string | null
           status?: string
+          work_order_id?: string | null
         }
         Update: {
           category?: string
@@ -1091,6 +1103,7 @@ export type Database = {
           oeuvre_id?: number | null
           sale_order_id?: string | null
           status?: string
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -1105,6 +1118,13 @@ export type Database = {
             columns: ["sale_order_id"]
             isOneToOne: false
             referencedRelation: "sale_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiry_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
             referencedColumns: ["id"]
           },
         ]
@@ -1828,8 +1848,9 @@ export type Database = {
           id: string
           method: string | null
           notes: string | null
-          order_id: string
+          order_id: string | null
           payment_date: string
+          work_order_id: string | null
         }
         Insert: {
           amount: number
@@ -1837,8 +1858,9 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          order_id: string
+          order_id?: string | null
           payment_date?: string
+          work_order_id?: string | null
         }
         Update: {
           amount?: number
@@ -1846,8 +1868,9 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          order_id?: string
+          order_id?: string | null
           payment_date?: string
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -1855,6 +1878,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "sale_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
             referencedColumns: ["id"]
           },
         ]
@@ -2264,6 +2294,7 @@ export type Database = {
           shipped_at: string | null
           status: string | null
           to_contact_id: number | null
+          work_order_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -2277,6 +2308,7 @@ export type Database = {
           shipped_at?: string | null
           status?: string | null
           to_contact_id?: number | null
+          work_order_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -2290,6 +2322,7 @@ export type Database = {
           shipped_at?: string | null
           status?: string | null
           to_contact_id?: number | null
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -2305,6 +2338,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "shipment_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3352,6 +3392,223 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
+      work_order: {
+        Row: {
+          address_id: number | null
+          balance_due: string | null
+          cancelled_at: string | null
+          commission_amount: number | null
+          commission_pct: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          delivered_at: string | null
+          deposit_due: string | null
+          deposit_pct: number | null
+          discount_pct: number | null
+          end_date: string | null
+          id: string
+          kind: string
+          notes: string | null
+          paid_at: string | null
+          paper_path: string | null
+          parent_order_id: string | null
+          party_id: number
+          payment_method: string | null
+          price_catalogue: number | null
+          price_final: number | null
+          process_id: string | null
+          reconstituted: boolean
+          ref: string | null
+          ref_seq: number | null
+          ref_year: number | null
+          return_window_days: number
+          return_window_skipped: boolean
+          return_window_starts_at: string | null
+          returned_at: string | null
+          shipping_method: string | null
+          signed_at: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address_id?: number | null
+          balance_due?: string | null
+          cancelled_at?: string | null
+          commission_amount?: number | null
+          commission_pct?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          delivered_at?: string | null
+          deposit_due?: string | null
+          deposit_pct?: number | null
+          discount_pct?: number | null
+          end_date?: string | null
+          id?: string
+          kind: string
+          notes?: string | null
+          paid_at?: string | null
+          paper_path?: string | null
+          parent_order_id?: string | null
+          party_id: number
+          payment_method?: string | null
+          price_catalogue?: number | null
+          price_final?: number | null
+          process_id?: string | null
+          reconstituted?: boolean
+          ref?: string | null
+          ref_seq?: number | null
+          ref_year?: number | null
+          return_window_days?: number
+          return_window_skipped?: boolean
+          return_window_starts_at?: string | null
+          returned_at?: string | null
+          shipping_method?: string | null
+          signed_at?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address_id?: number | null
+          balance_due?: string | null
+          cancelled_at?: string | null
+          commission_amount?: number | null
+          commission_pct?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          delivered_at?: string | null
+          deposit_due?: string | null
+          deposit_pct?: number | null
+          discount_pct?: number | null
+          end_date?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          paid_at?: string | null
+          paper_path?: string | null
+          parent_order_id?: string | null
+          party_id?: number
+          payment_method?: string | null
+          price_catalogue?: number | null
+          price_final?: number | null
+          process_id?: string | null
+          reconstituted?: boolean
+          ref?: string | null
+          ref_seq?: number | null
+          ref_year?: number | null
+          return_window_days?: number
+          return_window_skipped?: boolean
+          return_window_starts_at?: string | null
+          returned_at?: string | null
+          shipping_method?: string | null
+          signed_at?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "contact_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_parent_order_id_fkey"
+            columns: ["parent_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "work_order_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_order_work: {
+        Row: {
+          closed_at: string | null
+          closed_by_order_id: string | null
+          id: string
+          insurance_value: number | null
+          line_status: string
+          note: string | null
+          oeuvre_id: number
+          order_id: string
+          position: number
+          price: number | null
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by_order_id?: string | null
+          id?: string
+          insurance_value?: number | null
+          line_status?: string
+          note?: string | null
+          oeuvre_id: number
+          order_id: string
+          position?: number
+          price?: number | null
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by_order_id?: string | null
+          id?: string
+          insurance_value?: number | null
+          line_status?: string
+          note?: string | null
+          oeuvre_id?: number
+          order_id?: string
+          position?: number
+          price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_work_closed_by_order_id_fkey"
+            columns: ["closed_by_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "work_order_work_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
           },
         ]
       }

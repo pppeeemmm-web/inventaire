@@ -1,0 +1,540 @@
+'use client'
+
+// Orders — read side (TODO R7, docs/design/2026-11-17/R7_Orders.notes.md + R7_Orders.mockup.html).
+// One list for sale / consignment / loan / gift. Desktop: list + the order side by side.
+// Phone (< 768 px): cards, tap → the order, « ‹ Commandes » back.
+
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { thumbUrl } from '@/lib/data'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
+import { NewOrderForm, orderErrorText, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
+import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
+
+const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift']
+const KIND_LETTER: Record<WorkOrderKind, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G' }
+const KIND_LABEL: Record<WorkOrderKind, DictKey> = {
+  sale: 'ord_kind_sale', consignment: 'ord_kind_consignment', loan: 'ord_kind_loan', gift: 'ord_kind_gift',
+}
+const KIND_COLOR: Record<WorkOrderKind, string> = {
+  sale: 'var(--sage)', consignment: 'var(--cyan)', loan: 'var(--yellow, var(--ac))', gift: 'var(--ac)',
+}
+const STEPS: Record<WorkOrderKind, string[]> = {
+  sale: ['draft', 'signed', 'deposit_paid', 'paid', 'delivered'],
+  consignment: ['draft', 'signed', 'out', 'closed'],
+  loan: ['draft', 'signed', 'out', 'closed'],
+  gift: ['draft', 'signed', 'handed_over'],
+}
+/** Denser cells than the shared .tbl, so seven columns fit beside the order panel. */
+const CELL = { padding: '8px 10px' } as const
+const FINISHED = new Set(['closed', 'cancelled', 'delivered', 'handed_over'])
+
+function stepLabelKey(kind: WorkOrderKind, step: string): DictKey {
+  if (kind === 'gift' && step === 'signed') return 'ord_st_gift_signed'
+  if ((kind === 'consignment' || kind === 'loan') && step === 'signed') return 'ord_st_signed_m'
+  if ((kind === 'consignment' || kind === 'loan') && step === 'closed') return 'ord_st_closed_m'
+  return `ord_st_${step}` as DictKey
+}
+
+function stepDate(o: WorkOrderView, step: string): string | null {
+  switch (step) {
+    case 'draft': return o.reconstituted ? null : o.created_at
+    case 'signed': return o.signed_at
+    case 'paid': return o.paid_at
+    case 'delivered':
+    case 'out':
+    case 'handed_over': return o.delivered_at
+    case 'closed': return o.returned_at
+    default: return null
+  }
+}
+
+/** The step buttons: same allowed moves as the server (orders-actions.ts NEXT / CANCEL_FROM). */
+const NEXT: Record<WorkOrderKind, Record<string, string[]>> = {
+  sale: { draft: ['signed'], signed: ['deposit_paid', 'paid'], deposit_paid: ['paid'], paid: ['delivered'] },
+  consignment: { draft: ['signed'], signed: ['out'], out: ['closed'] },
+  loan: { draft: ['signed'], signed: ['out'], out: ['closed'] },
+  gift: { draft: ['signed'], signed: ['handed_over'] },
+}
+const CANCEL_FROM: Record<WorkOrderKind, string[]> = {
+  sale: ['draft', 'signed', 'deposit_paid'], consignment: ['draft', 'signed'], loan: ['draft', 'signed'], gift: ['draft'],
+}
+function actionKey(kind: WorkOrderKind, to: string): DictKey {
+  if (kind === 'sale') return `ord_do_sale_${to}` as DictKey
+  if (kind === 'gift') return `ord_do_gift_${to}` as DictKey
+  if (to === 'out') return kind === 'loan' ? 'ord_do_loan_out' : 'ord_do_cons_out'
+  return `ord_do_cons_${to}` as DictKey
+}
+
+const LINE_LABEL: Record<string, DictKey> = {
+  returned: 'ord_line_returned', sold: 'ord_line_sold', given: 'ord_line_given', removed: 'ord_line_removed',
+}
+
+interface Props {
+  /** Opens the work card (the Atelier drawer). */
+  openWork: (oeuvreId: number) => void
+  /** Former Sales tab, shown folded until R7 moves its figures to Revenue & expenses. */
+  renderLegacy: () => ReactNode
+  /** Contacts for the new-order form (buyer / gallery / borrower / recipient). */
+  contacts: OrderContact[]
+}
+
+export function Orders({ openWork, renderLegacy, contacts }: Props) {
+  const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : null)
+  const fmtMoney = (n: number | null, cur: string) =>
+    n == null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency: cur || 'EUR', maximumFractionDigits: 0 }).format(n)
+
+  const [orders, setOrders] = useState<WorkOrderView[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [kind, setKind] = useState<WorkOrderKind | 'all'>('all')
+  const [showClosed, setShowClosed] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [legacyOpen, setLegacyOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [stepBusy, setStepBusy] = useState(false)
+  const [stepErr, setStepErr] = useState<string | null>(null)
+  const [paperBusy, setPaperBusy] = useState(false)
+  const signedInput = useRef<HTMLInputElement>(null)
+
+  async function redoPaper(o: WorkOrderView) {
+    setPaperBusy(true); setStepErr(null)
+    try {
+      const res = await makeOrderPaper(o.id)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      await load()
+    } finally {
+      setPaperBusy(false)
+    }
+  }
+
+  async function uploadSigned(o: WorkOrderView, picked: File | undefined) {
+    if (!picked) return
+    setPaperBusy(true); setStepErr(null)
+    try {
+      // Photos of a signed page: shrunk to a readable 2400 px so they clear the upload cap.
+      const file = await downscaleImageFileForMobileIfNeeded(picked, true, 2400)
+      const fd = new FormData()
+      fd.append('order_id', o.id)
+      fd.append('file', file)
+      const res = await attachSignedCopy(fd)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      await load()
+    } finally {
+      setPaperBusy(false)
+      if (signedInput.current) signedInput.current.value = ''
+    }
+  }
+
+  async function load(): Promise<void> {
+    try {
+      const res = await fetchWorkOrders()
+      if ('error' in res) setLoadError(res.error)
+      else { setLoadError(null); setOrders(res.orders) }
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- not silent: the error is shown in the list area
+    } catch (e: unknown) {
+      setLoadError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  useEffect(() => { void load() }, [])
+
+  async function runStep(o: WorkOrderView, to: string | 'cancel') {
+    if (!confirm(t(to === 'cancel' ? 'ord_confirm_cancel' : 'ord_confirm_step'))) return
+    setStepBusy(true); setStepErr(null)
+    try {
+      const res = to === 'cancel' ? await cancelWorkOrder(o.id) : await advanceWorkOrder(o.id, to)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      await load()
+    } finally {
+      setStepBusy(false)
+    }
+  }
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: 0, sale: 0, consignment: 0, loan: 0, gift: 0 }
+    for (const o of orders ?? []) {
+      if (!showClosed && FINISHED.has(o.status)) continue
+      c.all++; c[o.kind]++
+    }
+    return c
+  }, [orders, showClosed])
+
+  const visible = useMemo(() => (orders ?? []).filter((o) =>
+    (kind === 'all' || o.kind === kind) && (showClosed || !FINISHED.has(o.status)),
+  ), [orders, kind, showClosed])
+  const openRows = visible.filter((o) => !FINISHED.has(o.status))
+  const closedRows = visible.filter((o) => FINISHED.has(o.status))
+  const selected = (orders ?? []).find((o) => o.id === selectedId) ?? null
+
+  async function openPaper(path: string | null) {
+    if (!path) return
+    const res = await getSignedUrl(path)
+    if ('url' in res) window.open(res.url, '_blank', 'noopener')
+    else alert(`${t('error_prefix')} ${res.error}`)
+  }
+
+  const kindChip = (k: WorkOrderKind, size = 22) => (
+    <span aria-label={t(KIND_LABEL[k])} title={t(KIND_LABEL[k])} style={{
+      display: 'inline-grid', placeItems: 'center', width: size, height: size, flex: 'none',
+      border: `1px solid ${KIND_COLOR[k]}`, color: KIND_COLOR[k], borderRadius: 3, fontSize: 11, fontWeight: 700,
+    }}>{KIND_LETTER[k]}</span>
+  )
+
+  const stepDots = (o: WorkOrderView) => {
+    const steps = STEPS[o.kind]
+    const idx = steps.indexOf(o.status)
+    return (
+      <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>
+        {steps.map((s, i) => (
+          <span key={s} style={{
+            width: 8, height: 8, borderRadius: '50%', display: 'block',
+            border: `1px solid ${i <= idx ? 'var(--ac)' : 'var(--bd3)'}`,
+            background: i < idx || (i === idx && FINISHED.has(o.status)) ? 'var(--ac)' : 'transparent',
+          }} />
+        ))}
+      </span>
+    )
+  }
+
+  const statusText = (o: WorkOrderView) => t(o.status === 'cancelled' ? 'ord_st_cancelled' : stepLabelKey(o.kind, o.status))
+
+  const thumbs = (o: WorkOrderView, size: number, max: number) => (
+    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', minWidth: 0 }}>
+      {o.works.slice(0, max).map((w) => {
+        const src = thumbUrl(w.image)
+        return src
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img key={w.oeuvre_id} src={src} alt={w.title ?? ''} width={size} height={size} style={{ objectFit: 'cover', borderRadius: 2, flex: 'none' }} />
+          : <span key={w.oeuvre_id} style={{ width: size, height: size, background: 'var(--bg3)', borderRadius: 2, flex: 'none' }} />
+      })}
+      {o.works.length === 1 && <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--tx2)', marginLeft: 4 }}>{`#${o.works[0].oeuvre_id}`}</span>}
+      {o.works.length > max && <span style={{ fontSize: 11, color: 'var(--tx3)', marginLeft: 4 }}>{`+${o.works.length - max}`}</span>}
+    </span>
+  )
+
+  const chips = (
+    <div style={{ display: 'flex', gap: 6, flexWrap: narrow ? 'nowrap' : 'wrap', overflowX: narrow ? 'auto' : undefined, padding: narrow ? '10px 16px 0' : '10px 0', alignItems: 'center' }}>
+      {(['all', ...KINDS] as const).map((k) => {
+        const on = kind === k
+        return (
+          <button key={k} type="button" onClick={() => setKind(k)} style={{
+            minHeight: narrow ? 44 : 30, padding: '0 10px', borderRadius: 16, display: 'inline-flex', alignItems: 'center', gap: 6,
+            border: `1px solid ${on ? 'var(--bd3)' : 'var(--bd2)'}`, background: on ? 'var(--bg3)' : 'none',
+            color: on ? 'var(--tx)' : 'var(--tx2)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+          }}>
+            {k === 'all' ? t('ord_filter_all') : <>{kindChip(k, 18)}{t(KIND_LABEL[k])}</>}
+            <span style={{ color: 'var(--tx3)', fontSize: 11 }}>{counts[k]}</span>
+          </button>
+        )
+      })}
+      <span style={{ flex: 1 }} />
+      <button type="button" onClick={() => setShowClosed((v) => !v)} aria-pressed={showClosed} style={{
+        minHeight: narrow ? 44 : 30, padding: '0 10px', borderRadius: 16, border: `1px solid ${showClosed ? 'var(--bd3)' : 'var(--bd2)'}`,
+        background: showClosed ? 'var(--bg3)' : 'none', color: showClosed ? 'var(--tx)' : 'var(--tx2)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+      }}>{t('ord_filter_closed')}</button>
+    </div>
+  )
+
+  const detail = (o: WorkOrderView) => {
+    const steps = STEPS[o.kind]
+    const idx = steps.indexOf(o.status)
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: narrow ? '12px 16px' : '14px 18px', borderBottom: '1px solid var(--bd)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {kindChip(o.kind)}
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ac)' }}>{o.ref}</span>
+            <span className="serif" style={{ fontSize: 22 }}>{t(KIND_LABEL[o.kind])}</span>
+            {o.reconstituted && (
+              <span title={t('ord_reconstituted_hint')} style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--tx3)', border: '1px solid var(--bd2)', borderRadius: 3, padding: '2px 6px' }}>
+                {t('ord_reconstituted')}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--tx2)', marginTop: 6, overflowWrap: 'anywhere' }}>{o.party_name}</div>
+          {o.party_place && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{o.party_place}</div>}
+          {o.reconstituted && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_reconstituted_hint')}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+            {o.works.map((w) => {
+              const src = thumbUrl(w.image)
+              return (
+                <button key={w.oeuvre_id} type="button" onClick={() => openWork(w.oeuvre_id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: 'none', border: 'none', padding: 0,
+                  color: 'var(--tx)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
+                }}>
+                  {src
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={src} alt="" width={36} height={36} style={{ objectFit: 'cover', borderRadius: 2, flex: 'none' }} />
+                    : <span style={{ width: 36, height: 36, background: 'var(--bg3)', borderRadius: 2, flex: 'none' }} />}
+                  <span style={{ fontWeight: 700, color: 'var(--tx2)' }}>{`#${w.oeuvre_id}`}</span>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title ?? ''}</span>
+                  {w.line_status !== 'active' && LINE_LABEL[w.line_status] && (
+                    <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(LINE_LABEL[w.line_status])}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <Section label={t('ord_steps')}>
+          {o.status === 'cancelled' && <div style={{ fontSize: 13, color: 'var(--rust)', marginBottom: 6 }}>{`${t('ord_st_cancelled')} · ${fmtDate(o.cancelled_at) ?? ''}`}</div>}
+          <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: narrow ? 0 : 0 }}>
+            {steps.map((s, i) => {
+              const done = i < idx || (i === idx && FINISHED.has(o.status))
+              const now = i === idx && !FINISHED.has(o.status)
+              const color = now ? 'var(--ac)' : done ? 'var(--tx2)' : 'var(--tx3)'
+              const date = fmtDate(stepDate(o, s))
+              return narrow ? (
+                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 32, fontSize: 13, color, fontWeight: now ? 600 : 400 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', border: `1px solid ${done || now ? 'var(--ac)' : 'var(--bd3)'}`, background: done ? 'var(--ac)' : 'transparent' }} />
+                  {t(stepLabelKey(o.kind, s))}
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--tx3)', fontWeight: 400 }}>{date ?? ''}</span>
+                </div>
+              ) : (
+                <div key={s} style={{ flex: 1, fontSize: 11, color, borderTop: `2px solid ${done || now ? 'var(--ac)' : 'var(--bd2)'}`, paddingTop: 5, fontWeight: now ? 600 : 400 }}>
+                  {t(stepLabelKey(o.kind, s))}
+                  <span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', fontWeight: 400 }}>{date ?? ' '}</span>
+                </div>
+              )
+            })}
+          </div>
+          {((NEXT[o.kind][o.status] ?? []).length > 0 || CANCEL_FROM[o.kind].includes(o.status)) && (
+            <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {(NEXT[o.kind][o.status] ?? []).map((to, i) => (
+                <button key={to} type="button" disabled={stepBusy} onClick={() => { void runStep(o, to) }}
+                  className={i === 0 ? 'btn primary' : 'btn ghost'} style={{ minHeight: 44 }}>
+                  {stepBusy ? t('ord_working') : t(actionKey(o.kind, to))}
+                </button>
+              ))}
+              {CANCEL_FROM[o.kind].includes(o.status) && (
+                <button type="button" disabled={stepBusy} onClick={() => { void runStep(o, 'cancel') }} className="btn ghost" style={{ minHeight: 44, color: 'var(--rust)' }}>
+                  {t('ord_do_cancel')}
+                </button>
+              )}
+            </div>
+          )}
+          {stepErr && <div role="alert" style={{ fontSize: 13, color: 'var(--rust)', marginTop: 8 }}>{stepErr}</div>}
+        </Section>
+
+        <Section label={t('ord_papers')}>
+          {o.papers.length === 0 && !o.paper_path && <div style={{ fontSize: 13, color: 'var(--tx3)' }}>{t('ord_no_paper')}</div>}
+          {o.papers.map((p) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, borderTop: '1px solid var(--bd)', fontSize: 13 }}>
+              <span style={{ width: 24, height: 30, border: '1px solid var(--bd3)', borderRadius: 2, flex: 'none' }} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {p.name}
+                {p.folder && <span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{p.folder}</span>}
+              </span>
+              {p.storage_path && (
+                <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => { void openPaper(p.storage_path) }}>
+                  {t('ord_open_paper')}
+                </button>
+              )}
+            </div>
+          ))}
+          <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: 8, marginTop: 10 }}>
+            <button type="button" className="btn ghost" disabled={paperBusy} onClick={() => { void redoPaper(o) }} style={{ minHeight: 44 }}>
+              {paperBusy ? t('ord_working') : o.paper_path ? t('ord_paper_redo') : t('ord_paper_make')}
+            </button>
+            {o.paper_path && o.status !== 'draft' && o.status !== 'cancelled' && (
+              <>
+                <button type="button" className="btn ghost" disabled={paperBusy} onClick={() => signedInput.current?.click()} style={{ minHeight: 44 }}>
+                  {t('ord_signed_add')}
+                </button>
+                <input ref={signedInput} type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" hidden
+                  onChange={(e) => { void uploadSigned(o, e.target.files?.[0]) }} />
+              </>
+            )}
+          </div>
+          {o.status === 'draft' && o.paper_path && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_paper_draft_hint')}</div>}
+        </Section>
+
+        {(o.price_final != null || o.commission_pct != null) && (
+          <Section label={t('ord_money')}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: 13 }}>
+              {o.price_final != null && <><span style={{ color: 'var(--tx3)' }}>{t('ord_price_final')}</span><span>{fmtMoney(o.price_final, o.currency)}</span></>}
+              {o.commission_pct != null && <><span style={{ color: 'var(--tx3)' }}>{t('ord_commission')}</span><span>{`${o.commission_pct} %`}</span></>}
+            </div>
+          </Section>
+        )}
+
+        {o.notes && (
+          <Section label={t('ord_notes')}>
+            <div style={{ fontSize: 13, color: 'var(--tx2)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{o.notes}</div>
+          </Section>
+        )}
+      </div>
+    )
+  }
+
+  const datesCell = (o: WorkOrderView) => {
+    const first = fmtDate(o.signed_at ?? o.delivered_at ?? (o.reconstituted ? null : o.created_at))
+    return (
+      <>
+        {first ?? '—'}
+        {o.end_date && (o.kind === 'loan' || o.kind === 'consignment') && (
+          <span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{`${t('ord_back_by')} ${fmtDate(o.end_date)}`}</span>
+        )}
+      </>
+    )
+  }
+
+  const paperCell = (o: WorkOrderView) => {
+    const n = o.papers.length
+    return <span title={n ? undefined : t('ord_no_paper')} style={{ fontSize: 12, color: n ? 'var(--sage)' : 'var(--tx3)', whiteSpace: 'nowrap' }}>{n ? `● ${n}` : '○'}</span>
+  }
+
+  const legacy = (
+    <details open={legacyOpen} onToggle={(e) => setLegacyOpen((e.currentTarget as HTMLDetailsElement).open)} style={{ borderTop: '1px solid var(--bd)', marginTop: 16 }}>
+      <summary style={{ cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', padding: narrow ? '0 16px' : 0, fontSize: 12, color: 'var(--tx3)' }}>
+        {t('ord_legacy_title')}
+      </summary>
+      {legacyOpen && renderLegacy()}
+    </details>
+  )
+
+  const header = (
+    <div style={{ padding: narrow ? '12px 16px 0' : '0 0 4px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="serif" style={{ fontSize: 26 }}>{t('ord_title')}</div>
+        <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>{t('ord_intro')}</div>
+      </div>
+      <button type="button" className="btn primary" onClick={() => setFormOpen(true)} style={{ minHeight: 44, whiteSpace: 'nowrap', flex: 'none' }}>
+        {t('ord_new')}
+      </button>
+    </div>
+  )
+
+  const form = formOpen ? (
+    <NewOrderForm
+      narrow={narrow}
+      contacts={contacts}
+      onClose={() => setFormOpen(false)}
+      onCreated={(id) => { setFormOpen(false); setSelectedId(id); void load() }}
+    />
+  ) : null
+
+  const status = loadError
+    ? <div style={{ padding: 16, fontSize: 13, color: 'var(--rust)' }}>{`${t('ord_load_error')} ${loadError}`}</div>
+    : orders === null
+      ? <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>{t('ord_loading')}</div>
+      : visible.length === 0
+        ? <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>{orders.length === 0 ? t('ord_empty') : t('ord_empty_filtered')}</div>
+        : null
+
+  // ── Phone ────────────────────────────────────────────────────────────────────────
+  if (narrow) {
+    if (selected) {
+      return (
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <button type="button" onClick={() => setSelectedId(null)} style={{
+            minHeight: 44, padding: '0 16px', background: 'none', border: 'none', color: 'var(--tx2)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+          }}>{`‹ ${t('ord_back_to_list')}`}</button>
+          {detail(selected)}
+          {form}
+        </div>
+      )
+    }
+    return (
+      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+        {header}
+        {chips}
+        {status}
+        {[...openRows, ...closedRows].map((o) => (
+          <button key={o.id} type="button" onClick={() => { setSelectedId(o.id); setStepErr(null) }} style={{
+            display: 'block', width: 'calc(100% - 32px)', margin: '10px 16px 0', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+            border: '1px solid var(--bd2)', borderRadius: 4, background: 'var(--bg2)', padding: 10, color: 'var(--tx)',
+            opacity: FINISHED.has(o.status) ? 0.75 : 1,
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {kindChip(o.kind)}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.party_name}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ac)' }}>{o.ref}</span>
+            </span>
+            <span style={{ display: 'block', marginTop: 8 }}>{thumbs(o, 36, 5)}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12, color: 'var(--tx3)' }}>
+              {stepDots(o)}<span>{statusText(o)}</span>
+            </span>
+          </button>
+        ))}
+        {legacy}
+        {form}
+      </div>
+    )
+  }
+
+  // ── Desktop ──────────────────────────────────────────────────────────────────────
+  const row = (o: WorkOrderView) => {
+    const on = o.id === selectedId
+    return (
+      <tr key={o.id} onClick={() => { setSelectedId(o.id); setStepErr(null) }} style={{ cursor: 'pointer', background: on ? 'color-mix(in srgb, var(--ac) 7%, transparent)' : undefined, color: FINISHED.has(o.status) ? 'var(--tx3)' : undefined }}>
+        <td style={{ ...CELL, width: 34 }}>{kindChip(o.kind)}</td>
+        <td style={{ ...CELL, whiteSpace: 'nowrap' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ac)' }}>{o.ref}</span></td>
+        <td style={CELL}>{thumbs(o, 28, 4)}</td>
+        <td style={{ ...CELL, minWidth: 130, overflowWrap: 'break-word' }}>
+          {o.party_name}
+          {o.party_place && <span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{o.party_place}</span>}
+        </td>
+        <td style={{ ...CELL, whiteSpace: 'nowrap' }}>{datesCell(o)}</td>
+        <td style={CELL}>{stepDots(o)}<span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)' }}>{statusText(o)}</span></td>
+        <td style={CELL}>{paperCell(o)}</td>
+      </tr>
+    )
+  }
+  const groupRow = (label: string) => (
+    <tr><td colSpan={7} style={{ background: 'var(--bg0)', fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--tx3)', fontWeight: 600, padding: '5px 10px' }}>{label}</td></tr>
+  )
+
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '16px 20px', overflowY: 'auto' }}>
+      {header}
+      {chips}
+      <div style={{ display: 'flex', gap: 0, border: '1px solid var(--bd)', minHeight: 360 }}>
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', borderRight: '1px solid var(--bd)' }}>
+          {status ?? (
+            <table className="tbl" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={CELL} />
+                  <th style={CELL}>{t('ord_col_ref')}</th>
+                  <th style={CELL}>{t('ord_col_works')}</th>
+                  <th style={CELL}>{t('ord_col_party')}</th>
+                  <th style={CELL}>{t('ord_col_dates')}</th>
+                  <th style={CELL}>{t('ord_col_step')}</th>
+                  <th style={CELL}>{t('ord_col_papers')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {openRows.length > 0 && groupRow(t('ord_group_open'))}
+                {openRows.map(row)}
+                {closedRows.length > 0 && groupRow(t('ord_group_closed'))}
+                {closedRows.map(row)}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <aside style={{ width: 'clamp(280px, 36%, 400px)', flex: 'none', overflowY: 'auto' }}>
+          {selected ? detail(selected) : <div style={{ padding: 18, fontSize: 13, color: 'var(--tx3)' }}>{t('ord_pick_one')}</div>}
+        </aside>
+      </div>
+      {legacy}
+      {form}
+    </div>
+  )
+}
+
+function Section({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div style={{ borderBottom: '1px solid var(--bd)', padding: '10px 18px' }}>
+      <div className="t-label" style={{ marginBottom: 8 }}>{label}</div>
+      {children}
+    </div>
+  )
+}

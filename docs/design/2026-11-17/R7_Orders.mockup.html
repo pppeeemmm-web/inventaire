@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contrats — R7 mockup</title>
+<title>Commandes — R7 mockup</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
 <style>
 :root{
@@ -149,24 +149,190 @@ tr.closed td{color:var(--tx3)}
 .ppap .go{width:44px;height:44px;display:grid;place-items:center;color:var(--ac);font-size:18px}
 .note{max-width:1280px;color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:12px}
 .note b{color:var(--tx2)}
+
+/* ── life of an order ───────────────────────────────── */
+.life{width:1280px;border:1px solid var(--bd2);border-radius:8px;background:var(--bg1);padding:16px 20px 20px}
+.starts{display:flex;align-items:stretch;gap:10px;flex-wrap:nowrap}
+.starts .src{flex:1;border:1px solid var(--bd2);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--tx2);background:var(--bg2)}
+.starts .src b{display:block;color:var(--tx);font-size:13px;margin-bottom:2px}
+.starts .arrow{display:grid;place-items:center;color:var(--ac);font-size:20px;flex:none;width:28px}
+.starts .draft{flex:1.2;border:1px solid var(--ac2);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--tx2)}
+.starts .draft b{display:block;color:var(--ac);font-size:13px;margin-bottom:2px}
+.lane{display:grid;grid-template-columns:130px repeat(6,1fr);margin-top:18px;border-top:1px solid var(--bd);padding-top:12px}
+.lane .rl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;display:flex;align-items:center;min-height:22px}
+.lane .kn{display:flex;align-items:center;gap:8px;font-family:var(--font-serif);font-size:20px}
+.lane .kn small{display:block;font-family:var(--font-ui);font-size:11px;color:var(--tx3)}
+.st{margin-right:6px;border:1px solid var(--bd2);border-radius:3px;padding:6px 8px;font-size:13px;min-height:44px;position:relative;background:var(--bg2)}
+.st small{display:block;font-size:11px;color:var(--tx3)}
+.st.key{border-color:var(--ac2)}
+.st.alt{border-style:dashed}
+.st:not(.last)::after{content:'›';position:absolute;right:-7px;top:50%;transform:translate(50%,-50%);color:var(--tx3);font-size:14px}
+.pap2{margin:6px 6px 0 0;font-size:11px;color:var(--tx2);min-height:22px;display:flex;align-items:center;gap:5px}
+.pap2 .d{width:12px;height:15px;border:1px solid var(--bd3);border-radius:1px;flex:none}
+.pap2 .d.s{border-color:var(--sage);background:color-mix(in srgb,var(--sage) 25%,transparent)}
+.tr{height:22px;margin-top:6px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600}
+.tr.pem{background:var(--bg3);color:var(--tx3)}
+.tr.oth{background:color-mix(in srgb,var(--ac) 30%,var(--bg2));color:var(--tx)}
+.tr.gal{background:color-mix(in srgb,var(--cyan) 22%,var(--bg2));color:var(--tx)}
+.tr.mv{box-shadow:inset 3px 0 0 var(--ac)}
+.tr.none{background:none}
+.legend{display:flex;gap:18px;margin-top:16px;font-size:12px;color:var(--tx3);align-items:center;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:22px;height:12px}
 </style>
 </head>
 <body>
 <div class="page">
 
 <div class="caption">
-  <h1>Contrats — R7 mockup (2026-11-17, v1)</h1>
-  <b>One place for every work that leaves Pem's hands:</b> Vente (V) · Dépôt (D) · Prêt (P) · Don (G), each with its steps and its papers. Replaces « Ventes » at the top of Commercial. Brief: <code>R7_Orders.notes.md</code>.<br>
-  All rows below are <b>made-up examples</b> — the live data has no sale, deposit or loan yet, and 7 gifts (one with a paper). Name « Contrats » is a proposal (question 1).
+  <h1>Commandes — R7 mockup (2026-11-17, v2)</h1>
+  <b>One place for every work that leaves Pem's hands:</b> Vente (V) · Dépôt (D) · Prêt (P) · Don (G), each with its steps and its papers. Replaces « Ventes » at the top of <b>Business</b> (was Commercial). Brief: <code>R7_Orders.notes.md</code>.<br>
+  All rows below are <b>made-up examples</b> — the live data has no sale, deposit or loan yet, and 7 gifts (one with a paper). v2: name « Commandes / Orders », gifts are orders too, one Vault folder per kind (Pem 2026-11-17).
 </div>
 
+<!-- ═══════════ LIFE OF AN ORDER ═══════════ -->
+<div class="col">
+<h2>The life of an order — four kinds, one shape</h2>
+<div class="life">
+<div class="lbl" style="margin-bottom:8px">Where an order starts</div>
+<div class="starts">
+<div class="src"><b>Commandes · + Nouvelle</b>any kind, one work or many</div>
+<div class="src"><b>Work card · + commande</b>this work; loans and deposits too</div>
+<div class="src"><b>Pipeline / Exposition</b>« Créer la commande », kept linked</div>
+<div class="src"><b>Work card · stage changed by hand</b>« Vendu », « Don »… by a team member</div>
+<div class="arrow">→</div>
+<div class="draft"><b>Brouillon (draft) + its paper</b>Nothing moves yet. A draft made by someone else lands in Pem's feed to check the details.</div>
+</div>
+<div class="lane">
+<div class="rl"><span class="kn"><span class="k v">V</span><span>Vente<small>sale</small></span></span></div>
+<div class="st ">Brouillon<small>paper drafted</small></div>
+<div class="st ">Signée<small></small></div>
+<div class="st ">Acompte<small>payment</small></div>
+<div class="st key">Soldée<small>payment cleared</small></div>
+<div class="st key">Livrée<small>handed / shipped</small></div>
+<div class="st  last">Rétractation<small>14 days</small></div>
+<div class="rl">Papier</div>
+<div class="pap2"><span class="d"></span>Bon de commande</div>
+<div class="pap2"><span class="d s"></span>copie signée</div>
+<div class="pap2"><span class="d"></span>reçu</div>
+<div class="pap2"><span class="d"></span>Facture · COA</div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="rl">Propriétaire</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr oth mv">Acheteur</div>
+<div class="tr oth"></div>
+<div class="tr oth"></div>
+<div class="rl">Gardien</div>
+<div class="tr pem">Pem (or the gallery)</div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr oth mv">Acheteur</div>
+<div class="tr oth"></div>
+</div>
+<div class="lane">
+<div class="rl"><span class="kn"><span class="k d">D</span><span>Dépôt<small>consignment — a step on the way</small></span></span></div>
+<div class="st ">Brouillon<small></small></div>
+<div class="st ">Signé<small></small></div>
+<div class="st key">Sorti<small>at the gallery</small></div>
+<div class="st alt">Vendu par la galerie<small>→ opens a Vente, commission</small></div>
+<div class="st key last">ou Rentré<small>back at the studio</small></div>
+<div></div>
+<div class="rl">Papier</div>
+<div class="pap2"><span class="d"></span>Bordereau de dépôt-vente</div>
+<div class="pap2"><span class="d s"></span>copie signée</div>
+<div class="pap2"><span class="d"></span>constat (option)</div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="rl">Propriétaire</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr pem mv">Pem → the Vente moves it</div>
+<div class="tr pem mv">Pem</div>
+<div class="tr none"></div>
+<div class="rl">Gardien</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr gal mv">Galerie</div>
+<div class="tr gal"></div>
+<div class="tr pem mv">Pem</div>
+<div class="tr none"></div>
+</div>
+<div class="lane">
+<div class="rl"><span class="kn"><span class="k p">P</span><span>Prêt<small>loan — always comes back</small></span></span></div>
+<div class="st ">Brouillon<small></small></div>
+<div class="st ">Signé<small></small></div>
+<div class="st key">Sorti<small>exhibition, period</small></div>
+<div class="st key last">Rentré<small>always</small></div>
+<div></div>
+<div></div>
+<div class="rl">Papier</div>
+<div class="pap2"><span class="d"></span>Contrat de prêt</div>
+<div class="pap2"><span class="d s"></span>copie signée</div>
+<div class="pap2"><span class="d"></span>constat départ</div>
+<div class="pap2"><span class="d"></span>constat retour</div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="rl">Propriétaire</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr pem"></div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+<div class="rl">Gardien</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr gal mv">Emprunteur</div>
+<div class="tr pem mv">Pem</div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+</div>
+<div class="lane">
+<div class="rl"><span class="kn"><span class="k g">G</span><span>Don<small>gift</small></span></span></div>
+<div class="st ">Brouillon<small></small></div>
+<div class="st key">Acte signé<small>deed</small></div>
+<div class="st key last">Remis<small>handed over</small></div>
+<div></div>
+<div></div>
+<div></div>
+<div class="rl">Papier</div>
+<div class="pap2"><span class="d"></span>Acte de don</div>
+<div class="pap2"><span class="d s"></span>acte signé</div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="pap2"></div>
+<div class="rl">Propriétaire</div>
+<div class="tr pem">Pem</div>
+<div class="tr oth mv">Bénéficiaire</div>
+<div class="tr oth"></div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+<div class="rl">Gardien</div>
+<div class="tr pem">Pem</div>
+<div class="tr pem"></div>
+<div class="tr oth mv">Bénéficiaire</div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+<div class="tr none"></div>
+</div>
+<div class="legend"><span><i style="background:var(--bg3)"></i>Pem</span><span><i style="background:color-mix(in srgb,var(--ac) 30%,var(--bg2))"></i>new owner / holder</span><span><i style="background:color-mix(in srgb,var(--cyan) 22%,var(--bg2))"></i>gallery / borrower holds it, Pem still owns it</span><span><i style="box-shadow:inset 3px 0 0 var(--ac);background:var(--bg2)"></i>the moment it changes</span><span><span class="d" style="display:inline-block;width:12px;height:15px;border:1px solid var(--sage);background:color-mix(in srgb,var(--sage) 25%,transparent)"></span>signed copy</span></div>
+<div class="legend" style="margin-top:8px">Files: <code>V-2026-001_bon-de-commande.pdf</code> · <code>D-2026-001_bordereau-depot.pdf</code> · <code>P-2026-001_contrat-pret.pdf</code> · <code>G-2026-001_acte-de-don_signe.pdf</code> → Vault <code>Commandes/Ventes · Dépôts · Prêts · Dons</code></div>
+</div></div>
 <!-- ═══════════ DESKTOP ═══════════ -->
 <div class="col">
-  <h2>Desktop — list + the agreement</h2>
+  <h2>Desktop — list + the order</h2>
   <div class="desk">
     <nav class="side">
-      <div class="g lbl">Commercial</div>
-      <a class="on">Contrats</a>
+      <div class="g lbl">Business</div>
+      <a class="on">Commandes</a>
       <a>Contacts</a>
       <a>Carte</a>
       <a>Logistique</a>
@@ -180,10 +346,10 @@ tr.closed td{color:var(--tx3)}
 
     <div class="main">
       <div class="hdr">
-        <h3>Contrats</h3>
+        <h3>Commandes</h3>
         <span style="flex:1"></span>
         <span class="btn q">⌕ Chercher</span>
-        <span class="btn pri">+ Nouveau</span>
+        <span class="btn pri">+ Nouvelle commande</span>
       </div>
       <div class="strip">
         <span>Ouverts</span><span class="dot">·</span>
@@ -267,7 +433,7 @@ tr.closed td{color:var(--tx3)}
           <div class="dh">
             <div class="t"><span class="k v">V</span><span class="ref">V-2026-001</span><span class="ttl">Vente</span><span style="flex:1"></span><span class="btn q">⋯</span></div>
             <div class="who">Collectionneur A</div>
-            <div class="addr">Livrer à : Domicile · Lyon (adresse du contrat)</div>
+            <div class="addr">Livrer à : Domicile · Lyon (adresse de la commande)</div>
             <div class="ws"><div class="w"><span class="th c"></span><span><span class="num">#2210</span> Sans titre (bleu)</span></div></div>
           </div>
           <div class="sec">
@@ -297,8 +463,8 @@ tr.closed td{color:var(--tx3)}
               <span>Reste</span><span class="neg">2 400 €</span>
             </div>
           </div>
-          <div class="sec"><div class="lbl">Liens · Pipeline « Collectionneur A » · Livraison — <span class="chev">▸</span></div></div>
-          <div class="sec"><div class="lbl">Journal du contrat (4 lignes) <span class="chev">▸</span></div></div>
+          <div class="sec"><div class="lbl">Liens · Pipeline « Collectionneur A » · Livraison <span class="chev">▸</span></div></div>
+          <div class="sec"><div class="lbl">Journal de la commande (4 lignes) <span class="chev">▸</span></div></div>
         </aside>
       </div>
     </div>
@@ -309,12 +475,12 @@ tr.closed td{color:var(--tx3)}
 <div class="row">
 
   <div class="col">
-    <h2>Phone 1 — open agreements</h2>
-    <p>Cards, newest step first. « + Nouveau » offers Vente and Don on the phone (question 7). The R2 input bar stays at the bottom.</p>
+    <h2>Phone 1 — open orders</h2>
+    <p>Cards, newest step first. What the phone may start is still open (how papers are sent, question 7). The R2 input bar stays at the bottom.</p>
     <div class="phone">
       <div class="status"><span>9:41</span><span>●●● ▮</span></div>
       <div class="pbody">
-        <div class="ptop"><span class="ib">‹</span><span class="ttl">Contrats</span><span class="ib">⌕</span></div>
+        <div class="ptop"><span class="ib">‹</span><span class="ttl">Commandes</span><span class="ib">⌕</span></div>
         <div class="pchips">
           <span class="chip on">Ouverts <b>3</b></span>
           <span class="chip"><span class="k v">V</span></span>
@@ -339,7 +505,7 @@ tr.closed td{color:var(--tx3)}
           <div class="nx"><span>Signé</span><span class="sp"></span><b>Marquer sorti ›</b></div>
         </div>
 
-        <span class="fab">+ Nouveau</span>
+        <span class="fab">+ Nouvelle</span>
         <div class="inbar">
           <span><b>✎</b>Écrire</span><span><b>●</b>Vocal</span><span><b>▣</b>Œuvre</span><span><b>◎</b>Photo</span><span><b>▤</b>doc</span>
         </div>
@@ -348,7 +514,7 @@ tr.closed td{color:var(--tx3)}
   </div>
 
   <div class="col">
-    <h2>Phone 2 — one agreement</h2>
+    <h2>Phone 2 — one order</h2>
     <p>Steps as a vertical line, papers as 52 px rows (open / share the PDF, photograph the signed copy). One sticky primary button with safe-area padding.</p>
     <div class="phone">
       <div class="status"><span>9:41</span><span>●●● ▮</span></div>
@@ -370,7 +536,7 @@ tr.closed td{color:var(--tx3)}
         </div>
         <div class="psec">
           <div class="lbl">Papiers</div>
-          <div class="ppap"><span class="ic">PDF</span><span class="nm">Bordereau de dépôt<span class="sub">généré 28 sept.</span></span><span class="go">↗</span></div>
+          <div class="ppap"><span class="ic">PDF</span><span class="nm">Bordereau de dépôt-vente<span class="sub">D-2026-001_bordereau-depot.pdf</span></span><span class="go">↗</span></div>
           <div class="ppap"><span class="ic miss">—</span><span class="nm">Copie signée<span class="sub">manquante</span></span><span class="go">◎</span></div>
           <div class="ppap"><span class="ic miss">+</span><span class="nm" style="color:var(--tx3)">Joindre un papier</span><span class="go">›</span></div>
         </div>
@@ -383,7 +549,7 @@ tr.closed td{color:var(--tx3)}
 </div>
 
 <div class="note">
-  <b>What is not shown:</b> the « + Nouveau » form (kind first — four big buttons —, then works, the other party + address, then only that kind's terms; it makes a draft with its paper, works move at « signé / sorti / soldée / acte signé », question 4) · the work card link « voir le contrat » on the locked stage pills · Pipeline's « Créer le contrat » link · the Vault folder per agreement (question 6).
+  <b>What is not shown:</b> the « + Nouvelle commande » form (kind first — four big buttons —, then works, the other party + address, then only that kind's terms; it makes a draft with its paper, works move at « signé / sorti / soldée / acte signé ») · the work card link « voir la commande » on the locked stage pills · Pipeline's « Créer la commande » link · the draft landing in Pem's feed (R1).
 </div>
 
 </div>

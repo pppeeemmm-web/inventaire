@@ -3,10 +3,26 @@ export const VAULT_FOLDER_COA = 'COA'
 export const VAULT_FOLDER_INVOICES = 'Invoices'
 export const VAULT_FOLDER_CONSIGNMENT = 'Consignment'
 
+/** R7 orders: one Vault folder per kind (Pem 2026-11-17), papers named `<REF>_<paper>.pdf`. */
+export const VAULT_ORDER_FOLDERS = {
+  sale: 'Commandes/Ventes',
+  consignment: 'Commandes/Dépôts',
+  loan: 'Commandes/Prêts',
+  gift: 'Commandes/Dons',
+} as const
+/** R2 key prefix per order kind (ASCII) → its Vault folder. */
+export const ORDER_KEY_PREFIX = {
+  sale: 'commandes/ventes/',
+  consignment: 'commandes/depots/',
+  loan: 'commandes/prets/',
+  gift: 'commandes/dons/',
+} as const
+
 export const VAULT_ROUTED_FOLDERS = [
   VAULT_FOLDER_COA,
   VAULT_FOLDER_INVOICES,
   VAULT_FOLDER_CONSIGNMENT,
+  ...Object.values(VAULT_ORDER_FOLDERS),
 ] as const
 
 const KIND_FOLDER: Record<string, string> = {
@@ -29,6 +45,11 @@ export function resolveVaultFolder(doc: VaultFolderDoc): string | null {
   if (kind && KIND_FOLDER[kind]) return KIND_FOLDER[kind]
 
   const path = doc.storage_path ?? ''
+  for (const [k, prefix] of Object.entries(ORDER_KEY_PREFIX)) {
+    if (path.startsWith(prefix)) return VAULT_ORDER_FOLDERS[k as keyof typeof VAULT_ORDER_FOLDERS]
+  }
+  // Gift slips from the former work-card dialog belong with the gift orders.
+  if (path.startsWith('gifts/')) return VAULT_ORDER_FOLDERS.gift
   if (path.startsWith('consignments/') || path.startsWith('loans/')) {
     return VAULT_FOLDER_CONSIGNMENT
   }
