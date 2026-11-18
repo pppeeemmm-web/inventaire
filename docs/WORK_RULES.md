@@ -34,6 +34,7 @@ In the studio (status 1 / 2, no fate), 1 / 2 are not chosen: the database sets t
 | 15 | Deleting a sold / given work: admin only | **Database** | 0 |
 | 16 | « In production » means one thing everywhere | One function, by status id (`lib/production-scope.ts`): Production board, its report, the work-session picker. Display chips (`statusOf`) and the address rule keep their own job | 0 (#2112 no longer offered) |
 | 17 | A destroyed / lost work is never « Exposable » (Pem 2026-11-17: « i turn it off, make this a rule ») | **Database** (`trg_oeuvre_fate_not_showable`, [`fate_not_showable.sql`](../supabase/sql/fate_not_showable.sql): « Exposable » forced off while the work has a fate; stays off if a lost work is found). Work card: the « Exposable » chip is closed with a tooltip | 0 (#2112 was already off) |
+| 18 | A work in the bin has no tasks waiting: putting it in the bin pauses its open tasks; taking it back out resumes them (unless it is archived, where rule 4 keeps them paused) (Pem 2026-11-18: « when this is put in the bin, the production tab tasks should be removed ») | **Database** (`trg_oeuvre_bin_tasks`, [`bin_pauses_tasks.sql`](../supabase/sql/bin_pauses_tasks.sql), applied 2026-11-18). The Production tab and its menu badge also leave binned works out | 0 (the 4 binned works' « Cataloguer » tasks paused on 18 Nov) |
 
 ## 3. Who writes a work's state
 
