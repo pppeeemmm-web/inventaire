@@ -21,3 +21,4 @@ Reason: not done in four months, the field workflow moved on (the Journal day is
 - **F3** Quick add from a phone photo with AI-suggested fields — far-fetched, not worth the effort, misplaced.
 - **F4** Saved searches in Inventory — already exists (Inventory "Filtres & vues").
 - **F9** Field OCR on its own — folded into one plan for all local reading AIs (TODO "To build" 1b).
+- **« + œuvre » inside a work session** (TODO 22, R3 leftover) — dropped 2026-11-18 (Pem « drop it »): a note left by a build session, no need behind it; the phone recording screen and work sessions stay separate.

@@ -33,7 +33,7 @@ R1–R7 are built and pushed (history → [DONE](./DONE.md)). Only what is left:
 ## 3. To build — outside the rethink (needs GO)
 
 Trace
-- [ ] 22. Work card leftovers (R3 closed 2026-11-17 → [DONE](./DONE.md)): OK `supabase/sql/place_validity_dates.sql` (place from / to dates; the place-vs-date rule no-ops until then) + a screen to enter those dates · the work session's own « + œuvre » flow in the phone recording screen · « Brouillon » on the recording screen (« Annuler » for now) · 3 card files no longer used (`DrawerContentIdentitySection.tsx`, `DrawerContentNotesVersionSection.tsx`, `DrawerContentGroupsSection.tsx`) — delete on Pem's OK. Place dates: Pem « not sure » (2026-11-18) — park unless needed.
+- [ ] 22. Work card leftovers (R3 closed 2026-11-17 → [DONE](./DONE.md)): OK `supabase/sql/place_validity_dates.sql` (place from / to dates; the place-vs-date rule no-ops until then) + a screen to enter those dates · « Brouillon » on the recording screen (« Annuler » for now) · 3 card files no longer used (`DrawerContentIdentitySection.tsx`, `DrawerContentNotesVersionSection.tsx`, `DrawerContentGroupsSection.tsx`) — delete on Pem's OK. Place dates: Pem « not sure » (2026-11-18) — park unless needed.
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1c. Voice notes longer than one upload (~4 MB) or recorded offline → build only if Pem hits either ≥2× → [notes](./TODO_NOTES.md#voice-limits)
 

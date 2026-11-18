@@ -47,4 +47,12 @@ export const ideasMessages = defineMessages({
   ideas_propose_cancel: { fr: 'Annuler', en: 'Cancel' },
   ideas_propose_sent: { fr: 'Envoyée à Pem.', en: 'Sent to Pem.' },
   ideas_propose_err_work: { fr: 'Œuvre introuvable : vérifiez le numéro.', en: 'Work not found: check the number.' },
+  // Reminders with no Pipeline project, shown on Idées (Pem 2026-11-18).
+  ideas_loose_title: { fr: 'Rappels sans projet ({n})', en: 'Reminders with no project ({n})' },
+  ideas_loose_hint: {
+    fr: 'Des notes datées qui ne sont rattachées à aucun projet du Pipeline. Une idée ? « En faire une idée » la garde ici, à sa date.',
+    en: 'Dated notes not attached to any Pipeline project. An idea? « Make it an idea » keeps it here, at its date.',
+  },
+  ideas_loose_to_idea: { fr: 'En faire une idée', en: 'Make it an idea' },
+  ideas_loose_seen: { fr: 'Vu', en: 'Seen' },
 })

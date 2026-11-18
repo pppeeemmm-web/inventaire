@@ -8,7 +8,7 @@
 // is_admin() here, since `concept` RLS still lets any team member write.
 
 import { randomUUID } from 'crypto'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 import { r2DeleteObject, r2PutObject } from '@/lib/r2-s3-object'
@@ -308,4 +308,55 @@ export async function proposeIdea(body: string, workRef: string): Promise<Simple
   if (error) return { error: error.message }
   revalidatePath('/hub/fil')
   return { ok: true }
+}
+
+// ── Reminders with no Pipeline project (Pem 2026-11-18) ───────────────────────
+// « it can go in reminders but needs to be visible in Idées »: dated notes that are not attached to a
+// Pipeline project show on Idées (admin), each with « En faire une idée » (dated on its reminder's day, origin
+// in notes, reminder marked read — like supabase/sql/reminders_to_ideas.sql) or « Vu » (mark read).
+
+export type LooseReminder = { id: string; message: string; remind_at: string }
+
+export async function fetchLooseReminders(): Promise<LooseReminder[]> {
+  const { error: authErr, supabase } = await guardAdmin()
+  if (authErr || !supabase) return []
+  const { data } = await supabase
+    .from('suivi_reminder')
+    .select('id, message, remind_at')
+    .eq('lu', false)
+    .is('process_id', null)
+    .order('remind_at', { ascending: true })
+    .limit(50)
+  return (data ?? []) as LooseReminder[]
+}
+
+export async function reminderToIdea(id: string): Promise<ConceptResult> {
+  const { error: authErr, supabase } = await guardAdmin()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { data: r } = await supabase
+    .from('suivi_reminder')
+    .select('id, message, remind_at, lu, process_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (!r || r.lu || r.process_id) return { error: 'reminder_gone' }
+  const titre = (r.message ?? '').trim().slice(0, 200) || 'Sans titre'
+  const createdAt = new Date(`${r.remind_at}T12:00:00`).toISOString()
+  const { data, error } = await supabase
+    .from('concept')
+    .insert({
+      titre,
+      statut: 'idee',
+      category: 'artistic',
+      weight: 'petite',
+      maturity: 'graine',
+      notes: `Venue d'un rappel du ${r.remind_at}`,
+      created_at: createdAt,
+    })
+    .select()
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Insert failed' }
+  await supabase.from('suivi_reminder').update({ lu: true }).eq('id', id)
+  revalidateTag('reminders')
+  revalidatePath('/atelier')
+  return { ok: true, concept: data as ConceptRow }
 }

@@ -73,14 +73,14 @@ export async function fetchAtelierOverviewBootstrap(
       .select('id, process_id, nom, statut, date_echeance, overdue_override, position')
       .order('position'),
     supabase
-      // R1: « Idées brûlantes » (énergie 5) retired — the tile now lists ideas Pem marked Mûre.
+      // Pem 2026-11-18: the tile showed only ideas marked Mûre (0 of 22), so it looked empty. Now the latest
+      // live ideas, ripe ones first (sorted below).
       .from('concept')
-      .select('id, titre, weight')
-      .eq('maturity', 'mure')
+      .select('id, titre, weight, maturity')
       .not('statut', 'eq', 'abandonne')
       .not('statut', 'eq', 'devenu_oeuvre')
-      .order('updated_at', { ascending: false })
-      .limit(5),
+      .order('created_at', { ascending: false })
+      .limit(8),
     // ── "Needs you" open-item counts (head-only: no rows transferred) ──
     supabase
       .from('pending_changes')
@@ -133,7 +133,9 @@ export async function fetchAtelierOverviewBootstrap(
     salesIncomeTtc: salesIncome.total,
     upcomingPulse: computePipelinePulseItems(processes).slice(0, 8),
     overviewCalendarEvents: buildPipelineCalendarEvents(processes, reminderInputs),
-    burningConcepts: (conceptRes.data ?? []) as ConceptBurningRow[],
+    burningConcepts: [...((conceptRes.data ?? []) as Array<ConceptBurningRow & { maturity?: string }>)].sort(
+      (a, b) => Number(b.maturity === 'mure') - Number(a.maturity === 'mure'),
+    ),
     // A failed count must not blank the console — fall back to 0 and log.
     backlog: {
       pendingApprovals: approvalsRes.count ?? 0,

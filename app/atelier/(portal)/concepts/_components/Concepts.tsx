@@ -15,6 +15,7 @@ import { ProposeIdea } from '@/components/atelier/concepts/ProposeIdea'
 import { inputSt } from '@/components/atelier/concepts/concept-form-styles'
 import { NewConceptForm } from '@/components/atelier/concepts/NewConceptForm'
 import { ConceptCard } from '@/components/atelier/concepts/ConceptCard'
+import { LooseReminders } from '@/components/atelier/concepts/LooseReminders'
 import { fetchConceptDocuments, type ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
 
 const EMPTY_DOCS: ConceptDocument[] = []
@@ -218,6 +219,7 @@ export function Concepts({ isAdmin = false }: { isAdmin?: boolean }) {
               <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ideas_team_hint')}</div>
             </div>
           )}
+          {isAdmin ? <LooseReminders narrow={narrow} onIdea={(c) => setConcepts((prev) => [c, ...prev])} /> : null}
           {isAdmin && showForm && (
             <NewConceptForm
               narrow={narrow}
