@@ -18,6 +18,7 @@ import {
   CONDITION_GRADES,
   GRADE_COLOR,
   GRADE_KEY,
+  FATE_STOLEN_LIVE,
   REPORT_KINDS,
   REPORT_KIND_KEY,
   type ActionStatus,
@@ -190,7 +191,9 @@ export function ConditionReportsSection({
 
   const fateDraft = draft.kind !== 'examination'
   // Destruction / loss constats are admin only (DB gate too); a non-admin editing one keeps its kind.
-  const kindOptions = REPORT_KINDS.filter((k) => k === 'examination' || isAdmin || k === draft.kind)
+  // « Vol » shows once supabase/sql/fate_stolen.sql is live (FATE_STOLEN_LIVE).
+  const kindOptions = REPORT_KINDS.filter((k) => (k !== 'stolen' || FATE_STOLEN_LIVE || k === draft.kind)
+    && (k === 'examination' || isAdmin || k === draft.kind))
 
   const box: CSSProperties = { border: '1px solid var(--bd)', padding: narrow ? 10 : 12, background: 'var(--bg1)' }
   const inputH: CSSProperties = { minHeight: narrow ? 44 : 34, fontSize: 13 }
@@ -342,7 +345,7 @@ export function ConditionReportsSection({
                     {t(REPORT_KIND_KEY[r.kind])} · {formatPartialDate(r.event_on ?? r.examined_on, r.event_on ? r.event_precision : 'day', loc)}
                   </span>
                 ) : null}
-                {r.kind === 'lost' && r.resolved_on ? (
+                {(r.kind === 'lost' || r.kind === 'stolen') && r.resolved_on ? (
                   <span style={{ fontSize: 11, padding: '1px 8px', border: '1px solid var(--sage)', color: 'var(--sage)' }}>
                     {t('cond_found_fmt').replace('{date}', formatPartialDate(r.resolved_on, 'day', loc))}
                   </span>
@@ -356,7 +359,7 @@ export function ConditionReportsSection({
                   </span>
                 ) : null}
                 <span style={{ flex: 1 }} />
-                {r.kind === 'lost' && !r.resolved_on && isAdmin && editing === null ? (
+                {(r.kind === 'lost' || r.kind === 'stolen') && !r.resolved_on && isAdmin && editing === null ? (
                   <button type="button" className="btn ghost sm" style={{ color: 'var(--sage)' }} data-testid={`cond-found-${r.id}`} onClick={() => void markFound(r)}>
                     {t('cond_found_btn')}
                   </button>

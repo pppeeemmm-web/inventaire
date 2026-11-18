@@ -70,7 +70,7 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
       readAll<{ id: number; contact_id: number }>((a, b) =>
         supabase.from('contact_addresses').select('id, contact_id').order('id').range(a, b)),
       readAll<{ oeuvre_id: number; kind: string }>((a, b) =>
-        supabase.from('condition_report').select('oeuvre_id, kind').in('kind', ['destroyed', 'lost'])
+        supabase.from('condition_report').select('oeuvre_id, kind').in('kind', ['destroyed', 'lost', 'stolen'])
           .is('resolved_on', null).order('id').range(a, b)),
       readAll<{ oeuvre_id: number; line_status: string; work_order: { kind: string; status: string; party_id: number | null } | null }>((a, b) =>
         supabase.from('work_order_work').select('oeuvre_id, line_status, work_order!work_order_work_order_id_fkey(kind, status, party_id)')

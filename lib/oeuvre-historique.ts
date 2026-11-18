@@ -94,8 +94,8 @@ export function formatFateHistoriqueLine(r: {
   event_precision: string | null
   examined_on: string
 }): string | null {
-  if (r.kind !== 'destroyed' && r.kind !== 'lost') return null
-  const word = r.kind === 'destroyed' ? 'Détruite' : 'Perdue'
+  if (r.kind !== 'destroyed' && r.kind !== 'lost' && r.kind !== 'stolen') return null
+  const word = r.kind === 'destroyed' ? 'Détruite' : r.kind === 'stolen' ? 'Volée' : 'Perdue'
   const on = r.event_on ?? r.examined_on
   const when = historiquePartialDate(on, r.event_on ? r.event_precision : 'day')
   const report = r.event_on && r.event_on !== r.examined_on ? ` — constat du ${historiquePartialDate(r.examined_on, 'day')}` : ''
@@ -107,7 +107,7 @@ export function formatFoundHistoriqueLine(resolvedOn: string): string {
 }
 
 export function formatFateReportRemovedHistoriqueLine(kind: string, date = historiqueDateStr()): string {
-  return `[${date}] Constat de ${kind === 'destroyed' ? 'destruction' : 'perte'} supprimé`
+  return `[${date}] Constat de ${kind === 'destroyed' ? 'destruction' : kind === 'stolen' ? 'vol' : 'perte'} supprimé`
 }
 
 /** Merge new lines; skip exact duplicates already present. */

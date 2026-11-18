@@ -364,7 +364,7 @@ export function JournalDayExtras({
                   {v.author} · {time(v.created_at)}
                   {v.duration_ms != null ? ` · ${formatVoiceDuration(v.duration_ms)}` : ''}
                 </span>
-                {v.audioKey ? <span>{t('je_voice_waiting')}</span> : null}
+                {v.audioKey && !v.transcript?.trim() ? <span>{t('je_voice_waiting')}</span> : null}
               </div>
               {v.subject?.trim() ? (
                 <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{v.subject}</p>

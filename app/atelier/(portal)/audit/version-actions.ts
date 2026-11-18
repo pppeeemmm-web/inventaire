@@ -66,7 +66,7 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     .from('condition_report')
     .select('id', { count: 'exact', head: true })
     .eq('oeuvre_id', oeuvreId)
-    .in('kind', ['destroyed', 'lost'])
+    .in('kind', ['destroyed', 'lost', 'stolen'])
     .is('resolved_on', null)
   if (fateErr) return { error: fateErr.message }
   if ((openFate ?? 0) > 0) return { error: 'fate_open' }

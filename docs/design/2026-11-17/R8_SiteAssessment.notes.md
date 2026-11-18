@@ -121,3 +121,11 @@ Not checked / open:
 - No real enquiry submitted (would write a production row).
 - `KnobsPanel` not seen rendered (Atelier needs sign-in); typecheck only.
 - **Bigger finding, not fixed:** `loadPortfolioSectionsFromR2` rebuilds `config` from a fixed key list that drops `pages` and `knobs`. So the editor and every public page always get `migrate()` defaults: knob changes are lost on reload and never reach the site, and the next save writes the defaults back (live JSON's `knobs.site` = defaults, `pages` = derived defaults). Passing the two keys through is two lines, but it changes what the PagesEditor's « auto_ » blocks mean (they carry copies of the bio / statement that would then go stale against `about.intro_*`) — a decision for Pem / the lead before wiring. Until then every knob in the panel is effectively dead, not only the two hidden here.
+
+## Note — Substack (Pem 2026-11-18: « leave a note in R8 »)
+
+Asked: could the writing go to Substack? Possible, as a separate home for the writing (its own address, its own subscriber list, paid posts if wanted). The R8 plan instead publishes public journal entries on the studio's own site (`/journal` + RSS) and sends the weekly letter from that feed (Buttondown or Kit can mail an RSS feed), so readers come back to the site and the list stays Pem's. With Substack each entry would be copied by hand, and the readers' path ends on substack.com. Decide when the daily-feed item (public journal) comes up; nothing built.
+
+## Note — SEO (Pem 2026-11-18: « ok »)
+
+Mostly already in the R8 list: one page per work (`/works/[id]-[slug]`), 1200×630 previews (done in the first batch), About / Practice server-rendered (done). Still to add with the per-work page: schema.org `VisualArtwork` markup (title, year, medium, size, artist, image), FR / EN pages linked as language versions of each other (`hreflang`), alt text from the work's description, the sitemap listing every public work.

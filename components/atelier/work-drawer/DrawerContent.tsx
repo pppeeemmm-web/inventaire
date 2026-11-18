@@ -1430,7 +1430,7 @@ export function DrawerContent({
   const fateText = o.fate
     ? [
         (ownStage === 'sold' || ownStage === 'gift' ? `${statusLabelMap[o.statusId ?? 0] ?? ''} · ` : '')
-          + t(o.fate === 'destroyed' ? 'fate_destroyed_fmt' : 'fate_lost_fmt')
+          + t(o.fate === 'destroyed' ? 'fate_destroyed_fmt' : o.fate === 'stolen' ? 'fate_stolen_fmt' : 'fate_lost_fmt')
             .replace('{date}', formatPartialDate(o.fate_on, o.fate_precision, loc)),
         fateLastLocation ? t('fate_last_location_fmt').replace('{loc}', fateLastLocation) : '',
       ].filter(Boolean).join(' — ')

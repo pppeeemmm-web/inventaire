@@ -7,6 +7,9 @@
 Rules (docs/TRANSCRIPTION_BATCHES.md): the audio stays the reference; a transcript is ADDED as a
 journal entry (kind voice, provenance voice, unverified, engine named); the dictation text on the
 note is never touched; a note already transcribed by the same engine is skipped.
+An empty result (short clip: the voice filter cut everything) is retried once without the filter. Still
+empty -> the phone's dictation text, when there is one, becomes the entry (engine « <engine> → dictée
+téléphone »), so the note leaves the backlog instead of waiting forever (Pem 2026-11-18).
 
 --write needs supabase/sql/journal_entry_source.sql applied (voice_note_id / engine columns).
 Options: --model large-v3 (folder under the models dir)  --words words.txt (names, art terms)
@@ -47,7 +50,7 @@ def main() -> None:
     engine = f"faster-whisper {args.model}"
 
     query = (
-        "select=id,created_at,user_id,subject,audio_r2_key,audio_mime,duration_ms,oeuvre_id,concept_id"
+        "select=id,created_at,user_id,subject,transcript,audio_r2_key,audio_mime,duration_ms,oeuvre_id,concept_id"
         "&audio_r2_key=not.is.null&order=created_at.asc"
     )
     if args.only:
@@ -57,7 +60,8 @@ def main() -> None:
     has_source = sb.has_columns("journal_entry", SOURCE_COLUMNS)
     done: set[str] = set()
     if has_source:
-        rows = sb.select("journal_entry", f"select=voice_note_id&engine=eq.{engine.replace(' ', '%20')}&voice_note_id=not.is.null")
+        # « like engine* » also counts the phone-dictation fallback written under this engine's name.
+        rows = sb.select("journal_entry", f"select=voice_note_id&engine=like.{engine.replace(' ', '%20')}*&voice_note_id=not.is.null")
         done = {r["voice_note_id"] for r in rows}
 
     todo = [n for n in notes if n["id"] not in done]
@@ -115,6 +119,11 @@ def main() -> None:
                 str(audio), language=args.language, vad_filter=True, beam_size=5, initial_prompt=prompt
             )
             text = clean_text("\n".join(s.text.strip() for s in segments if s.text.strip()))
+            if not text:  # short clip: the voice filter may have cut it all — once more without it
+                segments, info = model.transcribe(
+                    str(audio), language=args.language, vad_filter=False, beam_size=5, initial_prompt=prompt
+                )
+                text = clean_text("\n".join(s.text.strip() for s in segments if s.text.strip()))
         except Exception as err:  # noqa: BLE001 — one bad file must not stop the rest
             print(f"  FAILED {n['id']}: {err}")
             continue
@@ -131,9 +140,14 @@ def main() -> None:
         (out_dir / f"{n['id']}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  {result['event_on']}  {info.language}  {result['seconds_audio']} s audio in {result['seconds_taken']} s  -> {len(text)} chars")
 
+        entry_engine = engine
         if not text:
-            print("    empty transcript — nothing written")
-            continue
+            phone = clean_text(n.get("transcript") or "")
+            if not phone:
+                print("    empty transcript, no phone dictation either — nothing written")
+                continue
+            text, entry_engine = phone, f"{engine} → dictée téléphone"
+            print(f"    empty transcript — the phone's dictation is used ({len(text)} chars)")
         if args.write:
             entry = sb.insert(
                 "journal_entry",
@@ -145,7 +159,7 @@ def main() -> None:
                     "event_on": result["event_on"],
                     "author_id": n.get("user_id"),
                     "voice_note_id": n["id"],
-                    "engine": engine,
+                    "engine": entry_engine,
                 },
             )
             print(f"    journal entry {entry['id']} added")

@@ -27,7 +27,7 @@ export interface Oeuvre {
   production_completed_precision?: 'year' | 'month' | 'day' | null;
   production_origin?: 'new' | 'found' | null;
   /** End of life, kept by trigger from destroyed / lost constats (supabase/sql/condition_report_fate.sql). Never write. */
-  fate?: 'destroyed' | 'lost' | null;
+  fate?: 'destroyed' | 'lost' | 'stolen' | null;
   fate_on?: string | null;
   fate_precision?: 'year' | 'month' | 'day' | null;
   AcheteurID?: number | null;

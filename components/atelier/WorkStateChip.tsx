@@ -6,6 +6,7 @@
 import { statusOf } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { FATE_SUFFIX_KEY } from '@/lib/condition'
 import type { Oeuvre } from '@/lib/types/database'
 
 interface Props {
@@ -21,14 +22,15 @@ export function WorkStateChip({ o, statusLabelMap, compact }: Props) {
   // Catalogued but still in production (explicit status or photo pending) → yellow, not rust.
   const cls = st === 'en_production' && o.Catalogué ? 'yellow' : undefined
   // Pem 2026-11-14: the second stage was labelled « En production » too — say « Catalogué ».
-  const label = cls === 'yellow' ? t('inv_state_catalogued') : undefined
+  // A stolen work sits in status 10 (« Perdue ») like a lost one; its chip says « Volée » (Pem 2026-11-18).
+  const label = cls === 'yellow' ? t('inv_state_catalogued') : st === 'lost' && o.fate === 'stolen' ? t('status_stolen') : undefined
   // Sold / gift keep their status after a destruction or loss; the fate rides along.
   const fate = o.fate && st !== 'destroyed' && st !== 'lost' ? o.fate : null
   if (compact) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
         <StatusChip s={st} cls={cls} label={label} compact />
-        {fate ? <span style={{ fontSize: 11, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>· {t(fate === 'destroyed' ? 'fate_destroyed_suffix' : 'fate_lost_suffix')}</span> : null}
+        {fate ? <span style={{ fontSize: 11, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>· {t(FATE_SUFFIX_KEY[fate])}</span> : null}
       </span>
     )
   }
@@ -37,7 +39,7 @@ export function WorkStateChip({ o, statusLabelMap, compact }: Props) {
       <StatusChip s={st} cls={cls} label={label} />
       {fate ? (
         <span className="chip mt" style={{ marginLeft: 4 }}>
-          {t(fate === 'destroyed' ? 'fate_destroyed_suffix' : 'fate_lost_suffix')}
+          {t(FATE_SUFFIX_KEY[fate])}
         </span>
       ) : null}
     </>

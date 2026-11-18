@@ -93,7 +93,10 @@ const VALUE_HEAD: Record<PaperKind, string | null> = {
 const CONDITIONS: Record<PaperKind, string> = {
   sale:
     "La propriété des œuvres listées passe à l'acheteur au paiement complet du prix ; jusque-là elles restent la propriété de l'artiste. " +
-    "La garde passe à l'acheteur à la livraison ou à la remise en main propre.",
+    "La garde passe à l'acheteur à la livraison ou à la remise en main propre. " +
+    // Delivery-damage rule (Pem 2026-11-18: « yes »); draft for the lawyer, LEGAL_POLICY « Policy notes ».
+    "L'état de chaque œuvre est photographié avant l'emballage. À la livraison, l'acheteur vérifie l'emballage et les œuvres ; " +
+    "tout dommage est noté sur le bon du transporteur et signalé à l'artiste par écrit, avec photos, dans les 48 heures qui suivent la livraison.",
   consignment:
     "Les œuvres listées sont confiées au dépositaire en vue de leur vente, aux prix convenus ci-dessus, pour la période indiquée. " +
     "L'artiste en reste propriétaire jusqu'à leur vente. Le dépositaire en assure la garde et l'assurance pendant toute la durée du dépôt, " +

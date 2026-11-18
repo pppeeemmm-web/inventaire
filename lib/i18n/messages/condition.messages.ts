@@ -82,6 +82,7 @@ export const conditionMessages = defineMessages({
   cond_kind_examination: { fr: 'Examen', en: 'Examination' },
   cond_kind_destroyed: { fr: 'Destruction', en: 'Destruction' },
   cond_kind_lost: { fr: 'Perte', en: 'Loss' },
+  cond_kind_stolen: { fr: 'Vol', en: 'Theft' },
   cond_event_date: { fr: 'Date de l’événement', en: 'Date of the event' },
   cond_event_date_ph: { fr: '2019 · 03/2019 · 12/03/2019 — vide = date du constat', en: '2019 · 03/2019 · 12/03/2019 — empty = report date' },
   cond_event_date_invalid: { fr: 'Date de l’événement invalide : 2019, 03/2019 ou 12/03/2019.', en: 'Invalid event date: 2019, 03/2019 or 12/03/2019.' },
@@ -92,11 +93,13 @@ export const conditionMessages = defineMessages({
   cond_found_btn: { fr: 'Retrouvée', en: 'Found' },
   cond_found_confirm: { fr: 'Marquer l’œuvre comme retrouvée ? Elle reprend son statut précédent.', en: 'Mark the work as found? It goes back to its previous status.' },
   cond_found_fmt: { fr: 'Retrouvée le {date}', en: 'Found on {date}' },
-  cond_err_fate_admin: { fr: 'Seul un admin peut enregistrer une destruction ou une perte.', en: 'Only an admin can record a destruction or a loss.' },
+  cond_err_fate_admin: { fr: 'Seul un admin peut enregistrer une destruction, une perte ou un vol.', en: 'Only an admin can record a destruction, a loss or a theft.' },
   fate_destroyed_fmt: { fr: 'Détruite · {date}', en: 'Destroyed · {date}' },
   fate_lost_fmt: { fr: 'Perdue · {date}', en: 'Lost · {date}' },
   fate_destroyed_suffix: { fr: 'détruite', en: 'destroyed' },
   fate_lost_suffix: { fr: 'perdue', en: 'lost' },
+  fate_stolen_fmt: { fr: 'Volée · {date}', en: 'Stolen · {date}' },
+  fate_stolen_suffix: { fr: 'volée', en: 'stolen' },
   fate_last_location_fmt: { fr: 'Dernière localisation connue : {loc}', en: 'Last known location: {loc}' },
   fate_locked: {
     fr: 'Étapes verrouillées : clore ou supprimer le constat de perte / destruction pour les modifier.',
@@ -125,4 +128,5 @@ export const conditionMessages = defineMessages({
   },
   status_destroyed: { fr: 'Détruite', en: 'Destroyed' },
   status_lost: { fr: 'Perdue', en: 'Lost' },
+  status_stolen: { fr: 'Volée', en: 'Stolen' },
 })

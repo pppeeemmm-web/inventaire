@@ -10,6 +10,9 @@
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-17 (batch 1 of WORK_RULES) |
 | [`WORK_RULES.md`](./WORK_RULES.md) | **Work rulebook** — Pem's rules on a work's state, where each is enforced, who writes it, live breaks, what is next (batch 1 applied) | 2026-11-17 |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
+| [`POLICY_NOTES.md`](./POLICY_NOTES.md) | Running list of small policy points to settle (delivery, returns, insurance, fate, COA, files) — each says where it will be written and who confirms | 2026-11-18 |
+| [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
+| [`ENVIRONMENTAL_POLICY.md`](./ENVIRONMENTAL_POLICY.md) | Materials, packing, sending, digital, yearly measures — first draft, `[[…]]` = Pem's facts | 2026-11-18 (draft) |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
 | [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal + his annotated phone mockups for Claude Design (R2), work drawer (R3), timeline / map / previews (R4); slideshow done. Design first, not a GO | 2026-11-15 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |

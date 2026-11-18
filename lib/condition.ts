@@ -7,13 +7,26 @@ export type ConditionGrade = (typeof CONDITION_GRADES)[number]
 
 /** 'destroyed' / 'lost' constats take the work out of circulation (owner 2026-11-03, admin only;
  * DB triggers in supabase/sql/condition_report_fate.sql set the work's status and `fate`). */
-export const REPORT_KINDS = ['examination', 'destroyed', 'lost'] as const
+export const REPORT_KINDS = ['examination', 'destroyed', 'lost', 'stolen'] as const
 export type ReportKind = (typeof REPORT_KINDS)[number]
+
+/** « Volée » (Pem 2026-11-18): behaves like « lost » (status 10, can be found again).
+ * supabase/sql/fate_stolen.sql applied live 2026-11-18 (Pem: « Apply it »), migration fate_stolen. */
+export const FATE_STOLEN_LIVE = true
+
+export type WorkFate = 'destroyed' | 'lost' | 'stolen'
 
 export const REPORT_KIND_KEY: Record<ReportKind, DictKey> = {
   examination: 'cond_kind_examination',
   destroyed: 'cond_kind_destroyed',
   lost: 'cond_kind_lost',
+  stolen: 'cond_kind_stolen',
+}
+
+export const FATE_SUFFIX_KEY: Record<WorkFate, DictKey> = {
+  destroyed: 'fate_destroyed_suffix',
+  lost: 'fate_lost_suffix',
+  stolen: 'fate_stolen_suffix',
 }
 
 export function parseReportKind(raw: unknown): ReportKind | null {
@@ -80,7 +93,7 @@ export type ConditionReport = {
 /** What a constat write changed on the work (triggers) — patched into the Atelier list row. */
 export type ConditionWorkPatch = {
   statusId: number | null
-  fate: 'destroyed' | 'lost' | null
+  fate: WorkFate | null
   fate_on: string | null
   fate_precision: DatePrecision | null
   is_public: boolean | null
