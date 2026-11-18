@@ -497,7 +497,10 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* No visible scroll bar on the sidebar (Pem 2026-11-18): it still scrolls with the wheel / trackpad on a short window. */
+  scrollbar-width: none;
 }
+.pem-atelier-sidebar-nav-scroll::-webkit-scrollbar { display: none; }
 
 .pem-atelier-sidebar:not(.pem-atelier-sidebar--narrow) .pem-atelier-sidebar-nav-scroll {
   padding-block: 12px;

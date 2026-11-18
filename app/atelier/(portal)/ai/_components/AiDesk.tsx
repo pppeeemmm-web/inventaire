@@ -75,9 +75,9 @@ function RunButton({ kind, jobs, onDone }: { kind: AiRunKind; jobs: AiDeskData['
       setPending(false)
     }
   }
-  const label = active ? (active.status === 'running' ? t('ai_job_running') : t('ai_job_waiting')) : t('ai_run')
+  const label = active ? (active.status === 'running' ? t('ai_job_running') : t('ai_job_waiting')) : t('ai_plain_run')
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '6px 0 0 19px' }}>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <button type="button" className="btn primary sm" style={{ minHeight: 44 }} disabled={pending || !!active} onClick={() => void click()}>
         {label}
       </button>
@@ -86,13 +86,20 @@ function RunButton({ kind, jobs, onDone }: { kind: AiRunKind; jobs: AiDeskData['
   )
 }
 
-function ByHand({ children }: { children: ReactNode }) {
+/** One job the PC's assistant does, in plain words: title, what it is for, how many wait, its button. */
+function Task({ title, what, count, zero, children }: { title: string; what: string; count: string; zero: boolean; children?: ReactNode }) {
   const { t } = useI18n()
   return (
-    <details style={{ margin: '6px 0 0 19px' }}>
-      <summary style={{ fontSize: 12, color: 'var(--tx3)', cursor: 'pointer', minHeight: 32 }}>{t('ai_by_hand')}</summary>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: '12px 0', borderBottom: '1px solid var(--bd)', minHeight: 56 }}>
+      <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+        <div style={{ color: 'var(--tx)', fontSize: 15 }}>{title}</div>
+        <div style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 2 }}>{what}</div>
+      </div>
+      <div style={{ fontSize: 13, color: zero ? 'var(--tx3)' : 'var(--tx)', minWidth: 90 }}>
+        {zero ? t('ai_plain_nothing') : t('ai_plain_waiting').replace('{n}', count)}
+      </div>
       {children}
-    </details>
+    </div>
   )
 }
 
@@ -155,75 +162,36 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
             {t('ai_refresh')}
           </button>
         </div>
-        <p style={{ color: 'var(--tx2)', fontSize: 14, margin: '6px 0 20px' }}>{t('ai_intro')}</p>
         {failed ? <p style={{ color: 'var(--rust)' }}>{t('ai_load_error')}</p> : null}
 
-        <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>
-          {t('ai_engines')}
-          {data ? ` · ${data.server === 'live' ? t('ai_server_live') : t('ai_server_pc')}` : ''}
-        </div>
-        {data ? (
-          <div data-testid="ai-desk-engines">
-            <Row
-              on={agentFresh}
-              label={t('ai_agent')}
-              value={
-                agent
-                  ? t('ai_agent_seen').replace('{n}', String(agentMin)) +
-                    (agentFresh ? ' · ' + agent.models.map((m) => `${m.name} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ') : '')
-                  : t('ai_agent_never')
-              }
-            />
-            {!agentFresh ? (
-              <>
-                <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '6px 0 0 19px' }}>{t('ai_agent_start')}</p>
-                <Command cmd="npm run ai:agent" />
-              </>
-            ) : null}
-            <Row on={data.openaiKey} label={t('ai_openai_key')} value={data.openaiKey ? t('ai_yes') : t('ai_no')} />
-            <Row on={data.cardPhoto !== 'none'} label={t('ai_card_photo')} value={data.cardPhoto === 'openai' ? t('ai_engine_openai') : t('ai_engine_none')} />
-            <Row on={data.cardText === 'openai' || (data.cardText === 'ollama' && ollamaOk)} label={t('ai_card_text')} value={textEngine(data.cardText)} />
-            <Row
-              on={ollamaOk}
-              label={t('ai_ollama')}
-              value={
-                data.ollama
-                  ? data.ollama.map((m) => `${m.model} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ')
-                  : t('ai_no')
-              }
-            />
-            {!ollamaOk ? (
-              <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '6px 0 0 19px' }}>{data.server === 'live' ? t('ai_ollama_out_live') : t('ai_ollama_out_pc')}</p>
-            ) : null}
+        {/* 1. One sentence: is the PC's assistant on? (Pem 2026-11-18: « obscure » — plain words first, details folded) */}
+        <div
+          data-testid="ai-desk-status"
+          style={{ margin: '14px 0 24px', padding: '16px 18px', border: '1px solid var(--bd)', borderLeft: `3px solid ${agentFresh ? 'var(--sage)' : 'var(--tx3)'}`, background: 'var(--bg1)' }}
+        >
+          <div style={{ fontSize: 18, color: 'var(--tx)' }}>
+            {data === null ? '…' : agentFresh ? t('ai_plain_on') : t('ai_plain_off')}
           </div>
-        ) : (
-          <p style={{ color: 'var(--tx3)' }}>…</p>
-        )}
-
-        <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 28 }}>{t('ai_waiting')}</div>
-        <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '4px 0 0' }}>{t('ai_run_intro')}</p>
-        <div data-testid="ai-desk-queues">
-          <Row on={(q?.voice ?? 0) === 0} label={t('ai_q_voice')} value={<b>{n(q?.voice)}</b>} />
-          <RunButton kind="voice" jobs={jobs} onDone={() => void refresh()} />
-          <ByHand><Command cmd={CMD_VOICE_INDEX} withLink /></ByHand>
-          <Row on={(q?.index ?? 0) === 0} label={t('ai_q_index')} value={<b>{n(q?.index)}</b>} />
-          <RunButton kind="embed" jobs={jobs} onDone={() => void refresh()} />
-          <ByHand><Command cmd="npm run embed:worker -- --drain" /></ByHand>
-          <Row on={(q?.describe ?? 0) === 0} label={t('ai_q_describe')} value={<b>{n(q?.describe)}</b>} />
-          <RunButton kind="describe" jobs={jobs} onDone={() => void refresh()} />
-          <ByHand><Command cmd={CMD_DESCRIBE} /></ByHand>
-          <Row
-            on={false}
-            label={t('ai_q_cards')}
-            value={
-              <>
-                <b>{n(q?.cards?.count)}</b>
-                {q?.cards?.latest ? <span style={{ marginLeft: 8 }}>{t('ai_latest').replace('{d}', date(q.cards.latest))}</span> : null}
-              </>
-            }
-          />
-          <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '6px 0 0 19px' }}>{t('ai_q_cards_note')}</p>
+          <div style={{ fontSize: 14, color: 'var(--tx2)', marginTop: 6 }}>
+            {data === null ? null : agentFresh ? t('ai_plain_on_sub') : t('ai_plain_off_sub')}
+          </div>
         </div>
+
+        {/* 2. What it does for you: one line per job, a count, one button. */}
+        <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('ai_plain_tasks')}</div>
+        <div data-testid="ai-desk-queues">
+          <Task title={t('ai_plain_voice')} what={t('ai_plain_voice_what')} count={n(q?.voice)} zero={(q?.voice ?? 0) === 0}>
+            <RunButton kind="voice" jobs={jobs} onDone={() => void refresh()} />
+          </Task>
+          <Task title={t('ai_plain_index')} what={t('ai_plain_index_what')} count={n(q?.index)} zero={(q?.index ?? 0) === 0}>
+            <RunButton kind="embed" jobs={jobs} onDone={() => void refresh()} />
+          </Task>
+          <Task title={t('ai_plain_describe')} what={t('ai_plain_describe_what')} count={n(q?.describe)} zero={(q?.describe ?? 0) === 0}>
+            <RunButton kind="describe" jobs={jobs} onDone={() => void refresh()} />
+          </Task>
+          <Task title={t('ai_plain_cards')} what={t('ai_plain_cards_what')} count={n(q?.cards?.count)} zero />
+        </div>
+        {data && !agentFresh ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '8px 0 0' }}>{t('ai_plain_queued_off')}</p> : null}
 
         <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 28 }}>{t('ai_jobs')}</div>
         {data && jobs.length === 0 ? <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{t('ai_jobs_none')}</p> : null}
@@ -245,8 +213,31 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
           ))}
         </div>
 
-        <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 28 }}>{t('ai_next')}</div>
-        <p style={{ fontSize: 14, color: 'var(--tx2)', margin: '4px 0 0' }}>{t('ai_next_text')}</p>
+        <details style={{ marginTop: 32 }} data-testid="ai-desk-technical">
+          <summary style={{ cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', fontSize: 13, color: 'var(--tx3)' }}>{t('ai_plain_tech')}</summary>
+          <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '4px 0 10px' }}>{t('ai_plain_tech_note')}</p>
+          {data ? (
+            <div data-testid="ai-desk-engines">
+              <Row
+                on={agentFresh}
+                label={t('ai_agent')}
+                value={agent ? t('ai_agent_seen').replace('{n}', String(agentMin)) + (agentFresh ? ' · ' + agent.models.map((m) => `${m.name} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ') : '') : t('ai_agent_never')}
+              />
+              <Row on={!data.openaiKey} label={t('ai_openai_key')} value={data.openaiKey ? t('ai_yes') : t('ai_no')} />
+              <Row on={data.cardPhoto !== 'none'} label={t('ai_card_photo')} value={data.cardPhoto === 'openai' ? t('ai_engine_openai') : t('ai_engine_none')} />
+              <Row on={data.cardText === 'openai' || (data.cardText === 'ollama' && ollamaOk)} label={t('ai_card_text')} value={textEngine(data.cardText)} />
+              <Row on={ollamaOk} label={t('ai_ollama')} value={data.ollama ? data.ollama.map((m) => `${m.model} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ') : t('ai_no')} />
+              {!ollamaOk ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '6px 0 0 19px' }}>{data.server === 'live' ? t('ai_ollama_out_live') : t('ai_ollama_out_pc')}</p> : null}
+              <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_agent_start')}</p>
+              <Command cmd="npm run ai:agent" />
+              <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_by_hand')}</p>
+              <Command cmd={CMD_VOICE_INDEX} withLink />
+              <Command cmd="npm run embed:worker -- --drain" />
+              <Command cmd={CMD_DESCRIBE} />
+              {q?.cards?.latest ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_q_cards')} · {t('ai_latest').replace('{d}', date(q.cards.latest))}</p> : null}
+            </div>
+          ) : null}
+        </details>
       </div>
     </div>
   )

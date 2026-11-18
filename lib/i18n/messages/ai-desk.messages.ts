@@ -2,6 +2,40 @@ import { defineMessages } from '../message-core'
 
 /** « Bureau IA » (Kaizen → Bureau IA, admin) — phase 1, read only (Pem « go for ai build », 2026-11-18). */
 export const aiDeskMessages = defineMessages({
+  ai_plain_on: { fr: '✓ L’assistant IA de votre PC est allumé.', en: '✓ Your PC’s AI assistant is on.' },
+  ai_plain_on_sub: {
+    fr: 'Il fait les travaux ci-dessous sur votre PC. Rien ne part vers un service d’IA extérieur.',
+    en: 'It does the jobs below on your PC. Nothing goes to an outside AI service.',
+  },
+  ai_plain_off: { fr: 'L’assistant IA de votre PC est éteint.', en: 'Your PC’s AI assistant is off.' },
+  ai_plain_off_sub: {
+    fr: 'Il se rallume tout seul quand vous ouvrez votre session Windows sur le PC du studio (la petite fenêtre noire « PEM AI agent » doit rester ouverte). En attendant, rien n’est perdu : le travail attend ici.',
+    en: 'It starts again by itself when you sign in to Windows on the studio PC (the small black « PEM AI agent » window must stay open). Meanwhile nothing is lost: the work waits here.',
+  },
+  ai_plain_tasks: { fr: 'Ce qu’il fait pour vous', en: 'What it does for you' },
+  ai_plain_voice: { fr: 'Transcrire vos notes vocales', en: 'Transcribe your voice notes' },
+  ai_plain_voice_what: { fr: 'Chaque note vocale devient un texte dans le Journal.', en: 'Each voice note becomes a text in the Journal.' },
+  ai_plain_index: { fr: 'Mettre la recherche à jour', en: 'Update the search' },
+  ai_plain_index_what: { fr: 'Pour que ⌘K trouve œuvres et notes par le sens, pas seulement par les mots.', en: 'So ⌘K finds works and notes by meaning, not only by words.' },
+  ai_plain_describe: { fr: 'Décrire les images des œuvres', en: 'Describe the works’ images' },
+  ai_plain_describe_what: { fr: 'Une courte description de chaque nouvelle image, pour la recherche.', en: 'A short description of each new image, for the search.' },
+  ai_plain_cards: { fr: 'Lire les cartes de visite', en: 'Read business cards' },
+  ai_plain_cards_what: {
+    fr: 'Bientôt : les cartes photographiées au téléphone seront lues ici, et la fiche proposée à valider. Le nombre = cartes gardées avec leur photo.',
+    en: 'Soon: cards photographed on the phone will be read here, and the contact suggested for you to accept. The number = cards kept with their photo.',
+  },
+  ai_plain_nothing: { fr: 'rien à faire', en: 'nothing to do' },
+  ai_plain_waiting: { fr: '{n} en attente', en: '{n} waiting' },
+  ai_plain_run: { fr: 'Faire maintenant', en: 'Do it now' },
+  ai_plain_queued_off: {
+    fr: '« Faire maintenant » fonctionne même PC éteint : le travail sera fait dès qu’il se rallume.',
+    en: '« Do it now » works with the PC off too: the work is done as soon as it is back on.',
+  },
+  ai_plain_tech: { fr: 'Détails techniques (inutile au quotidien)', en: 'Technical details (not needed day to day)' },
+  ai_plain_tech_note: {
+    fr: 'Pour un dépannage. « Clé OpenAI : non » est voulu : vous avez choisi l’IA locale. « Ollama hors de portée » aussi : le site en ligne ne voit pas votre PC, c’est l’assistant du PC qui fait le travail.',
+    en: 'For troubleshooting. « OpenAI key: no » is intended: you chose local AI. « Ollama out of reach » too: the live site can’t see your PC; the PC’s assistant does the work.',
+  },
   ai_tab: { fr: 'Bureau IA', en: 'AI desk' },
   ai_intro: {
     fr: 'Les moteurs d’IA, ce qui attend leur passage, et les travaux confiés à l’agent du PC du studio. Une IA n’écrit jamais dans une fiche : elle propose, vous décidez.',
