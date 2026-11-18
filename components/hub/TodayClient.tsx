@@ -27,6 +27,7 @@ import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import { WorkChip as WorkPreviewChip } from '@/components/atelier/WorkChip'
+import { WorkRefText } from '@/components/atelier/journal/WorkRefText'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
 const VoiceNoteSheet = dynamic(
@@ -254,7 +255,12 @@ export function TodayEntries({ entries, day, isToday = true }: { entries: Journa
                 {e.voiceNoteId ? <>{' · '}{t('today_voice_note')}</> : null}
               </span>
               <br />
-              {e.body.length > 220 ? `${e.body.slice(0, 220)}…` : e.body}
+              <WorkRefText text={e.body.length > 220 ? `${e.body.slice(0, 220)}…` : e.body} />
+              {e.voiceLinks?.oeuvre_id != null ? (
+                <div style={{ marginTop: 4 }}>
+                  <WorkPreviewChip id={e.voiceLinks.oeuvre_id} href={workHref(e.voiceLinks.oeuvre_id)} size="chip" />
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

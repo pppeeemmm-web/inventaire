@@ -211,6 +211,11 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
           site_blocks:       siteBlocks,
           statement_doc_id:  parsed.statement_doc_id  || null,
           cv_doc_id:         parsed.cv_doc_id         || null,
+          // Block lists + knob cascade (R8, Pem 2026-11-18). Dropped here before, so every reload fell back to
+          // `migrate()` defaults: knob edits never persisted and the next save wrote the defaults back.
+          // `auto_` blocks still read the live about / practice / landing fields (migratePages), so one bio.
+          ...(parsed.pages && typeof parsed.pages === 'object' && !Array.isArray(parsed.pages) ? { pages: parsed.pages } : {}),
+          ...(parsed.knobs && typeof parsed.knobs === 'object' && !Array.isArray(parsed.knobs) ? { knobs: parsed.knobs } : {}),
         }
       } catch (e) {
         console.error('[loadPortfolioSectionsFromR2] JSON parse error:', e)

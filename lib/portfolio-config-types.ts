@@ -621,18 +621,67 @@ export function migratePages(
   for (const page of PAGES) {
     const persisted = rawPages?.[page]
     if (Array.isArray(persisted) && persisted.length > 0) {
+      const live = new Map(derivedDefaults[page].map(b => [b.uid, b]))
       const blocks = persisted
         .map(migrateBlockField)
         .filter((b): b is Block => b !== null)
         // Force `page` to match the bucket key (defense against corrupted data).
         .map(b => ({ ...b, page }))
+        // `auto_` blocks mirror config fields (about.intro_*, practice.*, landing hero, artist name, a works
+        // mode): their fields always come from the live config, never from the copy saved with the block
+        // (R8, Pem 2026-11-18: one bio). Order, visibility, width and knob overrides stay as saved.
+        .map(b => {
+          const d = b.uid.startsWith('auto_') ? live.get(b.uid) : undefined
+          return d ? { ...b, fields: d.fields } : b
+        })
         .sort((a, b) => a.sort_order - b.sort_order)
+      // A works mode made active after the last save gets its block (at the end), as before pages were kept.
+      if (page === 'works' && blocks.length > 0) {
+        const have = new Set(blocks.map(b => b.uid))
+        let next = blocks[blocks.length - 1].sort_order + 10
+        for (const d of derivedDefaults.works) {
+          if (!have.has(d.uid)) blocks.push({ ...d, sort_order: next++ * 1 })
+        }
+      }
       out[page] = blocks.length > 0 ? blocks : derivedDefaults[page]
     } else {
       out[page] = derivedDefaults[page]
     }
   }
   return out
+}
+
+/**
+ * Where an `auto_` block's editable fields really live. PagesEditor writes an edit of such a block to these
+ * config fields, so the block and the Site module's own field are one value (one bio). Blocks not listed
+ * (hero, identity, works modes) have read-only editors.
+ */
+const AUTO_BLOCK_TARGET: Record<string, { section: 'about' | 'practice'; keys: readonly string[] }> = {
+  auto_biographie_about: { section: 'about', keys: ['intro_fr', 'intro_en'] },
+  auto_approach_about: { section: 'practice', keys: ['approach_fr', 'approach_en'] },
+  auto_themes_about: { section: 'practice', keys: ['themes'] },
+  auto_materials_about: { section: 'practice', keys: ['materials_fr', 'materials_en'] },
+}
+
+/** An `auto_` block's live values (what the editor shows), or null when the block is not live-backed. */
+export function autoBlockLiveFields(cfg: PortfolioConfig, uid: string): Record<string, unknown> | null {
+  const target = AUTO_BLOCK_TARGET[uid]
+  if (!target) return null
+  const section = cfg[target.section] as Record<string, unknown> | undefined
+  return Object.fromEntries(target.keys.map(k => [k, section?.[k]]))
+}
+
+/** Config with an `auto_` block's edit written to its live fields, or null when the block is not live-backed. */
+export function applyAutoBlockEdit(
+  cfg: PortfolioConfig,
+  uid: string,
+  patch: Record<string, unknown>,
+): PortfolioConfig | null {
+  const target = AUTO_BLOCK_TARGET[uid]
+  if (!target) return null
+  const picked = Object.fromEntries(Object.entries(patch).filter(([k]) => target.keys.includes(k)))
+  if (!Object.keys(picked).length) return null
+  return { ...cfg, [target.section]: { ...cfg[target.section], ...picked } }
 }
 
 export function migrate(raw: any): PortfolioConfig {

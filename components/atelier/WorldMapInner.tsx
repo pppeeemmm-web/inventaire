@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Pin } from './WorldMapTab'
 import { thumbUrl, imageUrl } from '@/lib/data'
 
@@ -16,6 +16,12 @@ export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvre
   const divRef   = useRef<HTMLDivElement>(null)
   const mapRef   = useRef<any>(null)
   const layerRef = useRef<any>(null)
+  /**
+   * Bumped once the Leaflet map exists. The map is created after an async `import('leaflet')`, so pins that
+   * arrive first (Carte → Création with its data already loaded, or loaded before Leaflet) found no map and
+   * were never drawn until something else changed (Pem 2026-11-18: « doesn't show straight away »).
+   */
+  const [ready, setReady] = useState(0)
 
   // Expose callback to window so Leaflet popup onclick can call it
   useEffect(() => {
@@ -90,6 +96,7 @@ export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvre
 
       mapRef.current   = map
       layerRef.current = L.layerGroup().addTo(map)
+      setReady((n) => n + 1)
     }
 
     init()
@@ -234,7 +241,7 @@ export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvre
     })
 
     return () => { cancelled = true }
-  }, [pins, route, onOpenOeuvreById])
+  }, [pins, route, onOpenOeuvreById, ready])
 
   return <div ref={divRef} style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
 }

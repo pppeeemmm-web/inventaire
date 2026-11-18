@@ -8,6 +8,8 @@ import {
   type BlockKind,
   type BlockLayoutWidth,
   type Page,
+  applyAutoBlockEdit,
+  autoBlockLiveFields,
   type PortfolioConfig,
 } from '@/lib/portfolio-config-types'
 import { getDescriptor, kindsAllowedOnPage } from '@/lib/site-blocks'
@@ -101,9 +103,13 @@ export default function PagesEditor({ config, setConfig, onBlockSelect }: Props)
   }
 
   function updateFields(uid: string, patch: Record<string, unknown>) {
-    commit(rawBlocks.map(b => b.uid === uid
+    const nextBlocks = rawBlocks.map(b => b.uid === uid
       ? { ...b, fields: { ...b.fields, ...patch } }
-      : b))
+      : b)
+    // An `auto_` block (bio, approach, themes, materials) edits the live field it mirrors, so the
+    // Site module's « À propos » text and this block stay one value (R8, Pem 2026-11-18).
+    const base = applyAutoBlockEdit(config, uid, patch) ?? config
+    setConfig({ ...base, pages: { ...pages, [activePage]: nextBlocks } })
   }
 
   function removeBlock(uid: string) {
@@ -289,9 +295,10 @@ export default function PagesEditor({ config, setConfig, onBlockSelect }: Props)
           const Editor = desc?.editor
           const kindKey = KIND_LABEL_KEY[block.kind]
           const kindLabel = kindKey ? t(kindKey) : block.kind
+          const ownFields = { ...block.fields, ...(autoBlockLiveFields(config, block.uid) ?? {}) }
           const fields = desc?.migrateFields
-            ? desc.migrateFields(block.fields)
-            : (block.fields as Record<string, unknown>)
+            ? desc.migrateFields(ownFields)
+            : (ownFields as Record<string, unknown>)
           return (
             <div
               key={block.uid}

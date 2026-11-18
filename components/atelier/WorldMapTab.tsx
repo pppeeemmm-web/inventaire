@@ -228,6 +228,18 @@ export function WorldMapTab({
     const to = parseMonthKey(params?.get('to'))
     return from != null && to != null && from <= to ? { from, to } : null
   })
+  // The tab can stay mounted while the URL changes (« Voir sur la carte » from the Chronologie, Carte → Création):
+  // follow `?mode=creation` / `?from=&to=` when they appear, not only on the first render.
+  const urlMode = params?.get('mode') ?? null
+  const urlFrom = params?.get('from') ?? null
+  const urlTo = params?.get('to') ?? null
+  useEffect(() => {
+    if (urlMode !== 'creation') return
+    setMode('creation')
+    const from = parseMonthKey(urlFrom)
+    const to = parseMonthKey(urlTo)
+    if (from != null && to != null && from <= to) setSpan({ from, to })
+  }, [urlMode, urlFrom, urlTo])
   const [pins,      setPins]      = useState<Pin[]>([])
   const [loading,   setLoading]   = useState(false)
   const [dataReady, setDataReady] = useState(false)
@@ -942,6 +954,17 @@ export function WorldMapTab({
 
       {/* Map */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+        {mode === 'creation' && !creation && (
+          <div
+            data-testid="map-creation-loading"
+            role="status"
+            style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 500 }}
+          >
+            <div className="t-mono-sm" style={{ color: tpError ? 'var(--rust)' : 'var(--tx2)', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 6, padding: '8px 12px' }}>
+              {tpError ? t('map_creation_error') : t('map_creation_loading')}
+            </div>
+          </div>
+        )}
         {shownPins.length === 0 && !loading && dataReady && mode !== 'creation' && (
           <div style={{
             position: 'absolute', inset: 0, display: 'flex',

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { enquiryCategoryKey } from '@/lib/enquiry-categories'
 import { SwipeDeck, type SwipeDecision } from '@/components/shared/SwipeDeck'
 import {
   approveBroadcast,
@@ -59,6 +60,9 @@ export function TriageDeckClient() {
     >
       <div className="t-eyebrow" style={{ marginBottom: 8 }}>
         {card.kind === 'broadcast' ? t('triage_deck_broadcast') : t('triage_deck_enquiry')}
+        {card.kind === 'enquiry' && card.category !== 'general' && enquiryCategoryKey(card.category)
+          ? ` · ${t(enquiryCategoryKey(card.category)!)}`
+          : null}
       </div>
       {card.kind === 'broadcast' ? (
         <>

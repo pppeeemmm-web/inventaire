@@ -4,7 +4,7 @@ import { defineMessages } from '../message-core'
 export const noteLinesMessages = defineMessages({
   // Work card — « Commentaires & notes »
   nl_lines: { fr: 'Lignes', en: 'Lines' },
-  nl_old_field: { fr: 'Notes (ancien champ)', en: 'Notes (old field)' },
+  nl_old_comment: { fr: 'Ancien commentaire', en: 'Old comment' },
   nl_empty: { fr: 'Pas encore de ligne sur cette œuvre.', en: 'No line on this work yet.' },
   nl_add_ph: { fr: 'Ajouter une ligne…', en: 'Add a line…' },
   nl_add: { fr: 'Ajouter', en: 'Add' },

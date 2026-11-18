@@ -52,6 +52,22 @@ export const journalEntryMessages = defineMessages({
     fr: 'Relier cette note là où elle sert. Elle reste dans le Journal ; rien n’est copié.',
     en: 'Link this note where it belongs. It stays in the Journal; nothing is copied.',
   },
+  je_voice_delete: { fr: 'Supprimer', en: 'Delete' },
+  je_voice_delete_ask: {
+    fr: 'Supprimer cette note vocale ? L’audio part à la corbeille (90 jours).',
+    en: 'Delete this voice note? The audio goes to the bin (90 days).',
+  },
+  je_voice_delete_ask_entry: {
+    fr: 'Supprimer cette note vocale ? Sa transcription est masquée (le Journal ne s’efface pas) et l’audio part à la corbeille (90 jours).',
+    en: 'Delete this voice note? Its transcript is hidden (the Journal is never erased) and the audio goes to the bin (90 days).',
+  },
+  je_voice_delete_yes: { fr: 'Oui, supprimer', en: 'Yes, delete' },
+  je_voice_delete_no: { fr: 'Annuler', en: 'Cancel' },
+  je_voice_deleted: { fr: 'Note vocale supprimée', en: 'Voice note deleted' },
+  je_voice_delete_admin: {
+    fr: 'Une transcription la porte : seul un admin peut la supprimer.',
+    en: 'A transcript carries it: only an admin can delete it.',
+  },
   je_voice_link_work_ph: { fr: 'N° d’œuvre, ex. 2357', en: 'Work no., e.g. 2357' },
   je_voice_link_idea: { fr: 'Idée', en: 'Idea' },
   je_voice_link_idea_ph: { fr: 'Choisir une idée…', en: 'Choose an idea…' },
@@ -98,4 +114,25 @@ export const journalEntryMessages = defineMessages({
   je_sum_voices: { fr: '{n} notes vocales', en: '{n} voice notes' },
   je_err_empty: { fr: 'Écrivez quelque chose.', en: 'Write something.' },
   je_err_fmt: { fr: 'Échec : {msg}', en: 'Failed: {msg}' },
+  // Inspiration photo (R1 / R2): Photo · doc → Inspiration; shown among the day's entries.
+  insp_label: { fr: 'Inspiration', en: 'Inspiration' },
+  insp_sub: { fr: 'Une photo pour le jour, reliée à une œuvre ou une idée', en: 'A photo for the day, linked to a work or an idea' },
+  insp_intro: {
+    fr: 'Elle rejoint les entrées du jour dans le Journal. Œuvre et idée : facultatif.',
+    en: 'It joins the day’s entries in the Journal. Work and idea: optional.',
+  },
+  insp_take: { fr: 'Prendre une photo', en: 'Take a photo' },
+  insp_pick: { fr: 'Choisir une image', en: 'Choose an image' },
+  insp_caption: { fr: 'Légende (facultatif)', en: 'Caption (optional)' },
+  insp_work: { fr: 'N° d’œuvre (facultatif)', en: 'Work no. (optional)' },
+  insp_idea: { fr: 'Idée (facultatif)', en: 'Idea (optional)' },
+  insp_idea_none: { fr: 'Aucune', en: 'None' },
+  insp_save: { fr: 'Ajouter au Journal', en: 'Add to the Journal' },
+  insp_saved: { fr: 'Photo ajoutée au Journal', en: 'Photo added to the Journal' },
+  insp_waiting: {
+    fr: 'En attente de la base de données : rien n’est enregistré pour l’instant.',
+    en: 'Waiting for the database: nothing is saved yet.',
+  },
+  insp_delete_ask: { fr: 'Retirer cette photo ? Elle part à la corbeille (90 jours).', en: 'Remove this photo? It goes to the bin (90 days).' },
+  insp_deleted: { fr: 'Photo retirée', en: 'Photo removed' },
 })

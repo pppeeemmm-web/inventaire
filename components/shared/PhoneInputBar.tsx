@@ -9,12 +9,22 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
+import { INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 
 const DOC_CHOICES = [
   { href: '/atelier/capture?mode=doc', icon: '📄', label: 'today_doc_document', sub: 'today_doc_document_sub' },
   { href: '/atelier/capture?mode=card', icon: '👤', label: 'today_doc_card', sub: 'today_doc_card_sub' },
   { href: '/atelier/scan', icon: '🔍', label: 'today_doc_qr', sub: 'today_doc_qr_sub' },
 ] as const
+
+/** Photo · doc → Inspiration (R1 / R2): admin only (the Journal is Pem's), once its SQL is live. */
+const INSPIRATION_CHOICE = {
+  href: '/atelier/capture?mode=inspiration',
+  icon: '✦',
+  label: 'insp_label',
+  sub: 'insp_sub',
+  testId: 'phone-doc-inspiration',
+} as const
 
 /** Today's session capture (Lightroom → Share). Callers pass it as `workHref` for admins only. */
 const SESSION_CAPTURE_HREF = '/atelier/session/new'
@@ -105,7 +115,14 @@ export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; work
         <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>
       </nav>
 
-      {docOpen ? <ChoiceSheet title={t('today_doc_title')} choices={DOC_CHOICES} onClose={() => setDocOpen(false)} testId="phone-doc-sheet" /> : null}
+      {docOpen ? (
+        <ChoiceSheet
+          title={t('today_doc_title')}
+          choices={workSheet && INSPIRATION_SQL_LIVE ? [INSPIRATION_CHOICE, ...DOC_CHOICES] : DOC_CHOICES}
+          onClose={() => setDocOpen(false)}
+          testId="phone-doc-sheet"
+        />
+      ) : null}
       {workOpen ? <ChoiceSheet title={t('today_work_title')} choices={WORK_CHOICES} onClose={() => setWorkOpen(false)} testId="phone-work-sheet" /> : null}
     </>
   )

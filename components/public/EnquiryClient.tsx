@@ -6,7 +6,12 @@ import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { instagramProfile } from '@/lib/public-instagram'
-import type { DictKey } from '@/lib/i18n/dictionary'
+import {
+  ENQUIRY_CATEGORIES_SQL_LIVE,
+  PROSPECT_REASONS,
+  PROSPECT_REASON_KEYS,
+  isProspectReason,
+} from '@/lib/enquiry-categories'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -24,23 +29,6 @@ export type PublicEnquiryContact = {
   email: string
   phone: string
   instagram: string
-}
-
-/**
- * Reasons offered to visitors. `inquiry.category` only accepts
- * general / question / complaint / shipping / other (check constraint), so the four
- * prospect reasons are stored as `general` with the reason as the message's first line.
- */
-const PROSPECT_REASONS = ['buy', 'commission', 'show', 'press'] as const
-type ProspectReason = (typeof PROSPECT_REASONS)[number]
-const PROSPECT_REASON_KEYS: Record<ProspectReason, DictKey> = {
-  buy: 'enquiry_reason_buy',
-  commission: 'enquiry_reason_commission',
-  show: 'enquiry_reason_show',
-  press: 'enquiry_reason_press',
-}
-function isProspectReason(v: string): v is ProspectReason {
-  return (PROSPECT_REASONS as readonly string[]).includes(v)
 }
 
 type EnquiryClientProps = {
@@ -112,14 +100,17 @@ export default function EnquiryClient({
     setLoading(true)
     const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
     const workOrderId = orderParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderParam) ? orderParam : null
-    const message = isProspectReason(category)
+    // Buy / commission / show / press: real categories once supabase/sql/enquiry_categories.sql runs;
+    // before that, `general` + « Motif : … » first line (lib/enquiry-categories.ts).
+    const asGeneral = isProspectReason(category) && !ENQUIRY_CATEGORIES_SQL_LIVE
+    const message = asGeneral
       ? `${t('enquiry_reason_message_prefix').replace('{reason}', t(PROSPECT_REASON_KEYS[category]))}\n\n${form.message}`
       : form.message
     const row: Record<string, unknown> = {
       name: form.name,
       email: form.email,
       message,
-      category: isProspectReason(category) ? 'general' : category,
+      category: asGeneral ? 'general' : category,
       status: 'open',
     }
     if (oeuvreId != null) row.oeuvre_id = oeuvreId

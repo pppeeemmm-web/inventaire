@@ -12,11 +12,13 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import { EntryText } from '@/components/atelier/journal/EntryText'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { WorkChip } from '@/components/atelier/WorkChip'
-import { imageUrl } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
+import { removeInspirationPhoto } from '@/app/atelier/capture/inspiration-actions'
 import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { VoiceNoteLinkPanel } from '@/components/atelier/journal/VoiceNoteLinkPanel'
+import { deleteVoiceNote } from '@/app/atelier/(portal)/notes/actions'
 import { formatVoiceDuration } from '@/lib/voice-note-domain'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
@@ -95,6 +97,8 @@ export function JournalDayExtras({
   const [conceptId, setConceptId] = useState('')
   /** Voice note whose « Relier » panel is open. */
   const [linkOpen, setLinkOpen] = useState<string | null>(null)
+  /** Voice note whose « Supprimer » confirm step is open. */
+  const [deleteAsk, setDeleteAsk] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const load = useCallback(async () => {
@@ -242,22 +246,70 @@ export function JournalDayExtras({
 
   // Voice notes not yet carried by a transcript entry sit among the entries, by time.
   const pendingVoices = (data?.voices ?? []).filter((v) => !v.hasEntry)
-  const dayItems: Array<{ at: string; entry?: Extras['entries'][number]; voice?: Extras['voices'][number] }> = [
+  // Inspiration photos (R1 / R2) sit among the entries too, by time (empty until their SQL is live).
+  const dayItems: Array<{
+    at: string
+    entry?: Extras['entries'][number]
+    voice?: Extras['voices'][number]
+    photo?: Extras['inspirations'][number]
+  }> = [
     ...(data?.entries ?? []).map((e) => ({ at: e.created_at, entry: e })),
     ...pendingVoices.map((v) => ({ at: v.created_at, voice: v })),
+    ...(data?.inspirations ?? []).map((p) => ({ at: p.created_at, photo: p })),
   ].sort((a, b) => a.at.localeCompare(b.at))
 
-  /** « Relier » toggle + panel for a voice note (owner or admin: the server checks). */
-  const linkBlock = (noteId: string, links: NonNullable<Extras['entries'][number]['voiceLinks']>) => {
+  function removePhoto(id: string) {
+    startTransition(async () => {
+      const res = await removeInspirationPhoto(id)
+      if ('error' in res) {
+        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        return
+      }
+      setDeleteAsk(null)
+      toast.success(t('insp_deleted'))
+      await load()
+    })
+  }
+
+  function removeVoice(noteId: string) {
+    startTransition(async () => {
+      const res = await deleteVoiceNote(noteId)
+      if ('error' in res) {
+        toast.error(res.error === 'admin_only' ? t('je_voice_delete_admin') : t('je_err_fmt').replace('{msg}', res.error))
+        return
+      }
+      setDeleteAsk(null)
+      setLinkOpen(null)
+      toast.success(t('je_voice_deleted'))
+      await load()
+    })
+  }
+
+  /**
+   * « Relier » toggle + panel for a voice note (owner or admin: the server checks), its linked work as a
+   * preview chip (R4: a work number never travels alone), and « Supprimer » behind a confirm step.
+   * `canDelete`: the author or an admin for a note no entry carries yet; an admin once a transcript
+   * entry carries it (that entry is hidden, never erased — deleteVoiceNote).
+   */
+  const linkBlock = (
+    noteId: string,
+    links: NonNullable<Extras['entries'][number]['voiceLinks']>,
+    { canDelete, hasEntry }: { canDelete: boolean; hasEntry: boolean },
+  ) => {
     const tags = [
-      links.oeuvre_id != null ? `#${links.oeuvre_id}` : null,
       links.concept_id ? t('je_voice_link_idea') : null,
       links.process_id ? t('notes_triage_process') : null,
       links.condition_report_id != null ? t('notes_triage_constat') : null,
     ].filter(Boolean)
     const open = linkOpen === noteId
+    const asking = deleteAsk === noteId
     return (
       <>
+        {links.oeuvre_id != null ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }} data-testid={`voice-linked-work-${noteId}`}>
+            <WorkChip id={links.oeuvre_id} href={workHref(links.oeuvre_id)} size="chip" />
+          </div>
+        ) : null}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <button
             type="button"
@@ -269,12 +321,49 @@ export function JournalDayExtras({
           >
             {t(open ? 'je_voice_link_close' : 'je_voice_link')}
           </button>
+          {canDelete && !asking ? (
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid={`voice-delete-${noteId}`}
+              disabled={pending}
+              onClick={() => setDeleteAsk(noteId)}
+              style={{ minHeight: 44 }}
+            >
+              {t('je_voice_delete')}
+            </button>
+          ) : null}
           {tags.length ? (
             <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', overflowWrap: 'anywhere' }}>
               {t('je_voice_linked_fmt').replace('{list}', tags.join(' · '))}
             </span>
           ) : null}
         </div>
+        {asking ? (
+          <div
+            role="alertdialog"
+            aria-label={t('je_voice_delete')}
+            data-testid={`voice-delete-ask-${noteId}`}
+            style={{ marginTop: 8, padding: 10, border: '1px solid var(--rust)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{t(hasEntry ? 'je_voice_delete_ask_entry' : 'je_voice_delete_ask')}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                className="btn sm"
+                data-testid={`voice-delete-yes-${noteId}`}
+                disabled={pending}
+                onClick={() => removeVoice(noteId)}
+                style={{ minHeight: 44, color: 'var(--rust)', borderColor: 'var(--rust)' }}
+              >
+                {t('je_voice_delete_yes')}
+              </button>
+              <button type="button" className="btn ghost sm" disabled={pending} onClick={() => setDeleteAsk(null)} style={{ minHeight: 44 }}>
+                {t('je_voice_delete_no')}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {open ? <VoiceNoteLinkPanel noteId={noteId} links={links} onChanged={() => void load()} /> : null}
       </>
     )
@@ -351,8 +440,55 @@ export function JournalDayExtras({
           </p>
         ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-          {dayItems.map(({ entry: e, voice: v }) =>
-            v ? (
+          {dayItems.map(({ entry: e, voice: v, photo: p }) =>
+            p ? (
+            <article
+              key={`photo-${p.id}`}
+              data-testid={`journal-inspiration-${p.id}`}
+              style={{ borderLeft: '3px solid var(--bd)', background: 'var(--bg1)', borderRadius: '0 8px 8px 0', padding: '12px 14px' }}
+            >
+              <div className="t-mono-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>
+                <span style={{ color: 'var(--ac)' }}>✦ {t('insp_label')}</span>
+                <span>
+                  {p.author} · {time(p.created_at)}
+                </span>
+              </div>
+              <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block', maxWidth: 480 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb (400 px), like the other Journal pictures */}
+                <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
+              </a>
+              {p.caption?.trim() ? <div style={{ marginTop: 8 }}><EntryText text={p.caption} /></div> : null}
+              {p.oeuvre_id != null || p.concept_id ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
+                  {p.oeuvre_id != null ? <WorkChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" /> : null}
+                  {p.concept_id ? (
+                    <Link href="/atelier/concepts" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                      {t('je_concept_prefix')} {p.conceptTitle ?? '—'}
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+              {data?.isAdmin ? (
+                deleteAsk === p.id ? (
+                  <div role="alertdialog" aria-label={t('je_voice_delete')} style={{ marginTop: 8, padding: 10, border: '1px solid var(--rust)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{t('insp_delete_ask')}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <button type="button" className="btn sm" disabled={pending} onClick={() => removePhoto(p.id)} style={{ minHeight: 44, color: 'var(--rust)', borderColor: 'var(--rust)' }}>
+                        {t('je_voice_delete_yes')}
+                      </button>
+                      <button type="button" className="btn ghost sm" disabled={pending} onClick={() => setDeleteAsk(null)} style={{ minHeight: 44 }}>
+                        {t('je_voice_delete_no')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="btn ghost sm" disabled={pending} onClick={() => setDeleteAsk(p.id)} style={{ minHeight: 44, marginTop: 8 }}>
+                    {t('je_voice_delete')}
+                  </button>
+                )
+              ) : null}
+            </article>
+            ) : v ? (
             <article
               key={`voice-${v.id}`}
               data-testid={`journal-voice-${v.id}`}
@@ -373,7 +509,7 @@ export function JournalDayExtras({
                 <audio controls preload="none" src={imageUrl(v.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} />
               ) : null}
               {v.transcript?.trim() ? <EntryText text={v.transcript} /> : null}
-              {linkBlock(v.id, v)}
+              {linkBlock(v.id, v, { canDelete: v.mine || !!data?.isAdmin, hasEntry: false })}
             </article>
             ) : e ? (
             <article
@@ -491,7 +627,7 @@ export function JournalDayExtras({
                   </button>
                 </div>
               ) : null}
-              {e.voiceNoteId && e.voiceLinks ? linkBlock(e.voiceNoteId, e.voiceLinks) : null}
+              {e.voiceNoteId && e.voiceLinks ? linkBlock(e.voiceNoteId, e.voiceLinks, { canDelete: !!data?.isAdmin && !e.hidden, hasEntry: true }) : null}
             </article>
             ) : null,
           )}

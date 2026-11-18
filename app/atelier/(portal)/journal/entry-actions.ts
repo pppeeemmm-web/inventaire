@@ -10,6 +10,7 @@ import { logError } from '@/lib/error-reporter/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { changedVersionFields } from '@/lib/oeuvre-version-fields'
 import type { Tables } from '@/lib/types/supabase.generated'
+import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-photo'
 
 export type JournalEntryKind = 'spark' | 'trigger' | 'reflection' | 'note'
 const KINDS: readonly JournalEntryKind[] = ['spark', 'trigger', 'reflection', 'note']
@@ -92,6 +93,8 @@ export type JournalDayExtras = {
   creation: JournalDayCreation[]
   /** Concepts (Recherche) the entry form can link to. */
   conceptOptions: Array<{ id: string; title: string }>
+  /** Inspiration photos of the day (R1 / R2); empty until supabase/sql/inspiration_photo.sql is live. */
+  inspirations: InspirationPhoto[]
 }
 
 /** One row per Paris day that has an entry, a Création item or a voice note (index of the journal). */
@@ -154,9 +157,10 @@ export async function getJournalDayExtras(
   const win = utcWindow(day)
 
   type VoiceRow = Omit<JournalDayVoice, 'audioKey' | 'author' | 'mine' | 'hasEntry'> & { audio_r2_key: string | null; user_id: string }
+  type InspirationRow = Omit<InspirationPhoto, 'conceptTitle' | 'author'> & { author_id: string }
 
   // Wave 2: the day's own rows.
-  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes] = await Promise.all([
+  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes, inspirationsRes] = await Promise.all([
     withEntries
       ? supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500)
       : Promise.resolve({ data: [] as Array<Tables<'journal_entry'>>, error: null }),
@@ -196,6 +200,14 @@ export async function getJournalDayExtras(
     withEntries
       ? supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500)
       : Promise.resolve({ data: [] as Array<{ id: string; titre: string | null }>, error: null }),
+    withEntries && INSPIRATION_SQL_LIVE
+      ? supabase
+          .from('inspiration_photo')
+          .select('id, created_at, day, image_key, caption, oeuvre_id, concept_id, author_id')
+          .eq('day', day)
+          .order('created_at', { ascending: true })
+          .limit(100)
+      : Promise.resolve({ data: [] as InspirationRow[], error: null }),
   ])
   if (entriesRes.error) {
     await logError('journal day entries failed', entriesRes.error, { source: 'journal.getJournalDayExtras' })
@@ -222,9 +234,15 @@ export async function getJournalDayExtras(
 
   const creationRows = (creationRes.data ?? []).filter((k) => calendarDayInParisFromIso(k.created_at) === day)
   const voiceRows = ((voicesRes.data ?? []) as VoiceRow[]).filter((v) => calendarDayInParisFromIso(v.created_at) === day)
+  const inspirationRows = (inspirationsRes.data ?? []) as InspirationRow[]
   const authorIds = [
     ...new Set(
-      [...rows.map((r) => r.author_id), ...creationRows.map((k) => k.author_id), ...voiceRows.map((v) => v.user_id)].filter(
+      [
+        ...rows.map((r) => r.author_id),
+        ...creationRows.map((k) => k.author_id),
+        ...voiceRows.map((v) => v.user_id),
+        ...inspirationRows.map((p) => p.author_id),
+      ].filter(
         (x): x is string => !!x,
       ),
     ),
@@ -379,7 +397,13 @@ export async function getJournalDayExtras(
     .filter((c) => (c.titre ?? '').trim())
     .map((c) => ({ id: c.id, title: (c.titre as string).trim() }))
 
-  return { isAdmin, entries, changes, voices, creation, conceptOptions }
+  const inspirations: InspirationPhoto[] = inspirationRows.map(({ author_id, ...p }) => ({
+    ...p,
+    conceptTitle: p.concept_id ? conceptTitles.get(p.concept_id) ?? null : null,
+    author: names[author_id] || '—',
+  }))
+
+  return { isAdmin, entries, changes, voices, creation, conceptOptions, inspirations }
 }
 
 /** The two folds of a day (« Attributs d'œuvres modifiés », « Création (Kaizen) »), read when one opens on « Aujourd'hui ». */

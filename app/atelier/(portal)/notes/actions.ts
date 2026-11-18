@@ -3,6 +3,7 @@
 import crypto from 'crypto'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { logError } from '@/lib/error-reporter/server'
 import { r2PutObject } from '@/lib/r2-s3-object'
 import type { VoiceNoteRow } from '@/lib/types/database'
 
@@ -248,6 +249,82 @@ export async function updateVoiceNoteDetails(
   revalidatePath('/atelier')
   revalidatePath('/hub')
   return { ok: true, followUpOk }
+}
+
+/**
+ * Delete a voice note (Pem 2026-11-18: « cannot delete the test one »). Author or admin.
+ * The audio goes to `recycle/` (r2SoftDeleteObject), never a hard delete.
+ * - No Journal entry carries it yet: the `voice_note` row is deleted.
+ * - A PC transcript entry carries it: the Journal is append-only and `journal_entry.voice_note_id`
+ *   restricts the delete (supabase/sql/journal_entry.sql), so an admin hides the entry (as « Masquer »)
+ *   and the note row is emptied in place: no audio, no text, no links. The entry's own links stay on
+ *   the hidden entry. A non-admin author gets `admin_only` there (only an admin hides an entry).
+ * What the note created earlier (an idea, a constat, a reminder) are records of their own and stay.
+ */
+export async function deleteVoiceNote(id: string): Promise<{ ok: true } | NotesActionErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+
+  const { data: row, error: selErr } = await voiceNoteTable(supabase)
+    .select('id, user_id, audio_r2_key')
+    .eq('id', id)
+    .maybeSingle()
+  if (selErr || !row) return { error: 'not_found' }
+  const r = row as { id: string; user_id: string; audio_r2_key: string | null }
+  const admin = await rpcIsAdmin(supabase)
+  if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
+
+  const { data: carried, error: entErr } = await supabase
+    .from('journal_entry')
+    .select('id, hidden_at')
+    .eq('voice_note_id', id)
+  if (entErr) return { error: entErr.message }
+
+  if ((carried ?? []).length > 0) {
+    if (!admin) return { error: 'admin_only' }
+    const open = (carried ?? []).filter((e) => !e.hidden_at).map((e) => e.id)
+    if (open.length) {
+      const { error: hideErr } = await supabase
+        .from('journal_entry')
+        .update({ hidden_at: new Date().toISOString(), hidden_by: user.id })
+        .in('id', open)
+      if (hideErr) return { error: hideErr.message }
+    }
+    const { error: upErr } = await voiceNoteTable(supabase)
+      .update({
+        audio_r2_key: null,
+        audio_mime: null,
+        transcript: '',
+        subject: null,
+        oeuvre_id: null,
+        concept_id: null,
+        process_id: null,
+        condition_report_id: null,
+      })
+      .eq('id', id)
+    if (upErr) return { error: upErr.message }
+  } else {
+    const { error: delErr } = await voiceNoteTable(supabase).delete().eq('id', id)
+    if (delErr) return { error: delErr.message }
+  }
+
+  if (r.audio_r2_key) {
+    try {
+      const { r2SoftDeleteObject } = await import('@/lib/r2-s3-object')
+      await r2SoftDeleteObject(r.audio_r2_key)
+    } catch (e) {
+      // The note is already gone from the screens; the audio stays reachable by key only.
+      await logError('Voice note audio recycle failed', e, { source: 'notes.deleteVoiceNote', metadata: { key: r.audio_r2_key } })
+    }
+  }
+
+  revalidatePath('/atelier')
+  revalidatePath('/atelier/journal')
+  revalidatePath('/hub')
+  return { ok: true }
 }
 
 // ── Link a note to a concept / work / pipeline project, or a dated reminder ──

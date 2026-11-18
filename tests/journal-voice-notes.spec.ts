@@ -45,6 +45,7 @@ test.describe('Journal voice notes (R1 step 7)', () => {
     ],
     creation: [],
     conceptOptions: [],
+    inspirations: [],
   }
   const TARGETS = {
     concepts: [{ id: '00000000-0000-4000-8000-000000000001', titre: 'E2E idea', statut: 'idee' }],
@@ -58,7 +59,7 @@ test.describe('Journal voice notes (R1 step 7)', () => {
     return raw.match(new RegExp(`"id":"([0-9a-f]+)","exportedName":"${name}"`))?.[1] ?? null
   }
 
-  async function mock(page: Page): Promise<unknown[][]> {
+  async function mock(page: Page, deleted: unknown[][] = []): Promise<unknown[][]> {
     const routed: unknown[][] = []
     await page.route('**/*', async (route: Route) => {
       const req = route.request()
@@ -70,6 +71,10 @@ test.describe('Journal voice notes (R1 step 7)', () => {
       if (id === actionId('routeVoiceNote')) {
         routed.push(JSON.parse(req.postData() || '[]') as unknown[])
         return json({ ok: true, row: { id: 'e2e-v2', concept_id: null, oeuvre_id: 2233, process_id: null, condition_report_id: null, routed_at: null } })
+      }
+      if (id === actionId('deleteVoiceNote')) {
+        deleted.push(JSON.parse(req.postData() || '[]') as unknown[])
+        return json({ ok: true })
       }
       // Never let a write through by accident.
       if (id === actionId('decideJournalLink') || id === actionId('createJournalEntry')) return json({ error: 'e2e' })
@@ -90,7 +95,8 @@ test.describe('Journal voice notes (R1 step 7)', () => {
     // The carried note shows once, as its entry; the old fold is gone.
     await expect(page.getByTestId('journal-voice-e2e-v1')).toHaveCount(0)
     await expect(page.getByTestId('journal-day-voices')).toHaveCount(0)
-    await expect(page.getByTestId('journal-entry-990001')).toContainText(/Reliée : #2233|Linked: #2233/)
+    // The linked work is a preview chip (thumbnail + title), never the bare number (R4).
+    await expect(page.getByTestId('voice-linked-work-e2e-v1').locator('a[href*="work=2233"]')).toBeVisible()
 
     await page.getByTestId('voice-link-toggle-e2e-v2').click()
     const panel = page.getByTestId('voice-link-panel-e2e-v2')
@@ -107,6 +113,28 @@ test.describe('Journal voice notes (R1 step 7)', () => {
     await page.screenshot({ path: 'test-results/journal-voice-375.png', fullPage: false })
   })
 
+  test('375 px: « Supprimer » asks first, then deletes (call recorded only)', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    const deleted: unknown[][] = []
+    await mock(page, deleted)
+    await page.goto(`/atelier/journal?day=${DAY}`)
+    await expect(page.getByTestId('journal-voice-e2e-v2')).toBeVisible({ timeout: 60_000 })
+    await page.getByTestId('voice-delete-e2e-v2').click()
+    const ask = page.getByTestId('voice-delete-ask-e2e-v2')
+    await expect(ask).toContainText(/corbeille|bin/)
+    await ask.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: 'test-results/journal-voice-delete-375.png', fullPage: false })
+    expect(deleted.length).toBe(0)
+    await page.getByTestId('voice-delete-yes-e2e-v2').click()
+    await expect.poll(() => deleted.length, { timeout: 10_000 }).toBe(1)
+    expect(deleted[0]).toEqual(['e2e-v2'])
+    // The carried note (transcript entry) says its entry is hidden, not erased.
+    await page.getByTestId('voice-delete-e2e-v1').click()
+    await expect(page.getByTestId('voice-delete-ask-e2e-v1')).toContainText(/masquée|hidden/)
+    const scroll = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(scroll).toBeLessThanOrEqual(0)
+  })
+
   test('desktop: no « Notes » in the sidebar; /atelier/notes opens the Journal', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await mock(page)
@@ -115,7 +143,7 @@ test.describe('Journal voice notes (R1 step 7)', () => {
     await expect(page.locator('.pem-sidebar-tab').filter({ hasText: /^Journal/ }).first()).toBeVisible()
     await expect(page.locator('.pem-sidebar-tab').filter({ hasText: /^(Notes vocales|Voice notes)/ })).toHaveCount(0)
     await page.getByTestId('voice-link-toggle-e2e-v1').click()
-    await expect(page.getByTestId('voice-link-panel-e2e-v1')).toContainText('#2233')
+    await expect(page.getByTestId('voice-link-panel-e2e-v1')).toContainText('2233')
     await page.screenshot({ path: 'test-results/journal-voice-desktop.png', fullPage: false })
 
     await page.goto('/atelier/notes')
