@@ -24,7 +24,9 @@ export async function getSidebarCounts(): Promise<SidebarCounts | { error: strin
   const [orders, tasks, pipeline, events, shipments] = await Promise.all([
     supabase.from('work_order').select('id', { count: 'exact', head: true })
       .eq('reconstituted', false).not('status', 'in', `(${ORDER_FINISHED.join(',')})`),
-    supabase.from('work_action').select('oeuvre_id').eq('done', false).is('paused_at', null).limit(5000),
+    // Works in the bin are left out, like on the Production tab (Pem 2026-11-18: « ignore the bin »).
+    supabase.from('work_action').select('oeuvre_id, Oeuvres!inner(deleted_at)').eq('done', false).is('paused_at', null)
+      .is('Oeuvres.deleted_at', null).limit(5000),
     fromSuiviProcess(supabase).select('id', { count: 'exact', head: true })
       .not('type', 'in', eventKinds).not('statut', 'in', `(${PROCESS_CLOSED.join(',')})`),
     fromSuiviProcess(supabase).select('id', { count: 'exact', head: true })
