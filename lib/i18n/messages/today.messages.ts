@@ -4,7 +4,13 @@ import { defineMessages } from '../message-core'
 export const todayMessages = defineMessages({
   today_days: { fr: 'Les jours', en: 'All days' },
   today_menu: { fr: 'Menu', en: 'Menu' },
-  today_summary: { fr: '{e} entrées · {w} œuvres · {v} notes', en: '{e} entries · {w} works · {v} notes' },
+  // Day summary « 2 entrées · 1 œuvre · 3 notes », one / many per part (« 1 entrées » before).
+  today_sum_entry_one: { fr: '1 entrée', en: '1 entry' },
+  today_sum_entries: { fr: '{n} entrées', en: '{n} entries' },
+  today_sum_work_one: { fr: '1 œuvre', en: '1 work' },
+  today_sum_works: { fr: '{n} œuvres', en: '{n} works' },
+  today_sum_note_one: { fr: '1 note', en: '1 note' },
+  today_sum_notes: { fr: '{n} notes', en: '{n} notes' },
   today_see_again: { fr: 'À revoir', en: 'See again' },
   today_works: { fr: 'Œuvres du jour', en: 'Works of the day' },
   today_works_empty: { fr: 'Aucune œuvre aujourd’hui — Œuvre ↓', en: 'No work today — Work ↓' },

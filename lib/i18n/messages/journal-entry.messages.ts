@@ -37,6 +37,7 @@ export const journalEntryMessages = defineMessages({
   journal_jump_label: { fr: 'Aller au', en: 'Go to' },
   journal_jump_nearest: { fr: 'Rien le {asked} — jour le plus proche : {shown}.', en: 'Nothing on {asked} — nearest day: {shown}.' },
   je_proposals_bar: { fr: '✦ {n} suggestions à revoir — ouvrir la plus ancienne', en: '✦ {n} suggestions to review — open the oldest' },
+  je_proposals_bar_one: { fr: '✦ 1 suggestion à revoir — l’ouvrir', en: '✦ 1 suggestion to review — open it' },
   je_transcript_label: { fr: 'transcription', en: 'transcript' },
   je_mark_verified: { fr: 'Marquer vérifiée', en: 'Mark verified' },
   je_mark_unverified: { fr: 'Remettre non vérifiée', en: 'Mark unverified' },

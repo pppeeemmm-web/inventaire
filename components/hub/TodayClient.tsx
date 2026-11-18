@@ -157,7 +157,12 @@ export function TodayLoadError() {
 
 export function TodaySummary({ entries, works, voices }: { entries: number; works: number; voices: number }) {
   const { t } = useI18n()
-  const summary = t('today_summary').replace('{e}', String(entries)).replace('{w}', String(works)).replace('{v}', String(voices))
+  const part = (n: number, one: DictKey, many: DictKey) => (n === 1 ? t(one) : t(many).replace('{n}', String(n)))
+  const summary = [
+    part(entries, 'today_sum_entry_one', 'today_sum_entries'),
+    part(works, 'today_sum_work_one', 'today_sum_works'),
+    part(voices, 'today_sum_note_one', 'today_sum_notes'),
+  ].join(' · ')
   return <p data-testid="hub-today-summary" style={{ ...muted, padding: '0 16px 8px' }}>{summary}</p>
 }
 

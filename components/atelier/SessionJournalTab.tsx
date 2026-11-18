@@ -1032,9 +1032,9 @@ export function SessionJournalTab() {
                 className="btn ghost sm"
                 data-testid="journal-proposals-bar"
                 onClick={() => setOpenDay(proposalsOpen.oldest)}
-                style={{ minHeight: 44, width: '100%', marginTop: 8, borderColor: 'var(--ac)', color: 'var(--ac)', justifyContent: 'center' }}
+                style={{ minHeight: 44, width: '100%', marginTop: 8, borderColor: 'var(--ac)', color: 'var(--ac)', justifyContent: 'center', whiteSpace: 'normal', textAlign: 'center' }}
               >
-                {t('je_proposals_bar').replace('{n}', String(proposalsOpen.total))}
+                {proposalsOpen.total === 1 ? t('je_proposals_bar_one') : t('je_proposals_bar').replace('{n}', String(proposalsOpen.total))}
               </button>
             ) : null}
             <label

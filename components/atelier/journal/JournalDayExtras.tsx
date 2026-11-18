@@ -577,7 +577,7 @@ export function JournalDayExtras({
                         {p.workId != null ? (
                           // A work: the shared #id preview + loupe, like the confirmed links above (TODO B12, Pem 2026-11-16).
                           // R4: thumbnail + title, hold / hover = the picture with its caption.
-                          <WorkChip id={p.workId} href={workHref(p.workId)} title={p.title} sub={`✦ ${t('je_ai_proposals')}`} style={{ flex: '1 1 160px' }} />
+                          <WorkChip id={p.workId} href={workHref(p.workId)} title={p.title} sub={t('je_ai_proposals')} style={{ flex: '1 1 160px' }} />
                         ) : (
                           <Link
                             href="/atelier/concepts"

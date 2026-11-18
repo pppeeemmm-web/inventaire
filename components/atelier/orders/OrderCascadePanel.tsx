@@ -68,9 +68,9 @@ export function OrderCascadePanel({ orderId, narrow, onOrderChanged }: { orderId
       {/* Delivery (sale) */}
       {isSale && !finished && (
         <Block label={t('cas_delivery')}>
-          <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', marginBottom: 8 }}>
             {(['ship', 'pickup'] as const).map((m) => (
-              <button key={m} type="button" className={mode === m ? 'btn primary' : 'btn ghost'} onClick={() => setMode(m)} style={{ minHeight: 44 }}>
+              <button key={m} type="button" className={mode === m ? 'btn primary' : 'btn ghost'} onClick={() => setMode(m)} style={{ minHeight: 44, whiteSpace: 'normal' }}>
                 {t(m === 'ship' ? 'cas_mode_ship' : 'cas_mode_pickup')}
               </button>
             ))}
@@ -215,13 +215,13 @@ export function OrderCascadePanel({ orderId, narrow, onOrderChanged }: { orderId
           ))}
           {!liveInvoice && !invoicable && <div style={{ fontSize: 13, color: 'var(--tx3)' }}>{t('cas_invoice_wait')}</div>}
           {!liveInvoice && invoicable && (v.isAdmin ? (
-            <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row', marginTop: 6 }}>
-              <button type="button" className="btn primary" disabled={busy} style={{ minHeight: 44 }}
+            <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', marginTop: 6 }}>
+              <button type="button" className="btn primary" disabled={busy} style={{ minHeight: 44, whiteSpace: 'normal' }}
                 onClick={() => { if (window.confirm(t('cas_invoice_confirm'))) void run(() => issueInvoice([orderId])) }}>
                 {t('cas_invoice_issue')}
               </button>
               {v.uninvoicedSameBuyer.length > 1 && (
-                <button type="button" className="btn ghost" disabled={busy} style={{ minHeight: 44 }}
+                <button type="button" className="btn ghost" disabled={busy} style={{ minHeight: 44, whiteSpace: 'normal' }}
                   onClick={() => { if (window.confirm(t('cas_invoice_confirm'))) void run(() => issueInvoice(v.uninvoicedSameBuyer.map((o) => o.id))) }}>
                   {t('cas_invoice_issue_many_fmt').replace('{n}', String(v.uninvoicedSameBuyer.length))}
                 </button>
