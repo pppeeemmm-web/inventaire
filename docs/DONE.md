@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — « Tempera » once (Pem « Go ahead », SQL applied live)
+
+- Technique 25 (duplicate « Tempera ») merged into 6: its 1 work moved, row deleted; 6 now holds the 6 works. Every technique picker lists it once.
+
 ## 2026-11-18 — Phone photos shrunk before sending (TODO §0)
 
 - Document scan: each page shrunk to 1600 px on the phone; too many pages for one send says so (no blank error 413). Field issue: the photo shrunk to 2100 px before sending.

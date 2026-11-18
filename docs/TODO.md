@@ -8,7 +8,8 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- 🔧 §3 Contacts review phases 1 + 2 (Pem « Go contacts »): family-name sort, `DUPONT Marie` in lists / `Marie DUPONT` in papers, « Privé » chip + filter (admin), address list refreshed after edit / merge / delete — agent building in its own copy; lead reviews, then asks Pem to push ([note](./design/2026-11-18/ContactsReview.notes.md))
+- 🔧 §3 Contacts review phases 1 + 2 (Pem « Go contacts »): family-name sort, `DUPONT Marie` in lists / `Marie DUPONT` in papers, « Privé » chip + filter (admin), address list refreshed after edit / merge / delete — built by an agent in worktree `.claude/worktrees/agent-ab64888102eb3a724` (uncommitted): next session reviews the diff, runs flow-reviewer, lands, asks Pem to push ([note](./design/2026-11-18/ContactsReview.notes.md))
+- 🔧 §3 Four small fixes (R&D at 375, phone taps ≥ 44 px, Overview « envois à faire », business-card photo sent once) — agent worktree `.claude/worktrees/agent-ac57b598f0a322d32` (uncommitted): review, land
 - ⏳ §0 Work card open in two tabs: the later save silently puts back what the other tab saved (saveWork writes the whole card as loaded) — Pem « yes, fix both »; lead fixes it after the contacts work lands (same file): the card sends the `edited_at` it loaded, saveWork refuses with « rechargez » if it changed
 
 ## 0. Bugs — fix now
@@ -41,7 +42,7 @@ Admin
 - [ ] Themes = creation, groups = business (Pem 2026-11-18): check every business picker (share kits, selections, exports, portfolio, broadcast) offers groups, not themes; add « copy a theme into a group » and back.
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Revenus & Dépenses at 375: « Cadre fiscal » tab and year buttons past the right edge; « 270,00 € » wraps the €. Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive.
-- [ ] « Tempera » twice in the technique list (ids 6 and 25): every picker shows it twice (data clean-up, SQL). Phone taps < 44 px: Inventory ⊕, Thèmes « Retirer du thème », Carte zoom, Chronologie arrows.
+- [ ] Phone taps < 44 px: Inventory ⊕, Thèmes « Retirer du thème », Carte zoom, Chronologie arrows (agent working, see « Now »).
 - [ ] Any team member can restore any work from the bin (`restoreSoftDeletedWorks`), even a sold or given one an admin binned: gate it like the delete.
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
 
