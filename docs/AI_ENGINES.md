@@ -14,6 +14,8 @@ The **public website** (`/`, `/works`, `/about`, `/practice`, `/enquiry`, the co
 | Contact from a web address (name, role, city read from the page) | **Ollama** `llama3.2:1b` on Pem's PC, or **OpenAI** when a key is set | Pem's PC / OpenAI's servers | Only if Vercel has an `OPENAI_API_KEY` (none in `.env.local`). |
 | Business card — the optional « AI » pass after the text is read | **OpenAI**, model `gpt-4o-mini` unless `OPENAI_VISION_MODEL` says otherwise | OpenAI's servers | Same: only with the key on Vercel. |
 | Business card — reading the text | **Apple Live Text** on the iPhone | On the phone itself | Yes. Nothing is sent anywhere for this step. |
+| Voice notes — transcripts of recorded notes | **faster-whisper** large-v3 (Whisper) | **Pem's PC**, batch `scripts/transcribe/voice_batch.py` (venv) | Only once the batch has run on the PC; the Overview « Local jobs » card counts what waits |
+| Image descriptions (search by what a picture shows) | **Ollama** `gemma3:4b` | **Pem's PC**, `scripts/describe-run.ps1` (task « PEM describe batch ») | The stored descriptions are used; new ones only after the batch runs |
 | Voice notes — live dictation | The browser's own speech recognition (Safari → Apple, Chrome → Google) | The browser / phone service | Yes, on the phone. The app calls no transcription service itself. |
 | Social captions for Diffusion | **OpenAI or Anthropic**, connected inside **Make.com** | Make.com, outside this repo ([`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md)) | Only while the Make scenario runs. The app gives Make the title, technique, sizes and Pem's caption seed; Make writes the caption. |
 
@@ -27,7 +29,9 @@ The **public website** (`/`, `/works`, `/about`, `/practice`, `/enquiry`, the co
 
 - To **OpenAI**: a business-card photo, or a web page's text, only if `OPENAI_API_KEY` is set on Vercel.
 - To **Make.com** (and its AI): work titles, techniques, sizes and caption seeds of works marked « Prêt pour diffusion ».
-- Everything Ollama does stays on Pem's PC.
+- Everything Ollama and Whisper do stays on Pem's PC.
+
+_Corrected 2026-11-18 (same evening): the first version missed the Whisper transcripts and the gemma3 image descriptions. The proposed AI desk: [`design/2026-11-18/AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)._
 
 ## How to check the one unknown
 

@@ -11,7 +11,6 @@ From Pem's pass, 2026-11-18 evening (screenshots in that chat; not yet reproduce
 - [ ] Contacts: deleting a contact does not update the sidebar badge count.
 - [ ] Business card: photo taken in the app → « nothing happened » (Live Text pasted from a photo taken outside worked).
 - [ ] Vault folder tree: a nested folder (Commandes → Confiés) draws its row out of line, buttons overlapping (also check speed).
-- [ ] Contact editor: phone labels « Main / Other / Work » in English in the French UI.
 - [ ] Aide (team guide) says team members record new works, reworks and photos; in fact only Pem (admin) does / approves; card « Améliorer avec l'IA » only works on Pem's laptop (Ollama) — say so. Condition report: who should make it (the custodian / closest person?) — Pem's call.
 
 ## 1. Waiting on you, Pem
@@ -35,11 +34,10 @@ R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archive
 ## 3. To build — needs a GO
 
 Contacts and Vault (Pem 2026-11-18 evening)
-- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed).
+- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed); phone / email labels are imported data in English and worse (« Mobile » 38, « Other », « Móvil », « * Other », « INTERNET », a person's name) → a fixed label list shown FR / EN + a data clean-up (SQL, Pem's OK).
 - [ ] Vault: a naming policy for every non-picture file (today a mess).
-- [ ] AI desk: one place on the computer to run the AI passes (card « Améliorer », web address) for items captured on the phone, since the phone can't reach Ollama — needs a GO (deferred-feature rule).
-- [ ] Website legal pages: prepare the A.2 batch (8 gaps: legal pages + footer, enquiry privacy line, 13 / 25-month retention, one audience counter, opt-out, self-hosted fonts, team notice, OpenAI DPA) → `WEBSITE_LEGAL_PAGES.md`.
-- [ ] « Check the next site playbook » — which document? (ask Pem).
+- [ ] AI desk: one place on the computer to run the AI passes for items captured on the phone (the phone can't reach Ollama) — draft [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md), 4 decisions for Pem; needs a GO (deferred-feature rule).
+- [ ] Website legal pages, A.2 batch — prepared: [`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md). Part 1 (visitor ID 13 months, page_view 25 months, enquiries 3 years, drop Vercel Analytics, opt-out, self-hosted fonts + local QR) needs no legal facts; part 2 (the four pages + footer) needs the C.1 facts. 4 decisions for Pem.
 
 
 Stress-test look leftovers (2026-11-18, [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
