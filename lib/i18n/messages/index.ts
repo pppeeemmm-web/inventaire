@@ -18,7 +18,6 @@ import { fiscalUiMessages } from './fiscal-ui.messages'
 import { salesUiMessages } from './sales-ui.messages'
 import { inventoryUiMessages } from './inventory-ui.messages'
 import { vaultUiMessages } from './vault-ui.messages'
-import { curationUiMessages } from './curation-ui.messages'
 import { worldMapUiMessages } from './world-map-ui.messages'
 import { chronologieMessages } from './chronologie.messages'
 import { reportsPivotAtlasMessages } from './reports-pivot-atlas.messages'
@@ -86,7 +85,6 @@ export const featureMessages = {
   ...salesUiMessages,
   ...inventoryUiMessages,
   ...vaultUiMessages,
-  ...curationUiMessages,
   ...worldMapUiMessages,
   ...chronologieMessages,
   ...reportsPivotAtlasMessages,
