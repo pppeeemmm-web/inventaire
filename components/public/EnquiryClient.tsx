@@ -12,8 +12,7 @@ import {
   PROSPECT_REASON_KEYS,
   isProspectReason,
 } from '@/lib/enquiry-categories'
-import { trackView } from '@/lib/track'
-import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import { trackPublicView } from '@/lib/track-public'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -57,7 +56,7 @@ export default function EnquiryClient({
   const sb = createClient()
 
   useEffect(() => {
-    void trackView('/enquiry', null, null, getOrCreatePublicVisitorId())
+    trackPublicView('/enquiry')
   }, [])
 
   useEffect(() => {

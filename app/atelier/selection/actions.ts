@@ -24,6 +24,8 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { getMetadataBase } from '@/lib/seo/site-url'
 import sharp from 'sharp'
 import { dict, type Lang } from '@/lib/i18n/dictionary'
 
@@ -624,7 +626,7 @@ export async function generateExport(
   }
 
   if (config.format === 'html') {
-    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap, lang, headerCount ?? oeuvres.length)
+    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap, lang, headerCount ?? oeuvres.length, await exportFontOrigin())
     const ts   = new Date().toISOString().slice(0, 10)
     return { ok: true, content: html, filename: `export_${ts}.html`, mime: 'text/html' }
   }
@@ -640,6 +642,29 @@ export async function generateExport(
 }
 
 // ── HTML builder ──────────────────────────────────────────────────────────
+
+/**
+ * Origin of the site that made the export: the HTML file loads Sofia Sans + Instrument Serif from this site's
+ * `/fonts/` (OFL copies of `lib/aide/pdf/fonts/`), never from Google (legal A.2 n° 6). The request's own host,
+ * else NEXT_PUBLIC_SITE_URL. `/fonts/*` answers with `Access-Control-Allow-Origin: *` (next.config.ts) so a
+ * file opened from disk can use them; offline, the file falls back to the system fonts.
+ */
+async function exportFontOrigin(): Promise<string> {
+  try {
+    const h = await headers()
+    const host = h.get('x-forwarded-host') ?? h.get('host')
+    if (host) {
+      const proto = h.get('x-forwarded-proto') ?? (/^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? 'http' : 'https')
+      return `${proto}://${host}`
+    }
+  } catch { /* no request scope */ }
+  return getMetadataBase().origin
+}
+
+function exportFontFaceCss(origin: string): string {
+  return `@font-face{font-family:'Sofia Sans';src:url('${origin}/fonts/SofiaSans-Variable.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}`
+    + `@font-face{font-family:'Instrument Serif';src:url('${origin}/fonts/InstrumentSerif-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}`
+}
 
 type Oeuvre = {
   OeuvreID: number; Titre?: string | null; Année?: string | null
@@ -660,6 +685,7 @@ function buildHtml(
   imageMap:       Map<number, string>,
   lang:           Lang,
   total:          number,
+  fontOrigin:     string,
 ): string {
   const L = dict[lang]
   const f = cfg.fields
@@ -813,10 +839,8 @@ function buildHtml(
 <head>
 <meta charset="UTF-8">
 <title>Export — the pem workshop</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
 <style>
+  ${exportFontFaceCss(fontOrigin)}
   ${paperCss}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:40px 80px 80px 80px}

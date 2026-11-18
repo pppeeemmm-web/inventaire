@@ -8,7 +8,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - 🔎 §0 Contacts: refuse deleting a contact still linked to works / orders (no address loss) + « Privé » code side — built; lead reviewing (flow review running)
 - ⏳ §0 « Privé » SQL (`supabase/sql/contact_private_rls.sql`, not applied): 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 of them own / hold / bought works; 1 is a team member) — Pem reviews that list first, then OK
-- 🔎 §3 Website legal pages, part 1 (visitor ID 13 months, no Vercel Analytics, « don't count me », own fonts + QR) — built; lead reviewing (flow review running)
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
 - 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
 - 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
@@ -52,7 +51,7 @@ AI desk
 - [ ] Phase 3 ([`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)): business cards captured on the phone become `ai_job` rows (kind `card`), the PC agent reads the photo with a local vision model and the desk suggests the fields, to accept or reject; then web addresses the same way.
 
 Public site
-- [ ] Website legal pages, A.2 batch ([`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md)): part 1 (visitor ID 13 months, `page_view` 25 months, enquiries 3 years, drop Vercel Analytics, opt-out, self-hosted fonts + local QR) needs no legal facts; part 2 (the four pages + footer) needs the C.1 facts; 4 decisions for Pem.
+- [ ] Website legal pages, A.2 part 2 ([`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md)): the four pages + footer, needs the C.1 facts. Part 1 is built; its retention SQL waits for Pem's OK (« Now »). `ANALYTICS_EXCLUDE_VISITOR_IDS` lists browser IDs that all renew on 2027-06-14 — the team should use « Ne pas être compté·e » instead. `CRON_SECRET` must be set on Vercel for the monthly retention cron.
 - [ ] Phones: show the closing text (« outro ») of a works sequence on `/works` — own last slide, or below?
 - [ ] Status chips in English (translate the DB labels) → [notes](./TODO_NOTES.md#status-labels)
 - [ ] 12. Circadian sky leftovers → [notes](./TODO_NOTES.md#circadian)

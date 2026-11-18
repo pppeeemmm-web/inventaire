@@ -1,9 +1,10 @@
 // /card — printable business card for Pierre Emmanuel Moulin
 // Two cards per sheet (front + back), print-optimised.
-// QR code generated via free qrserver.com API — no key needed.
+// QR code drawn on the server (`qrcode` package) and fonts from the site's own `next/font` (app/layout.tsx):
+// nothing is fetched from another host (legal A.2 n° 6).
 
 import type { Metadata } from 'next'
-import Image from 'next/image'
+import QRCode from 'qrcode'
 import { dict } from '@/lib/i18n/dictionary'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 
@@ -11,22 +12,28 @@ export const metadata: Metadata = routeMetadata('card', 'en')
 
 const PUBLIC_WORKS_URL = 'https://pem-hub.vercel.app/works'  // update when deployed
 const EMAIL = process.env.PUBLIC_CONTACT_EMAIL?.trim() ?? ''
-const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PUBLIC_WORKS_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
+/** Same look as the old qrserver.com image: light modules on the card's black, 160 px, quiet border. */
+function qrDataUrl(): Promise<string> {
+  return QRCode.toDataURL(PUBLIC_WORKS_URL, {
+    width: 160,
+    margin: 2,
+    errorCorrectionLevel: 'M',
+    color: { dark: '#ece7daff', light: '#0a0a0bff' },
+  })
+}
 
-export default function CardPage() {
+export default async function CardPage() {
+  const qrSrc = await qrDataUrl()
   return (
     <html lang="fr">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet" />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             background: #f5f0e8;
-            font-family: 'Sofia Sans', ui-sans-serif, system-ui, sans-serif;
+            font-family: var(--font-ui);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -67,7 +74,7 @@ export default function CardPage() {
             gap: 8mm;
           }
           .name {
-            font-family: 'Instrument Serif', Georgia, serif;
+            font-family: var(--font-serif);
             font-size: 18pt;
             line-height: 1.05;
             letter-spacing: -0.02em;
@@ -103,7 +110,7 @@ export default function CardPage() {
           }
           .accent { color: #c8a86e; }
           .monogram {
-            font-family: 'Instrument Serif', Georgia, serif;
+            font-family: var(--font-serif);
             font-size: 28pt;
             color: #c8a86e;
             line-height: 1;
@@ -128,7 +135,7 @@ export default function CardPage() {
             flex: 1;
           }
           .back-name {
-            font-family: 'Instrument Serif', serif;
+            font-family: var(--font-serif);
             font-size: 13pt;
             color: #ece7da;
             line-height: 1.1;
@@ -195,8 +202,8 @@ export default function CardPage() {
           {/* BACK */}
           <div className="card card-back">
             <div className="qr-wrap">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <Image src={QR_URL} alt="QR code — portfolio" width={80} height={80} unoptimized={true} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- inline data URL made on the server */}
+              <img src={qrSrc} alt="QR code — portfolio" width={80} height={80} />
               <div className="qr-label">Portfolio</div>
             </div>
             <div className="back-text">

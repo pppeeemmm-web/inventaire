@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Website legal pages, A.2 part 1 (Pem « public website legal to start »)
+
+- Visitor ID renewed after 13 months; Vercel Analytics removed; « Ne pas être compté·e » on About and Practice (no page view is counted from that browser); fonts and the /card QR served by the site itself (no Google Fonts, no qrserver), CSP narrowed.
+- Retention: `supabase/sql/retention_page_view_inquiry.sql` (NOT applied — Pem's OK, dry-run count first) + monthly cron `/api/cron/retention`.
+- Flow review run; legal + AI docs updated by the lead.
+
 ## 2026-11-18 — Six small slips from the stress test (Pem « go », TODO §3)
 
 - Supply orders: « Reçue en partie » when something came in but no line is complete; a new line pre-fills « Prix HT » with the item's last price paid.

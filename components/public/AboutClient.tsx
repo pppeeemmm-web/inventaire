@@ -3,10 +3,10 @@
 import { useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
+import CountOptOutLink from './CountOptOutLink'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock, Block } from '@/lib/portfolio-config-types'
-import { trackView } from '@/lib/track'
-import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import { trackPublicView } from '@/lib/track-public'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 // Block registry: imports `lib/site-blocks/index` (the barrel) so all
@@ -38,7 +38,7 @@ export default function AboutClient({
   const { t, lang } = useI18n()
 
   useEffect(() => {
-    void trackView('/about', null, null, getOrCreatePublicVisitorId())
+    trackPublicView('/about')
   }, [])
 
   const hidden = useMemo(
@@ -185,6 +185,8 @@ export default function AboutClient({
 
       <footer className="a-footer">
         &copy; {new Date().getFullYear()} the pem workshop
+        <span aria-hidden> · </span>
+        <CountOptOutLink />
       </footer>
     </>
   )

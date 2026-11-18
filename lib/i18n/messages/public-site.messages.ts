@@ -31,4 +31,16 @@ export const publicSiteMessages = defineMessages({
   enquiry_kicker_instagram: { fr: 'INSTAGRAM', en: 'INSTAGRAM' },
 
   pub_og_image_alt: { fr: 'Une œuvre de l’atelier', en: 'A work from the studio' },
+
+  // Audience counting opt-out (legal A.2 n° 5): footer link until the cookie page exists.
+  pub_count_optout: { fr: 'Ne pas être compté·e', en: 'Don’t count me' },
+  pub_count_optout_title: {
+    fr: 'Le site compte les visites pour lui seul, sans cookie publicitaire. Ce lien arrête le comptage dans ce navigateur.',
+    en: 'The site counts visits for itself only, with no advertising cookie. This link stops the counting in this browser.',
+  },
+  pub_count_optout_on: { fr: 'Visites non comptées · Annuler', en: 'Visits not counted · Undo' },
+  pub_count_optout_on_title: {
+    fr: 'Ce navigateur n’est pas compté. Cliquer pour être compté·e à nouveau.',
+    en: 'This browser is not counted. Click to be counted again.',
+  },
 })

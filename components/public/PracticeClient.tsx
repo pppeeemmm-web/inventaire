@@ -3,10 +3,10 @@
 import { useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
+import CountOptOutLink from './CountOptOutLink'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
-import { trackView } from '@/lib/track'
-import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import { trackPublicView } from '@/lib/track-public'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 import { WorksSectionTextCard } from './WorksSectionTextCard'
@@ -38,7 +38,7 @@ export default function PracticeClient({
   const { t, lang } = useI18n()
 
   useEffect(() => {
-    void trackView('/practice', null, null, getOrCreatePublicVisitorId())
+    trackPublicView('/practice')
   }, [])
 
   const hidden = useMemo(
@@ -152,6 +152,8 @@ export default function PracticeClient({
 
       <footer className="p-footer">
         &copy; {new Date().getFullYear()} the pem workshop
+        <span aria-hidden> · </span>
+        <CountOptOutLink />
       </footer>
     </>
   )

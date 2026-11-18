@@ -5,8 +5,7 @@ import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
-import { trackView } from '@/lib/track'
+import { trackPublicView } from '@/lib/track-public'
 import {
   DEFAULT_NAV_ORDER,
   landingInlineNavRoutes,
@@ -154,7 +153,7 @@ export default function LandingPage({
     : 'min(80vw, 80vh, 1200px)'
 
   useEffect(() => {
-    void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
+    trackPublicView('/', document.referrer || null)
   }, [])
 
   // §4.5 — a11y knobs: high contrast on the html root. The text-size zoom is NOT applied here (Pem

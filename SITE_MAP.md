@@ -197,6 +197,7 @@ Desktop sidebar (`TeamPortalClient` `GROUPS`, Pem 2026-11-14; verified 2026-11-1
 | Route | Auth | Purpose |
 |-------|------|---------|
 | `POST` | Bearer `CRON_SECRET` | [`app/api/cron/return-window/route.ts`](app/api/cron/return-window/route.ts) — counts delivered sale orders (`work_order`) whose 14-day return period ended (cooling-off; sold works stay « Vendu ») |
+| `GET` (Vercel cron, monthly — `vercel.json`) / `POST` | Bearer `CRON_SECRET` | [`app/api/cron/retention/route.ts`](app/api/cron/retention/route.ts) — legal retention (A.2 n° 3): calls `retention_page_view_inquiry()` ([`supabase/sql/retention_page_view_inquiry.sql`](supabase/sql/retention_page_view_inquiry.sql), service role only): page views > 25 months, enquiries > 3 years with no follow-up (contact email, order, kit sent to a contact or still live); a route because a scheduler calls it |
 | `GET` | Supabase session cookie (2026-11-13; was open) | [`app/api/geocode/route.ts`](app/api/geocode/route.ts) — geocoding helper for the Atelier map |
 | `GET` | Supabase session cookie | [`app/api/field-weather/route.ts`](app/api/field-weather/route.ts) — Open-Meteo current conditions proxy for field sessions (`latitude` / `longitude` query) |
 | `GET` | `is_admin()` session | [`app/api/export/csv/route.ts`](app/api/export/csv/route.ts) — Slice 7 graph CSV export (`?view=entity` \| `edge_fact`; UTF-8 BOM) |

@@ -32,9 +32,12 @@ function originOf(raw: string | undefined): string {
  * on the live site as admin — work panel + full image, Expositions, Commandes, hub, Journal + audio, Carte Création,
  * /works; Vault, PDF preview, Constellation on 11-16). A source not listed here is now blocked: add it here first.
  * Every source the site loads, listed from the code:
- * Supabase (REST + realtime), R2 public images + signed uploads/previews, Google fonts (portal / card / selection
- * export), Leaflet CSS + marker icons (unpkg) + OpenStreetMap tiles (Carte), address lookups (api-adresse,
- * zippopotam) in the contact editor, the QR image on /card, Vercel analytics (same origin in prod).
+ * Supabase (REST + realtime), R2 public images + signed uploads/previews, Leaflet CSS + marker icons (unpkg) +
+ * OpenStreetMap tiles (Carte), address lookups (api-adresse, zippopotam) in the contact editor.
+ * Removed 2026-11-18 (legal A.2 n° 4 / 6): Vercel Analytics (va.vercel-scripts.com, vitals.vercel-insights.com),
+ * Google fonts (fonts.googleapis.com / fonts.gstatic.com — portals, /card and the selection export now use the
+ * site's own fonts: `next/font` in app/layout.tsx, `public/fonts/` for the export file), the QR image service
+ * on /card (api.qrserver.com — drawn on the server with `qrcode`).
  * Next.js inline scripts need 'unsafe-inline' (no nonce yet); dev also needs 'unsafe-eval'.
  * Not yet seen live under it: an image upload, the contact address lookup (both sources are listed).
  */
@@ -43,15 +46,15 @@ const r2Origin = originOf(process.env.NEXT_PUBLIC_R2_PUBLIC_URL)
 const isDev = process.env.NODE_ENV === 'development'
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://va.vercel-scripts.com`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  `img-src 'self' data: blob: ${r2Origin} ${supabaseOrigin} https://*.tile.openstreetmap.org https://unpkg.com https://api.qrserver.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline' https://unpkg.com",
+  "font-src 'self' data:",
+  `img-src 'self' data: blob: ${r2Origin} ${supabaseOrigin} https://*.tile.openstreetmap.org https://unpkg.com`,
   `media-src 'self' data: blob: ${r2Origin}`,
-  // The service worker fetches cross-origin files itself (Serwist's default rules: any .png, Google fonts, …), and
-  // inside the worker that is `connect-src`, not img-src / font-src: the map tiles, Google fonts and the QR image
-  // must be listed here too, or the worker's fetch is blocked (map tiles blank on the live site, 2026-11-18).
-  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, 'wss:')} ${r2Origin} https://*.r2.cloudflarestorage.com https://api-adresse.data.gouv.fr https://api.zippopotam.us https://vitals.vercel-insights.com https://*.tile.openstreetmap.org https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.qrserver.com${isDev ? ' ws: wss:' : ''}`,
+  // The service worker fetches cross-origin files itself (Serwist's default rules: any .png, …), and inside the
+  // worker that is `connect-src`, not img-src: the map tiles must be listed here too, or the worker's fetch is
+  // blocked (map tiles blank on the live site, 2026-11-18).
+  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, 'wss:')} ${r2Origin} https://*.r2.cloudflarestorage.com https://api-adresse.data.gouv.fr https://api.zippopotam.us https://*.tile.openstreetmap.org https://unpkg.com${isDev ? ' ws: wss:' : ''}`,
   `frame-src 'self' blob: ${r2Origin} https://*.r2.cloudflarestorage.com`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
@@ -108,6 +111,11 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Content-Security-Policy', value: csp },
         ],
+      },
+      {
+        // The selection export (a standalone HTML file, often opened from disk) loads its fonts from here.
+        source: '/fonts/:path*',
+        headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }],
       },
     ]
   },

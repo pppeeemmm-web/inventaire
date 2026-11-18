@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { trackView } from '@/lib/track'
-import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import { trackPublicView } from '@/lib/track-public'
 import PublicNav from './PublicNav'
 import WorksModeGallery from './WorksModeGallery'
 import { WorksRenderCtx } from '@/lib/site-blocks/works_modes/WorksRenderCtx'
@@ -43,7 +42,7 @@ export default function WorksClient({
   const modeMap = useMemo(() => new Map(safeModes.map(m => [m.id, m])), [safeModes])
 
   useEffect(() => {
-    void trackView('/works', null, null, getOrCreatePublicVisitorId())
+    trackPublicView('/works')
   }, [])
 
   const activeMode = safeModes[0]

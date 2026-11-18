@@ -23,6 +23,10 @@ interface Props {
   userName?: string
 }
 
+/**
+ * Fonts: Sofia Sans + Instrument Serif come from `app/layout.tsx` (`next/font`, served by this site —
+ * `--font-ui` / `--font-serif`); nothing is fetched from Google (legal A.2 n° 6).
+ */
 export default function PortalLayout({ title, subtitle, works, userName }: Props) {
   const { t } = useI18n()
   return (
@@ -37,7 +41,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#b0aca6' }}>{title}</div>
-          <div className="serif" style={{ fontFamily: 'Instrument Serif, serif', fontSize: 20, color: '#3a3834' }}>{subtitle}</div>
+          <div className="serif" style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: '#3a3834' }}>{subtitle}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ fontSize: 9, letterSpacing: 1, color: '#b0aca6' }}>{t('portal_connected_as')} {userName}</div>
@@ -68,7 +72,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                   <div className="serif" style={{ fontFamily: 'Instrument Serif, serif', fontSize: 18, color: '#3a3834', lineHeight: 1.2 }}>{w.Titre || 'Sans titre'}</div>
+                   <div className="serif" style={{ fontFamily: 'var(--font-serif)', fontSize: 18, color: '#3a3834', lineHeight: 1.2 }}>{w.Titre || 'Sans titre'}</div>
                    <div style={{ fontSize: 9, letterSpacing: 1.5, color: '#b0aca6', display: 'flex', gap: 12 }}>
                      <span>{yearOf(w.Année)}</span>
                      <span>{w.Hauteur}x{w.Largeur}{w.Profondeur ? `x${w.Profondeur}` : ''} cm</span>
@@ -92,8 +96,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
       </footer>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap');
-        .serif { font-family: 'Instrument Serif', serif; }
+        .serif { font-family: var(--font-serif); }
       `}</style>
     </div>
   )

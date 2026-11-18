@@ -23,7 +23,6 @@ The **public website** (`/`, `/works`, `/about`, `/practice`, `/enquiry`, the co
 
 - **Colour families** of a picture (Inventory → Couleurs): computed pixel by pixel ([`lib/image-palette.ts`](../lib/image-palette.ts)).
 - **« Revoir »** picks: a seeded random draw per day.
-- **Vercel Analytics**: page-view counts.
 
 ## What leaves Pem's machines
 

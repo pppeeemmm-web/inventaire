@@ -7,7 +7,6 @@ import { ThemePathSync } from '@/components/ThemePathSync'
 import { ToastHost } from '@/components/ui/ToastHost'
 import { RouteProgress } from '@/components/ui/RouteProgress'
 import { NumberWheelGuard } from '@/components/ui/NumberWheelGuard'
-import { Analytics } from '@vercel/analytics/react'
 
 const instrumentSerif = Instrument_Serif({
   weight: '400',
@@ -114,8 +113,6 @@ export default function RootLayout({
         </I18nProvider>
         <ToastHost />
         <NumberWheelGuard />
-        {/* Only on Vercel deployments — avoids 404 + console noise on localhost */}
-        {process.env.VERCEL === '1' ? <Analytics /> : null}
       </body>
     </html>
   )

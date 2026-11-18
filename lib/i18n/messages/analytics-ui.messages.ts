@@ -30,8 +30,8 @@ export const analyticsUiMessages = defineMessages({
     en: 'Sources (net)',
   },
   analytics_data_footnote: {
-    fr: 'page_view · agrégats net uniquement · id visiteur = localStorage (site public) · UTC',
-    en: 'page_view · net aggregates only · visitor id = public-site localStorage · UTC',
+    fr: 'page_view · agrégats net uniquement · id visiteur = localStorage (site public), renouvelé après 13 mois : un visiteur qui revient compte comme nouveau une fois par an · vues gardées 25 mois · UTC',
+    en: 'page_view · net aggregates only · visitor id = public-site localStorage, renewed after 13 months: a returning visitor counts as new once a year · views kept 25 months · UTC',
   },
   analytics_sparkline_point_title_fmt: {
     fr: '{date} · {views} vues net',
