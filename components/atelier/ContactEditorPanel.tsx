@@ -191,6 +191,8 @@ export type ContactEditorPanelProps = {
   onTeamAccessUpdated?: (patch: Pick<ContactRow, 'ContactID' | 'is_team_member' | 'auth_user_id' | 'Email'>) => void
   /** Bump after successful save (same contact) so dirty baseline resets */
   baselineEpoch: number
+  /** Fill the parent (a pop-up) instead of sizing as the Contacts tab's side panel. */
+  fill?: boolean
 }
 
 export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEditorPanelProps>(
@@ -213,6 +215,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       onDeleteContact,
       onTeamAccessUpdated,
       baselineEpoch,
+      fill = false,
     },
     ref,
   ) {
@@ -655,7 +658,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             height: '100%',
             minHeight: 0,
             minWidth: 0,
-            flex: narrow ? 'none' : '0 0 min(420px, 42vw)',
+            flex: fill ? '1 1 auto' : narrow ? 'none' : '0 0 min(420px, 42vw)',
             width: narrow ? '100%' : undefined,
             maxWidth: narrow ? '100%' : undefined,
             background: 'var(--bg1)',

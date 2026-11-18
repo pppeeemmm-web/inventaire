@@ -118,7 +118,7 @@ export function ContactQuickModal({
           width: '100%',
           maxWidth: narrow ? undefined : 760,
           height: narrow ? '100dvh' : 'min(88vh, 900px)',
-          overflowY: 'auto',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           paddingTop: narrow ? 'env(safe-area-inset-top, 0px)' : 0,
@@ -145,9 +145,13 @@ export function ContactQuickModal({
               setData((d) => (d ? { ...d, contact: c, addresses: addrs, emails: e, phones: p, websites: w, socials: s } : d))
               setEpoch((n) => n + 1)
               onSaved(c)
+              // Saved: say so and close (it stayed open with no sign it had saved — stress test 2026-11-18).
+              toast.success(t('cq_saved'))
+              onClose()
             }}
             onDismissEditor={onClose}
             baselineEpoch={epoch}
+            fill
           />
         ) : (
           <div className="t-mono-sm" style={{ padding: 24, color: 'var(--tx3)' }}>

@@ -9,6 +9,7 @@ export const accountMessages = defineMessages({
   cq_title: { fr: 'Fiche contact', en: 'Contact card' },
   cq_loading: { fr: 'Chargement du contact…', en: 'Loading contact…' },
   cq_not_found: { fr: 'Contact introuvable.', en: 'Contact not found.' },
+  cq_saved: { fr: 'Contact enregistré', en: 'Contact saved' },
   // Production board drag-back (Production.tsx).
   prod_drag_forward_tick: {
     fr: 'Vers Photographie : utilisez ✓ sur la carte (avancer passe par ✓).',
