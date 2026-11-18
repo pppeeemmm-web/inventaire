@@ -13,7 +13,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark default. color-scheme lives here, before the light / standard blocks (same weight): a later
+   `:root { color-scheme: dark }` overrode them, so native checkboxes, audio players, date fields and
+   scrollbars drew dark on light pages (stress test 2026-11-18). */
 :root {
+  color-scheme: dark;
   --bg0: #080809;
   --bg1: #101011;
   --bg2: #19191b;
@@ -98,7 +102,6 @@ html[data-theme='standard'] .t-mono    { font-size: 15px; }
 html[data-theme='standard'] .t-mono-md { font-size: 17px; }
 
 :root {
-  color-scheme: dark;
   --font-ui: var(--font-sofia-next), 'Sofia Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif: var(--font-instrument-next), 'Instrument Serif', 'Didot', Georgia, serif;
   --font-mono: var(--font-ui);
