@@ -1,5 +1,6 @@
--- NOT APPLIED. Theme notes (TODO 23, Pem 2026-11-18: « go »). Run only on Pem's own OK, after Pem has read the
--- before / after list below.
+-- APPLIED 2026-11-18 (live migration `theme_notes`, all three parts incl. the 4 renames; Pem « go » after reading
+-- the before / after list). Checked after: 4 rows moved as listed; anon reads id + name, notes → 42501.
+-- Theme notes (TODO 23, Pem 2026-11-18: « go »).
 --
 -- Why: `public.theme` has only `id, name`, so Pem writes the explanation into the name. On 2026-11-18,
 -- 4 of the 28 names were over 40 characters (longest 166). This adds a `notes` text field so names stay short.
