@@ -24,11 +24,10 @@ Things only you can do:
 
 ## 2. Rethink leftovers → [RETHINK](./RETHINK_2026-11-14.md)
 
-R1–R7 built and pushed (history → [DONE](./DONE.md)).
+R1–R7 built and pushed (history → [DONE](./DONE.md)); R6 events live, only editions part 2 left. R8 parked (§5).
 
 - [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy (Pem « if necessary, go »).
 - [ ] R6: editions part 2 — at the first real edition.
-- [ ] R8. **Public site** → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md): after your look decisions — one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; needs SQL + design + GO).
 
 ## 3. To build — needs a GO
 
@@ -37,8 +36,8 @@ Trace
 - [ ] 1c. Voice notes over one upload (~4 MB) or recorded offline — only if you hit it twice → [notes](./TODO_NOTES.md#voice-limits)
 
 Value
-- [ ] 9. Custody follow-ups (custodian address on an order; a cancelled sale of a consigned work goes back to the gallery) — written before R7, re-check against the new orders → [notes](./TODO_NOTES.md#custody)
-- [ ] 10. « Paid » on a work derived from its payments (still hand-editable) → [notes](./TODO_NOTES.md#money)
+- [ ] 9. Custody follow-ups (custodian address on an order; a cancelled sale of a consigned work goes back to the gallery) — written before R7, re-check against the new orders → [notes](./TODO_NOTES.md#custody) **GO 2026-11-18 — building in session paid-custody**
+- [ ] 10. « Paid » on a work derived from its payments (still hand-editable) → [notes](./TODO_NOTES.md#money) **GO 2026-11-18 — building in session paid-custody**
 - [ ] 11e. Batch scan of dockets: iPhone scans → a folder on the PC → a PC batch proposes each expense / supply purchase to confirm, scan kept in Vault « Factures » (needs the OCR GO, §1) → [notes](./TODO_NOTES.md#docket-scan)
 
 Public site
@@ -49,7 +48,7 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Speed and code health — measure first
+Speed and code health — measure first (**17–19 GO 2026-11-18 — measuring in session speed-measure**)
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
 - [ ] 18. The full catalogue still loads in the background on every Atelier tab · Reports on keyset totals · one status-label layer
 - [ ] 19. Slow first open of Audit / Logistics · fewer silent catches (~258, lint warns). Phone JS budget is in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
@@ -86,7 +85,7 @@ Older, still unseen live
 
 ## 5. Parked — no GO
 
-- R8 look decisions (A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md)) and so the R8 build (§2) — Pem 2026-11-18: « skip r8 for now ».
+- R8 public site (Pem 2026-11-18: « skip r8 for now »): look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; SQL + design + GO) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md).
 - Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied) — Pem « not sure » 2026-11-18.
 - VAT per sale, from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library, another system, another time → [notes](./TODO_NOTES.md#phototheque)
