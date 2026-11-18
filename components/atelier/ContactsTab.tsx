@@ -586,8 +586,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   async function handleQuickAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    // React clears `e.currentTarget` once the handler awaits: keep the form to reset it after the save.
+    const form = e.currentTarget
     setQuickBusy(true)
-    const fd = new FormData(e.currentTarget)
+    const fd = new FormData(form)
     const res = await saveContactWithConflictCheck(fd)
     setQuickBusy(false)
     if ('error' in res) {
@@ -595,7 +597,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return
     }
     toast.success(t('saveDoneUndoHint'))
-    e.currentTarget.reset()
+    form.reset()
     refreshContactsClientData()
     window.setTimeout(() => setActiveId(res.id), 500)
   }
@@ -872,7 +874,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                   try {
                     const res = await mergeContacts(mergeKeepId, fromId)
                     if ('error' in res) {
-                      toast.error(`${t('error_prefix')} ${res.error}`)
+                      const msg =
+                        res.error === 'merge_invoices' ? t('contacts_merge_err_invoices')
+                        : res.error === 'merge_both_invoiced' ? t('contacts_merge_err_both_invoiced')
+                        : `${t('error_prefix')} ${res.error}`
+                      toast.error(msg)
                       return
                     }
                     setContacts((prev) => prev.filter((c) => c.ContactID !== fromId))

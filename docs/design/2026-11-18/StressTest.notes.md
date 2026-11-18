@@ -268,6 +268,64 @@ IPv6 too; the test scripts' Flight parser reads large text chunks (labels / PDFs
 - Harness: the copy's `next start` died twice today with Windows code 0xC0000409 (native crash, likely the image library on
   Windows), not killed from outside as first thought. Production runs on Linux; noted only.
 
+## Sales, Contacts, phone Journal clicked through (2026-11-18 night, Pem « stress test to continue »)
+
+Copy brought to main `26c2e23` (`ai_job.sql`, `order_race_guards_revoke.sql` applied to it), production build of the worktree,
+Playwright driving the real screens (not the actions) as the fake admin and team member at 1280 and 375 px. Scripts:
+`scripts/stress/sweep.mjs` (19 pages × 2 roles × 2 widths: errors, failed requests, sideways scroll, controls past the edge,
+small taps), `pw.mjs` (helpers), `verify-contacts-fixes.mjs`, `verify-contacts-merge-refused.mjs`, `phone-journal.mjs`;
+screenshots in `scripts/stress/dump/` (gitignored). Agents' areas (contacts delete / privacy, approvals, rejection reason,
+works bin) only looked at, not fixed.
+
+**Held up**
+- Page sweep: Contacts, Commandes, phone sale, Journal, Bureau IA, field inbox / session / card capture / triage / scan /
+  documents / issue / new work, `/hub`, `/hub/fil` — all 200, no console error, no failed request, no sideways scroll, both roles.
+  Team on `/atelier/ai`: « Réservé aux administrateurs ».
+- Desktop sale through the screens (#1189): « Créer le brouillon », « Marquer signée », « Enregistrer le paiement »,
+  « Émettre la facture » each **double-clicked**: 1 draft, 1 signature + 1 shipment, 1 payment (150 € then 300 €), 1 certificate,
+  1 invoice (asks first); « Encaisser » gone once paid; work Vendu to the buyer.
+- Phone « Encaisser une vente » (375): unpaid → draft; paid in full and taken away (#1147) → « Livrée », 1 payment, work Vendu;
+  double tap → one order.
+- Phone « Écrire » (admin and team): double tap → one entry, linked to `#1189` only (`#99999` ignored), dated today; written from
+  the previous day (‹) → dated that day; ☰ search « #1189 » opens the card; « Plus tard » swaps the work to review and it stays
+  swapped after a reload.
+- Bureau IA tables (as team / outside account, through RLS): no « voice » job, no job with a result, no `ai_agent` write; team can
+  queue only a « card » job (by design; the payload is free text — the phase-3 agent should accept only a `cards/` Vault key).
+
+**Bugs — fixed here (local draft, uncommitted)**
+1. **Phone contact « Ajout rapide » crashed after saving** (`e.currentTarget` is null after the `await`): the contact was saved but
+   the form kept its text, the list did not refresh, the card did not open — a second tap made a second copy. Fix: keep the form
+   before the await (`ContactsTab.tsx`). Verified: one tap → one contact, no page error, card opens.
+2. **Merging two contacts lost or split data** (`mergeContacts`):
+   - a buyer who owns a sold work could not be merged away: the works moved before the orders, so the holder check refused
+     (« Erreur : Oeuvres.ContactID: paid_sale_required », raw);
+   - past that, the merge stopped half-way when the merged-away contact had an invoice (FK restrict, and an issued invoice is
+     frozen by the DB): works, orders, shipment, address moved; both contacts left, the invoice, share kit and exhibition role on
+     the old one; a supply order did the same;
+   - when it did finish, it silently deleted the contact's exhibition roles (`event_contact`, FK cascade) and cut its share kit
+     (`private_link`, set null) — answered « ok ».
+   Fix (`contacts/actions.ts`, `ContactsTab.tsx`, 2 FR + EN messages): orders move first, then works (the holder check then
+   passes for the right reason); supply orders, share kits, page views and exhibition roles follow (a role both had is kept once);
+   a contact with invoices can only be the kept one — refused before any write with « Ce contact a des factures : gardez-le… »
+   (both invoiced → impossible). Verified: #104 (invoice) merged away → refused, nothing moved; #1004 (7 sold works, 11 orders,
+   a shipment, a supply order, a kit, 2 roles) merged into #104 → done, everything on #104, roles « invité, prêteur ».
+3. **Journal text cut without a word**: 25 000 characters typed → 20 000 saved, toast « Écrit enregistré ». Fix: both text boxes
+   (phone « Écrire », Journal form) stop at 20 000 (`maxLength`, the server's cap). Not re-run on the copy (attribute only).
+
+**Open (for TODO, not fixed)**
+- Merge is still several separate writes, not one transaction: any other failure half-way leaves a split pair. A SQL function
+  (one transaction, team check) would close it — needs Pem's OK.
+- Contacts: adding a contact with the same name and email as an existing one gives no warning (manual / quick add; only the
+  Google import checks).
+- Contacts at 375: the search box is 42 px wide (« Rech »); the list is the desktop table (Rôle visible, email / city cut).
+- Phone sale, buyer step: one long `<select>` of every contact — no search, no « + nouveau contact » (desktop has both); it
+  offers Pem himself, the team accounts and a nameless « #1002 »; the price / payment fields have no linked labels.
+- « Commandes » sidebar badge 179 vs list « Toutes » 187: the badge leaves out the 8 « reconstituted » open orders.
+- Order list at 1280 with the panel open: the « Papiers » column is cut (« PAPI »).
+- Phone `/hub` chips « 0 Fil », « 1 Inbox » are 24–41 × 32 px; field session « Retirer la photo » / « Supprimer cette photo » 28 × 28.
+- Phone Journal day card lists the same work twice (« Œuvre test 1196 · #1196 Œuvre test 1196 » two times).
+- Copy harness: `next start` crashed again (0xC0000409) — a restart loop kept the runs going.
+
 ## Proposals, ranked
 
 1. **Guard the money in the database (B1, B2, B3).** A unique partial index or trigger: at most one live sale line (signed → delivered) per work; `recordOrderPayment` and `receive_supply_order` as one SQL function each that locks the order row (`for update`), checks the remaining amount / quantity and writes step + payment together; disable the button while the call runs.

@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Stress test round 2: Sales, Contacts, phone Journal (side session, Docker copy)
+
+- Phone contact « Ajout rapide » crashed after saving (form kept its text, second tap = duplicate) — fixed.
+- Contact merge: orders move before works (a buyer of a sold work can now be merged away); supply orders, share kits, page views and exhibition roles follow; a contact with invoices can only be the kept one, refused before any write.
+- Journal text cut at 20,000 characters without a word — the boxes now stop at 20,000.
+- Held: 19 pages × admin / team × 1280 / 375 with no error or sideways scroll; double-clicks on draft / sign / pay / invoice make one of each; Bureau IA RLS for team and outsider. Details: [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md).
+
 ## 2026-11-18 — Deleting a contact no longer loses its addresses (TODO §0)
 
 - `deleteContacts` checks first (works owned / held, shipments, orders, invoices, supply orders, a login) and deletes nothing when one is linked, with a message naming what holds it; otherwise one delete, child rows by cascade.

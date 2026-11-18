@@ -89,4 +89,12 @@ export const contactsUiMessages = defineMessages({
     fr: 'Ajoutez un e-mail avant d’inviter.',
     en: 'Add an email before inviting.',
   },
+  contacts_merge_err_invoices: {
+    fr: 'Ce contact a des factures : gardez-le, c’est l’autre qui doit disparaître (une facture émise ne change jamais de destinataire).',
+    en: 'This contact has invoices: keep it and merge the other one into it (an issued invoice never changes hands).',
+  },
+  contacts_merge_err_both_invoiced: {
+    fr: 'Les deux contacts ont des factures : la fusion est impossible (une facture émise ne change jamais de destinataire).',
+    en: 'Both contacts have invoices: they can’t be merged (an issued invoice never changes hands).',
+  },
 })

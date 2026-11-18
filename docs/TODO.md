@@ -39,7 +39,7 @@ Leftovers are in §3, R8 in §5.
 
 Admin
 - [ ] Any team member can restore any work from the bin (`restoreSoftDeletedWorks`), even a sold or given one an admin binned: gate it like the delete.
-- [ ] Merging contacts fails half-way when the removed contact has an invoice or a supply order (`mergeContacts` never moves `invoice.party_id` / `supply_order.supplier_id`; no transaction); it also drops its event links.
+- [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
 
 Contacts and Vault
 - [ ] Contacts tab review (design first): sort by family name everywhere; family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is not refreshed by Contacts edit / merge / delete (Inventory, work overlay, Curation dock, Compare stay stale until reload); one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).
@@ -60,6 +60,12 @@ Public site
 Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
 - [ ] Overview « Commandes · n envois à faire » counts boxes already shipped (`overview-business-actions.ts` uses the sidebar's all-unfinished count; « à faire » = not shipped, delivered or cancelled). Phone and desktop Journal disagree on a day item with no work yet (phone skips it).
+- [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).
+- [ ] Contacts at 375: search box 42 px wide; the list is the desktop table (Contacts review phase 1).
+- [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
+- [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
+- [ ] Phone: /hub chips « Fil » / « Inbox » 32 px tall; field session photo ✕ 28 px; the Journal day card lists the same work twice.
+- [ ] Bureau IA phase 3: the agent must accept only a `cards/` Vault key in a « card » job (the team can queue one with any payload, by design).
 
 Rethink leftovers
 - [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy.

@@ -1,0 +1,23 @@
+// A contact with invoices can only be the one kept: merging it away is refused before any write (LOCAL copy).
+import { signedIn, go, shot, toasts, browser } from './pw.mjs';
+import { psql } from './seed.mjs';
+const Y = psql(`insert into "Contact" ("Prénom","Nom") values ('Alex','Collector05') returning "ContactID"`).split('\n')[0];
+const snap = () => psql(`select (select count(*) from "Oeuvres" where "ContactID"=104)||'/'||(select count(*) from work_order where party_id=104)||'/'||(select count(*) from "Contact" where "ContactID" in (104,${Y}))`);
+const s0 = snap();
+const page = await signedIn('admin');
+await go(page, '/atelier/contacts');
+await page.locator('input[placeholder^="Rechercher"]').first().fill('Collector05');
+await page.waitForTimeout(800);
+const row = (id) => page.locator('tr').filter({ has: page.locator('td', { hasText: new RegExp(`^${id}$`) }) }).first();
+await row(104).locator('input[type=checkbox]').check();
+await row(Y).locator('input[type=checkbox]').check();
+await page.getByRole('button', { name: /^Fusionner$/i }).first().click();
+const dlg = page.locator('[aria-labelledby=merge-title]');
+await dlg.locator('input[name=merge-keep]').nth(1).check();
+await dlg.locator('button', { hasText: /^Fusionner$/i }).click();
+const msg = await page.getByText(/factures/).first().textContent({ timeout: 8000 }).catch(() => '(no message)');
+await shot(page, 'vc4-merge-refused');
+console.log(`${/gardez-le/.test(msg) && snap() === s0 ? 'ok  ' : 'FAIL'} merging away #104 (invoiced) into new #${Y} refused before any write — « ${msg.trim()} »; works/orders/contacts ${s0} → ${snap()}`);
+console.log('errors', page.errs);
+psql(`delete from "Contact" where "ContactID"=${Y}`);
+await browser.close();

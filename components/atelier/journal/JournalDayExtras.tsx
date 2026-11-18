@@ -693,6 +693,8 @@ export function JournalDayExtras({
               data-testid="journal-entry-body"
               rows={4}
               value={body}
+              // Same cap as `createJournalEntry` (MAX_BODY): the box stops there instead of the save cutting the text unseen.
+              maxLength={20_000}
               placeholder={t('je_body_placeholder')}
               onChange={(ev) => setBody(ev.target.value)}
               style={{ fontSize: 16, width: '100%', boxSizing: 'border-box' }}

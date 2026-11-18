@@ -93,6 +93,8 @@ export function DayWriteSheet({ day, initialText = '', onClose }: { day: string;
           data-testid="day-write-body"
           rows={5}
           value={body}
+          // Same cap as `createJournalEntry` (MAX_BODY): the box stops there instead of the save cutting the text unseen.
+          maxLength={20_000}
           placeholder={t('je_body_placeholder')}
           aria-label={t('je_body_label')}
           onChange={(e) => setBody(e.target.value)}

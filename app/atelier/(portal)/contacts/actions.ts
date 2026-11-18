@@ -357,6 +357,15 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
     }
   }
 
+  // An issued invoice never changes hands (DB `invoice_frozen`, FK restrict): the contact with invoices must be the one
+  // kept. Checked before any write, so a refused merge leaves both contacts as they were (stress test 2026-11-18).
+  const [loseInv, keepInv] = await Promise.all([
+    svc.from('invoice').select('id', { count: 'exact', head: true }).eq('party_id', fromId),
+    svc.from('invoice').select('id', { count: 'exact', head: true }).eq('party_id', intoId),
+  ])
+  if (loseInv.error || keepInv.error) return { error: (loseInv.error ?? keepInv.error)!.message }
+  if ((loseInv.count ?? 0) > 0) return { error: (keepInv.count ?? 0) > 0 ? 'merge_both_invoiced' : 'merge_invoices' }
+
   const mergedScalars = mergeContactScalars(keepRow as Record<string, unknown>, loseRow as Record<string, unknown>)
   delete (mergedScalars as { ContactID?: number }).ContactID
 
@@ -372,17 +381,25 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
   const { error: mergeErr } = await svc.from('Contact').update(mergedScalars).eq('ContactID', intoId)
   if (mergeErr) return { error: mergeErr.message }
 
-  /** Base tables only — `exhibition` is a view on `suivi_process` and must not be updated via PostgREST. */
+  /** Base tables only — `exhibition` is a view on `suivi_process` and must not be updated via PostgREST.
+   *  Orders move BEFORE the works: the holder check (`oeuvre_holder_check`) lets a sold / given / consigned work change
+   *  owner or custodian only to someone with the matching order, so the kept contact must hold the orders first
+   *  (stress test 2026-11-18: merging a buyer failed with « paid_sale_required »). */
   const fkRefs: { table: string; col: string }[] = [
+    { table: 'work_order', col: 'party_id' },
     { table: 'Oeuvres', col: 'ContactID' },
     { table: 'Oeuvres', col: 'LocalisationID' },
     { table: 'Oeuvres', col: 'AcheteurID' },
     { table: 'suivi_process', col: 'contact_id' },
     { table: 'document', col: 'contact_id' },
-    { table: 'work_order', col: 'party_id' },
     { table: 'expense', col: 'contact_id' },
     { table: 'shipment', col: 'to_contact_id' },
     { table: 'stock_item', col: 'supplier_id' },
+    // Stress test 2026-11-18: these were missing — supply_order (FK restrict) made the final delete fail after everything
+    // else had moved; private_link / page_view (FK set null) lost their contact. event_contact below; invoices checked above.
+    { table: 'supply_order', col: 'supplier_id' },
+    { table: 'private_link', col: 'contact_id' },
+    { table: 'page_view', col: 'team_contact_id' },
   ]
 
   for (const { table, col } of fkRefs) {
@@ -394,6 +411,22 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
 
   const { error: addrErr } = await svc.from('contact_addresses').update({ contact_id: intoId }).eq('contact_id', fromId)
   if (addrErr) return { error: addrErr.message }
+
+  // Event roles (lender, guest… on an exhibition) — FK cascade: they were deleted with `fromId`. Move them; a role the kept
+  // contact already has on that event (unique process + contact + role) is dropped instead.
+  const { data: srcRoles } = await svc.from('event_contact').select('id, process_id, role').eq('contact_id', fromId)
+  if (srcRoles?.length) {
+    const { data: tgtRoles } = await svc.from('event_contact').select('process_id, role').eq('contact_id', intoId)
+    const roleSet = new Set((tgtRoles ?? []).map((r: { process_id: string; role: string }) => `${r.process_id}|${r.role}`))
+    for (const row of srcRoles) {
+      const k = `${row.process_id}|${row.role}`
+      const { error } = roleSet.has(k)
+        ? await svc.from('event_contact').delete().eq('id', row.id)
+        : await svc.from('event_contact').update({ contact_id: intoId }).eq('id', row.id)
+      if (error) return { error: `event_contact: ${error.message}` }
+      roleSet.add(k)
+    }
+  }
 
   // Emails — dedupe by normalized email
   const { data: srcEmails } = await svc.from('contact_emails').select('*').eq('contact_id', fromId)
