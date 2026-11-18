@@ -26,7 +26,7 @@
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-16 |
 | [`TODO_REFUSED.md`](./TODO_REFUSED.md) | Items dropped on purpose, with the reason | 2026-11-13 |
 | [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md) | Voice / handwriting / image-description scripts (`scripts/transcribe/`), local GPU | 2026-11-13 |
-| [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide + retiring the old copies to come) | Chapters 1–15 verified 2026-11-18 |
+| [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; retiring the old copies to come) | Team 1–15 + admin 1–8 verified 2026-11-18 |
 | [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | Onboarding (admin): encyclopedia, every feature — being replaced by the in-app Aide | Accurate to 2026-07 (dated banner 2026-11-13; later changes → Kaizen → Nouveautés) |
 | [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) | Onboarding (non-admin team) — being replaced by the in-app Aide | Same banner as the admin guide |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |

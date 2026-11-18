@@ -44,7 +44,6 @@ Public site
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Guides — in-app Aide (`/atelier/aide`): team guide complete 2026-11-18 (15 chapters, FR + EN); design: one how-to card per task — When · Steps · What happens next · Pitfalls
-- [ ] Batch 5: admin guide (approvals, Audit, version restore, Fil, Diffusion, hard delete, contacts merge / private, backups, Opérations & Stratégie).
 - [ ] Batch 6: retire the old copies — `ADMIN_GUIDE.md` + `TEAM_MEMBER_GUIDE.md` → `docs/archive/`, ⌘K « Download Studio Bible » + the Kaizen → Système regenerate button; delete the two Vault uploads (« Admin guide html », « Team member Guide html ») and the Studio Bible PDF only with Pem's OK.
 
 Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)

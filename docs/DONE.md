@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — In-app Aide, batch 5: admin guide (Pem « GO batch 5 »)
+
+- `435e9de`: 8 chapters FR + EN in `lib/aide/admin.{fr,en}.ts` — Ce guide, Le Fil, Valider le travail de l'équipe, Les séances de terrain, Corriger et revenir en arrière, Diffusion, Confidentialité des contacts, Sauvegardes — registered in `lib/aide/guides.ts`; the guide switch in `Aide.tsx` shows it to admins only (help text, nothing sensitive: it ships in the same chunk). Seen in Chrome as a non-admin: no switch, `?g=admin` falls back to the team guide. Not covered from the old batch 5 list: contacts merge. No What's new (admin only).
+
 ## 2026-11-18 — TODO §4 on the Docker copy + its bugs fixed (Pem « go »)
 
 - Stress run of every TODO §4 item on the throwaway copy, report + 8 screenshots landed (`f7286ec`, `docs/design/2026-11-18/StressTest.notes.md`, `todo4-shots/`). Passed there, closed: order guards (double « Encaisser », two tabs), collector share kit (make, PDF, phone, enquiry → Triage chip, Prolonger / Retirer), phone navigation as admin (Fil tile, « Actions », « Écrire »), first order through the chain (shipment, certificate, invoice, first payment), first supply order (« Recevoir », expense + invoice file), « Partager » on the computer + a draft's line value, « #équipe » voice card + dots, first sale through « Soldée » (« Payé », « Retour » out of a deposit, « Choisir l'adresse »), security rules (upload, address lookup), « Rappels sans projet » → « En faire une idée », labels sheets + QR content, waiting photo + production dates, « Historique de création », small GIFs, Journal ✦ hover + loupe, Constellation Shift+drag + arrow tool, slideshow GIF / « Renommer » / loop, batch modify / export / Local jobs / Production drag-back / contact pop-up save, field capture writes. Left for Pem's eye → TODO §4.
