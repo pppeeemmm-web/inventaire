@@ -8,7 +8,7 @@ import crypto from 'crypto'
 import sharp from 'sharp'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { logError } from '@/lib/error-reporter/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import {
   createPortfolioConfigS3Client,
@@ -30,6 +30,23 @@ export type SaveConfigResult =
 export type LoadConfigResult = { error: string } | { ok: true; config: any; documents: any[]; etag: string | null }
 export type ExtractTextResult    = { error: string } | { ok: true; text: string }
 export type DocSignedUrlsResult  = { statementUrl: string | null; cvUrl: string | null }
+
+/**
+ * Server Actions are POST endpoints: the middleware's page redirects don't cover them.
+ * The Site JSON is read and written with service-role / R2 credentials, so check the
+ * caller first. Returns an error message, or null when the caller may proceed.
+ */
+async function siteAccessError(level: 'signedIn' | 'team'): Promise<string | null> {
+  const sb = await createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return 'Non authentifié'
+  if (level === 'team') {
+    // Team, not admin: non-admin team members edit Site / Portfolio (incl. PDF profiles) today.
+    const { data: isTeam, error } = await sb.rpc('is_team')
+    if (error || !isTeam) return 'Accès refusé'
+  }
+  return null
+}
 
 export async function getDocSignedUrls(
   statementDocId: string | null,
@@ -67,6 +84,8 @@ export async function getDocSignedUrls(
 
 export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   try {
+    const denied = await siteAccessError('signedIn')
+    if (denied) return { error: denied }
     const { config, documents, objectEtag } = await loadPortfolioSectionsFromR2()
     return { ok: true, config, documents, etag: objectEtag }
   } catch (e: any) {
@@ -80,6 +99,8 @@ export async function getPortfolioConfigEtag(): Promise<
   { ok: true; etag: string | null } | { error: string }
 > {
   try {
+    const denied = await siteAccessError('signedIn')
+    if (denied) return { error: denied }
     const s3 = createPortfolioConfigS3Client()
     try {
       const head = await s3.send(
@@ -149,6 +170,8 @@ export async function savePortfolioConfig(
   opts?: { ifMatch?: string | null }
 ): Promise<SaveConfigResult> {
   try {
+    const denied = await siteAccessError('team')
+    if (denied) return { error: denied }
     const c = config as Record<string, unknown>
     const modes = Array.isArray(c.works_modes) ? (c.works_modes as { collections?: unknown[] }[]) : []
     const m0 = modes[0]
