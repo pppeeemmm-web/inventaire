@@ -1,5 +1,5 @@
 -- Work rule checks: keep each run's result so the Overview can show it (Pem 2026-11-18: Overview signal strip GO).
--- NOT APPLIED — SQL needs its own OK (CLAUDE.md).
+-- APPLIED 2026-11-18 (Pem « Yes, apply », lead session form; live table checked: RLS, team select, admin insert).
 -- Written by: Audit → Règles « run » (admin, through RLS) and the nightly workflow (scripts/work-rules-checks.sh,
 -- with the DB secret — it bypasses RLS). The nightly job stays read only on the works: this row is its only write.
 -- After applying: `npm run gen:types`, flip RULE_RUNS_LIVE in lib/overview/signal-strip.ts.

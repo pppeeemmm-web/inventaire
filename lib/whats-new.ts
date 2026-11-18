@@ -68,7 +68,7 @@
 // '3.1.50' (2026-11-17): R7 closes — « Confié » orders, 14-day return on every sale with the money held until definitive; work state follows one rule (WORK_RULES batch 1).
 // '3.1.51' (2026-11-17): work rules batch 2 — history kept on save, photo validation asks first, batch edit needs a photo, Audit → Règles.
 // '3.1.52' (2026-11-18): R6 — one « Expositions & événements » tab on the orders; What's new copy loads on open (lighter phone pages).
-export const WHATS_NEW_RELEASE = '3.1.55'
+export const WHATS_NEW_RELEASE = '3.1.56'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -88,6 +88,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'order_cascade', day: '2026-11-18', spot: 'logistics' },
   { id: 'theme_notes', day: '2026-11-18', spot: 'themes' },
   { id: 'news_where_it_happened', day: '2026-11-18' },
   { id: 'inputs_review', day: '2026-11-18', spot: 'journal' },

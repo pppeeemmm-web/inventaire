@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.56 (2026-11-18) — R7b order chain, menu counts, Overview strip.
+  wn_order_cascade_t: { fr: 'Commandes : la suite s’enchaîne', en: 'Orders: the next steps follow on' },
+  wn_order_cascade_d: {
+    fr: 'Une commande signée ouvre son envoi dans Logistique ; payée, elle prépare le certificat ; la facture a son papier. Logistique montre les envois en cours. Le menu compte les commandes, la production, le pipeline, les événements et les envois ; l’Aperçu a une bande Commandes · Événements · Système.',
+    en: 'A signed order opens its shipment in Logistics; once paid it prepares the certificate; the invoice has its paper. Logistics shows shipments in progress. The menu counts orders, production, pipeline, events and shipments; the Overview has a strip Orders · Events · System.',
+  },
   // 3.1.55 (2026-11-18) — news where it happened (TODO 24).
   wn_theme_notes_t: { fr: 'Thèmes : des notes, des noms courts', en: 'Themes: notes, short names' },
   wn_theme_notes_d: {

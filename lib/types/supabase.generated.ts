@@ -101,6 +101,7 @@ export type Database = {
         Row: {
           auth_user_id: string
           calendar_account_id: string
+          date_key: string | null
           external_event_id: string
           id: string
           provider: string
@@ -108,10 +109,12 @@ export type Database = {
           suivi_process_id: string | null
           sync_etag: string | null
           updated_at: string
+          work_order_id: string | null
         }
         Insert: {
           auth_user_id: string
           calendar_account_id: string
+          date_key?: string | null
           external_event_id: string
           id?: string
           provider: string
@@ -119,10 +122,12 @@ export type Database = {
           suivi_process_id?: string | null
           sync_etag?: string | null
           updated_at?: string
+          work_order_id?: string | null
         }
         Update: {
           auth_user_id?: string
           calendar_account_id?: string
+          date_key?: string | null
           external_event_id?: string
           id?: string
           provider?: string
@@ -130,6 +135,7 @@ export type Database = {
           suivi_process_id?: string | null
           sync_etag?: string | null
           updated_at?: string
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -158,6 +164,13 @@ export type Database = {
             columns: ["suivi_process_id"]
             isOneToOne: false
             referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_link_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
             referencedColumns: ["id"]
           },
         ]
@@ -3989,6 +4002,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      work_rule_run: {
+        Row: {
+          breaks: number
+          by_rule: Json
+          error: string | null
+          id: number
+          ran_at: string
+          ran_by: string | null
+          source: string
+          works: number | null
+        }
+        Insert: {
+          breaks: number
+          by_rule?: Json
+          error?: string | null
+          id?: never
+          ran_at?: string
+          ran_by?: string | null
+          source: string
+          works?: number | null
+        }
+        Update: {
+          breaks?: number
+          by_rule?: Json
+          error?: string | null
+          id?: never
+          ran_at?: string
+          ran_by?: string | null
+          source?: string
+          works?: number | null
+        }
+        Relationships: []
       }
       work_session: {
         Row: {
