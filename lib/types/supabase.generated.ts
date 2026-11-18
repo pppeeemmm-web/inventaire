@@ -833,6 +833,128 @@ export type Database = {
           },
         ]
       }
+      event_contact: {
+        Row: {
+          contact_id: number
+          created_at: string
+          id: string
+          position: number
+          process_id: string
+          role: string
+        }
+        Insert: {
+          contact_id: number
+          created_at?: string
+          id?: string
+          position?: number
+          process_id: string
+          role: string
+        }
+        Update: {
+          contact_id?: number
+          created_at?: string
+          id?: string
+          position?: number
+          process_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_contact_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "event_contact_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_contact_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_work: {
+        Row: {
+          cartel_at: string | null
+          constat_back_at: string | null
+          constat_out_at: string | null
+          hung_at: string | null
+          oeuvre_id: number
+          packing_at: string | null
+          photo_at: string | null
+          presentation_at: string | null
+          process_id: string
+          relation: string | null
+          taken_down_at: string | null
+          unpacked_at: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cartel_at?: string | null
+          constat_back_at?: string | null
+          constat_out_at?: string | null
+          hung_at?: string | null
+          oeuvre_id: number
+          packing_at?: string | null
+          photo_at?: string | null
+          presentation_at?: string | null
+          process_id: string
+          relation?: string | null
+          taken_down_at?: string | null
+          unpacked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cartel_at?: string | null
+          constat_back_at?: string | null
+          constat_out_at?: string | null
+          hung_at?: string | null
+          oeuvre_id?: number
+          packing_at?: string | null
+          photo_at?: string | null
+          presentation_at?: string | null
+          process_id?: string
+          relation?: string | null
+          taken_down_at?: string | null
+          unpacked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "event_work_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_work_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exhibition_layout: {
         Row: {
           created_at: string
@@ -2673,6 +2795,8 @@ export type Database = {
           nom: string
           notes: string | null
           oeuvre_id: number | null
+          on_site: boolean
+          prep_columns: string[] | null
           responsables: Json | null
           scope: string | null
           stakeholders: string | null
@@ -2696,6 +2820,8 @@ export type Database = {
           nom: string
           notes?: string | null
           oeuvre_id?: number | null
+          on_site?: boolean
+          prep_columns?: string[] | null
           responsables?: Json | null
           scope?: string | null
           stakeholders?: string | null
@@ -2719,6 +2845,8 @@ export type Database = {
           nom?: string
           notes?: string | null
           oeuvre_id?: number | null
+          on_site?: boolean
+          prep_columns?: string[] | null
           responsables?: Json | null
           scope?: string | null
           stakeholders?: string | null
@@ -3783,6 +3911,7 @@ export type Database = {
           id: string
           name: string
           note: string | null
+          process_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -3791,6 +3920,7 @@ export type Database = {
           id?: string
           name: string
           note?: string | null
+          process_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -3799,8 +3929,24 @@ export type Database = {
           id?: string
           name?: string
           note?: string | null
+          process_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "working_group_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "working_group_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       working_group_work: {
         Row: {
