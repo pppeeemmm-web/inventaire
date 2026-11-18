@@ -168,7 +168,7 @@ Une séance de terrain garde les photos d'une séance de travail et les rattache
     title: 'Audit, onglet par onglet',
     verified: '2026-11-18',
     md: `
-[Audit](/atelier/audit) (Kaizen → Audit, ordinateur seulement) a quatre onglets en haut : **Journal**, **Validation**, **Retirés du Fil**, **Règles**.
+[Audit](/atelier/audit) (Kaizen → Audit Log ; au téléphone : ☰ → Tout le reste → Kaizen) a quatre onglets en haut : **Journal**, **Validation**, **Retirés du Fil**, **Règles**.
 
 ## Journal
 

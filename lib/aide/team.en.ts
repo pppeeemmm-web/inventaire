@@ -127,6 +127,27 @@ Everywhere:
 - What changed since: Kaizen → Operations & Strategy → **What's new**.
 - The guide follows the app's language.
 - **"Download the guide (PDF)"**, under the contents: the whole guide, laid out, to read or print away from the computer. It is always the same text as the Help.
+
+## Reference: phone and computer
+
+Every screen opens on both. The phone is for quick capture; the computer for lists, tables and long forms.
+
+### On the phone
+
+- **The bottom bar**: **Write** (a Journal entry), **Voice** (a voice note), **Work**, **Photo · doc**.
+- **Work**, on Today, offers three choices: **New work** ("A new number: photo, title, technique, size"), **Resume a work** ("Same number: a photo and a « Reprise » line"), **Session photos** ("Lightroom → Share to PEM"). On the other screens, for a team member, Work opens the Journal: go through Today to record a work.
+- **Session photos**, for a team member: the photos stay in the session and show on the work when Pem applies them.
+- **Photo · doc** offers: **Document** ("Scan one or more pages; the text is read later on the PC"), **Business card** ("New contact from a card"), **QR label** ("Scan a work's label"). Admins also have **Inspiration**.
+- **The ☰ menu**: search, the tiles, "Help for this screen", "Everything else", "Actions", your account and the language.
+- **"Actions"**: Sale / payment ("Complete a sale", see Orders), Contact, Document, Issue, Pipeline, Triage.
+
+**What only the phone does:** reading a business card's text (Live Text, on iPhone), dictating a voice note, reading a QR label with the camera, and on Android receiving images from another app (Share → PEM Workshop).
+
+### On the computer
+
+- The sidebar, **⌘K / Ctrl+K** and the **?** key (see above).
+- **What only the computer does:** dragging a card from one column to another in Production, creating an event, and for the admin running the PC's jobs (transcription, search).
+- Reports, exports and pivot tables read better on the computer.
 `,
   },
   {
@@ -180,7 +201,7 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 
 **When:** Pem works again on a work that already exists.
 
-1. **Work**, then **Rework a work**.
+1. **Work**, then **Resume a work**.
 2. Find the reworked work (number or title).
 3. Add a picture, the rework date and a "what changed" line (ground, glaze…).
 4. **Add to #…**.
@@ -228,6 +249,45 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 2. To read a label: bottom bar → **Photo · doc** → **QR label**, or the phone's camera.
 
 **Next:** the label opens the work's card in the Atelier (you need to be signed in).
+
+## Reference: the card, part by part
+
+"Folded" shows the whole top of the card, Création and Object closed, the empty fields gathered on one line. "Expanded" opens Création and Object, with the empty fields greyed in place.
+
+### The top of the card
+
+- **The photos**: the picture strip ("⠿ drag to reorder · the first = cover"). On a photo: "Download the original", "Replace with the retouched file", and for the admin "Delete this picture (admin)".
+- **The title.**
+- **Production**: where the record stands. **In production** ("Work in progress") → **Catalogued** ("Photo pending") → **Available** ("Ready for release"). Tap the next stage to move on; tap "photo needed" when the photo is done. Once the work has left the studio: "Production closed: the work has left the studio. Its state follows its order."
+- **Ownership**: who owns the work (see What the app does by itself → Reference).
+- **Owner**, **Custodian** (who has the work in hand) and their **Address ▾**, **Buyer** for a sale: "Managed by its order (sale, consignment, loan): owner and custodian change with it."
+- **Year** or **Period**, **Technique**, **Support**, **Format**, **Dimensions** (cm; a diameter for a round work).
+- **The chips**: "Public" or "Not public" (set by the database, read only); a shipment under way; "… session photo(s) to review"; "Entrusted · with …"; the fate of a destroyed, lost or stolen work.
+
+### Création
+
+- **Period & source**: the working period (automatic from the history, or picked by hand) and the sources (memory, motif, photo…), with a note per source.
+- **Creation history**: the dated steps of the work (place, date, note), including the "Reprise" lines.
+- **Comments & notes**: the note lines, and the linked voice notes.
+- **Themes.**
+- **Links to other works**: a number and a "Link type": Painted on, Derived from, Answers, Same series as, Diptych with, Influence with, Close to. The link reads both ways ("Painted over by", "Gave rise to", "Answered by").
+- **Field sessions**: the photographed sessions of this work.
+- **✦ Seen by AI**: a description suggested by the AI, to judge ("Useful?").
+
+### Object
+
+- **History / provenance**: the work's dated log (statuses, owners, moves). The app writes in it by itself; you can add a line by hand. The admin also sees "Data history" there.
+- **Logistics**: the shipments linked to the work, the delivery date and the return date.
+- **Presentation**: the gates: **Mounted** (on a stretcher / backing), **Framed**, **Showable** ("Physically ready to show: mounted, framed, varnished. ≠ Available"), **Ready for broadcast** and the **Broadcast note**; then the **Presentation**: Non montée, Montée, Marouflée sur carton, Marouflée sur toile, Roulée.
+- **Contact confidentiality**: how the owner's name is shown (Public, Masked, Private).
+- **Value**: **Base price (€)**, **Discount (%)**, **FINAL AMOUNT (EXCL. TAX)**, **VAT (%)**, **Payment received** (filled by the order when there is one), **Commission** (a work made to order, with its client). "Costs (admin)" for the admin.
+- **Groups.**
+- **Condition · reports**: the condition reports (see above).
+- **Fate**: "neither destroyed nor lost — set through a condition report".
+- **Physical label**: the QR label.
+- **Trash**: "Move to trash…". **Admin zone**: "Delete permanently…" (admin).
+
+**Watch out:** some parts save by themselves, without **Save**: Period & source, Creation history, Comments & notes, Links, Field sessions, Seen by AI, and condition reports. The rest of the card (themes and groups included) waits for **Save** at the bottom ("● unsaved changes").
 `,
   },
   {
@@ -391,6 +451,81 @@ Open the order: its **Steps** are ticked in order with the next step's button.
 ## Cancelling
 
 **Cancel the order** closes it; its works leave a shipment that has not left yet.
+
+## Reference: steps and papers
+
+### The steps, kind by kind
+
+Each step button asks first: "Move to this step? The works change status, owner or custodian as the step says, with a line in their history."
+
+- **Sale**: Draft → **Mark signed (reserves the works)** → **Deposit received** → **Paid in full (the buyer becomes the owner)** → **Delivered (the buyer holds the work)**. Then 14 days during which a return is possible.
+- **Consignment**: Draft → **Mark signed** → **Out — at the gallery** → **Back at the studio**.
+- **Loan**: Draft → **Mark signed** → **Out — with the borrower** → **Back at the studio**.
+- **Gift**: Draft → **Deed signed (nothing moves until the hand-over)** → **Handed over (the recipient becomes the owner and holds the work)**.
+- **Entrusted**: Draft → **Entrusted — with the craftsperson** → **Back at the studio**. The work keeps its stage and its owner; only the custodian changes.
+
+Finished orders show with "+ closed": delivered, back, handed over, returned, cancelled.
+
+### What the steps do by themselves
+
+- **Signed** (sale, consignment, loan): the paper is made again without the "Draft" mark, and a shipment (or a collection) opens in Logistics.
+- **Paid** (sale): one certificate of authenticity per work.
+- **Delivered** (sale): the 14 return days start; a reminder comes on the day they end ("Return period ends").
+- **Handed over** (gift): the deed of gift is made again, dated with the hand-over.
+- **Entrusted**: the entrustment note is made when the work goes out.
+- **Cancel the order**: "Works it reserved become available again."
+
+### Each work's value on the order
+
+By kind: **Sale price** (sale), **Agreed price** (consignment), **Insurance value** (loan, Entrusted), **Reference value (never printed)** (gift). Empty = the work's price today. After signing, a changed value means making the paper again and having it signed again.
+
+### Money (sale)
+
+- **Catalogue price (total)**, **Discount %**, **Final price (total)** (worked out as you type, can be changed), **Deposit %**. The final price includes VAT.
+- VAT is read from each work (card → Value). "VAT: to be set (accountant)" while the rate is not decided.
+- **Record a payment**: part of the price moves the sale to "Deposit" (works reserved); the whole price, to "Paid".
+- **Taken away today**: "Paid and taken away at the studio: the sale becomes « Delivered » as soon as it is paid, and the 14 return days start."
+- A return shows "To refund: … — the app moves no money". Once the transfer is made: **Mark refunded**, with its date.
+- A sale of a consigned work: the gallery's commission is recorded at payment.
+
+### Each kind's paper
+
+One paper per order, in French with an English line:
+
+- **Sale**: **Bon de commande** (purchase order).
+- **Consignment**: **Bordereau de dépôt-vente** (consignment agreement).
+- **Loan**: **Contrat de prêt** (loan agreement).
+- **Gift**: **Acte de don** (deed of gift).
+- **Entrusted**: **Bon de confiage** (entrustment note).
+
+1. **Make the paper** (or **Make the paper again**). Until the order is signed, it carries "Brouillon" (draft).
+2. **Open** reads it; **Share** sends the file itself (not a link); on the computer, it downloads.
+3. Once signed: **Add the signed copy** (PDF or photo JPEG, PNG, WebP, HEIC; 4 MB at most).
+
+### Invoice and credit note (sale)
+
+- "The invoice is issued once the sale is paid." **Issue the invoice** is for the admin only: "Issue the invoice? Its number is final; a mistake is corrected with a credit note."
+- Several paid sales to the same buyer: "Issue one invoice for … orders of this buyer".
+- The invoice lists the works, the paid preparations and the shipping. The VAT mention is to settle with the accountant.
+- **Make a credit note** cancels an invoice (it stays, marked "cancelled by credit note").
+
+### Certificates (sale)
+
+"Made automatically at payment, to put in the crate." One **certificate of authenticity** per work. If one is missing: **Make the certificates**.
+
+### Around a sale
+
+- **Delivery**: **Shipping** or **Collection (studio or event)**; "Shipping and insurance (paid by the buyer)": an amount, empty = included.
+- **Preparation asked**: **Framing**, **Mounting**, **Dedication / signature**, with a detail and a price (empty = included). Each demand is ticked "Done" before packing; otherwise the shipment refuses: "Preparation not finished: … open demand(s)." Framing by a craftsperson is done with an "Entrusted" order.
+
+### For every order
+
+- **Shipment**: "Prepare the shipment", "Prepare the collection", or "Return" for a work that is out (see Logistics). On a shipment, **+ Report a claim**: insurer or carrier, claim no., police report no. (theft), amount claimed; then Open, Paid, Refused or Withdrawn.
+- **Calendar**: "Put the dates in my calendar" (works go out, due back, planned delivery, end of the return period). A connected calendar is needed.
+
+### Selling on the phone
+
+☰ → Actions → **Sale / payment** ("Complete a sale"): **Works** → **Buyer** → **Payment** → **Review**, then **Create and finish**. With no payment, it is a draft to sign in Orders; with a payment, the order is signed, a deposit reserves the work and the full price makes it sold.
 `,
   },
   {
@@ -589,6 +724,47 @@ Some rules are kept by the database: every screen follows them, and nobody has t
 ## The site
 
 What is public follows from the status (see Public site). Validating the photo of a studio work makes it Available and visible: the app asks first.
+
+## Reference: statuses and stages
+
+### The card's three stages (Production)
+
+1. **In production** ("Work in progress"): in the studio, not catalogued yet. Open step: Catalogue.
+2. **Catalogued** ("Photo pending"): described, with at least one photo; the catalogue photo is still to take. Open step: Photograph.
+3. **Available** ("Ready for release"): catalogued and photo validated. For a studio work, it becomes visible on the site.
+
+### Ownership (on the card)
+
+- **Studio (Pem)**: "Full ownership".
+- **Reserved**: "Sale in progress". Through a signed sale order.
+- **Consigned**: "Gallery / no title transfer". Through a consignment order.
+- **On loan**: "Institution / no title transfer". Through a loan order.
+- **Sold**: "Title transferred". Through a sale order paid in full.
+- **Gift**: "Title transferred". Through "Gift…", a gift order.
+- **Archive (Pem)**: "Withdrawn from circulation". The work must be catalogued first.
+
+Reserved, Consigned, On loan and Sold are closed on the card: they go through their order ("Prepare an order for this work (a draft, signed in Orders)."). A work with a craftsperson keeps its ownership and shows "Entrusted · with …".
+
+### The statuses in the lists
+
+The Inventory, the reports and the chips show one word per work. These chips are in French in both languages:
+
+- **En production** (in production); **Catalogué** (yellow chip: catalogued, photo to take); **Disponible** (available);
+- **Réservé** (reserved), **Consigné** (consigned), **Prêt** (on loan), **Vendu** (sold), **Don** (gift);
+- **Archive (Pem)**;
+- **Détruite** (destroyed), **Perdue** (lost), **Volée** (stolen).
+
+**Public** (on the site): Available, Reserved, Consigned, On loan, Sold, Gift, with no destruction, loss or theft. **Not public**: In production, Catalogued, Archive, Destroyed, Lost, Stolen. The card's "Public / Not public" chip says so, read only.
+
+A work sold or given, then destroyed, lost or stolen, keeps "Vendu" or "Don", with the mention "destroyed", "lost" or "stolen".
+
+### The gates (Object → Presentation)
+
+Four boxes, independent of the status: **Mounted**, **Framed** (also ticked by the Production steps), **Showable** (physically ready to show; never for a destroyed or lost work, or one in the archive), **Ready for broadcast** (posting on social media, followed by the admin).
+
+### Fate
+
+"neither destroyed nor lost — set through a condition report". After a destruction, a loss or a theft: "Stages locked: close or delete the loss / destruction report to change them."
 `,
   },
   {

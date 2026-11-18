@@ -168,7 +168,7 @@ A field session keeps the photos of a work session and attaches them to the work
     title: 'Audit, tab by tab',
     verified: '2026-11-18',
     md: `
-[Audit](/atelier/audit) (Kaizen → Audit Log, computer only) has four tabs at the top: **Ledger**, **Review**, **Taken out of the feed**, **Rules**.
+[Audit](/atelier/audit) (Kaizen → Audit Log; on the phone: ☰ → Everything else → Kaizen) has four tabs at the top: **Ledger**, **Review**, **Taken out of the feed**, **Rules**.
 
 ## Ledger
 

@@ -127,6 +127,27 @@ Partout :
 - Ce qui a changé depuis : Kaizen → Opérations & Stratégie → **Nouveautés**.
 - Le guide suit la langue de l'application.
 - **« Télécharger le guide (PDF) »**, sous le sommaire : tout le guide, mis en page, à lire ou imprimer hors de l'ordinateur. C'est toujours le même texte que l'Aide.
+
+## Référence : téléphone et ordinateur
+
+Tous les écrans s'ouvrent sur les deux. Le téléphone sert à saisir vite ; l'ordinateur, aux listes, aux tableaux et aux longs formulaires.
+
+### Au téléphone
+
+- **La barre du bas** : **Écrire** (une entrée du Journal), **Vocal** (une note vocale), **Œuvre**, **Photo · doc**.
+- **Œuvre**, sur Aujourd'hui, propose trois choix : **Nouvelle œuvre** (« Un nouveau numéro : photo, titre, technique, format »), **Reprise d'une œuvre** (« Même numéro : une photo et une ligne « Reprise » »), **Photos de la séance** (« Lightroom → Partager vers PEM »). Sur les autres écrans, pour un membre de l'équipe, Œuvre ouvre le Journal : passez par Aujourd'hui pour enregistrer une œuvre.
+- **Photos de la séance**, pour un membre de l'équipe : les photos restent dans la séance et apparaissent sur l'œuvre quand Pem les applique.
+- **Photo · doc** propose : **Document** (« Scan d'une ou plusieurs pages, texte lu plus tard sur le PC »), **Carte de visite** (« Nouveau contact depuis une carte »), **Étiquette QR** (« Scanner l'étiquette d'une œuvre »). Les administrateurs ont aussi **Inspiration**.
+- **Le menu ☰** : la recherche, les tuiles, « Aide pour cet écran », « Tout le reste », « Actions », votre compte et la langue.
+- **« Actions »** : Vente / paiement (« Encaisser une vente », voir Commandes), Contact, Document, Signalement, Pipeline, Triage.
+
+**Ce que seul le téléphone fait :** lire le texte d'une carte de visite (Live Text, sur iPhone), dicter une note vocale, lire une étiquette QR avec l'appareil photo, et sur Android recevoir des images d'une autre application (Partager → PEM Workshop).
+
+### À l'ordinateur
+
+- La barre latérale, **⌘K / Ctrl+K** et la touche **?** (voir plus haut).
+- **Ce que seul l'ordinateur fait :** glisser une carte d'une colonne à l'autre dans Production, créer un événement, et pour l'administrateur lancer les tâches du PC (transcription, recherche).
+- Les rapports, les exports et les tableaux croisés se lisent mieux à l'ordinateur.
 `,
   },
   {
@@ -228,6 +249,45 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 2. Pour lire une étiquette : barre du bas → **Photo · doc** → **Étiquette QR**, ou l'appareil photo du téléphone.
 
 **Ensuite :** l'étiquette ouvre la fiche de l'œuvre dans l'Atelier (il faut être connecté).
+
+## Référence : la fiche, partie par partie
+
+« Replié » montre le haut de la fiche en entier, Création et Objet fermés, les champs vides réunis en une ligne. « Développé » ouvre Création et Objet, avec les champs vides grisés à leur place.
+
+### Le haut de la fiche
+
+- **Les photos** : la bande d'images (« ⠿ glisser pour changer l'ordre · la 1re = couverture »). Sur une photo : « Télécharger l'original », « Remplacer par la retouche », et pour l'administrateur « Supprimer cette photo (admin) ».
+- **Le titre.**
+- **Production** : où en est la fiche. **En production** (« Travail en cours ») → **Catalogué** (« Photo en attente ») → **Disponible** (« Prêt pour diffusion »). Touchez l'étape suivante pour avancer ; « photo requise » se touche quand la photo est faite. Quand l'œuvre a quitté l'atelier : « Production close : l'œuvre a quitté l'atelier. Son état suit sa commande. »
+- **Propriété** : qui possède l'œuvre (voir Ce que l'application fait d'elle-même → Référence).
+- **Propriétaire**, **Dépositaire** (qui a l'œuvre entre les mains) et son **Adresse**, **Acheteur** pour une vente : « Géré par sa commande (vente, dépôt, prêt) : propriétaire et dépositaire changent avec elle. »
+- **Année** ou **Période**, **Technique**, **Support**, **Format**, **Dimensions** (cm ; un diamètre pour une œuvre ronde).
+- **Les pastilles** : « Publique » ou « Non publique » (calculé par la base, lecture seule) ; un envoi en cours ; « … photo(s) de session à valider » ; « Confié · chez … » ; le destin d'une œuvre détruite, perdue ou volée.
+
+### Création
+
+- **Période & source** : la période de travail (automatique d'après l'historique, ou choisie à la main) et les sources (mémoire, motif, photo…), avec une note par source.
+- **Historique de création** : les étapes datées du travail (lieu, date, note), dont les lignes « Reprise ».
+- **Commentaires & notes** : les lignes de notes, et les notes vocales reliées.
+- **Thèmes.**
+- **Liens avec d'autres œuvres** : un numéro et un « Type de lien » : Peinte sur, Dérivée de, Répond à, Même série que, Diptyque avec, Influence avec, Proche de. Le lien se lit dans les deux sens (« Recouverte par », « A donné », « A pour réponse »).
+- **Sessions de terrain** : les séances photographiées de cette œuvre.
+- **✦ Vu par l'IA** : une description proposée par l'IA, à juger (« Utile ? »).
+
+### Objet
+
+- **Historique / provenance** : le journal daté de l'œuvre (statuts, propriétaires, déplacements). L'application y écrit elle-même ; on peut y ajouter une ligne à la main. L'administrateur y voit aussi « Historique des données ».
+- **Logistique** : les envois liés à l'œuvre, la date de livraison et la date de retour.
+- **Présentation** : les portes : **Montée** (sur châssis / support), **Encadrée**, **Exposable** (« Physiquement prête à montrer : montée, encadrée, vernie. ≠ Disponible »), **Prêt pour diffusion** et la **Note de diffusion** ; puis la **Présentation** : Non montée, Montée, Marouflée sur carton, Marouflée sur toile, Roulée.
+- **Confidentialité du contact** : comment le nom du propriétaire s'affiche (Public, Masqué, Privé).
+- **Valeur** : **Prix de base (€)**, **Remise (%)**, **MONTANT FINAL (HT)**, **TVA (%)**, **Paiement reçu** (rempli par la commande quand il y en a une), **Commande** (œuvre faite sur commande, avec son client). « Coûts (admin) » pour l'administrateur.
+- **Groupes.**
+- **État · constats** : les constats d'état (voir plus haut).
+- **Destin** : « ni détruite ni perdue — se règle par un constat ».
+- **Étiquette physique** : l'étiquette QR.
+- **Corbeille** : « Mettre à la corbeille… ». **Zone admin** : « Supprimer définitivement… » (administrateur).
+
+**Attention :** certaines parties s'enregistrent toutes seules, sans **Enregistrer** : Période & source, Historique de création, Commentaires & notes, Liens, Sessions de terrain, Vu par l'IA, et les constats. Le reste de la fiche (thèmes et groupes compris) attend **Enregistrer** en bas (« ● modifications non enregistrées »).
 `,
   },
   {
@@ -391,6 +451,81 @@ Ouvrez la commande : ses **Étapes** se cochent dans l'ordre avec le bouton de l
 ## Annuler
 
 **Annuler la commande** la ferme ; ses œuvres sortent d'un envoi qui n'est pas encore parti.
+
+## Référence : étapes et papiers
+
+### Les étapes, genre par genre
+
+Chaque bouton d'étape demande d'abord : « Passer à cette étape ? Les œuvres changent de statut, de propriétaire ou de gardien selon l'étape, avec une ligne dans leur historique. »
+
+- **Vente** : Brouillon → **Marquer signée (réserve les œuvres)** → **Acompte reçu** → **Soldée — payée (l'acheteur devient propriétaire)** → **Livrée (l'acheteur garde l'œuvre)**. Ensuite, 14 jours de retour possible.
+- **Dépôt** : Brouillon → **Marquer signé** → **Sortie — chez la galerie** → **Rentrée à l'atelier**.
+- **Prêt** : Brouillon → **Marquer signé** → **Sortie — chez l'emprunteur** → **Rentrée à l'atelier**.
+- **Don** : Brouillon → **Acte signé (rien ne bouge avant la remise)** → **Remise (le bénéficiaire devient propriétaire et garde l'œuvre)**.
+- **Confié** : Brouillon → **Confié — chez l'artisan** → **Rentré à l'atelier**. L'œuvre garde son étape et son propriétaire ; seul le dépositaire change.
+
+Les commandes finies s'affichent avec « + closes » : Livrée, Rentré, Remis, Retournée, Annulée.
+
+### Ce que les étapes font d'elles-mêmes
+
+- **Signée** (vente, dépôt, prêt) : le papier est refait sans la mention « Brouillon », et un envoi (ou un retrait) s'ouvre dans Logistique.
+- **Soldée** (vente) : un certificat d'authenticité par œuvre.
+- **Livrée** (vente) : les 14 jours de retour commencent ; un rappel arrive le jour où ils finissent (« Fin du délai de retour »).
+- **Remise** (don) : l'acte de don est refait, daté de la remise.
+- **Confié** : le bon de confiage est fait à la sortie.
+- **Annuler la commande** : « Des œuvres réservées par elle redeviennent disponibles. »
+
+### La valeur de chaque œuvre sur la commande
+
+Selon le genre : **Prix de vente** (vente), **Prix convenu** (dépôt), **Valeur d'assurance** (prêt, Confié), **Valeur de référence (jamais imprimée)** (don). Vide = le prix de l'œuvre aujourd'hui. Après la signature, une valeur changée demande de refaire le papier et de le faire signer de nouveau.
+
+### L'argent (vente)
+
+- **Prix catalogue (total)**, **Remise %**, **Prix final (total)** (calculé en tapant, modifiable), **Acompte %**. Le prix final est TTC.
+- La TVA est lue sur chaque œuvre (fiche → Valeur). « TVA : à définir (comptable) » tant que le taux n'est pas décidé.
+- **Encaisser** : une partie du prix passe la vente en « Acompte » (œuvres réservées) ; tout le prix, en « Soldée ».
+- **Emportée aujourd'hui** : « Payée et emportée à l'atelier : la vente passe « Livrée » dès qu'elle est soldée, et les 14 jours de retour commencent. »
+- Un retour affiche « À rembourser : … — l'application ne vire rien ». Une fois le virement fait : **Marquer remboursé**, avec sa date.
+- Une vente d'une œuvre en dépôt : la commission de la galerie est notée au paiement.
+
+### Le papier de chaque genre
+
+Un papier par commande, en français avec une ligne d'anglais :
+
+- **Vente** : **Bon de commande**.
+- **Dépôt** : **Bordereau de dépôt-vente**.
+- **Prêt** : **Contrat de prêt**.
+- **Don** : **Acte de don**.
+- **Confié** : **Bon de confiage**.
+
+1. **Faire le papier** (ou **Refaire le papier**). Tant que la commande n'est pas signée, il porte « Brouillon ».
+2. **Ouvrir** le lit ; **Partager** envoie le fichier lui-même (pas un lien) ; à l'ordinateur, il se télécharge.
+3. Une fois signé : **Ajouter la copie signée** (PDF ou photo JPEG, PNG, WebP, HEIC ; 4 Mo au plus).
+
+### Facture et avoir (vente)
+
+- « La facture s'émet une fois la vente payée. » **Émettre la facture** est réservé à l'administrateur : « Émettre la facture ? Son numéro est définitif ; une erreur se corrige par un avoir. »
+- Plusieurs ventes payées au même acheteur : « Émettre une facture pour … commandes de cet acheteur ».
+- La facture reprend les œuvres, les préparations payantes et l'expédition. La mention de TVA est à définir avec le comptable.
+- **Faire un avoir** annule une facture (elle reste, marquée « annulée par avoir »).
+
+### Certificats (vente)
+
+« Faits automatiquement au paiement, à mettre dans la caisse. » Un **certificat d'authenticité** par œuvre. S'il en manque un : **Faire les certificats**.
+
+### Autour d'une vente
+
+- **Livraison** : **Expédition** ou **Retrait (atelier ou événement)** ; « Expédition et assurance (payées par l'acheteur) » : un montant, vide = inclus.
+- **Préparation demandée** : **Encadrement**, **Montage**, **Dédicace / signature**, avec un détail et un prix (vide = inclus). Chaque demande est cochée « Fait » avant l'emballage ; sinon l'envoi refuse : « Préparation pas finie : … demande(s) ouverte(s). » Un encadrement chez un artisan se fait par une commande « Confié ».
+
+### Pour toutes les commandes
+
+- **Envoi** : « Préparer l'envoi », « Préparer le retrait », ou « Retour » pour une œuvre sortie (voir Logistique). Sur un envoi, **+ Déclarer un sinistre** : assureur ou transporteur, n° de dossier, n° de plainte (vol), montant demandé ; puis En cours, Indemnisé, Refusé ou Retiré.
+- **Calendrier** : « Mettre les dates dans mon calendrier » (sortie, retour attendu, livraison prévue, fin du délai de retour). Il faut un calendrier relié.
+
+### Vendre au téléphone
+
+☰ → Actions → **Vente / paiement** (« Encaisser une vente ») : **Œuvres** → **Acheteur** → **Paiement** → **Validation**, puis **Créer et finaliser**. Sans paiement, c'est un brouillon à signer dans Commandes ; avec un paiement, la commande est signée, l'acompte réserve l'œuvre et le prix entier la passe en vendu.
 `,
   },
   {
@@ -590,6 +725,47 @@ Certaines règles sont tenues par la base de données : chaque écran les suit, 
 ## Le site
 
 Ce qui est public découle du statut (voir Site public). Valider la photo d'une œuvre de l'atelier la rend Disponible et visible : l'application demande d'abord.
+
+## Référence : statuts et étapes
+
+### Les trois étapes de la fiche (Production)
+
+1. **En production** (« Travail en cours ») : à l'atelier, pas encore cataloguée. Étape ouverte : Cataloguer.
+2. **Catalogué** (« Photo en attente ») : décrite, avec au moins une photo ; la photo du catalogue reste à faire. Étape ouverte : Photographier.
+3. **Disponible** (« Prêt pour diffusion ») : cataloguée et photo validée. Pour une œuvre de l'atelier, elle devient visible sur le site.
+
+### La propriété (sur la fiche)
+
+- **Atelier (Pem)** : « Propriété totale ».
+- **Réservé** : « Vente en cours ». Par une commande de vente signée.
+- **Consigné** : « Galerie / sans transfert ». Par une commande de dépôt.
+- **Prêt** : « Institution / sans transfert ». Par une commande de prêt.
+- **Vendu** : « Transfert propriété ». Par une commande de vente soldée.
+- **Don** : « Transfert propriété ». Par « Don… », une commande de don.
+- **Archive (Pem)** : « Retiré de la diffusion ». L'œuvre doit être cataloguée d'abord.
+
+Réservé, Consigné, Prêt et Vendu sont fermés sur la fiche : ils se font par leur commande (« Préparer une commande pour cette œuvre (brouillon, à signer dans Commandes). »). Une œuvre chez un artisan garde sa propriété et affiche « Confié · chez … ».
+
+### Les statuts dans les listes
+
+L'Inventaire, les rapports et les pastilles montrent un seul mot par œuvre :
+
+- **En production** ; **Catalogué** (pastille jaune : cataloguée, photo à faire) ; **Disponible** ;
+- **Réservé**, **Consigné**, **Prêt**, **Vendu**, **Don** ;
+- **Archive (Pem)** ;
+- **Détruite**, **Perdue**, **Volée**.
+
+**Publiques** (sur le site) : Disponible, Réservé, Consigné, Prêt, Vendu, Don, sans destruction, perte ni vol. **Non publiques** : En production, Catalogué, Archive, Détruite, Perdue, Volée. La pastille « Publique / Non publique » de la fiche le dit, en lecture seule.
+
+Une œuvre vendue ou donnée, puis détruite, perdue ou volée, garde « Vendu » ou « Don », avec la mention « détruite », « perdue » ou « volée ».
+
+### Les portes (Objet → Présentation)
+
+Quatre cases, indépendantes du statut : **Montée**, **Encadrée** (aussi cochées par les étapes de Production), **Exposable** (physiquement prête à montrer ; jamais pour une œuvre détruite, perdue, ou dans l'archive), **Prêt pour diffusion** (la publication sur les réseaux, suivie par l'administrateur).
+
+### Le destin
+
+« ni détruite ni perdue — se règle par un constat ». Après une destruction, une perte ou un vol : « Étapes verrouillées : clore ou supprimer le constat de perte / destruction pour les modifier. »
 `,
   },
   {
