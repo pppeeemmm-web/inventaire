@@ -2,7 +2,7 @@
 
 // Sign out + Change password (owner 2026-11-13). Every signed-in user can sign out; "Change password"
 // only shows for accounts that have an email/password identity (Google-only accounts have none).
-// Sign out = `signOut()` then a full document load of /login: middleware redirects document
+// Sign out = `signOut({ scope: 'local' })` then a full document load of /login: middleware redirects document
 // requests only, so a client-side push would keep the old RSC tree.
 
 import { useEffect, useState, type CSSProperties } from 'react'
@@ -33,7 +33,8 @@ export function AccountActions({ compact = false, style }: { compact?: boolean; 
 
   async function signOut() {
     setBusy(true)
-    const { error } = await createClient().auth.signOut()
+    // Local scope: this browser only — the user's sessions on other devices / browsers stay (default `global` ended them all).
+    const { error } = await createClient().auth.signOut({ scope: 'local' })
     if (error) {
       toast.error(error.message)
       setBusy(false)
