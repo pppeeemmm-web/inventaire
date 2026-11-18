@@ -44,7 +44,7 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Speed and code health — measure first (**17–19 GO 2026-11-18 — measuring in session speed-measure**)
+Speed and code health — measure first (**17–19 GO 2026-11-18 — measuring in session speed-measure**; then on the live site as admin: Inventory full catalogue (was 22–27 s), 3 work cards + Overview (was 5.5–10 s), a day on the phone (dev: 2 s))
 - [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
 - [ ] 18. The full catalogue still loads in the background on every Atelier tab · Reports on keyset totals · one status-label layer
 - [ ] 19. Slow first open of Audit / Logistics · fewer silent catches (~258, lint warns). Phone JS budget is in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
@@ -63,26 +63,21 @@ New today
 - [ ] « Rappels sans projet » on Idées as admin: « En faire une idée » on « Demain ».
 
 Older, still unseen live
-- [ ] Voice-note chip in the work card (Création › Commentaires & notes) — when a work has a linked voice note.
 - [ ] Export labels: print one real sheet (L7163 image + QR, L7651 QR), scan one QR.
 - [ ] Waiting photos + production dates: a real waiting photo on the Journal day and the card; an admin save of start / end; a « Nouvelle » work starts production today.
-- [ ] « Historique de création »: a real line saved, edited, deleted; Inventory « Périodes à trancher ».
-- [ ] Journal on the phone: how long until the day shows.
+- [ ] « Historique de création »: a real line saved, edited, deleted.
 - [ ] Small GIFs: a real 40 × 40 and a round one, on the phone.
-- [ ] Speed on the live site as admin: Inventory full catalogue (was 22–27 s); 3 work cards + Overview (was 5.5–7 s / 7.5–10 s).
-- [ ] Journal ✦ suggestions: hover a « ✦ #1316 » row → preview + loupe.
+- [ ] Journal ✦ suggestions: hover a « ✦ #1316 » row → preview + loupe — when a day has open suggestions again (none open on 2026-11-18).
 - [ ] Constellation: undo a real link delete (note comes back); Shift+drag; arrow tool; the arrow on the first real « painted on / derived from / answers » link.
 - [ ] Slideshow: a GIF of 20+ works; full screen + swipe on an iPhone; « Renommer »; a full loop.
 - [ ] From the 13–14 Nov batches: batch modify; a real export; a real print (300 dpi, labels); Local jobs; one Production drag-back; saving a contact from the pop-up.
 - [ ] Next real field capture: technique / support written; removing an applied photo → [notes](./TODO_NOTES.md#session-write-paths)
-- [ ] Concept documents: click through once → [notes](./TODO_NOTES.md#concept-documents)
-- [ ] ⌘K queues new phrases until the PC indexes them (known) → [notes](./TODO_NOTES.md#semantic-search)
-- [ ] Procession layout « not working »: reopen only with repro steps.
 
 ## 5. Parked — no GO
 
 - R8 public site (Pem 2026-11-18: « skip r8 for now »): look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; SQL + design + GO) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md).
 - 11e. Docket scan by OCR (iPhone scans → PC batch proposes each expense / supply purchase, scan in Vault « Factures ») — Pem 2026-11-18: « later » → [notes](./TODO_NOTES.md#docket-scan)
+- Procession layout « not working »: reopen only with repro steps.
 - Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied) — Pem « not sure » 2026-11-18.
 - VAT per sale, from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library, another system, another time → [notes](./TODO_NOTES.md#phototheque)

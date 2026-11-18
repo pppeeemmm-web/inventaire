@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — « Older » checks (Pem « Yes, check and tidy ») and ⌘K by number
+
+- Seen live (as admin, look-only): voice-note chip on #2146's card (« ● note vocale 8 août … »); concept documents section on an idea (empty state + Fichier / Lien / Emplacement local / Depuis le coffre; adding one = normal use). Seen on localhost: Inventory « Périodes à trancher » filter (0 works today); a phone day screen in ~2 s on the dev server.
+- Not checkable now: ✦ hover (no open suggestions on any day) — kept in §4. Constellation drag / arrow tool, labels, GIFs, slideshow, field capture, batch items — need real use, kept.
+- Dropped from §4: « ⌘K queues new phrases » (a known behaviour, not a check); Procession → §5 parked; live speed + phone day timing folded into the speed item (17–19).
+- ⌘K finds a work by its number (Pem: « I type 2405 and gives no work »): « 2405 » / « #2405 » shows that work first, looked up on the server, and skips the meaning search (`1022669`). Checked on localhost: #2405 Mulberry portrait, Enter opens its card.
+
 ## 2026-11-18 — Pem's « next » form: old comments, work card 22, phone navigation, share kit
 
 - Old « Commentaires » retired (`067a4b8`, `supabase/sql/old_comments_retire.sql` applied on Pem's form « Empty the 94, move the 8 into a line, hide the field »): 94 works whose text was in a note line + 6 « ? » placeholders emptied (each kept in `oeuvre_versions`); the « 8 » were 6 « ? » + 2 works in the bin (#2343 « test », #2398), left as they are, so no new line. `oeuvre_search_text` reads note lines instead + trigger `graph_note_line_text_dirty`. Field gone from the card (checked on #2381).
