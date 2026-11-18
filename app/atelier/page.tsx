@@ -32,5 +32,13 @@ export default async function AtelierPage({ searchParams }: { searchParams: Sear
     redirect(q ? `/atelier/constellation?${q}` : '/atelier/constellation')
   }
 
-  redirect('/atelier/overview')
+  // Keep the query (e.g. `?work=2407` from /atelier/works/[id], the QR label link): the portal opens that work.
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue
+    if (Array.isArray(v)) v.forEach((x) => qs.append(k, x))
+    else qs.set(k, v)
+  }
+  const q = qs.toString()
+  redirect(q ? `/atelier/overview?${q}` : '/atelier/overview')
 }
