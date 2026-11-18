@@ -19,38 +19,43 @@ function fixtureHtml(): string {
   </style>
 </head>
 <body>
-  <div class="pl-root">
-    <div class="pl-works">
-      <div class="pl-row">
-        <div class="pl-thumb" style="background:#222;border-radius:2px"></div>
-        <div class="pl-meta">
-          <div style="min-width:280px">Titre exemple — métadonnées</div>
+  <div class="ck-root">
+    <div class="ck-wrap">
+      <div class="ck-works">
+        <div class="ck-work">
+          <div class="ck-img-ph"></div>
+          <div class="ck-meta">
+            <div style="min-width:280px">Titre exemple — métadonnées</div>
+          </div>
         </div>
       </div>
     </div>
+    <div class="ck-bar"><div class="ck-bar-in"><a class="ck-btn ck-btn--ghost">PDF</a><a class="ck-btn ck-btn--fill">Écrire</a></div></div>
   </div>
 </body>
 </html>`
 }
 
-test.describe('Private link layout CSS', () => {
+test.describe('Collector kit page layout CSS', () => {
   test('single column at 375px — no horizontal overflow', async ({ page }) => {
     await page.setContent(fixtureHtml())
     await page.setViewportSize({ width: 375, height: 667 })
     const noOverflow = await page.evaluate(() => {
-      const root = document.querySelector('.pl-root')
+      const root = document.querySelector('.ck-root')
       if (!root) return false
-      return root.scrollWidth <= root.clientWidth + 2
+      return root.scrollWidth <= root.clientWidth + 2 && document.documentElement.scrollWidth <= 375
     })
     expect(noOverflow).toBe(true)
-    const cols = await page.$eval('.pl-row', (el) => getComputedStyle(el).gridTemplateColumns)
-    expect(cols.split(' ').length).toBe(1)
+    const display = await page.$eval('.ck-work', (el) => getComputedStyle(el).display)
+    expect(display).toBe('flex')
+    const tapH = await page.$eval('.ck-bar .ck-btn', (el) => el.getBoundingClientRect().height)
+    expect(tapH).toBeGreaterThanOrEqual(44)
   })
 
   test('two columns at 900px', async ({ page }) => {
     await page.setContent(fixtureHtml())
     await page.setViewportSize({ width: 900, height: 700 })
-    const cols = await page.$eval('.pl-row', (el) => getComputedStyle(el).gridTemplateColumns)
+    const cols = await page.$eval('.ck-work', (el) => getComputedStyle(el).gridTemplateColumns)
     const parts = cols.split(' ').filter(Boolean)
     expect(parts.length).toBeGreaterThanOrEqual(2)
   })

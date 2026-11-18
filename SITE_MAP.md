@@ -30,7 +30,8 @@
 | `/enquiry` | Visitor contact / enquiry (optional `?oeuvre_id=` / `?order=<work_order id>` for after-sales routing) |
 | `/verify/[certId]` | Certificate of authenticity verification (QR target; `SUPABASE_SERVICE_ROLE_KEY` required server-side) |
 | `/card` | Printable business card sheet (`noindex`) |
-| `/c/[token]` | Private selection link: validates `private_link` server-side, shows grouped works (`noindex`) |
+| `/c/[token]` | Collector share kit (TODO 11b): token checked server-side (service role), the kit's frozen public works (one per screen on the phone, ticked prices, « Vendue » greyed), « Cette œuvre m'intéresse » / « Écrire à l'atelier » → one `inquiry` tagged with the kit (Triage chip « Kit · <name> »); revoked / expired / unknown → neutral page; opens counted without cookie (not robots, prefetch or team); `noindex`. Made from Thèmes / Groupes (group row), Inventory selection dock « Partager… » or a contact card (« Kits envoyés »: Prolonger / Retirer); `app/atelier/kits/actions.ts`; SQL `supabase/sql/collector_share_kit.sql` |
+| `/c/[token]/pdf` | The kit's PDF (portfolio engine, preset collectionneur) from the private Vault, only while the kit is active; counts downloads |
 
 ### Auth
 

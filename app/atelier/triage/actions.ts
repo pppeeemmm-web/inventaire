@@ -23,6 +23,8 @@ export type TriageDeckCard =
       message: string
       category: string
       createdAt: string
+      /** Sent from a collector kit (TODO 11b): « Kit · <name> », opens the contact card that lists the kit. */
+      kit: { name: string; contactId: number | null } | null
     }
 
 async function guardTeam() {
@@ -74,10 +76,17 @@ export async function listTriageDeck(): Promise<{ cards: TriageDeckCard[] } | { 
   }
 
   const { data: enquiries } = await g.supabase.from('inquiry')
-    .select('id, name, email, message, category, created_at, status')
+    .select('id, name, email, message, category, created_at, status, private_link_token')
     .eq('status', 'open')
     .order('created_at', { ascending: false })
     .limit(30)
+
+  const kitTokens = [...new Set((enquiries ?? []).map((r) => r.private_link_token).filter((x): x is string => Boolean(x)))]
+  const kitByToken = new Map<string, { name: string; contactId: number | null }>()
+  if (kitTokens.length) {
+    const { data: kits } = await g.supabase.from('private_link').select('token, recipient_name, contact_id').in('token', kitTokens)
+    for (const k of kits ?? []) kitByToken.set(k.token, { name: k.recipient_name ?? '—', contactId: k.contact_id })
+  }
 
   for (const row of enquiries ?? []) {
     cards.push({
@@ -88,6 +97,7 @@ export async function listTriageDeck(): Promise<{ cards: TriageDeckCard[] } | { 
       message: (row.message as string).slice(0, 500),
       category: row.category as string,
       createdAt: row.created_at as string,
+      kit: row.private_link_token ? (kitByToken.get(row.private_link_token) ?? null) : null,
     })
   }
 

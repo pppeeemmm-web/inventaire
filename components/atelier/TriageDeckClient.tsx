@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { enquiryCategoryKey } from '@/lib/enquiry-categories'
+import { interpolateMessage } from '@/lib/i18n/message-core'
 import { SwipeDeck, type SwipeDecision } from '@/components/shared/SwipeDeck'
 import {
   approveBroadcast,
@@ -78,7 +79,18 @@ export function TriageDeckClient() {
         </>
       ) : (
         <>
-          <div style={{ fontWeight: 600 }}>{card.name}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 600 }}>{card.name}</div>
+            {card.kit ? (
+              <Link
+                href={card.kit.contactId != null ? `/atelier/contacts?contact=${card.kit.contactId}` : '/atelier/contacts'}
+                data-testid="triage-kit-chip"
+                style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: 11, padding: '2px 10px', border: '1px solid var(--ac)', color: 'var(--ac)', borderRadius: 12, textDecoration: 'none' }}
+              >
+                {interpolateMessage(t('ck_triage_chip_fmt'), { name: card.kit.name })}
+              </Link>
+            ) : null}
+          </div>
           <p className="t-mono-sm" style={{ fontSize: 11, margin: '4px 0 8px' }}>{card.email}</p>
           <p style={{ fontSize: 13, lineHeight: 1.5, margin: 0, overflowWrap: 'anywhere' }}>{card.message}</p>
         </>

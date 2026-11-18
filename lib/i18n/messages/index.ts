@@ -63,6 +63,7 @@ import { constellationToolsMessages } from './constellation-tools.messages'
 import { versionFieldsMessages } from './version-fields.messages'
 import { workRulesMessages } from './work-rules.messages'
 import { themeNotesMessages } from './theme-notes.messages'
+import { collectorKitMessages, collectorKitPageMessages } from './collector-kit.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -130,6 +131,8 @@ export const featureMessages = {
   ...versionFieldsMessages,
   ...workRulesMessages,
   ...themeNotesMessages,
+  ...collectorKitMessages,
+  ...collectorKitPageMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

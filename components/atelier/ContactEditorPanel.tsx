@@ -32,6 +32,7 @@ import type {
   ContactSocial,
   ContactWebsite,
 } from '@/components/atelier/contact-editor-types'
+import { ContactKitsSection } from '@/components/atelier/kits/ContactKitsSection'
 
 export type ContactEditorPanelHandle = {
   save: () => Promise<boolean>
@@ -1184,6 +1185,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                 )}
                 {locs.length > 0 && <WorkMini label={t('contactEditorWorksLoc')} items={locs} />}
                 {buys.length > 0 && <WorkMini label={t('contactEditorWorksBuyer')} items={buys} />}
+                <ContactKitsSection contactId={contact!.ContactID} />
               </>
             )}
 

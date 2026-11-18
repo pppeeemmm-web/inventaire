@@ -1,92 +1,83 @@
-// Private client link — /c/:token
-// Token validation MUST use the service-role key server-side.
-// Never use the anon key here.
+// Collector kit — /c/<token> (TODO 11b, Pem build GO 2026-11-18).
+// Token validation MUST use the service-role key server-side (kit-data.ts). Never the anon key here.
+// Unknown, revoked and expired links all get the same neutral page: no name, no works, a way back to the atelier.
+// Opens are counted on the server (at most once per 30 min; not for link-preview robots, prefetches or a signed-in
+// team member previewing it); no cookie is set or read for the collector.
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { headers } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
 import { PRIVATE_LINK_SELECTION_CSS } from '@/lib/private-link-layout-css'
-import { WorkThumb } from '@/components/atelier/WorkThumb'
-import { dict } from '@/lib/i18n/dictionary'
-import type { Lang } from '@/lib/i18n/dictionary'
+import { flattenMessages } from '@/lib/i18n/message-core'
+import { collectorKitPageMessages } from '@/lib/i18n/messages/collector-kit.messages'
+import { isPreviewOrPrefetch } from '@/lib/collector-kit'
+import { CollectorKitView } from '@/components/public/CollectorKitView'
+import { logWarn } from '@/lib/error-reporter/server'
+import { isTeamViewer, kitLang, readKitLink, readKitWorks } from './kit-data'
 
-export default async function PrivateLinkPage({
-  params,
-  searchParams,
-}: {
+export const dynamic = 'force-dynamic'
+
+type PageProps = {
   params: Promise<{ token: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
+}
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { token } = await params
   const sp = await searchParams
-  const lang: Lang = sp['lang'] === 'en' ? 'en' : 'fr'
-  const d = dict[lang]
-  const supabase = createServiceClient()
+  const link = await readKitLink(token)
+  const lang = link && link !== 'inactive' ? kitLang(link, sp['lang']) : (sp['lang'] === 'en' ? 'en' : 'fr')
+  // The title only: a link preview must not show the collector's name.
+  return {
+    title: flattenMessages(collectorKitPageMessages, lang).ckp_title,
+    robots: { index: false, follow: false, nocache: true },
+    referrer: 'no-referrer',
+  }
+}
 
-  // Validate token
-  const { data: link } = await supabase
-    .from('private_link')
-    .select('*, working_group(name)')
-    .eq('token', token)
-    .single()
+export default async function CollectorKitPage({ params, searchParams }: PageProps) {
+  const { token } = await params
+  const sp = await searchParams
+  const link = await readKitLink(token)
+  const lang = link && link !== 'inactive' ? kitLang(link, sp['lang']) : (sp['lang'] === 'en' ? 'en' : 'fr')
+  const copy = flattenMessages(collectorKitPageMessages, lang)
 
-  if (!link) return notFound()
-  if (link.expires_at && new Date(link.expires_at) < new Date()) return notFound()
+  if (!link || link === 'inactive') {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: PRIVATE_LINK_SELECTION_CSS }} />
+        <main className="ck-root" style={{ paddingBottom: 0 }}>
+          <div className="ck-center">
+            <div className="ck-eyebrow">{copy.ckp_eyebrow}</div>
+            <h1 className="ck-h1">{copy.ckp_inactive_title}</h1>
+            <p className="ck-line" style={{ maxWidth: 420 }}>{copy.ckp_inactive_body}</p>
+            <Link className="ck-btn" href="/enquiry">{copy.ckp_write}</Link>
+          </div>
+        </main>
+      </>
+    )
+  }
 
-  // Log view
-  await supabase
-    .from('private_link')
-    .update({ viewed_at: new Date().toISOString(), view_count: link.view_count + 1 })
-    .eq('token', token)
+  const works = await readKitWorks(link.token)
 
-  // Fetch works in the linked group
-  const { data: groupWorks } = link.group_id
-    ? await supabase
-        .from('working_group_work')
-        .select('position, Oeuvres(OeuvreID, Titre, Technique, Support, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink, Prix)')
-        .eq('group_id', link.group_id)
-        .order('position')
-    : { data: [] }
-
-  const oeuvres = (groupWorks ?? []).map((r: Record<string, unknown>) => r['Oeuvres'] as Record<string, unknown>).filter(Boolean)
+  if (!isPreviewOrPrefetch(await headers()) && !(await isTeamViewer())) {
+    const { error } = await createServiceClient().rpc('private_link_count_open', { p_token: link.token })
+    if (error) await logWarn('Collector kit open not counted', error, { source: 'c.page' })
+  }
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: PRIVATE_LINK_SELECTION_CSS }} />
-      <div className="pl-root">
-        <div className="pl-header">
-          <div className="t-eyebrow" style={{ marginBottom: 12 }}>{d.pl_private_selection} · the pem workshop</div>
-          <div className="serif s-lg">{(link as Record<string, unknown>)['working_group'] ? ((link as Record<string, unknown>)['working_group'] as Record<string, unknown>)['name'] as string : d.pl_private_selection}</div>
-          {link.recipient_name && (
-            <div className="t-mono-sm" style={{ marginTop: 8 }}>{d.pl_for} {link.recipient_name}</div>
-          )}
-        </div>
-
-        <div className="pl-works">
-          {oeuvres.map((o: Record<string, unknown>) => (
-            <div key={o['OeuvreID'] as number} className="pl-row">
-              <div className="thumb pl-thumb">
-                {o['txtImageNameLink']
-                  ? <WorkThumb file={o['txtImageNameLink'] as string} size={800} alt={o['Titre'] as string ?? ''} />
-                  : <div className="ph" />}
-              </div>
-              <div className="pl-meta">
-                <div className="serif s-md" style={{ marginBottom: 16 }}>{o['Titre'] as string ?? '—'}</div>
-                <div className="t-mono-sm" style={{ marginBottom: 8 }}>{String(o['Année'] ?? '').slice(0, 4)}</div>
-                {!!(o['Hauteur'] || o['Largeur']) && (
-                  <div className="t-mono-sm">{o['Hauteur'] as string} × {o['Largeur'] as string} cm</div>
-                )}
-                <div className="t-mono" style={{ marginTop: 24, color: 'var(--tx3)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  {d.pl_price_on_request}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="pl-footer">
-          <div>the pem workshop</div>
-          <div style={{ marginTop: 4 }}>{d.pl_no_share}</div>
-        </div>
-      </div>
+      <CollectorKitView
+        token={link.token}
+        lang={lang}
+        copy={copy}
+        name={link.recipient_name}
+        message={link.message}
+        expiresAt={link.expires_at}
+        works={works}
+        hasPdf={Boolean(link.pdf_key)}
+      />
     </>
   )
 }

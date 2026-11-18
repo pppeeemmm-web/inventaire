@@ -14,6 +14,7 @@ import type { Oeuvre } from '@/lib/types/database'
 import { THEME_NOTES_SQL_LIVE } from '@/lib/theme-notes'
 import { loadThemeNotes } from '../theme-notes-actions'
 import { ThemeNotesPanel } from './ThemeNotesPanel'
+import { ShareKitSheet } from '@/components/atelier/kits/ShareKitSheet'
 
 interface Theme  { id: number; name: string }
 interface Group  { id: string; name: string }
@@ -60,6 +61,8 @@ export function Themes({
   // Theme notes (TODO 23) — empty and never fetched while THEME_NOTES_SQL_LIVE is false.
   const [themeNotes, setThemeNotes] = useState<Record<number, string>>({})
   const [notesEditingId, setNotesEditingId] = useState<number | null>(null)
+  /** Collector share kit (TODO 11b): « Partager à un collectionneur… » from a working group. */
+  const [kitGroupId, setKitGroupId] = useState<string | null>(null)
 
   // Interaction State
   const [hoverTheme, setHoverTheme] = useState<number | null>(null)
@@ -459,6 +462,9 @@ export function Themes({
       }}
     >
       {msg && <div className="flash-msg">{msg.toUpperCase()}</div>}
+      {kitGroupId ? (
+        <ShareKitSheet source={{ kind: 'group', groupId: kitGroupId }} onClose={() => setKitGroupId(null)} />
+      ) : null}
 
       <div
         style={{
@@ -728,7 +734,8 @@ export function Themes({
                 const isRel = relatedGroups.includes(g_.id)
                 const isHov = hoverGroup === g_.id
                 return (
-                  <div key={g_.id} 
+                  <Fragment key={g_.id}>
+                  <div
                     className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                     onMouseEnter={() => { setHoverGroup(g_.id); setHoverTheme(null) }} 
                     onClick={() => {
@@ -758,6 +765,7 @@ export function Themes({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                           <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{localGroupWorkCount[g_.id] ?? 0}</span>
                           <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
+                            <button type="button" aria-label={t('ck_share_open')} title={t('ck_share_open')} onClick={(e) => { e.stopPropagation(); setKitGroupId(g_.id) }} className="themes-row-action-btn" data-testid="themes-group-share-kit">↗</button>
                             <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} className="themes-row-action-btn">✎</button>
                             <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} className="themes-row-action-btn themes-row-action-btn--danger">✕</button>
                           </div>
@@ -765,6 +773,12 @@ export function Themes({
                       </>
                     )}
                   </div>
+                  {narrow && isHov && editGroup !== g_.id && (localGroupWorkCount[g_.id] ?? 0) > 0 ? (
+                    <button type="button" className="btn ghost sm" style={{ minHeight: 44, width: '100%', margin: '2px 0 6px' }} onClick={() => setKitGroupId(g_.id)}>
+                      {t('ck_share_open')}
+                    </button>
+                  ) : null}
+                  </Fragment>
                 )
               })}
             </div>

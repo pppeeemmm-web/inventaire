@@ -15,6 +15,7 @@ import { SlideshowPlayer } from '@/components/atelier/slideshow/SlideshowPlayer'
 import { slideWorksFromOeuvres } from '@/components/atelier/slideshow/slide-works'
 import { readRememberedSlideshowSettings, rememberSlideshowSettings } from '@/lib/slideshow'
 import { saveSlideshow } from '@/app/atelier/slideshow/actions'
+import { ShareKitSheet } from '@/components/atelier/kits/ShareKitSheet'
 
 interface Props {
   selection:          Set<number>
@@ -53,6 +54,8 @@ export function CurationDock({
   const [showExport,setShowExport]= useState(false)
   const [showImagesZip, setShowImagesZip] = useState(false)
   const [showCatalogPersist, setShowCatalogPersist] = useState(false)
+  /** Collector share kit (TODO 11b): the selection, in the order it was selected, frozen into a private link. */
+  const [kitIds, setKitIds] = useState<number[] | null>(null)
   // Slides are built once when the slideshow opens (the selection can change underneath).
   const [slideshow, setSlideshow] = useState<ReturnType<typeof slideWorksFromOeuvres> | null>(null)
 
@@ -143,6 +146,16 @@ export function CurationDock({
           {t('curationDockAttach')}
         </button>
 
+        <button
+          type="button"
+          className="btn sm ghost"
+          data-testid="curation-open-share-kit"
+          onClick={() => setKitIds(ids)}
+          title={t('ck_share_open')}
+        >
+          {t('ck_share_open_short')}
+        </button>
+
         {/* Compare */}
         <button className="btn sm ghost" onClick={onCompare}>
           {t('compare')}
@@ -227,6 +240,10 @@ export function CurationDock({
           ids={ids}
           onClose={() => setShowImagesZip(false)}
         />
+      )}
+
+      {kitIds && (
+        <ShareKitSheet source={{ kind: 'works', oeuvreIds: kitIds }} onClose={() => setKitIds(null)} />
       )}
 
       {showCatalogPersist && (
