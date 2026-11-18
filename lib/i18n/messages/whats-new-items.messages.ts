@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.68 (2026-11-18) — Aide batch 4: team guide complete.
+  wn_aide_team_complete_t: { fr: 'Aide : le guide d’équipe est complet', en: 'Help: the team guide is complete' },
+  wn_aide_team_complete_d: {
+    fr: 'Six derniers chapitres dans Kaizen → Aide : Contacts (et la carte de visite), Fournitures, Rapports, Site public et Portfolio, ce que l’application fait d’elle-même, et un glossaire français / anglais.',
+    en: 'The last six chapters in Kaizen → Help: Contacts (and the business card), Supplies, Reports, Public site and Portfolio, what the app does by itself, and a French / English glossary.',
+  },
   // 3.1.67 (2026-11-18) — Aide batch 3.
   wn_aide_day_orders_events_t: { fr: 'Aide : la journée, les idées, les commandes', en: 'Help: the day, ideas, orders' },
   wn_aide_day_orders_events_d: {

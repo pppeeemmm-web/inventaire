@@ -43,8 +43,7 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Guides — in-app Aide (`/atelier/aide`, batch 1 done 2026-11-18; design: one how-to card per task — When · Steps · What happens next · Pitfalls)
-- [ ] Batch 4 (Œuvres, Production, Journal, Idées, Commandes, Logistique, Événements done 2026-11-18): how-to cards for Contacts, Fournitures, Rapports, Site & Portfolio; then « What the app does by itself » and a FR / EN glossary.
+Guides — in-app Aide (`/atelier/aide`): team guide complete 2026-11-18 (15 chapters, FR + EN); design: one how-to card per task — When · Steps · What happens next · Pitfalls
 - [ ] Batch 5: admin guide (approvals, Audit, version restore, Fil, Diffusion, hard delete, contacts merge / private, backups, Opérations & Stratégie).
 - [ ] Batch 6: retire the old copies — `ADMIN_GUIDE.md` + `TEAM_MEMBER_GUIDE.md` → `docs/archive/`, ⌘K « Download Studio Bible » + the Kaizen → Système regenerate button; delete the two Vault uploads (« Admin guide html », « Team member Guide html ») and the Studio Bible PDF only with Pem's OK.
 
@@ -52,6 +51,7 @@ Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms
 - [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker still lists only the loaded works (round 2: the catalogue loads only on tabs that use it).
 - [ ] 19. Fewer silent catches (~258, lint warns) · one combined badge action on tab switch · `is_admin()` STABLE. Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
+- [ ] Live data checks: rules 9 and 10 can't run (`npm run checks:live` → « permission denied for function oeuvre_order_exists » for the read-only role); needs a GRANT EXECUTE for that role — SQL, your OK first.
 
 ## 4. To check once, when it happens (no build)
 
