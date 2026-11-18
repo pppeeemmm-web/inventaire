@@ -148,7 +148,6 @@ function countByRule(breaks: RuleBreak[]): Record<string, number> {
 /** Keep the run for the Overview's « Système » signal (work_rule_runs.sql). Never blocks the check. */
 async function recordRuleRun(supabase: Client, r: { works: number | null; breaks: number; byRule: Record<string, number>; error: string | null }) {
   if (!RULE_RUNS_LIVE) return
-  const { error } = await (supabase as unknown as { from: (t: string) => { insert: (row: object) => Promise<{ error: { message: string } | null }> } })
-    .from('work_rule_run').insert({ source: 'manual', works: r.works, breaks: r.breaks, by_rule: r.byRule, error: r.error })
+  const { error } = await supabase.from('work_rule_run').insert({ source: 'manual', works: r.works, breaks: r.breaks, by_rule: r.byRule, error: r.error })
   if (error) await logError('Work rule run not recorded', error.message, { source: 'runWorkRuleChecks' })
 }

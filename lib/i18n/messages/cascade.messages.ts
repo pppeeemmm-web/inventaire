@@ -110,6 +110,21 @@ export const cascadeMessages = defineMessages({
   cas_claim_st_refused: { fr: 'Refusé', en: 'Refused' },
   cas_claim_st_withdrawn: { fr: 'Retiré', en: 'Withdrawn' },
 
+  // Calendar (order dates → Google / Microsoft calendar)
+  cas_cal_start: { fr: '{ref} · sortie des œuvres — {party}', en: '{ref} · works go out — {party}' },
+  cas_cal_end: { fr: '{ref} · retour attendu — {party}', en: '{ref} · due back — {party}' },
+  cas_cal_delivery: { fr: '{ref} · livraison prévue — {party}', en: '{ref} · planned delivery — {party}' },
+  cas_cal_return_end: { fr: '{ref} · fin du délai de retour — {party}', en: '{ref} · end of the return period — {party}' },
+  cas_cal_title: { fr: 'Calendrier', en: 'Calendar' },
+  cas_cal_push: { fr: 'Mettre les dates dans mon calendrier', en: 'Put the dates in my calendar' },
+  cas_cal_pushed_fmt: { fr: '{n} date(s) dans votre calendrier.', en: '{n} date(s) in your calendar.' },
+  cas_cal_none: { fr: 'Aucune date à mettre pour l’instant.', en: 'No date to add yet.' },
+  cas_cal_no_account: {
+    fr: 'Aucun calendrier relié. Reliez Google ou Microsoft dans Business → Événements → un événement → Calendrier.',
+    en: 'No calendar connected. Connect Google or Microsoft in Business → Events → an event → Calendar.',
+  },
+  cas_cal_hint: { fr: 'Les dates suivent la commande toute seule une fois un calendrier relié.', en: 'Once a calendar is connected, the dates follow the order by themselves.' },
+
   // Logistics tab
   cas_logistics_intro: {
     fr: 'Chaque envoi part d’une ou plusieurs commandes vers la même adresse. Les étapes se cochent dans l’ordre.',

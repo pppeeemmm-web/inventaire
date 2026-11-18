@@ -17,7 +17,7 @@ import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { saleMoneyState } from '@/lib/sales/sale-money'
-import { makeOrderCoas, openShipmentForOrder } from '@/app/atelier/(portal)/sales/cascade-actions'
+import { makeOrderCoas, openShipmentForOrder, syncOrderCalendarQuietly } from '@/app/atelier/(portal)/sales/cascade-actions'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
 export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
@@ -386,6 +386,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
     await logError('Order paper failed at creation', paper.error, { source: 'orders.createWorkOrder', metadata: { orderId: order.id, ref: order.ref } })
   }
   if (CUSTODY_KINDS.includes(kind)) await scheduleDateReminders(supabase, order.id)
+  await syncOrderCalendarQuietly(order.id)
   revalidatePath('/atelier/sales')
   if (processId) revalidatePath('/atelier/pipeline')
   return { ok: true, id: order.id, ref: order.ref }
@@ -547,6 +548,7 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
     const coa = await makeOrderCoas(order.id)
     if ('error' in coa) await logError('COA at payment failed', coa.error, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
   }
+  await syncOrderCalendarQuietly(order.id)
   revalidatePath('/atelier/sales')
   return { ok: true }
 }
@@ -579,6 +581,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   if (error) return { error: error.message }
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: 'cancelled', metadata: { ref: order.ref, kind: order.kind } })
   await closeDateReminders(supabase, order.ref, 'all')
+  await syncOrderCalendarQuietly(order.id)
   revalidatePath('/atelier/sales')
   return { ok: true }
 }

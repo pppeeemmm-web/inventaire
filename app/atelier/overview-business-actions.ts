@@ -3,7 +3,7 @@
 // Overview strip — the parts that were missing (Pem 2026-11-18: « why not? »): orders and shipments
 // under way, events, and for the admin the system (errors of the last 7 days + the last rule check).
 // Head counts only; team guard. The rule-check result needs supabase/sql/work_rule_runs.sql
-// (RULE_RUNS_LIVE in lib/overview/signal-strip.ts): until then it stays null.
+// (applied 2026-11-18, RULE_RUNS_LIVE in lib/overview/signal-strip.ts).
 
 import { createClient } from '@/lib/supabase/server'
 import { getSidebarCounts } from '@/app/atelier/sidebar-counts-actions'
@@ -33,9 +33,7 @@ export async function getOverviewBusiness(): Promise<OverviewBusiness | null> {
       .eq('event_type', 'RUNTIME_ERROR').gte('created_at', since)
     errors7d = count ?? 0
     if (RULE_RUNS_LIVE) {
-      // Table typed once work_rule_runs.sql is applied and types regenerated.
-      const { data } = await (supabase as unknown as { from: (t: string) => { select: (c: string) => { order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: { ran_at: string; breaks: number; source: string; error: string | null }[] | null }> } } } })
-        .from('work_rule_run').select('ran_at, breaks, source, error').order('ran_at', { ascending: false }).limit(1)
+      const { data } = await supabase.from('work_rule_run').select('ran_at, breaks, source, error').order('ran_at', { ascending: false }).limit(1)
       const r = data?.[0]
       if (r) lastRuleRun = { ranAt: r.ran_at, breaks: r.breaks, source: r.source, error: r.error }
     }

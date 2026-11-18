@@ -10,7 +10,7 @@ import { toast } from '@/lib/ui/toast'
 import { DEMAND_KINDS, DEMAND_LABEL, INVOICE_FROM_STATUS, INVOICE_VAT_MENTION, type DemandKind } from '@/lib/orders/cascade'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
 import {
-  addDemand, creditInvoice, fetchOrderCascade, issueInvoice, makeOrderCoas, openShipmentForOrder, removeDemand,
+  addDemand, creditInvoice, fetchOrderCascade, issueInvoice, makeOrderCoas, openShipmentForOrder, pushOrderToCalendars, removeDemand,
   setDemandDone, setOrderDelivery, type OrderCascadeView,
 } from '@/app/atelier/(portal)/sales/cascade-actions'
 import { ShipmentCard } from '@/components/atelier/orders/ShipmentCard'
@@ -157,6 +157,25 @@ export function OrderCascadePanel({ orderId, narrow, onOrderChanged }: { orderId
           </div>
         )}
       </Block>
+
+      {/* Calendar */}
+      {v.status !== 'cancelled' && (
+        <Block label={t('cas_cal_title')}>
+          <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 6 }}>{t('cas_cal_hint')}</div>
+          <button type="button" className="btn ghost" disabled={busy} style={{ minHeight: 44 }}
+            onClick={() => {
+              void (async () => {
+                setBusy(true)
+                const r = await pushOrderToCalendars(orderId)
+                setBusy(false)
+                if ('error' in r) toast.error(msg(r.error))
+                else toast.success(r.pushed > 0 ? t('cas_cal_pushed_fmt').replace('{n}', String(r.pushed)) : t('cas_cal_none'))
+              })()
+            }}>
+            {t('cas_cal_push')}
+          </button>
+        </Block>
+      )}
 
       {/* COA (sale) */}
       {isSale && (

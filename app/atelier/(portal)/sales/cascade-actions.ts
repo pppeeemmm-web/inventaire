@@ -16,6 +16,9 @@ import { VAULT_FOLDER_INVOICES } from '@/lib/vault/folder-routing'
 import { generateCOA } from '@/app/atelier/(portal)/vault/actions'
 import { advanceWorkOrder, type WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
 import { buildInvoicePaper, type InvoiceLine } from '@/lib/orders/invoice-paper'
+import { syncOrderToCalendars, type OrderDateKey, type OrderSyncLabels } from '@/lib/calendar/sync-order'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import {
   DEMAND_KINDS, INVOICE_FROM_STATUS, INVOICE_VAT_MENTION, SHIP_DONE, SHIP_OPEN, SHIP_STEPS, STUDIO_SIRET, nextShipStep,
   type DemandKind, type ShipmentKind, type ShipmentStatus,
@@ -599,6 +602,34 @@ export async function creditInvoice(invoiceId: string): Promise<{ ok: true; numb
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'invoice', rowId: cn.id, newValue: 'credit_note', metadata: { number: cn.number, credits: inv.number } })
   done()
   return { ok: true, number: cn.number! }
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────────────────────────────
+
+const CAL_KEY: Record<OrderDateKey, DictKey> = { start: 'cas_cal_start', end: 'cas_cal_end', delivery: 'cas_cal_delivery', return_end: 'cas_cal_return_end' }
+const calLabels = (): OrderSyncLabels => {
+  const f = (k: OrderDateKey) => (ref: string, party: string) => resolveMessage('fr', CAL_KEY[k]).replace('{ref}', ref).replace('{party}', party)
+  return { start: f('start'), end: f('end'), delivery: f('delivery'), return_end: f('return_end') }
+}
+
+/** The order's dates in the calendars of the person acting (button in the order). */
+export async function pushOrderToCalendars(orderId: string): Promise<{ ok: true; pushed: number } | Err> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
+  const r = await syncOrderToCalendars(supabase, user.id, orderId, calLabels())
+  if (!r.ok) return { error: r.message === 'calendar_err_no_accounts' ? 'cas_cal_no_account' : r.message }
+  return { ok: true, pushed: r.pushed }
+}
+
+/** Best effort after an order changes (created, a step, cancelled): no calendar = nothing, a failure is logged. */
+export async function syncOrderCalendarQuietly(orderId: string): Promise<void> {
+  const r = await pushOrderToCalendars(orderId)
+  if ('error' in r && r.error !== 'cas_cal_no_account') {
+    await logError('Order calendar sync failed', r.error, { source: 'cascade.syncOrderCalendarQuietly', metadata: { orderId } })
+  }
 }
 
 // ── Claims ───────────────────────────────────────────────────────────────────────────────────────

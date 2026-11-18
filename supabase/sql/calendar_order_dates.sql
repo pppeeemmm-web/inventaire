@@ -1,6 +1,6 @@
 -- Calendar: order dates pushed to the user's calendar (Pem 2026-11-18: GO), like exhibitions today.
 -- One calendar event per order date: out / back (deposit, loan, Confié), delivery (sale), end of the 14-day return.
--- NOT APPLIED — SQL needs its own OK (CLAUDE.md). calendar_event_link holds 0 rows, 0 accounts connected (2026-11-18).
+-- APPLIED LIVE 2026-11-18 (Pem: « Apply both »), migration calendar_order_dates. 0 rows, 0 accounts connected that day.
 -- After applying: `npm run gen:types`, flip ORDER_CALENDAR_LIVE in lib/calendar/sync-order.ts.
 
 begin;

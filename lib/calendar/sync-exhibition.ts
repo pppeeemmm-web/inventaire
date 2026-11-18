@@ -20,7 +20,7 @@ export type SyncLabels = {
   fieldNotes: string
 }
 
-function dateKey(d: string | null): string | null {
+export function dateKey(d: string | null): string | null {
   if (!d) return null
   const s = String(d).trim()
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
@@ -29,7 +29,7 @@ function dateKey(d: string | null): string | null {
   return x.toISOString().slice(0, 10)
 }
 
-function addDays(ymd: string, n: number): string {
+export function addDays(ymd: string, n: number): string {
   const d = new Date(`${ymd}T12:00:00.000Z`)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
@@ -63,7 +63,7 @@ function buildDescription(
   return lines.join('\n') || '—'
 }
 
-type AccountRow = {
+export type AccountRow = {
   id: string
   provider: CalendarProvider
   refresh_token_encrypted: string
@@ -84,7 +84,7 @@ function linkKey(row: LinkRow): string {
   return `s:${row.suivi_etape_id ?? ''}`
 }
 
-async function accessForAccount(acc: AccountRow): Promise<string> {
+export async function accessForAccount(acc: AccountRow): Promise<string> {
   const refresh = decryptCalendarRefreshToken(
     acc.refresh_token_encrypted,
     acc.token_salt,
@@ -97,7 +97,7 @@ async function accessForAccount(acc: AccountRow): Promise<string> {
   return access_token
 }
 
-async function upsertRemote(
+export async function upsertRemote(
   provider: CalendarProvider,
   access: string,
   draft: CalendarEventDraft,
@@ -108,7 +108,7 @@ async function upsertRemote(
   return upsertMicrosoftEvent(access, draft, existingId, etag)
 }
 
-async function deleteRemote(provider: CalendarProvider, access: string, eventId: string) {
+export async function deleteRemote(provider: CalendarProvider, access: string, eventId: string) {
   if (provider === 'google') return deleteGoogleEvent(access, eventId)
   return deleteMicrosoftEvent(access, eventId)
 }
