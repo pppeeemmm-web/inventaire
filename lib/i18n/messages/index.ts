@@ -28,6 +28,7 @@ import { contactsUiMessages } from './contacts-ui.messages'
 import { analyticsUiMessages } from './analytics-ui.messages'
 import { auditMessages } from './audit.messages'
 import { stockUiMessages } from './stock-ui.messages'
+import { supplyOrdersMessages } from './supply-orders.messages'
 import { portfolioConfigMessages } from './portfolio-config.messages'
 import { knobsPanelMessages } from './knobs-panel.messages'
 import { sessionFieldMessages } from './session-field.messages'
@@ -94,6 +95,7 @@ export const featureMessages = {
   ...analyticsUiMessages,
   ...auditMessages,
   ...stockUiMessages,
+  ...supplyOrdersMessages,
   ...portfolioConfigMessages,
   ...knobsPanelMessages,
   ...sessionFieldMessages,

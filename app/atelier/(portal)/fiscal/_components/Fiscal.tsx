@@ -19,6 +19,8 @@ import { FiscalSales } from './FiscalSales'
 import { MoneyApart } from './MoneyApart'
 import { FiscalByYear } from './FiscalByYear'
 import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from '@/app/atelier/(portal)/fiscal/cost-actions'
+import { ExpenseFiles } from '@/components/atelier/supplies/ExpenseFiles'
+import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -840,6 +842,10 @@ function ExpenseModal({
             <div className="t-label" style={{ marginBottom: 3 }}>{t('fiscal_receipt_ref_label')}</div>
             <input value={form.receipt_ref} onChange={f('receipt_ref')} placeholder="ex: FACT-2025-003, Ticket Leroy Merlin…" style={FIS} />
           </div>
+
+          {SUPPLY_ORDERS_SQL_LIVE && expense ? (
+            <ExpenseFiles expenseId={expense.id} label={expense.receipt_ref || expense.libelle || ''} date={expense.date} />
+          ) : null}
 
           <div>
             <div className="t-label" style={{ marginBottom: 3 }}>Notes</div>

@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { StockContactLike } from '@/lib/stock-item'
+import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
 
 function TabPanelFallback() {
   return <div style={{ flex: 1 }} />
@@ -17,11 +18,14 @@ function TabPanelFallback() {
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTake = dynamic(() => import('@/app/atelier/(portal)/stock-take/_components/StockTake').then((m) => ({ default: m.StockTake })), { loading: () => <TabPanelFallback />, ssr: false })
 const SuppliesRestock = dynamic(() => import('@/components/atelier/supplies/SuppliesRestock').then((m) => ({ default: m.SuppliesRestock })), { loading: () => <TabPanelFallback />, ssr: false })
+const SupplyOrders = dynamic(() => import('@/components/atelier/supplies/SupplyOrders').then((m) => ({ default: m.SupplyOrders })), { loading: () => <TabPanelFallback />, ssr: false })
 
-export type SuppliesView = 'stock' | 'count' | 'restock'
-const VIEWS: SuppliesView[] = ['stock', 'count', 'restock']
+export type SuppliesView = 'stock' | 'count' | 'restock' | 'orders'
+// « Commandes » (supply orders, TODO 11) shows once supabase/sql/supply_orders.sql is live.
+const VIEWS: SuppliesView[] = SUPPLY_ORDERS_SQL_LIVE ? ['stock', 'count', 'restock', 'orders'] : ['stock', 'count', 'restock']
 
 export function parseSuppliesView(raw: string | null | undefined): SuppliesView {
+  if (raw === 'orders') return SUPPLY_ORDERS_SQL_LIVE ? 'orders' : 'stock'
   return raw === 'count' || raw === 'restock' ? raw : 'stock'
 }
 
@@ -35,12 +39,13 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
   const setView = (v: SuppliesView) => {
     const next = new URLSearchParams(params.toString())
     if (v === 'stock') next.delete('view'); else next.set('view', v)
+    next.delete('order')
     const qs = next.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
   return (
-    <div data-testid="supplies-tab" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div data-testid="supplies-tab" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
       <div
         role="tablist"
         aria-label={t('supplies_views_aria')}
@@ -69,6 +74,7 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
         {view === 'stock' ? <SupplierHub contacts={contacts} /> : null}
         {view === 'count' ? <StockTake contacts={contacts} /> : null}
         {view === 'restock' ? <SuppliesRestock contacts={contacts} /> : null}
+        {view === 'orders' ? <SupplyOrders contacts={contacts} /> : null}
       </div>
     </div>
   )

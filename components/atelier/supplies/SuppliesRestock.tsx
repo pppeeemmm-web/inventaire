@@ -2,11 +2,14 @@
 
 // Réassort / Commande — supplies out of stock or below their minimum, grouped by supplier,
 // with an order quantity per line and a "copy order" per supplier. Order quantities are a
-// per-device draft (no orders table yet); minimums are written to `stock_item.min_stock`.
+// per-device draft; minimums are written to `stock_item.min_stock`. Once supply orders are live
+// (SUPPLY_ORDERS_SQL_LIVE), « Créer la commande » turns a supplier's draft quantities into a draft order.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { toast } from '@/lib/ui/toast'
 import { stringifyError } from '@/lib/error'
 import {
@@ -15,6 +18,8 @@ import {
   supplierDisplayName,
   formatStockCurrency,
 } from '@/lib/stock-item'
+import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
+import { saveSupplyOrder } from '@/app/atelier/(portal)/stock/supply-order-actions'
 
 const DRAFT_KEY = 'pem_restock_order_draft'
 
@@ -38,6 +43,8 @@ export function SuppliesRestock({ contacts }: { contacts: StockContactLike[] }) 
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const [order, setOrder] = useState<Record<number, number>>({})
+  const [creating, setCreating] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => { setOrder(readDraft()) }, [])
   useEffect(() => {
@@ -96,6 +103,25 @@ export function SuppliesRestock({ contacts }: { contacts: StockContactLike[] }) 
     }
   }
 
+  /** Draft supply order for one supplier group, then open it in « Commandes ». */
+  async function createOrder(supplierId: number, rows: StockItemRow[]) {
+    const lines = rows
+      .filter((r) => (order[r.id] ?? 0) > 0)
+      .map((r) => ({ id: null, stock_item_id: r.id, qty_ordered: order[r.id], unit_price_ht: r.cost_unit }))
+    if (!lines.length) return
+    setCreating(String(supplierId))
+    const res = await saveSupplyOrder({ id: null, supplier_id: supplierId, notes: null, lines })
+    setCreating(null)
+    if ('error' in res) { toast.error(res.error.startsWith('so_err_') ? t(res.error as DictKey) : res.error); return }
+    setOrder((p) => {
+      const n = { ...p }
+      for (const l of lines) delete n[l.stock_item_id]
+      return n
+    })
+    toast.success(t('so_created_from_restock'))
+    router.push(`/atelier/stock?view=orders&order=${res.id}`)
+  }
+
   const cell: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--bd)', fontSize: 12, verticalAlign: 'middle' }
   const num: React.CSSProperties = { ...cell, textAlign: 'right', whiteSpace: 'nowrap' }
   const input: React.CSSProperties = {
@@ -127,9 +153,15 @@ export function SuppliesRestock({ contacts }: { contacts: StockContactLike[] }) 
                   {t('restock_total_fmt').replace('{total}', formatStockCurrency(lang, total))}
                 </span>
               ) : null}
-              <button type="button" className="btn ghost sm" disabled={!hasOrder} onClick={() => void copyOrder(g.label, g.rows)} style={{ marginLeft: 'auto' }}>
+              <button type="button" className="btn ghost sm" disabled={!hasOrder} onClick={() => void copyOrder(g.label, g.rows)} style={{ marginLeft: 'auto', minHeight: 44 }}>
                 {t('restock_copy')}
               </button>
+              {SUPPLY_ORDERS_SQL_LIVE && g.key !== '_none' ? (
+                <button type="button" className="btn primary sm" disabled={!hasOrder || creating != null} data-testid="restock-create-order"
+                  onClick={() => void createOrder(Number(g.key), g.rows)} style={{ minHeight: 44 }}>
+                  {t('so_create_from_restock')}
+                </button>
+              ) : null}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

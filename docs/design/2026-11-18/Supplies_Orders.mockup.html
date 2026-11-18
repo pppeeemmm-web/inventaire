@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fournitures — commandes mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);--yellow:oklch(0.86 0.15 95);--cyan:oklch(0.78 0.12 200);
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:14px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:22px}
+.caption{max-width:1240px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px;max-width:375px}
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600}
+.btn{height:34px;padding:0 12px;border:1px solid var(--bd2);border-radius:3px;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);background:none;white-space:nowrap}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.q{color:var(--tx3)}
+.chip{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;border:1px solid}
+.chip.d{color:var(--tx3);border-color:var(--bd2)}
+.chip.o{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 50%,var(--bd2))}
+.chip.p{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 50%,var(--bd2))}
+.chip.r{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 50%,var(--bd2))}
+.ok{color:var(--sage)} .no{color:var(--mt)}
+.steps{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3)}
+.steps b{color:var(--ac);font-weight:600}
+.steps i{width:18px;height:1px;background:var(--bd3);display:block}
+.steps .done{color:var(--tx2)}
+
+/* desktop */
+.desk{width:1280px;height:700px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;overflow:hidden;display:flex;position:relative}
+.side{width:190px;flex:none;border-right:1px solid var(--bd);padding:14px 0;font-size:13px}
+.side .g{padding:12px 16px 4px}
+.side a{display:block;padding:6px 16px;color:var(--tx2);text-decoration:none}
+.side a.on{color:var(--ac);background:var(--bg2)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;border-bottom:1px solid var(--bd);padding:0 16px}
+.tabs span{padding:13px 16px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.tabs span.on{color:var(--ac);border-bottom:2px solid var(--ac)}
+.tabs span.new::after{content:' ●';color:var(--ac);font-size:8px;vertical-align:top}
+.bar{display:flex;align-items:center;gap:10px;padding:14px 24px}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:3px}
+.seg span{padding:6px 10px;font-size:12px;color:var(--tx3)}
+.seg span.on{color:var(--tx);background:var(--bg3)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);text-align:left;font-weight:600;padding:7px 10px;border-bottom:1px solid var(--bd2);position:sticky;top:0;background:var(--bg1)}
+td{padding:9px 10px;border-bottom:1px solid var(--bd);font-size:13px}
+td.n,th.n{text-align:right}
+tr.sel td{background:var(--bg2)}
+.ref{font-weight:700;color:var(--tx2);font-size:12px;white-space:nowrap}
+td{white-space:nowrap}
+
+.drawer{position:absolute;right:0;top:0;bottom:0;width:520px;background:var(--bg2);border-left:1px solid var(--bd2);display:flex;flex-direction:column;box-shadow:-20px 0 40px #0008}
+.dh{padding:16px 20px;border-bottom:1px solid var(--bd)}
+.dh h3{margin:0 0 4px;font-family:var(--font-serif);font-weight:400;font-size:22px}
+.db{flex:1;overflow:auto;padding:14px 20px;display:flex;flex-direction:column;gap:14px}
+.df{padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:8px;flex-wrap:wrap;background:var(--bg2)}
+.field{display:flex;flex-direction:column;gap:4px}
+.inp{height:34px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg0);padding:0 10px;display:flex;align-items:center;font-size:13px;color:var(--tx)}
+.inp.ph{color:var(--tx3)}
+.pick{border:1px solid var(--bd2);border-radius:3px;background:var(--bg0);font-size:13px}
+.pick div{padding:7px 10px;border-bottom:1px solid var(--bd)}
+.pick div:last-child{border-bottom:0;color:var(--ac)}
+.lines td{padding:7px 6px;font-size:12px}
+.lines .q{display:inline-block;min-width:44px;text-align:right;border:1px solid var(--bd2);border-radius:3px;padding:3px 6px;background:var(--bg0)}
+.links{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.links div{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--bd);border-radius:3px}
+
+/* phone */
+.phone{width:375px;height:780px;background:var(--bg1);border:1px solid var(--bd2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.ph-top{padding:46px 16px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bd)}
+.ph-top b{font-family:var(--font-serif);font-weight:400;font-size:20px;flex:1}
+.ph-x{width:44px;height:44px;display:grid;place-items:center;color:var(--tx3);font-size:18px}
+.ph-body{flex:1;overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid var(--bd);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:6px;background:var(--bg2)}
+.card .t{display:flex;justify-content:space-between;align-items:center}
+.rcv{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.rcv .nm{flex:1;min-width:0}
+.rcv .nm div{font-size:14px}
+.rcv .nm small{color:var(--tx3);font-size:12px}
+.stp{display:flex;align-items:center;border:1px solid var(--bd2);border-radius:4px}
+.stp span{width:44px;height:44px;display:grid;place-items:center;font-size:18px;color:var(--tx2)}
+.stp b{min-width:34px;text-align:center;font-size:15px}
+.ph-foot{padding:10px 16px calc(10px + var(--safe-b));border-top:1px solid var(--bd);display:flex;gap:8px;background:var(--bg1)}
+.ph-foot .btn{flex:1;height:44px;justify-content:center;font-size:14px}
+.ph-foot .btn.pri{background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.move{font-size:12px;color:var(--sage)}
+.drop{border:1px dashed var(--bd3);border-radius:6px;padding:14px;text-align:center;color:var(--tx3);font-size:13px;min-height:44px}
+.note{font-size:12px;color:var(--tx3)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="caption">
+  <h1>Fournitures — commandes, réception, facture</h1>
+  TODO 11 + 11d. One record, <b>Commande A-2026-NNN</b>, for a planned order (from Réassort) and for a walk-in purchase (ticket in hand). <b>Recevoir</b> adds the quantities to stock, sets the price paid as the unit cost and fills the supplier on items without one. The expense is created from the order (pre-filled) or linked; the invoice file goes to the Vault « Factures ». No OCR. Notes + questions: <code>Supplies_Orders.notes.md</code>.
+</div>
+
+<!-- DESKTOP -->
+<div class="col">
+  <h2>Desktop — Studio → Fournitures → Commandes, an order open</h2>
+  <div class="desk">
+    <div class="side">
+      <div class="g lbl">Studio</div>
+      <a>Idées</a><a>Concepts</a><a class="on">Fournitures</a><a>Coffre</a>
+      <div class="g lbl">Commercial</div>
+      <a>Ventes</a><a>Revenus &amp; dépenses</a><a>Contacts</a>
+    </div>
+    <div class="main">
+      <div class="tabs"><span>Stock</span><span>Comptage</span><span>Réassort / Commande</span><span class="on new">Commandes</span></div>
+      <div class="bar">
+        <div class="seg"><span class="on">En cours · 3</span><span>Toutes · 11</span></div>
+        <span style="flex:1"></span>
+        <span class="btn">+ Achat</span><span class="btn pri">+ Commande</span>
+      </div>
+      <div style="padding:0 24px;width:740px">
+        <table>
+          <thead><tr><th>Réf.</th><th>Fournisseur</th><th>État</th><th class="n">Lignes</th><th class="n">Total HT</th><th>Dates</th><th>Dép.</th><th>Fact.</th></tr></thead>
+          <tbody>
+            <tr><td class="ref">A-2026-011</td><td>Rougier &amp; Plé</td><td><span class="chip d">Brouillon</span></td><td class="n">6</td><td class="n">—</td><td class="note">—</td><td class="no">—</td><td class="no">—</td></tr>
+            <tr class="sel"><td class="ref">A-2026-010</td><td>Géant des Beaux-Arts</td><td><span class="chip p">Reçue 3 / 4</span></td><td class="n">4</td><td class="n">184,60 €</td><td class="note">cmd 12/11 · reçu 17/11</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+            <tr><td class="ref">A-2026-009</td><td>Boesner</td><td><span class="chip o">Commandée</span></td><td class="n">2</td><td class="n">96,00 €</td><td class="note">cmd 15/11</td><td class="no">—</td><td class="no">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="drawer">
+      <div class="dh">
+        <div class="lbl">Commande A-2026-010</div>
+        <h3>Géant des Beaux-Arts</h3>
+        <div class="steps"><span class="done">Brouillon</span><i></i><span class="done">Commandée 12/11</span><i></i><b>Reçue 3 / 4 · 17/11</b></div>
+      </div>
+      <div class="db">
+        <div class="field"><span class="lbl">Fournisseur</span>
+          <div class="pick"><div>Géant des Beaux-Arts — fournisseur</div><div>Boesner — fournisseur</div><div>+ Nouveau fournisseur…</div></div>
+        </div>
+        <div class="field"><span class="lbl">Lignes</span>
+          <table class="lines">
+            <thead><tr><th>Article</th><th class="n">Cmd</th><th class="n">Reçu</th><th class="n">Prix HT</th><th class="n">Total</th></tr></thead>
+            <tbody>
+              <tr><td>Ocre jaune 37 ml</td><td class="n"><span class="q">5</span></td><td class="n ok">5</td><td class="n">6,90</td><td class="n">34,50</td></tr>
+              <tr><td>Châssis 100×81</td><td class="n"><span class="q">2</span></td><td class="n ok">2</td><td class="n">48,00</td><td class="n">96,00</td></tr>
+              <tr><td>Gesso 1 L</td><td class="n"><span class="q">3</span></td><td class="n ok">3</td><td class="n">12,70</td><td class="n">38,10</td></tr>
+              <tr><td>Pinceau plat 24 <span class="note">· manque</span></td><td class="n"><span class="q">1</span></td><td class="n" style="color:var(--yellow)">0</td><td class="n">16,00</td><td class="n">16,00</td></tr>
+              <tr><td colspan="5" style="color:var(--ac)">+ Ajouter un article (stock, ou nouvel article)</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="4" class="n lbl">Total HT</td><td class="n"><b>184,60 €</b></td></tr></tfoot>
+          </table>
+        </div>
+        <div class="field"><span class="lbl">Dépense · facture</span>
+          <div class="links">
+            <div><span>Dépense · Facture FA-88231 · 221,52 € TTC</span><span class="ok">ouvrir ›</span></div>
+            <div><span>Coffre « Factures » · FA-88231.pdf</span><span class="ok">ouvrir ›</span></div>
+          </div>
+        </div>
+        <div class="note">Réception du 17/11 : stock + 5 / + 2 / + 3 · prix payé → coût unitaire · fournisseur ajouté sur 1 article qui n'en avait pas.</div>
+      </div>
+      <div class="df"><span class="btn pri">Recevoir le reste…</span><span class="btn">Clore (manque accepté)</span><span class="btn q">Copier le texte</span><span style="flex:1"></span><span class="btn q">Annuler la commande</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- PHONE -->
+<div class="row">
+  <div class="col">
+    <h2>Phone — the parcel arrives</h2>
+    <p>Commande A-2026-009 → « Recevoir ». Pre-filled with what is due; steppers 44 px; the move shown before you confirm. One tap = stock updated in one go.</p>
+    <div class="phone">
+      <div class="ph-top"><span class="ph-x">✕</span><b>Recevoir A-2026-009</b></div>
+      <div class="ph-body">
+        <div class="note">Boesner · commandée le 15/11</div>
+        <div class="rcv"><div class="nm"><div>Toile lin 2 m</div><small class="move">stock 1 → 3</small></div><div class="stp"><span>−</span><b>2</b><span>+</span></div></div>
+        <div class="rcv"><div class="nm"><div>Huile de lin 250 ml</div><small class="move">stock 0 → 4</small></div><div class="stp"><span>−</span><b>4</b><span>+</span></div></div>
+        <div class="note">Une ligne à 0 reste « à recevoir » (question 2).</div>
+        <div class="field"><span class="lbl">Facture / bon de livraison</span><div class="drop">Photo ou PDF → Coffre « Factures »</div></div>
+      </div>
+      <div class="ph-foot"><span class="btn">Annuler</span><span class="btn pri">Recevoir · 2 lignes</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Phone — « + Achat » at the shop</h2>
+    <p>Walk-in purchase: supplier, lines, « Reçu aujourd'hui ». Born received: stock up, supplier on the items, expense pre-filled, ticket to the Vault.</p>
+    <div class="phone">
+      <div class="ph-top"><span class="ph-x">✕</span><b>Nouvel achat</b></div>
+      <div class="ph-body">
+        <div class="field"><span class="lbl">Fournisseur</span><div class="inp">Le Géant · Bordeaux</div></div>
+        <div class="card"><div class="t"><span>Bleu outremer 37 ml</span><span class="stp"><span>−</span><b>2</b><span>+</span></span></div><div class="t note"><span>Prix HT 7,40</span><span>14,80 €</span></div></div>
+        <div class="card"><div class="t"><span>Fusain compressé <span class="chip d">nouveau</span></span><span class="stp"><span>−</span><b>1</b><span>+</span></span></div><div class="t note"><span>Prix HT 5,20</span><span>5,20 €</span></div></div>
+        <div class="inp ph">+ Article…</div>
+        <div class="field"><span class="lbl">Ticket</span><div class="drop">Photo du ticket → Coffre « Factures »</div></div>
+        <label class="note" style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" checked> Créer la dépense (20,00 € HT, à vérifier)</label>
+      </div>
+      <div class="ph-foot"><span class="btn">Brouillon</span><span class="btn pri">Reçu aujourd'hui</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Réassort → commande</h2>
+    <p>Each supplier group keeps « Copier » and gains « Créer la commande »: the quantities typed on this device become a draft order, then clear.</p>
+    <div class="phone" style="height:auto">
+      <div class="ph-top"><b>Réassort</b></div>
+      <div class="ph-body">
+        <div class="t" style="display:flex;justify-content:space-between"><span class="lbl">Rougier &amp; Plé</span><span class="note">≈ 62 €</span></div>
+        <div class="card"><div class="t"><span>Blanc de titane 200 ml</span><span>0 · cmd 3</span></div></div>
+        <div class="card"><div class="t"><span>Vernis à retoucher</span><span>1 · cmd 2</span></div></div>
+        <div style="display:flex;gap:8px"><span class="btn" style="flex:1;height:44px;justify-content:center">Copier</span><span class="btn pri" style="flex:1;height:44px;justify-content:center">Créer la commande</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
