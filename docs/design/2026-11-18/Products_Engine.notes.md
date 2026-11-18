@@ -58,3 +58,11 @@ Orders (one list, five kinds), papers, payments, shipment checklist, invoice, 14
 3. Products: will others sell your books / cards on deposit (bookshops, museum shops)?
 4. Licences: have you had requests for images (book covers, press, merchandise)? Do you want them priced from a grid or case by case?
 5. The website: should editions and products be **buyable online** (a shop), or « enquire » like the paintings today?
+
+## Pem's answers (2026-11-18)
+
+1. **What comes first:** « not sure what the scope of this is about — how would I know? » → nothing is built ahead. The first real case decides which part is built, each its own GO: **numbered prints of a painting planned** → edition + copies; **a book, cards or posters printed** → products + stock; **someone asks to use an image** → licence. Until then the design waits (STRATEGY: commercial tools when a real case comes).
+2. **Editions:** « don't know yet — basic modern setup for small scale ». Default when built: a fixed run set at printing + artist's proofs (EA, about 10 % of the run); no HC / BAT unless asked; the run can be printed in batches but its size never grows.
+3. **Products on deposit (bookshops, museum shops):** « probably » → stock by place + the deposit order (as for a gallery) stay in the design.
+4. **Licences:** « no and yes » — no request so far; the « yes » (price grid or case by case) to confirm with Pem when the first request comes.
+5. **Selling editions / products online:** « yes, but discretion and elegance are paramount ». Rules for the shop when built (with the R8 look decisions): no cart icon or badge in the site header; on an edition or product page, one quiet « Acquérir » line (price, copies left, delivery); a short checkout on the site's own look (card payment by a provider, no account to create); no promotions, countdowns or « only n left » banners; paintings stay « enquire ». Payment provider and online-sale terms (cooling-off for distance sales, delivery) → lawyer + accountant, as in POLICY_NOTES.
