@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Badges, the bin rule, speed round 2, after the laptop crash
+
+- Menu badges match their tabs (`7acf891`, `1073ae6`): Pipeline counts « Gagné » as open (Pem: « if it's not completed, it has to be shown »); Production leaves out works in the bin. Seen on localhost: Production 137, Pipeline 2.
+- Rule 18 (WORK_RULES): a work in the bin has no tasks waiting — `bin_pauses_tasks.sql` applied on Pem's OK (pause on bin, resume on restore unless archived); the 4 binned « Cataloguer » tasks paused (`6f9aea6`).
+- Speed round 2 (`c56eaef`, side session speed-measure, Pem's GOs there): the full catalogue loads only on tabs that use it; ⌘K searches titles on the server while the list is partial and opens a work not loaded; a day with one field session opens it directly; session photos applied without a second compression, rights checked once, R2 in parallel. Not run live.
+- Empty session work search: 30 works, session picker only, landing picker full (`d1afdee`; my first version `a809649` reverted by `0796300` to take the session's version with its hint line).
+- Laptop crash: git's index was corrupt (set aside as `.git/index.corrupt-*`, rebuilt from HEAD) and 6 landed files were zero-filled on disk (restored byte for byte from HEAD; `git fsck` clean), plus the generated `.next/types` (deleted, Next rebuilds it).
+
 ## 2026-11-18 — Paid from payments, custody, speed (Pem « 1 - 2 go »)
 
 - 10. « Payé » follows a sale's payments (`22f1295`, side session paid-custody, no SQL): Soldée → `is_paid` true, Retour / cancel of a signed sale → false, still settable by hand; the card says where it comes from (grey from payments, red when hand-set against them), batch edit hints. Seen by the session with local fakes (reverted); no real payment yet.

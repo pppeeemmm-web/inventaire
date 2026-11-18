@@ -43,8 +43,8 @@ Public site
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
-- [ ] 17. Session flow, next: move the day merge off the session-open path; apply photos from a session (~10 round trips per photo, re-encodes an AVIF shot) → per-item calls.
-- [ ] 18. The catalogue still loads on every Atelier tab (⌘K reads it): load it only when a whole-catalogue tab or the palette opens — first check which tabs read it · Reports on keyset totals · one status-label layer.
+- [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).
+- [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker still lists only the loaded works (round 2: the catalogue loads only on tabs that use it).
 - [ ] 19. Fewer silent catches (~258, lint warns) · one combined badge action on tab switch · `is_admin()` STABLE. Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
 
 ## 4. To check once, when it happens (no build)
