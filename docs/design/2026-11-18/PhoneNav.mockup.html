@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone navigation — mockup 2026-11-18</title>
+<style>
+/* Tokens copied from app/globals.css ([data-theme='light'] and :root dark). No external files. */
+:root{
+  --bg0:#fcfcfc;--bg1:#f5f5f5;--bg2:#ebebeb;--bg3:#e0e0e0;
+  --bd:#e5e5e5;--bd2:#d4d4d4;--bd3:#b5b5b5;
+  --tx:#1a1a1a;--tx2:#4a4a4a;--tx3:#737373;
+  --ac:#b8860b;--ac2:#8b6914;
+  --rust:oklch(0.6 0.16 35);--green:#5a7038;
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  --safe-b:34px; /* stands for env(safe-area-inset-bottom) */
+  --page:#d9d8d4;
+}
+body.dark{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;
+  --ac:#d4b886;--ac2:#a68b55;--rust:oklch(0.72 0.16 35);--green:#80a060;
+  --page:#050506;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.3;font-variant-numeric:tabular-nums}
+.page{padding:24px;display:flex;flex-direction:column;gap:28px}
+.intro{max-width:1240px;color:var(--tx2);font-size:14px}
+.intro h1{font-family:var(--font-serif);font-weight:400;font-size:32px;color:var(--tx);margin:0 0 6px}
+.intro b{color:var(--tx)}
+.toggle{float:right;font:inherit;font-size:13px;min-height:44px;padding:0 14px;border:1px solid var(--bd2);background:var(--bg0);color:var(--tx);border-radius:6px;cursor:pointer}
+.opt h2{font-family:var(--font-serif);font-weight:400;font-size:26px;margin:0 0 4px}
+.opt > p{margin:0 0 14px;color:var(--tx2);max-width:1240px;font-size:14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px;width:375px}
+.col h3{font-size:14px;margin:0;font-weight:600}
+.col .note{margin:0;color:var(--tx3);font-size:12.5px;line-height:1.4}
+.col .note b{color:var(--tx2)}
+
+/* ── phone frame ── */
+.phone{position:relative;width:375px;height:760px;overflow:hidden;background:var(--bg0);border:1px solid var(--bd2);border-radius:28px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.scroll{position:absolute;inset:0;overflow:hidden;padding-top:22px}
+.status{position:absolute;top:0;left:0;right:0;height:22px;font-size:11px;color:var(--tx3);display:flex;justify-content:space-between;padding:4px 22px 0}
+
+/* header row */
+.hdr{display:flex;align-items:center;gap:2px;padding:6px 8px 2px}
+.ic{min-width:44px;min-height:44px;display:grid;place-items:center;font-size:20px;color:var(--tx);flex:none}
+.ic.dim{color:var(--tx3);opacity:.4}
+.ic.sm{font-size:17px}
+.hdr h1{font-size:22px;margin:0 4px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.hdr .title{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ac);flex:1;margin:0 4px}
+.chip-home{min-height:44px;display:inline-flex;align-items:center;gap:4px;padding:0 10px;border:1px solid var(--bd2);border-radius:22px;font-size:13px;color:var(--tx2);flex:none;margin-right:4px}
+.chip-home span{font-size:15px}
+.sum{font-size:13px;color:var(--tx3);padding:0 16px 6px;margin:0}
+.pulse{display:flex;flex-wrap:wrap;gap:2px 14px;padding:0 16px 10px;font-size:13px}
+.pulse a{min-height:32px;display:inline-flex;align-items:center;gap:4px;color:var(--tx);text-decoration:none}
+.pulse a.z{color:var(--tx3)}
+.pulse a.r{color:var(--rust)}
+
+/* sections */
+.sec{padding:12px 16px;border-top:1px solid var(--bd)}
+.sec h2{font-size:12px;letter-spacing:.04em;color:var(--tx3);margin:0 0 8px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec h2 .cnt{margin-left:auto;font-weight:400}
+.muted{font-size:13px;color:var(--tx3);margin:0}
+.see{margin:4px 12px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg1);padding:10px 12px}
+.see .top{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);font-weight:700}
+.see .top .n{margin-left:auto;color:var(--tx3);letter-spacing:0;font-weight:500;font-size:12px;min-height:32px;display:inline-flex;align-items:center;border:1px solid var(--bd2);border-radius:6px;padding:0 8px;text-transform:none}
+.see p{margin:6px 0 8px;font-size:13.5px;line-height:1.4}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px solid var(--bd2);border-radius:6px;font-size:13px;background:var(--bg0);color:var(--tx)}
+.btn.pri{border-color:var(--ac);color:var(--ac2);font-weight:600}
+.btn.wide{flex:1}
+.work{display:flex;align-items:center;gap:10px;min-height:48px;font-size:14px}
+.work .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.work .id{color:var(--tx3)}
+.th{width:40px;height:40px;border-radius:6px;flex:none;background:var(--bg2)}
+.th.a{background:linear-gradient(135deg,#7b5e3c,#c9a46a 60%,#e8d9b5)}
+.th.b{background:linear-gradient(160deg,#2d3a4a,#6b7f94 55%,#c9c2b0)}
+.th.c{background:linear-gradient(120deg,#5a2a22,#a0523d 50%,#e2b38f)}
+.th.d{background:linear-gradient(140deg,#30402c,#7f9468 60%,#d8d6bf)}
+.entry{padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px;line-height:1.4}
+.entry .meta{font-size:12px;color:var(--tx3);margin-bottom:2px}
+.fold{min-height:44px;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--tx2);border-top:1px solid var(--bd);padding:0 16px}
+.fold .cnt{color:var(--tx3);font-size:12px}
+.fold::before{content:'▸';color:var(--tx3);font-size:12px}
+.sugg{display:flex;align-items:center;gap:8px;min-height:48px}
+.sugg .t{flex:1;min-width:0;font-size:13.5px}
+.sugg .t small{display:block;color:var(--tx3);font-size:11.5px}
+.mini{min-width:44px;min-height:44px;display:grid;place-items:center;border:1px solid var(--bd2);border-radius:6px;font-size:16px;background:var(--bg0)}
+
+/* input bar (R2, unchanged in A) */
+.bar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);padding:4px 6px var(--safe-b);background:var(--bg1);border-top:1px solid var(--bd);z-index:5}
+.bar div{min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px}
+.bar div span{font-size:18px;line-height:1}
+
+/* tab bar (B) */
+.tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);padding:2px 4px var(--safe-b);background:var(--bg1);border-top:1px solid var(--bd);z-index:5}
+.tabs div{min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11.5px;color:var(--tx3);position:relative}
+.tabs div span{font-size:19px;line-height:1;filter:grayscale(1);opacity:.7}
+.tabs div.on{color:var(--tx);font-weight:600}
+.tabs div.on span{filter:none;opacity:1}
+.tabs div.on::before{content:'';position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--ac)}
+.tabs .plus span{width:46px;height:46px;border-radius:23px;background:var(--ac);color:#fff;display:grid;place-items:center;font-size:26px;filter:none;opacity:1;margin-top:-6px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
+.tabs .plus{color:var(--tx)}
+.badge{position:absolute;top:6px;right:18%;min-width:16px;height:16px;border-radius:8px;background:var(--ac);color:#fff;font-size:10px;display:grid;place-items:center;padding:0 4px;font-weight:700}
+
+/* sheets */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.38);z-index:8}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg0);border-radius:16px 16px 0 0;z-index:9;padding:6px 0 var(--safe-b);box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.sheet.full{top:46px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--bd3);margin:2px auto 6px}
+.sh-hdr{display:flex;align-items:center;padding:0 8px 6px 16px}
+.sh-hdr h2{font-size:16px;margin:0;flex:1}
+.search{margin:0 16px 10px;min-height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--bd2);border-radius:8px;color:var(--tx3);font-size:14px;background:var(--bg1)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 12px 10px}
+.tile{min-height:66px;border:1px solid var(--bd);border-radius:8px;background:var(--bg1);padding:8px 9px;display:flex;flex-direction:column;justify-content:space-between}
+.tile .l{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.tile .l span{font-size:15px}
+.tile .c{font-size:12px;color:var(--tx3)}
+.tile .c b{color:var(--tx);font-size:14px}
+.tile .c.ac b{color:var(--ac2)}
+.tile.here{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 8%,var(--bg1))}
+.grp{min-height:44px;display:flex;align-items:center;gap:8px;padding:0 16px;border-top:1px solid var(--bd);font-size:14px;color:var(--tx2)}
+.grp::before{content:'▸';color:var(--tx3);font-size:12px}
+.grp small{color:var(--tx3);font-size:11.5px;margin-left:auto;max-width:58%;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct{display:flex;align-items:center;gap:10px;padding:10px 16px 4px;border-top:1px solid var(--bd);font-size:13px;color:var(--tx2)}
+.av{width:32px;height:32px;border-radius:16px;background:var(--bg3);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--tx2)}
+.acct .sp{flex:1}
+.lnk{min-height:44px;display:inline-flex;align-items:center;color:var(--ac2);font-size:13px}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 16px 10px}
+.inp{min-height:86px;border:1px solid var(--bd);border-radius:10px;background:var(--bg1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:600}
+.inp span{font-size:26px}
+.inp small{font-weight:400;font-size:11.5px;color:var(--tx3)}
+
+/* Fil */
+.ftabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bd)}
+.ftabs div{min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;color:var(--tx3)}
+.ftabs div b{font-weight:500;font-size:12px}
+.ftabs div.on{color:var(--tx);font-weight:600;box-shadow:inset 0 -2px 0 var(--ac)}
+.fcard{margin:10px 12px 0;border:1px solid var(--bd);border-radius:10px;background:var(--bg1);padding:12px;display:grid;gap:8px}
+.fcard .who{font-size:14.5px;line-height:1.35}
+.fcard .who b{font-weight:600}
+.fcard .who .d{color:var(--tx3);font-size:12px;white-space:nowrap}
+.fcard .txt{font-size:14px;line-height:1.45;margin:0;color:var(--tx)}
+.fcard .ref{display:flex;align-items:center;gap:10px;min-height:44px;font-size:13px;color:var(--tx2)}
+.fact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fact .btn{width:100%}
+.fact .l{color:var(--rust)}
+.fact .k{color:var(--green);font-weight:600}
+.undo{font-size:11.5px;color:var(--tx3);text-align:center;margin:0}
+.stack{margin:0 18px;height:8px;border:1px solid var(--bd);border-top:0;border-radius:0 0 10px 10px;background:var(--bg1)}
+.stack.s2{margin:0 26px;height:6px}
+.small{font-size:12px;color:var(--tx3);padding:8px 16px 0;margin:0}
+
+/* Œuvres grid (B other screen) */
+.tools{display:flex;gap:8px;padding:0 12px 8px}
+.tools .search{margin:0;flex:1}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 12px}
+.g.th{width:auto;height:auto;aspect-ratio:1;border-radius:4px;position:relative}
+.g i{position:absolute;left:4px;bottom:3px;font-style:normal;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+/* callouts */
+.tag{position:absolute;z-index:20;background:var(--ac);color:#fff;font-size:10.5px;font-weight:700;border-radius:10px;padding:2px 7px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.taps{border-collapse:collapse;font-size:13px;margin-top:6px}
+.taps td,.taps th{border-bottom:1px solid var(--bd2);padding:5px 10px 5px 0;text-align:left}
+.taps th{color:var(--tx3);font-weight:600}
+.taps td.n{font-weight:700}
+.taps td.w{color:var(--rust)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="intro">
+  <button class="toggle" type="button" onclick="document.body.classList.toggle('dark')">Clair / sombre</button>
+  <h1>Navigation du téléphone — deux options</h1>
+  Design seulement, rien n'est construit. Notes : <b>PhoneNav.notes.md</b> (même dossier). 375 px, couleurs de l'app (thème clair, bouton à droite pour le sombre).
+  <br><b>Commun aux deux :</b> un seul écran « jour » (Aujourd'hui et la page du jour du Journal ne font plus qu'un), « Écrire » reste sur le jour, le Journal du téléphone = la liste des jours, la maison s'appelle « Aujourd'hui » partout, le pli « Bureau » quitte le bas du jour pour le menu.
+  <br>Les pastilles dorées <span class="tag" style="position:static">1</span> montrent le nombre de taps depuis Aujourd'hui.
+</div>
+
+<!-- ═════════════ OPTION A ═════════════ -->
+<section class="opt">
+  <h2>Option A — le Jour, et un vrai menu <span style="font-size:15px;color:var(--ac2);font-family:var(--font-ui)">(recommandée)</span></h2>
+  <p>La barre de saisie reste telle quelle (Écrire · Vocal · Œuvre · Photo · doc, 1 tap). ☰ ouvre un menu tout de suite, par-dessus la page, sans passer par la Vue d'ensemble. Chaque écran a le même en-tête : ☰ · titre · ses outils · « Aujourd'hui ».</p>
+  <div class="row">
+
+    <!-- A1: day -->
+    <div class="col">
+      <h3>A1 · Le jour (aujourd'hui ou un autre)</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr">
+            <div class="ic">☰</div>
+            <h1>Mer. 18 nov.</h1>
+            <div class="ic">‹</div><div class="ic dim">›</div><div class="ic sm">📅</div>
+          </div>
+          <p class="sum">1 entrée · 2 œuvres · 1 note</p>
+          <nav class="pulse"><a><b>4</b> Fil</a><a class="r"><b>2</b> en retard</a><a class="z"><b>0</b> aujourd'hui</a><a class="z"><b>0</b> boîte</a></nav>
+          <div class="see">
+            <div class="top">À revoir aujourd'hui <span class="n">1 / 3 ›</span></div>
+            <div style="font-size:12px;color:var(--tx3);margin-top:6px">Une entrée ancienne · 10 juin 2026</div>
+            <p>2.2 L'entropie comme provenance — « l'écho, à distance de son émetteur… »</p>
+            <div class="btns"><span class="btn pri">Voir ce jour</span><span class="btn">Plus tard</span></div>
+          </div>
+          <div class="sec">
+            <h2>Œuvres du jour <span class="cnt">2</span></h2>
+            <div class="work"><span class="th a"></span><span class="t"><span class="id">#2410</span> Pot chinois II</span></div>
+            <div class="work"><span class="th b"></span><span class="t"><span class="id">#2411</span> Sans titre</span></div>
+          </div>
+          <div class="sec">
+            <h2>Écrits et notes du jour <span class="cnt">2</span></h2>
+            <div class="entry"><div class="meta">09:12 · écrit</div>Le bleu de ce fabricant tient mieux sur la toile brute…</div>
+            <div class="entry" style="border:0"><div class="meta">11:40 · note vocale · 0:42</div>Penser au cadre pour #2233…</div>
+            <div class="sugg"><span class="th c" style="width:32px;height:32px"></span><span class="t">✦ #2233 La peau <small>lien proposé</small></span><span class="mini">✓</span><span class="mini">✕</span></div>
+          </div>
+          <div class="fold">Attributs d'œuvres modifiés <span class="cnt">(3)</span></div>
+          <div class="fold">Création (Kaizen) <span class="cnt">(0)</span></div>
+        </div>
+        <div class="bar"><div><span>✍️</span>Écrire</div><div><span>🎙️</span>Vocal</div><div><span>🖼️</span>Œuvre</div><div><span>📄</span>Photo · doc</div></div>
+        <span class="tag" style="left:46px;top:24px">menu</span>
+        <span class="tag" style="left:50px;top:96px">1</span>
+        <span class="tag" style="left:96px;top:690px">1 · reste ici</span>
+      </div>
+      <p class="note"><b>Disparaît :</b> « Ouvrir la journée complète » (c'est la journée complète), le pli « Bureau » en bas, la page du jour du Journal (← JOURS, grande date). <b>Change :</b> Écrire ouvre une feuille ici, plus de saut dans l'Atelier ; « À revoir » = une carte à la fois, 1 / 3.</p>
+    </div>
+
+    <!-- A2: menu -->
+    <div class="col">
+      <h3>A2 · Le menu (☰), le même partout</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr"><div class="ic">☰</div><h1>Mer. 18 nov.</h1><div class="ic">‹</div><div class="ic dim">›</div><div class="ic sm">📅</div></div>
+          <p class="sum">1 entrée · 2 œuvres · 1 note</p>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet full">
+          <div class="grab"></div>
+          <div class="sh-hdr"><h2>Aller à</h2><span class="ic sm">✕</span></div>
+          <div class="search">🔍 #numéro ou titre d'une œuvre</div>
+          <div class="tiles">
+            <div class="tile here"><div class="l"><span>☀️</span>Aujourd'hui</div><div class="c">mer. 18</div></div>
+            <div class="tile"><div class="l"><span>🖼️</span>Œuvres</div><div class="c"><b>1176</b></div></div>
+            <div class="tile"><div class="l"><span>🛠️</span>Production</div><div class="c"><b>141</b> en cours</div></div>
+            <div class="tile"><div class="l"><span>💡</span>Idées</div><div class="c"><b>22</b> · 3 mûres</div></div>
+            <div class="tile"><div class="l"><span>🧵</span>Fil</div><div class="c ac"><b>4</b> à trier</div></div>
+            <div class="tile"><div class="l"><span>📦</span>Commandes</div><div class="c"><b>2</b> en cours</div></div>
+            <div class="tile"><div class="l"><span>🚚</span>Logistique</div><div class="c"><b>1</b> envoi</div></div>
+            <div class="tile"><div class="l"><span>🏛️</span>Événements</div><div class="c"><b>0</b></div></div>
+            <div class="tile"><div class="l"><span>📅</span>Journal</div><div class="c">les jours</div></div>
+          </div>
+          <div class="grp">Actions <small>Vente · Contact · Document · Problème · Pipeline · Triage</small></div>
+          <div class="grp">Kaizen <small>Audit · Opérations & Stratégie</small></div>
+          <div class="grp">Studio <small>Vue d'ensemble · Pipeline · Fournitures</small></div>
+          <div class="grp">Catalogue <small>Rapports · Thèmes · Constellation · Diaporamas</small></div>
+          <div class="grp">Commercial <small>Contacts · Carte · Revenus · Coffre</small></div>
+          <div class="grp">Public <small>Site · Portfolio · Statistiques</small></div>
+          <div class="acct"><span class="av">PE</span><span class="sp">Pem</span><span class="lnk">FR / EN</span><span class="lnk" style="margin-left:12px">Se déconnecter</span></div>
+        </div>
+        <span class="tag" style="left:222px;top:156px">2</span>
+        <span class="tag" style="left:276px;top:122px">2 + n°</span>
+      </div>
+      <p class="note"><b>Disparaît :</b> le détour par la Vue d'ensemble (~2 s), « Studio / HUB · Fermer », « Today », la pastille « DP » qui mange le coin de chaque en-tête (le compte est en bas du menu). <b>Nouveau :</b> la recherche par numéro (le téléphone n'en a pas). Les plis sont fermés par défaut ; un tap sur un pli l'ouvre sur place.</p>
+    </div>
+
+    <!-- A3: Fil -->
+    <div class="col">
+      <h3>A3 · Un autre écran : le Fil, plus clair</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr"><div class="ic">☰</div><span class="title">Fil · 4 à trier</span><span class="chip-home"><span>☀️</span>Aujourd'hui</span></div>
+          <div class="ftabs"><div class="on">Création <b>2</b></div><div>Fiches <b>1</b></div><div>Kaizen <b>1</b></div></div>
+          <div class="fcard">
+            <div class="who"><b>Anna</b> a écrit dans les notes de <b>#2233</b> <span class="d">· 12 nov.</span></div>
+            <div class="ref"><span class="th c"></span><span>#2233 · La peau</span></div>
+            <p class="txt">Le vernis de la partie basse craquelle un peu ; peut-être lié au froid de l'atelier ? À essayer : fond plus maigre.</p>
+            <div class="fact"><span class="btn l">← Retirer</span><span class="btn k">Garder →</span></div>
+            <p class="undo">Glisser marche aussi · « Annuler » 6 s · rien n'est perdu</p>
+          </div>
+          <div class="stack"></div><div class="stack s2"></div>
+          <p class="small">Ensuite : <b style="color:var(--tx2)">Marc propose une idée</b> · « Le tore, encore »</p>
+          <p class="small" style="padding-top:14px">Dans Fiches, la phrase dit ce qui change : « <b style="color:var(--tx2)">Léa a modifié la fiche de #1420 : prix, lieu</b> », et les boutons deviennent « ← Refuser · Valider → ». Une commande en brouillon : « <b style="color:var(--tx2)">Léa a préparé une commande (prêt) pour M. Dupont</b> » + « Ouvrir la commande ».</p>
+          <div class="fold" style="margin-top:12px">Refroidies <span class="cnt">(5)</span></div>
+        </div>
+        <div class="bar"><div><span>✍️</span>Écrire</div><div><span>🎙️</span>Vocal</div><div><span>🖼️</span>Œuvre</div><div><span>📄</span>Photo · doc</div></div>
+        <span class="tag" style="left:262px;top:30px">1 retour</span>
+      </div>
+      <p class="note"><b>Avant :</b> une petite ligne grise « Commande en brouillon R-12 · Léa · 12 nov. », et rien ne dit ce que font les deux gestes. <b>Après :</b> une phrase « qui a fait quoi, où », puis l'œuvre, puis le texte ; deux boutons qui disent ce que fait chaque côté. Le même en-tête sert à Œuvres, Production, Idées, Commandes : ☰ · titre · outils · « Aujourd'hui » (remplace le bouton « HUB »).</p>
+    </div>
+  </div>
+
+  <table class="taps">
+    <tr><th>Depuis Aujourd'hui</th><th>Aujourd'hui (retour)</th><th>Œuvres / une œuvre</th><th>Production</th><th>Idées</th><th>Fil</th><th>Commandes</th><th>Écrire · Vocal · Œuvre · Photo</th></tr>
+    <tr><td>Aujourd'hui (2026-11-18)</td><td class="n">1</td><td class="n w">3 / 3 + filtre</td><td class="n w">3</td><td class="n w">3</td><td class="n">1</td><td class="n w">3 + défiler</td><td class="n">1 (Écrire change de page)</td></tr>
+    <tr><td>Option A</td><td class="n">1</td><td class="n">2 / 2 + n°</td><td class="n">2</td><td class="n">2</td><td class="n">1</td><td class="n">2</td><td class="n">1, sans quitter la page</td></tr>
+  </table>
+</section>
+
+<!-- ═════════════ OPTION B ═════════════ -->
+<section class="opt">
+  <h2>Option B — une barre de lieux</h2>
+  <p>En bas, une barre d'onglets remplace la barre de saisie : Aujourd'hui · Œuvres · ＋ · Idées · Plus. Le ＋ ouvre « Saisir » (les quatre entrées en gros boutons). « Plus » ouvre le même menu que A, sans les lieux de la barre. Le lieu actif est allumé : on voit toujours où l'on est. Mais chaque saisie prend 2 taps.</p>
+  <div class="row">
+
+    <!-- B1: day -->
+    <div class="col">
+      <h3>B1 · Le jour</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr" style="padding-left:16px"><h1 style="margin-left:0">Mer. 18 nov.</h1><div class="ic">‹</div><div class="ic dim">›</div><div class="ic sm">📅</div></div>
+          <p class="sum">1 entrée · 2 œuvres · 1 note</p>
+          <nav class="pulse"><a><b>4</b> Fil</a><a class="r"><b>2</b> en retard</a><a class="z"><b>0</b> aujourd'hui</a><a class="z"><b>0</b> boîte</a></nav>
+          <div class="see">
+            <div class="top">À revoir aujourd'hui <span class="n">1 / 3 ›</span></div>
+            <div style="font-size:12px;color:var(--tx3);margin-top:6px">Une entrée ancienne · 10 juin 2026</div>
+            <p>2.2 L'entropie comme provenance — « l'écho, à distance de son émetteur… »</p>
+            <div class="btns"><span class="btn pri">Voir ce jour</span><span class="btn">Plus tard</span></div>
+          </div>
+          <div class="sec">
+            <h2>Œuvres du jour <span class="cnt">2</span></h2>
+            <div class="work"><span class="th a"></span><span class="t"><span class="id">#2410</span> Pot chinois II</span></div>
+            <div class="work"><span class="th b"></span><span class="t"><span class="id">#2411</span> Sans titre</span></div>
+          </div>
+          <div class="sec">
+            <h2>Écrits et notes du jour <span class="cnt">2</span></h2>
+            <div class="entry"><div class="meta">09:12 · écrit</div>Le bleu de ce fabricant tient mieux sur la toile brute…</div>
+            <div class="entry" style="border:0"><div class="meta">11:40 · note vocale · 0:42</div>Penser au cadre pour #2233…</div>
+          </div>
+          <div class="fold">Attributs d'œuvres modifiés <span class="cnt">(3)</span></div>
+        </div>
+        <div class="tabs"><div class="on"><span>☀️</span>Aujourd'hui</div><div><span>🖼️</span>Œuvres</div><div class="plus"><span>＋</span>Saisir</div><div><span>💡</span>Idées</div><div><span>☰</span>Plus<i class="badge">4</i></div></div>
+        <span class="tag" style="left:96px;top:676px">1</span>
+        <span class="tag" style="left:232px;top:676px">1</span>
+        <span class="tag" style="left:160px;top:664px">2 pour saisir</span>
+      </div>
+      <p class="note"><b>Disparaît :</b> ☰ et la barre de saisie à quatre boutons. <b>Change :</b> l'en-tête n'a plus que la date ; le badge « 4 » sur Plus = le Fil.</p>
+    </div>
+
+    <!-- B2: Saisir sheet -->
+    <div class="col">
+      <h3>B2 · ＋ Saisir</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr" style="padding-left:16px"><h1 style="margin-left:0">Mer. 18 nov.</h1><div class="ic">‹</div><div class="ic dim">›</div><div class="ic sm">📅</div></div>
+          <p class="sum">1 entrée · 2 œuvres · 1 note</p>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" style="bottom:0">
+          <div class="grab"></div>
+          <div class="sh-hdr"><h2>Saisir</h2><span class="ic sm">✕</span></div>
+          <div class="inputs">
+            <div class="inp"><span>✍️</span>Écrire<small>sur ce jour</small></div>
+            <div class="inp"><span>🎙️</span>Vocal<small>enregistre tout de suite</small></div>
+            <div class="inp"><span>🖼️</span>Œuvre<small>nouvelle · reprise · séance</small></div>
+            <div class="inp"><span>📄</span>Photo · doc<small>inspiration · scan · carte · QR</small></div>
+          </div>
+          <div style="height:70px"></div>
+        </div>
+        <div class="tabs" style="z-index:10"><div class="on"><span>☀️</span>Aujourd'hui</div><div><span>🖼️</span>Œuvres</div><div class="plus"><span>✕</span>Fermer</div><div><span>💡</span>Idées</div><div><span>☰</span>Plus<i class="badge">4</i></div></div>
+        <span class="tag" style="left:150px;top:470px">2</span>
+      </div>
+      <p class="note"><b>Le prix de B :</b> la note vocale passe de 1 à 2 taps. Pem : « une pensée attrapée en deux secondes vaut plus qu'une page complète en six ».</p>
+    </div>
+
+    <!-- B3: Plus menu -->
+    <div class="col">
+      <h3>B3 · Plus (le menu)</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr" style="padding-left:16px"><h1 style="margin-left:0">Mer. 18 nov.</h1></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet full" style="bottom:90px;padding-bottom:6px">
+          <div class="grab"></div>
+          <div class="sh-hdr"><h2>Plus</h2><span class="ic sm">✕</span></div>
+          <div class="search">🔍 #numéro ou titre d'une œuvre</div>
+          <div class="tiles">
+            <div class="tile"><div class="l"><span>🧵</span>Fil</div><div class="c ac"><b>4</b> à trier</div></div>
+            <div class="tile"><div class="l"><span>🛠️</span>Production</div><div class="c"><b>141</b> en cours</div></div>
+            <div class="tile"><div class="l"><span>📦</span>Commandes</div><div class="c"><b>2</b> en cours</div></div>
+            <div class="tile"><div class="l"><span>🚚</span>Logistique</div><div class="c"><b>1</b> envoi</div></div>
+            <div class="tile"><div class="l"><span>🏛️</span>Événements</div><div class="c"><b>0</b></div></div>
+            <div class="tile"><div class="l"><span>📅</span>Journal</div><div class="c">les jours</div></div>
+          </div>
+          <div class="grp">Actions <small>Vente · Contact · Document · Problème</small></div>
+          <div class="grp">Kaizen <small>Audit · Opérations & Stratégie</small></div>
+          <div class="grp">Studio <small>Vue d'ensemble · Pipeline · Fournitures</small></div>
+          <div class="grp">Catalogue <small>Rapports · Thèmes · Constellation</small></div>
+          <div class="grp">Commercial <small>Contacts · Carte · Revenus · Coffre</small></div>
+          <div class="grp">Public <small>Site · Portfolio · Statistiques</small></div>
+          <div class="acct"><span class="av">PE</span><span class="sp">Pem</span><span class="lnk">FR / EN</span></div>
+        </div>
+        <div class="tabs" style="z-index:10"><div><span>☀️</span>Aujourd'hui</div><div><span>🖼️</span>Œuvres</div><div class="plus"><span>＋</span>Saisir</div><div><span>💡</span>Idées</div><div class="on"><span>☰</span>Plus<i class="badge">4</i></div></div>
+        <span class="tag" style="left:222px;top:156px">2</span>
+      </div>
+      <p class="note">Même menu que A, moins les trois lieux déjà dans la barre. La barre reste visible : un tap pour revenir à Aujourd'hui.</p>
+    </div>
+
+    <!-- B4: Œuvres -->
+    <div class="col">
+      <h3>B4 · Un autre écran : Œuvres</h3>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>4G ▮▮▮</span></div>
+        <div class="scroll">
+          <div class="hdr" style="padding-left:16px"><span class="title" style="margin-left:0">Œuvres · 1176</span><span class="ic sm">⚙︎</span></div>
+          <div class="tools"><div class="search">🔍 #numéro, titre, thème</div><span class="btn">Filtres</span></div>
+          <div class="grid">
+            <div class="g th a"><i>#2410</i></div><div class="g th b"><i>#2411</i></div><div class="g th c"><i>#2233</i></div>
+            <div class="g th d"><i>#2407</i></div><div class="g th a"><i>#2405</i></div><div class="g th c"><i>#2394</i></div>
+            <div class="g th b"><i>#2381</i></div><div class="g th d"><i>#2367</i></div><div class="g th a"><i>#2150</i></div>
+            <div class="g th c"><i>#1420</i></div><div class="g th b"><i>#1323</i></div><div class="g th d"><i>#1316</i></div>
+            <div class="g th a"><i>#1310</i></div><div class="g th d"><i>#1299</i></div><div class="g th b"><i>#1288</i></div>
+          </div>
+        </div>
+        <div class="tabs"><div><span>☀️</span>Aujourd'hui</div><div class="on"><span>🖼️</span>Œuvres</div><div class="plus"><span>＋</span>Saisir</div><div><span>💡</span>Idées</div><div><span>☰</span>Plus<i class="badge">4</i></div></div>
+        <span class="tag" style="left:48px;top:676px">1 retour</span>
+      </div>
+      <p class="note"><b>Disparaît :</b> l'en-tête de l'Atelier (☰ · INVENTAIRE · 1176 ŒUVRES · HUB). Le titre porte le nombre ; « Filtres & vues » reste un bouton.</p>
+    </div>
+  </div>
+
+  <table class="taps">
+    <tr><th>Depuis Aujourd'hui</th><th>Aujourd'hui (retour)</th><th>Œuvres / une œuvre</th><th>Production</th><th>Idées</th><th>Fil</th><th>Commandes</th><th>Écrire · Vocal · Œuvre · Photo</th></tr>
+    <tr><td>Aujourd'hui (2026-11-18)</td><td class="n">1</td><td class="n w">3 / 3 + filtre</td><td class="n w">3</td><td class="n w">3</td><td class="n">1</td><td class="n w">3 + défiler</td><td class="n">1 (Écrire change de page)</td></tr>
+    <tr><td>Option B</td><td class="n">1</td><td class="n">1 / 1 + n°</td><td class="n">2</td><td class="n">1</td><td class="n">1</td><td class="n">2</td><td class="n w">2</td></tr>
+  </table>
+</section>
+
+</div>
+</body>
+</html>
