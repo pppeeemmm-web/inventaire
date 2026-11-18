@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.57 (2026-11-18) — order dates in the calendar.
+  wn_order_calendar_t: { fr: 'Les dates des commandes dans votre agenda', en: 'Order dates in your calendar' },
+  wn_order_calendar_d: {
+    fr: 'Les dates d’une commande (sortie, retour, livraison…) s’ajoutent à votre agenda Google / Microsoft relié, à la création, à chaque étape et à l’annulation ; un bouton dans la commande le refait à la main. Sans agenda relié, rien ne change.',
+    en: 'An order’s dates (out, back, delivery…) go into your linked Google / Microsoft calendar on create, at each step and on cancel; a button in the order does it by hand. With no calendar linked, nothing changes.',
+  },
   // 3.1.56 (2026-11-18) — R7b order chain, menu counts, Overview strip.
   wn_order_cascade_t: { fr: 'Commandes : la suite s’enchaîne', en: 'Orders: the next steps follow on' },
   wn_order_cascade_d: {
