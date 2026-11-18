@@ -1398,6 +1398,7 @@ export function TeamPortalClient({
         {effectiveRouteTab ? (
           <SegmentRoutePanel
             tab={effectiveRouteTab}
+            onContactsChange={setContacts}
             oeuvres={oeuvres}
             sortedTechniques={sortedTechniques}
             sortedSupports={sortedSupports}

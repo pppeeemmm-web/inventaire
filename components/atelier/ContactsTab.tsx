@@ -50,6 +50,8 @@ interface Props {
   contacts: ContactRow[]
   oeuvres:  Oeuvre[]
   conflicts?: any[]
+  /** The Atelier's own contact list (sidebar badge, work-card pickers) follows this tab's adds / edits / deletes / merges. */
+  onContactsChange?: (rows: ContactRow[]) => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -97,13 +99,22 @@ function primaryListPhone(
 
 // ── Component ────────────────────────────────────────────────────────
 
-export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [] }: Props) {
+export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [], onContactsChange }: Props) {
   const { t, lang } = useI18n()
   const listLocale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const narrow = useMediaQuery('(max-width: 767px)')
   const [quickBusy, setQuickBusy] = useState(false)
   const [isAdmin,    setIsAdmin]    = useState(false)
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
+  // Report every change after the first render (a delete used to leave the sidebar badge and the pickers stale).
+  const onContactsChangeRef = useRef(onContactsChange)
+  onContactsChangeRef.current = onContactsChange
+  const contactsReportedRef = useRef(contacts)
+  useEffect(() => {
+    if (contactsReportedRef.current === contacts) return
+    contactsReportedRef.current = contacts
+    onContactsChangeRef.current?.(contacts)
+  }, [contacts])
   const [q,          setQ]          = useState('')
   const [searchBy,   setSearchBy]   = useState('all')
   const [role,       setRole]       = useState('all')

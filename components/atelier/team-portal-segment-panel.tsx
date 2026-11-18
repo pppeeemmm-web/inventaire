@@ -11,6 +11,7 @@ import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/componen
 import type { Lang } from '@/lib/i18n/dictionary'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { SlideshowsTab } from '@/components/atelier/slideshow/SlideshowsTab'
+import type { ContactRow } from '@/components/atelier/contact-editor-types'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -64,6 +65,8 @@ export type SegmentRoutePanelProps = {
   sortedThemes: { id: number; name: string }[]
   groups: { id: string; name: string }[]
   contacts: TeamPortalClientProps['contacts']
+  /** Contacts tab → the Atelier's list (badge, pickers). */
+  onContactsChange?: (rows: TeamPortalClientProps['contacts']) => void
   addresses?: ContactAddress[]
   presentations: { PresentationID: number; Nom: string | null }[]
   tM: Record<number, string>
@@ -123,6 +126,7 @@ export function SegmentRoutePanel({
   sortedThemes,
   groups,
   contacts,
+  onContactsChange,
   addresses,
   presentations,
   tM,
@@ -187,7 +191,7 @@ export function SegmentRoutePanel({
         />
       )
     case 'contacts':
-      return <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />
+      return <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} onContactsChange={onContactsChange as ((rows: ContactRow[]) => void) | undefined} />
     case 'site':
     case 'portfolio':
     case 'analytics':
