@@ -7,7 +7,7 @@ _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md).
 ## 0. Bugs — fix now
 
 From Pem's pass, 2026-11-18 evening — map, contacts badge, card photo, Vault tree fixed (→ DONE); phone labels moved to the Contacts review (§3).
-- [ ] Aide (team guide): team members' rights (new works / reworks / photos wait for Pem's approval), card AI only on Pem's laptop, condition report — being written by the guides session (batch 1 of « finish the Aide »).
+_None open._ (The Aide's team rights, card AI and condition-report wording: landed `2a63ec8`.)
 
 ## 1. Waiting on you, Pem
 
