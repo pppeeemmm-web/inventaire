@@ -13,6 +13,7 @@ Completed programmes, superseded plans, and slice handoffs. **Do not execute fro
 | `HANDOFF_SLICE1.md` | Slice 1 PWA / offline |
 | `HANDOFF_SLICE3.md` | Slice 3 + 3B route segmentation |
 | `HANDOFF_SLICE4.md` | Slice 4 i18n / `defineMessages` / `i18n:check` |
+| [`SPEED_MEASURE_17-19_2026-11-18.md`](./SPEED_MEASURE_17-19_2026-11-18.md) | Speed measurements for TODO 17–19, 2026-11-18 (open items stay in TODO §3) |
 | `HANDOFF_SLICE5.md` | Slice 5 graph foundation SQL |
 | `HANDOFF_SLICE6.md` | Slice 6 Pivot Atlas / `edge_fact` |
 | `HANDOFF_SLICE7.md` | Slice 7 analog fallbacks + graph CSV backup |

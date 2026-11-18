@@ -39,6 +39,7 @@ const TEAM: Record<string, string> = {
 
 const ADMIN: Record<string, string> = {
   audit: 'admin-audit',
+  ai: 'admin-ai',
   broadcast: 'admin-broadcast',
   fil: 'admin-fil',
   session: 'admin-session',

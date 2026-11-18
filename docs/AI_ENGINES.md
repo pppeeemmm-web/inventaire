@@ -31,11 +31,13 @@ The **public website** (`/`, `/works`, `/about`, `/practice`, `/enquiry`, the co
 - To **Make.com** (and its AI): work titles, techniques, sizes and caption seeds of works marked « Prêt pour diffusion ».
 - Everything Ollama and Whisper do stays on Pem's PC.
 
-_Corrected 2026-11-18 (same evening): the first version missed the Whisper transcripts and the gemma3 image descriptions. The proposed AI desk: [`design/2026-11-18/AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)._
+_Corrected 2026-11-18 (same evening): the first version missed the Whisper transcripts and the gemma3 image descriptions. AI desk: [`design/2026-11-18/AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)._
+
+**Local only (Pem 2026-11-18).** No OpenAI: the **Bureau IA** screen (`/atelier/ai`, admin) queues work in `ai_job`; the PC agent (`npm run ai:agent`, started at sign-in by `scripts/register-ai-agent.ps1`) runs it on the PC's models, one job at a time, and checks in to `ai_agent` every minute. Phase 3 (business cards read by a local vision model, suggested on the desk) is next.
 
 ## How to check the one unknown
 
-Vercel → the project → Settings → Environment Variables: is `OPENAI_API_KEY` (or `CONTACT_CARD_VISION`) set for Production? If not, the card and web-address AI passes are off on the live site.
+Bureau IA → « Clé OpenAI sur ce serveur » (oui / non) on the live site. Local only means it should read « non »: if « oui », delete `OPENAI_API_KEY` in Vercel → the project → Settings → Environment Variables (Production).
 
 ## Where it lives in the code
 

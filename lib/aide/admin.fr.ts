@@ -22,7 +22,7 @@ Ce guide ne couvre que ce qui est réservé aux administrateurs. Pour tout le re
 
 ## Où sont les écrans réservés
 
-- **À l'ordinateur** : [Audit Log](/atelier/audit) (Audit) en tête du groupe Kaizen (son badge compte les propositions en attente) ; [Diffusion](/atelier/broadcast) dans le groupe Public. Vue d'ensemble montre deux signaux de plus : **Tâches locales** et **Système**.
+- **À l'ordinateur** : [Audit Log](/atelier/audit) (Audit) en tête du groupe Kaizen (son badge compte les propositions en attente), suivi de [Bureau IA](/atelier/ai) ; [Diffusion](/atelier/broadcast) dans le groupe Public. Vue d'ensemble montre deux signaux de plus : **Tâches locales** et **Système**.
 - **Au téléphone** : la tuile **Fil** du menu ☰ et le compteur « Fil » d'Aujourd'hui n'apparaissent qu'aux administrateurs ; « Modifier la séance » sur une journée aussi.
 - **L'aide** : à l'ordinateur, le « ? » d'un écran réservé ouvre ce guide-ci.
 
@@ -435,42 +435,50 @@ Changer l'un d'eux est un travail technique : demandez-le à une session de dév
   },
   {
     id: 'admin-ai',
-    title: 'Les moteurs d\'IA et leurs clés',
+    title: 'Bureau IA : les moteurs et les travaux locaux',
     verified: '2026-11-18',
     md: `
-Le site public n'utilise aucune IA. Dans l'Atelier, l'IA est toujours facultative : quand un moteur n'est pas installé ou ne répond pas, la fonction fait moins, rien ne casse.
+Le site public n'utilise aucune IA. Dans l'Atelier, l'IA est facultative et **locale** : tout tourne sur votre PC, rien n'est envoyé à un service d'IA extérieur. Quand le PC est éteint, la fonction fait moins, rien ne casse.
+
+## Où voir ce qui attend
+
+[Bureau IA](/atelier/ai) (Kaizen, à côté d'Audit ; au téléphone : ☰ → Kaizen → Bureau IA) montre :
+
+- **Les moteurs**, tels que le serveur du site les voit : l'agent du PC (« vu il y a n min » et ses modèles), une clé OpenAI posée ou non sur ce serveur (oui / non), le moteur qui lit une photo de carte et nettoie le texte des cartes et des pages web, les modèles Ollama. Sur le site en ligne, Ollama est toujours hors d'atteinte (le serveur ne voit pas votre PC) : c'est normal.
+- **Ce qui attend** : les notes vocales à transcrire (Whisper), les éléments à indexer pour la recherche, les œuvres dont l'image n'est pas encore décrite (gemma3:4b), les cartes de visite gardées avec leur photo (on n'enregistre pas encore si leur passe IA a eu lieu ; la phase 3 les lira et proposera les champs, à accepter ou refuser).
+- **Les derniers travaux** : en attente, en cours, terminés ou échoués ; un échec montre son journal.
+
+Vue d'ensemble → **Tâches locales** reste un coup d'œil rapide (notes vocales, indexation, âge de l'archive).
 
 ## Qui fait quoi
 
-- **La recherche par le sens (⌘K) et les suggestions ✦ du Journal** : un modèle Ollama sur votre PC transforme les textes en repères, gardés dans la base. Sur le site en ligne, une phrase nouvelle se cherche en texte simple.
-- **Les notes vocales** : au téléphone, le navigateur écrit les mots pendant qu'on parle (Safari → Apple, Chrome → Google) ; la transcription complète se fait sur votre PC.
-- **La carte de visite** : la lecture du texte est faite par l'iPhone lui-même (Live Text), rien n'est envoyé. « Améliorer avec l'IA » passe ensuite par OpenAI si une clé est posée sur Vercel, sinon par le modèle Ollama de votre PC, qui ne répond que lorsque l'application tourne sur ce PC.
-- **Un contact depuis une adresse web (« URL »)** : même chose : la page est lue sans IA, l'IA complète si elle est joignable.
+- **La recherche par le sens (⌘K) et les suggestions ✦ du Journal** : nomic-embed-text transforme les textes en repères, gardés dans la base. Sur le site en ligne, une phrase nouvelle se cherche en texte simple.
+- **Les notes vocales** : au téléphone, le navigateur écrit les mots pendant qu'on parle (Safari → Apple, Chrome → Google) ; la transcription complète est faite sur votre PC par faster-whisper large-v3.
+- **La description des images** : gemma3:4b décrit les images des œuvres.
+- **La carte de visite et l'adresse web** : le texte est lu sans IA (Live Text sur l'iPhone, lecture de la page) ; llama3.2:1b peut ensuite nettoyer le texte, mais seulement quand l'application tourne sur votre PC : sur le site en ligne, « Améliorer avec l'IA » n'a pas d'IA tant que la phase 3 (la carte lue par l'agent du PC) n'est pas faite.
 - **Les légendes de Diffusion** : l'IA de Make.com (OpenAI ou Anthropic), hors de l'application.
 
-## Faire tourner les tâches de votre PC
+## Lancer les travaux
 
-1. Vue d'ensemble → **Tâches locales** : « … note(s) vocale(s) à transcrire », « Recherche : … en attente d'indexation ».
-2. **Lancer sur ce PC** : transcrit les notes vocales puis indexe la recherche, l'un après l'autre, avec la carte graphique du PC.
+1. Dans [Bureau IA](/atelier/ai), cliquez **Lancer** sur la file voulue : le travail est mis en attente.
+2. L'**agent du PC** le prend dans les 15 secondes, un travail à la fois (la carte graphique ne peut pas tenir Whisper et les modèles Ollama ensemble).
+3. « ou à la main » affiche la commande à lancer vous-même.
 
-**Attention :** le bouton ne marche que sur votre PC, installé une fois pour cela. Au téléphone, il dit de le lancer depuis le PC.
+**Première installation, une fois** : sur le PC, lancez pwsh scripts/register-ai-agent.ps1. L'agent (npm run ai:agent) démarre ensuite avec Windows.
 
-## Les clés
+**Attention :** si l'agent est éteint (« vu il y a » très ancien), les travaux restent en attente jusqu'à son retour.
 
-Les clés se posent sur Vercel (Settings → Environment Variables → Production), jamais dans l'application ni dans un message :
+## Local seulement
 
-- **OPENAI_API_KEY** : allume OpenAI pour la carte de visite et l'adresse web. Sans elle, ces deux passes n'ont pas d'IA sur le site en ligne.
-- **CONTACT_CARD_VISION** = none : coupe l'envoi de la photo de carte à OpenAI.
-- **CONTACT_ENRICH_LLM** = none : coupe l'IA de la carte et de l'adresse web.
-- **INVENTORY_BROADCAST_SECRET** : la clé que Make présente pour lire la file de Diffusion ; la même valeur dans Make.
-
-Pour savoir si le site en ligne a une clé OpenAI : Vercel → le projet → Settings → Environment Variables.
+- L'agent utilise la clé de service du fichier .env.local de votre PC ; gardez ce fichier privé.
+- Rien ne part vers un service d'IA extérieur.
+- Si une clé OPENAI_API_KEY est encore posée sur Vercel, le site en ligne enverrait encore les photos de carte à OpenAI. Supprimez-la : Vercel → le projet → Settings → Environment Variables. La ligne « Clé OpenAI sur ce serveur » de Bureau IA doit alors dire « non ».
+- Les autres réglages (CONTACT_CARD_VISION, CONTACT_ENRICH_LLM) sont inutiles sans clé OpenAI. INVENTORY_BROADCAST_SECRET reste : c'est la clé que Make présente pour lire la file de Diffusion ; la même valeur dans Make.
 
 ## Ce qui sort de vos machines
 
-- Vers **OpenAI** : une photo de carte de visite ou le texte d'une page web, et seulement avec la clé posée.
 - Vers **Make.com** et son IA : les titres, techniques, dimensions et notes de diffusion des œuvres « Prêt pour diffusion ».
-- Tout ce que fait Ollama reste sur votre PC.
+- Tout ce que font Ollama et Whisper reste sur votre PC.
 `,
   },
   {

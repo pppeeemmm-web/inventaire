@@ -63,8 +63,8 @@ def main() -> None:
     engine = f"ollama {MODEL}"
 
     cols = "OeuvreID,Titre,txtImageNameLink,Technique,Support,Hauteur,Largeur,Ann%C3%A9e"
-    works = sb.select("Oeuvres", f"select={cols}&deleted_at=is.null&txtImageNameLink=not.is.null&order=OeuvreID.asc&limit=5000")
-    done_rows = sb.select("work_description", f"select=oeuvre_id,image_key&engine=eq.{quote_key(engine)}&prompt=eq.{quote_key(PROMPT_NAME)}&limit=10000")
+    works = sb.select_all("Oeuvres", f"select={cols}&deleted_at=is.null&txtImageNameLink=not.is.null&order=OeuvreID.asc")
+    done_rows = sb.select_all("work_description", f"select=oeuvre_id,image_key&engine=eq.{quote_key(engine)}&prompt=eq.{quote_key(PROMPT_NAME)}&order=id.asc")
     done = {(r["oeuvre_id"], r["image_key"]) for r in done_rows}
     todo = [w for w in works if (w["OeuvreID"], w["txtImageNameLink"]) not in done]
     if args.limit:

@@ -1,61 +1,48 @@
 # PEM Hub — TODO
 
-_Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md). Board → [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html)._
+_Open work only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md). Board → [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html)._
 
-**Refreshed 2026-11-18, evening.** What has shipped is in What's new (`lib/whats-new.ts`, 3.1.70 at this writing); `git log origin/main..` shows anything committed but not pushed. Item numbers are kept (other docs point to them); a closed item moves to [DONE](./DONE.md) the same day.
+Item numbers stay fixed (other docs point to them). A closed item moves to [DONE](./DONE.md) the same day; `git log origin/main..` shows what is committed but not pushed.
 
 ## 0. Bugs — fix now
 
-From Pem's pass, 2026-11-18 evening — map, contacts badge, card photo, Vault tree fixed (→ DONE); phone labels moved to the Contacts review (§3).
-- [ ] Contacts: deleting a contact that owns or holds a work deletes its addresses first, then the contact delete fails (`Oeuvres.ContactID` / `LocalisationID` have no ON DELETE rule) — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message, before touching anything. Found by the flow review, 2026-11-18; not reproduced.
-- [ ] **Privacy:** a contact marked « Privé » (« admin-only visibility ») is still shown to the team — Contacts, lists, pickers (Contact RLS = admin or team; nothing filters `is_private`). Found writing the admin guide + flow review, 2026-11-18.
-- [ ] **Approvals overwrite newer edits:** approving a team proposal saves the whole card as it was when they saved; if Pem changed the same work since, his values on those fields are replaced (versions can restore). Fix: apply only the fields the proposal changed, or warn when the work changed since.
-- [ ] Card capture « Améliorer avec l'IA »: the photo is read only by OpenAI (key on Vercel?), the text tidy-up only by Ollama when the app itself runs on Pem's PC — on the live site neither may run. Pem: check `OPENAI_API_KEY` on Vercel; the Aide + `AI_ENGINES.md` follow the answer.
+- [ ] Contacts: deleting a contact that owns or holds a work removes its addresses, then fails on the work link — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message before touching anything. Not reproduced.
+- [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
+- [ ] **Approvals overwrite newer edits:** approving a proposal saves the whole card as its author saw it. Fix: apply only the fields the proposal changed, or warn when the work changed since.
+- [ ] **Local AI only (Pem 2026-11-18):** if `OPENAI_API_KEY` is set on Vercel, delete it — until then the live site can still send card photos to OpenAI. Bureau IA (`/atelier/ai`) shows « Clé OpenAI sur ce serveur : oui / non ».
 
 ## 1. Waiting on you, Pem
 
-Things only you can do:
-- [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form. The site has no legal notice yet.
+- [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form. The site has no legal pages yet.
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.
-- [ ] **Restore drill (O4):** never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
+- [ ] **Restore drill (O4):** run it once ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
-- [ ] **R2 access key rotation (O2):** not done or not recorded; note the date in `CLAUDE.md`.
-- [ ] **Phone check:** the cached copy — open Aujourd'hui once on Wi-Fi, then airplane mode and reopen.
-- [ ] **Your call (stress test):** the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées (hide them there, or their own fold?); a new sale ticks « Emportée aujourd'hui » by default.
-- [ ] **Vault:** delete the two old guides « Admin guide html » and « Team member Guide html » (type Studio Bible, 2026-05-24) with the Vault's own delete — replaced by the Aide (no Studio Bible PDF exists).
+- [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.
+- [ ] **Phone check:** open Aujourd'hui once on Wi-Fi, then airplane mode and reopen (cached copy).
+- [ ] **Your call:** the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées — hide them there, or give them their own fold? And should a new sale tick « Emportée aujourd'hui » by default?
+- [ ] **Vault:** delete the two old guides « Admin guide html » and « Team member Guide html » (type Studio Bible) with the Vault's own delete — the Aide replaces them.
 - [ ] **Aide wording:** read chapter 1 « Le projet et son périmètre » (`lib/aide/team.fr.ts`) — the French of your quote is a translation.
 
-## 2. Rethink — closed
+## 2. Rethink — nothing open
 
-R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archived ([`archive/RETHINK_2026-11-14.md`](./archive/RETHINK_2026-11-14.md), 2026-11-18). Its two leftovers are in §3; R8 is parked (§5).
+Leftovers are in §3, R8 in §5.
 
 ## 3. To build — needs a GO
 
-Found while writing the admin guide (2026-11-18): a rejection reason is stored but never shown to the proposal's author; the works bin has no screen (restoring a trashed work after the few-second « Undo » needs a development session).
+Admin
+- [ ] A rejection reason is stored (`pending_changes.reject_reason`) but never shown to the proposal's author.
+- [ ] The works bin has no screen: a trashed work can only be restored by the few-second « Undo ».
 
-Contacts and Vault (Pem 2026-11-18 evening)
-- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is never updated by the Contacts tab (edit / merge / delete — Inventory, work overlay, Curation dock, Compare read it stale until reload); one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed); phone / email labels are imported data in English and worse (« Mobile » 38, « Other », « Móvil », « * Other », « INTERNET », a person's name) → a fixed label list shown FR / EN + a data clean-up (SQL, Pem's OK).
-- [ ] Vault: a naming policy for every non-picture file (today a mess).
-- [ ] AI desk: one place on the computer to run the AI passes for items captured on the phone (the phone can't reach Ollama) — draft [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md), 4 decisions for Pem; needs a GO (deferred-feature rule).
-- [ ] Website legal pages, A.2 batch — prepared: [`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md). Part 1 (visitor ID 13 months, page_view 25 months, enquiries 3 years, drop Vercel Analytics, opt-out, self-hosted fonts + local QR) needs no legal facts; part 2 (the four pages + footer) needs the C.1 facts. 4 decisions for Pem.
+Contacts and Vault
+- [ ] Contacts tab review (design first): sort by family name everywhere; family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is not refreshed by Contacts edit / merge / delete (Inventory, work overlay, Curation dock, Compare stay stale until reload); one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).
+- [ ] Vault: a naming policy for every non-picture file.
 
-
-Stress-test look leftovers (2026-11-18, [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
-- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
-- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
-
-Rethink leftovers
-- [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy (Pem « if necessary, go »).
-- [ ] R6: editions part 2 — at the first real edition.
-
-Trace
-- [ ] 1. Handwriting batch (after the test) → [notes](./TODO_NOTES.md#journal-phase-2)
-- [ ] 1c. Voice notes over one upload (~4 MB) or recorded offline — only if you hit it twice → [notes](./TODO_NOTES.md#voice-limits)
-
-Value
+AI desk
+- [ ] Phase 3 ([`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)): business cards captured on the phone become `ai_job` rows (kind `card`), the PC agent reads the photo with a local vision model and the desk suggests the fields, to accept or reject; then web addresses the same way.
 
 Public site
+- [ ] Website legal pages, A.2 batch ([`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md)): part 1 (visitor ID 13 months, `page_view` 25 months, enquiries 3 years, drop Vercel Analytics, opt-out, self-hosted fonts + local QR) needs no legal facts; part 2 (the four pages + footer) needs the C.1 facts; 4 decisions for Pem.
 - [ ] Phones: show the closing text (« outro ») of a works sequence on `/works` — own last slide, or below?
 - [ ] Status chips in English (translate the DB labels) → [notes](./TODO_NOTES.md#status-labels)
 - [ ] 12. Circadian sky leftovers → [notes](./TODO_NOTES.md#circadian)
@@ -63,38 +50,47 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Guides — in-app Aide (`/atelier/aide`): complete 2026-11-18 — team guide 16 chapters (~8,500 words FR) with reference parts and a FAQ, admin guide 15 chapters (~5,700 words FR), FR + EN; PDF download and « ? » help. Next: keep them current (each chapter's `verified` date).
+Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
+- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
+- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
 
-Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
-- [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).
-- [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker still lists only the loaded works (round 2: the catalogue loads only on tabs that use it).
-- [ ] 19. Fewer silent catches (277, lint warns, counted 2026-11-18) · one combined badge action on tab switch · `is_admin()` STABLE (still VOLATILE live, 2026-11-18). Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
+Rethink leftovers
+- [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy.
+- [ ] R6: editions part 2 — at the first real edition.
+
+Trace
+- [ ] 1. Handwriting batch (after the test) → [notes](./TODO_NOTES.md#journal-phase-2)
+- [ ] 1c. Voice notes over one upload (~4 MB) or recorded offline — only if you hit it twice → [notes](./TODO_NOTES.md#voice-limits)
+
+Speed and code health
+- [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
+- [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
+- [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch · `is_admin()` STABLE (VOLATILE live).
 
 ## 4. To check once, when it happens (no build)
 
-Run on the Docker copy 2026-11-18 (report [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md) « TODO §4 on the copy »; passed items → [DONE](./DONE.md)). Left for Pem's eye or the live site:
-- [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (works were re-marked; search now reads note lines).
-- [ ] Speed on the live site as admin after the push: Inventory full catalogue (was 22–27 s), 3 work cards + Overview (was 5.5–10 s), Audit / Logistics first open, a day on the phone.
-- [ ] « Partager » an order paper on the iPhone (share sheet) — the computer download passed on the copy.
-- [ ] Your first real « #équipe » voice note recorded with the microphone — the card on the team's Aujourd'hui and the dots passed on the copy.
-- [ ] Constellation: the arrow on the first real « painted on / derived from / answers » link, and undoing a real link delete (canvas — not checkable on the copy; Shift+drag and the arrow tool passed).
+- [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (search now reads note lines).
+- [ ] Speed on the live site as admin: Inventory full catalogue (baseline 22–27 s), 3 work cards + Overview (5.5–10 s), Audit / Logistics first open, a day on the phone.
+- [ ] « Partager » an order paper on the iPhone (share sheet).
+- [ ] Your first real « #équipe » voice note recorded with the microphone.
+- [ ] Constellation: the arrow on the first real « painted on / derived from / answers » link, and undoing a real link delete.
 - [ ] Slideshow: full screen + swipe on an iPhone.
 - [ ] Physical printing: one real labels sheet (L7163 image + QR, L7651 QR) with a QR scanned, and a 300 dpi print.
-- [ ] Live site: an old service worker (`sw.js`) can never block pages (a stale one on localhost made every request fail in the stress run).
+- [ ] Live site: an old service worker (`sw.js`) never blocks pages.
 
 ## 5. Parked — no GO
 
-- R8 public site (Pem 2026-11-18: « skip r8 for now »): look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; SQL + design + GO) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md).
-- 11e. Docket scan by OCR (iPhone scans → PC batch proposes each expense / supply purchase, scan in Vault « Factures ») — Pem 2026-11-18: « later » → [notes](./TODO_NOTES.md#docket-scan)
+- R8 public site: look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; SQL + design + GO) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md).
+- 11e. Docket scan by OCR (iPhone scans → PC batch proposes each expense / supply purchase, scan in Vault « Factures ») → [notes](./TODO_NOTES.md#docket-scan)
 - Procession layout « not working »: reopen only with repro steps.
-- Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied) — Pem « not sure » 2026-11-18.
+- Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied).
 - VAT per sale, from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library, another system, another time → [notes](./TODO_NOTES.md#phototheque)
-- Writings as an output (Pem 2026-11-14: « we'll leave it for now »).
+- Writings as an output.
 - A « no year » filter in Inventory to date works in batch (641 works have no year) — only if wanted.
-- Journal entries as Constellation nodes — big, not now → [notes](./TODO_NOTES.md#journal-phase-2)
+- Journal entries as Constellation nodes — big → [notes](./TODO_NOTES.md#journal-phase-2)
 - F7 daily digest email · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
-- Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`).
+- Other background jobs / queues (the AI agent has its GO) · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`).
 
 ## Rules (not tasks)
 

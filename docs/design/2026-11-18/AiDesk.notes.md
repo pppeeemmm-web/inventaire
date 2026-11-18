@@ -1,6 +1,6 @@
 # AI desk — draft (2026-11-18)
 
-Pem, 2026-11-18: « I tried to improve [a business card] with the AI, and my phone couldn't connect to the AI because it's not on the phone. That's why I already said I need some dashboard for AI engines running … a central place for the desktop app so that I can improve, for instance, the data for the new contact. » **Draft for discussion — nothing built.** Design first: this note says what exists, the problem, one proposal and the decisions.
+Pem, 2026-11-18: « I tried to improve [a business card] with the AI, and my phone couldn't connect to the AI because it's not on the phone. That's why I already said I need some dashboard for AI engines running … a central place for the desktop app so that I can improve, for instance, the data for the new contact. » **Built 2026-11-18 (Pem « go for ai build », « local » — decision 3: Ollama only, no OpenAI; decisions 2 + 4 taken as recommended: Kaizen, admin only):** phase 1 screen + phase 2 agent and `ai_job` / `ai_agent` (SQL applied). Phase 3 (cards, web) open. Design first: this note says what exists, the problem, one proposal and the decisions.
 
 ## What exists today
 

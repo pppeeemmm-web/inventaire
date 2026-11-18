@@ -2,6 +2,22 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Bureau IA + the local PC agent (Pem « go for ai build », « local », « Yes, apply SQL »)
+
+- Kaizen → **Bureau IA** (`/atelier/ai`, admin): engines as the server sees them, the PC agent's last check-in and models, waiting queues (voice notes, search index, image descriptions, business cards with a photo), « Lancer » per queue, latest jobs. Phases 1 + 2 of [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md); local only, no OpenAI.
+- SQL applied: `ai_job`, `ai_agent` (`supabase/sql/ai_job.sql`). Agent: `npm run ai:agent`, `scripts/register-ai-agent.ps1`.
+- Found by the flow review: `describe_batch.py` read at most 1000 rows per request — now pages (`select_all`).
+- Phase 3 (cards, web addresses) stays in TODO §3.
+
+## 2026-11-18 — TODO tidied to open work only (Pem « I just hate to see that to-do.md filled with sporadic mentions of old stuff »)
+
+No open item turned out to be closed: each was checked against live code and stays open. Only history text left TODO — all of it already has its DONE entry:
+- Guides: « complete 2026-11-18 — team 16 chapters, admin 15 chapters, FR + EN, PDF + « ? » help » → DONE « The Aide finished » (`2a63ec8`, `9392148`, `6b88f69`, `ed01409`, `6b69e8f`) and « Guide PDF + « ? » help » (`ecb4d2c`). « Keep them current » is a chore (each chapter's `verified` date), not a TODO item.
+- §2 Rethink « R1–R7 built and pushed » → DONE « Docs tidy » (`RETHINK_2026-11-14.md` → `archive/`).
+- §0 and §4 lead-ins (« map, contacts badge, card photo, Vault tree fixed », « run on the Docker copy… passed items → DONE ») → DONE « Pem's evening pass: bugs » (`7b192d6`, `c791878`, `c499fda`, `d93fc0f`) and « TODO §4 on the Docker copy + its bugs fixed ».
+- §3 speed lead-in (« first round built… queries < 7 ms, the cost is Next.js running a page's server actions one at a time ») and « Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB) » → DONE « Paid from payments, custody, speed » (`6a1144b`) and « Badges, the bin rule, speed round 2 » (`c56eaef`); `perf:budget` is in `package.json:22`.
+- Header « Refreshed 2026-11-18, evening… 3.1.70 at this writing » and the « (Pem « … ») » date quotes on parked items: status / provenance, not work.
+
 ## 2026-11-18 — The Aide finished (Pem « finish the guides work we started »)
 
 Side session guides-finish, four batches, each landed by the lead after reading its diff:

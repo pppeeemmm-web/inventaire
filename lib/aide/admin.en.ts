@@ -22,7 +22,7 @@ This guide covers only what is reserved for admins. For everything else (works, 
 
 ## Where the reserved screens are
 
-- **On the computer**: [Audit Log](/atelier/audit) (Audit) at the top of the Kaizen group (its badge counts pending proposals); [Broadcast](/atelier/broadcast) in the Public group. The Overview shows two more signals: **Local jobs** and **System**.
+- **On the computer**: [Audit Log](/atelier/audit) (Audit) at the top of the Kaizen group (its badge counts pending proposals), followed by [AI desk](/atelier/ai); [Broadcast](/atelier/broadcast) in the Public group. The Overview shows two more signals: **Local jobs** and **System**.
 - **On the phone**: the **Feed** tile in the ☰ menu and the "Feed" counter on Today only show for admins; so does "Edit the session" on a day.
 - **Help**: on the computer, the "?" of a reserved screen opens this guide.
 
@@ -435,42 +435,50 @@ Changing any of them is technical work: ask a development session.
   },
   {
     id: 'admin-ai',
-    title: 'The AI engines and their keys',
+    title: 'AI desk: engines and local jobs',
     verified: '2026-11-18',
     md: `
-The public site uses no AI. In the Atelier, AI is always optional: when an engine is not installed or does not answer, the feature does less, nothing breaks.
+The public site uses no AI. In the Atelier, AI is optional and **local**: everything runs on your PC, nothing is sent to an outside AI service. When the PC is off, the feature does less, nothing breaks.
+
+## Where to see what is waiting
+
+[AI desk](/atelier/ai) (Kaizen, next to Audit; on the phone: ☰ → Kaizen → AI desk) shows:
+
+- **The engines**, as the server running the site sees them: the PC agent ("seen n min ago" and its models), whether an OpenAI key is set on this server (yes / no), the engine that reads a card photo and tidies card and web text, the Ollama models. On the live site, Ollama is always out of reach (the server cannot see your PC): that is expected.
+- **What is waiting**: voice notes to transcribe (Whisper), items to index for search, works whose image is not described yet (gemma3:4b), business cards kept with their photo (whether their AI pass ran is not recorded yet; phase 3 will read them and suggest the fields, to accept or reject).
+- **The latest jobs**: waiting, running, done or failed; a failed one shows its log.
+
+Overview → **Local jobs** remains as a quick glance (voice notes, indexing, archive age).
 
 ## Who does what
 
-- **Meaning-based search (⌘K) and the Journal's ✦ suggestions**: an Ollama model on your PC turns texts into markers, kept in the database. On the live site, a new phrase is searched as plain text.
-- **Voice notes**: on the phone, the browser writes the words as you speak (Safari → Apple, Chrome → Google); the full transcription is done on your PC.
-- **Business cards**: the text is read by the iPhone itself (Live Text), nothing is sent. "Improve with AI" then goes through OpenAI if a key is set on Vercel, otherwise through the Ollama model on your PC, which only answers when the app runs on that PC.
-- **A contact from a web address ("URL")**: the same: the page is read without AI, the AI fills in when it can be reached.
+- **Meaning-based search (⌘K) and the Journal's ✦ suggestions**: nomic-embed-text turns texts into markers, kept in the database. On the live site, a new phrase is searched as plain text.
+- **Voice notes**: on the phone, the browser writes the words as you speak (Safari → Apple, Chrome → Google); the full transcription is done on your PC by faster-whisper large-v3.
+- **Image descriptions**: gemma3:4b describes the works' images.
+- **Business cards and web addresses**: the text is read without AI (Live Text on the iPhone, page reading); llama3.2:1b can then tidy the text, but only when the app runs on your PC: on the live site, « Improve with AI » has no AI until phase 3 (the card read by the PC agent) is done.
 - **Broadcast captions**: Make.com's AI (OpenAI or Anthropic), outside the app.
 
-## Running your PC's jobs
+## Running the jobs
 
-1. Overview → **Local jobs**: "… voice note(s) to transcribe", "Search: … waiting for indexing".
-2. **Run on this PC**: transcribes the voice notes, then indexes search, one after the other, with the PC's graphics card.
+1. In [AI desk](/atelier/ai), click **Run** on the queue you want: the work is queued.
+2. The **PC agent** picks it up within 15 seconds, one job at a time (the graphics card cannot hold Whisper and the Ollama models together).
+3. "or by hand" shows the command to run yourself.
 
-**Watch out:** the button only works on your PC, set up once for it. On the phone, it says to run it from the PC.
+**First-time setup, once**: on the PC, run pwsh scripts/register-ai-agent.ps1. The agent (npm run ai:agent) then starts with Windows.
 
-## The keys
+**Watch out:** if the agent is off (a very old "seen ... ago"), jobs stay waiting until it is back.
 
-Keys are set on Vercel (Settings → Environment Variables → Production), never in the app or in a message:
+## Local only
 
-- **OPENAI_API_KEY**: turns on OpenAI for business cards and web addresses. Without it, these two passes have no AI on the live site.
-- **CONTACT_CARD_VISION** = none: stops sending the card photo to OpenAI.
-- **CONTACT_ENRICH_LLM** = none: turns off the AI for cards and web addresses.
-- **INVENTORY_BROADCAST_SECRET**: the key Make shows to read the Broadcast queue; the same value in Make.
-
-To know whether the live site has an OpenAI key: Vercel → the project → Settings → Environment Variables.
+- The agent uses the service key from your PC's .env.local file; keep that file private.
+- Nothing goes to an outside AI service.
+- If an OPENAI_API_KEY is still set on Vercel, the live site would still send card photos to OpenAI. Delete it: Vercel → the project → Settings → Environment Variables. The AI desk row "OpenAI key on this server" should then read "no".
+- The other settings (CONTACT_CARD_VISION, CONTACT_ENRICH_LLM) are pointless without an OpenAI key. INVENTORY_BROADCAST_SECRET stays: it is the key Make shows to read the Broadcast queue; the same value in Make.
 
 ## What leaves your machines
 
-- To **OpenAI**: a business card photo or a web page's text, and only with the key set.
 - To **Make.com** and its AI: the titles, techniques, dimensions and broadcast notes of works "Ready for broadcast".
-- Everything Ollama does stays on your PC.
+- Everything Ollama and Whisper do stays on your PC.
 `,
   },
   {

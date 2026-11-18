@@ -16,6 +16,7 @@ export const ATELIER_TABS_WITHOUT_CATALOGUE_CHUNK: ReadonlySet<SegmentedAtelierT
   'kaizen',
   'kaizen-ops',
   'aide',
+  'ai',
   // R4: reads its own whole-catalogue bundle (`loadTimePlaceData`).
   'chronologie',
 ])

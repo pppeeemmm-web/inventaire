@@ -75,6 +75,15 @@ class Supabase:
     def select(self, table: str, query: str):
         return self._request("GET", f"{table}?{query}") or []
 
+    def select_all(self, table: str, query: str, page: int = 1000):
+        """Every row, page by page: the API returns at most 1000 rows per request. `query` must carry an order."""
+        rows: list = []
+        while True:
+            chunk = self.select(table, f"{query}&limit={page}&offset={len(rows)}")
+            rows.extend(chunk)
+            if len(chunk) < page:
+                return rows
+
     def insert(self, table: str, row: dict):
         rows = self._request("POST", table, row, prefer="return=representation")
         return rows[0] if rows else None

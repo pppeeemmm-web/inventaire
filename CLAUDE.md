@@ -50,6 +50,8 @@ Repo guide. Conflict → ask owner before edit. Area rules live next to their co
 - Orientation: `docs/README.md` (table with `Verified` dates); live checklist `docs/TODO.md` (closed → `docs/DONE.md`); owner intent `docs/STRATEGY.md`. Routes → `SITE_MAP.md` (enforced); triggers / writers → `docs/ARCHITECTURE.md`. Live code wins over a stale doc.
 - Triage owner requests: bug (fix now) / friction felt ≥2× (batch) / idea (park in TODO). Problem statements over prescribed solutions.
 - A landing updates affected docs in the same change. Before calling anything done or open, check live code (file / grep / git log), never prose. Handoff « Open work » carries `Verified against live code <date>`; closed handoffs → `docs/archive/` (never execute from there).
+- `docs/TODO.md` = open work only, one line per item, plain present tense. No dates, no « was / used to / since », no `~~`, no `[x]`, no « fixed » notes; where it was found, who said it and why it was parked go to DONE, the notes files or the commit message. A section with nothing open keeps its numbered heading: « — nothing open ».
+- Batch end (same step as TODO → DONE and What's new): for each TODO item the batch touched, check live code, then close it to DONE with the commit sha, reword it, or leave it open. Never reread the whole file. Side sessions hand the lead a one-line item; only the main checkout edits TODO.
 - Team-facing change → What's new item (FR + EN) the same batch.
 
 ## UI rules (anywhere in UI)

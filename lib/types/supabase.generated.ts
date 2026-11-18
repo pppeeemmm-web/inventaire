@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agent: {
+        Row: {
+          id: string
+          models: Json
+          seen_at: string
+          version: string | null
+        }
+        Insert: {
+          id: string
+          models?: Json
+          seen_at?: string
+          version?: string | null
+        }
+        Update: {
+          id?: string
+          models?: Json
+          seen_at?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      ai_job: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          done_at: string | null
+          error: string | null
+          id: number
+          kind: string
+          payload: Json
+          requested_by: string | null
+          result: Json | null
+          started_at: string | null
+          status: string
+          target_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          done_at?: string | null
+          error?: string | null
+          id?: never
+          kind: string
+          payload?: Json
+          requested_by?: string | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          target_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          done_at?: string | null
+          error?: string | null
+          id?: never
+          kind?: string
+          payload?: Json
+          requested_by?: string | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       broadcast_events: {
         Row: {
           created_at: string
