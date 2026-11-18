@@ -123,3 +123,16 @@ Email sent by the app · a collector account / login · paying or reserving onli
 6. An enquiry about three works: **one message**, or **one per work**?
 7. A work sold while the link is open: shown **« Vendue »**, or **hidden**?
 8. May a kit include **private works** (not on the public site)? That needs the PDF engine change in §6.
+
+## Pem's answers (2026-11-18, form in the lead session)
+
+1. Start a kit from a **group of works** and from a **contact card** — both.
+2. **Any team member** may make a kit.
+3. Prices **« sur demande »** by default, shown only where ticked.
+4. The collector's page shows their **full name**.
+5. Links valid **14 days** by default.
+6. An enquiry about several works arrives as **one message**.
+7. A work sold while the link is open shows **« Vendue »**.
+8. **Public works only** — no change to the PDF engine.
+
+Next: build on Pem's GO (TODO 11b).
