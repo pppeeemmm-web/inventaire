@@ -37,7 +37,7 @@ The commercial tools stay simple: they only grow when a real case needs it.
 
 - Pem (admin) and the atelier team, each with their own account. There is no public sign-up: the atelier creates the accounts.
 - **The phone is for the field**: capture, fix, move things along. **The computer is for the deeper work**: the catalogue, tables, commercial.
-- A team member sees almost everything. Their new works, changes saved on a card and added photos wait for an admin's approval; a few screens are for admins only.
+- A team member sees almost everything. Only the admin (Pem) records a new work, a card change or a photo directly; the team's wait for his approval (see Getting started → What waits for Pem's approval). A few screens are for admins only.
 
 ## What the app does not do
 
@@ -85,6 +85,23 @@ Today is the home screen: the day. It shows what was done, the works of the day,
 - **At the bottom**: your account, the language (FR / EN), sign out.
 
 On the other screens, the "Today" chip at the top right takes you back to the day.
+
+## What waits for Pem's approval
+
+Pem (the admin) records everything directly. For a team member, the app makes two groups.
+
+**Waits for approval** (the message "Submitted for admin review" says so):
+- a new work, on the phone or on the computer;
+- a change to the card saved with **Save** (title, status, dimensions, owner, themes, groups…);
+- a photo added to a work, including a rework's or a shared one ("Pictures awaiting approval").
+
+Until Pem approves, nothing changes on the work. Pem can also reject it.
+
+**Counts at once:**
+- lines in "Comments & notes", the Journal's writings and voice notes;
+- a work's period, source and creation history, including the "Rework" line;
+- condition reports (see Works → Making a condition report);
+- proposed ideas, discussion lines, contacts, supplies.
 
 ## On the computer: the sidebar
 
@@ -137,10 +154,11 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 2. From top to bottom: the photos; the title; **Production** (In production, Catalogued, Available) and **Ownership** (Studio, Reserved, Consigned, On loan, Sold, Gift, Archive); owner, custodian, technique, support, dimensions, period; then the folding parts: **Création** (period and source, creation history, notes, themes, links with other works, field sessions) and **Object** (provenance, logistics, presentation, value, groups, condition reports, QR label).
 3. Edit, then **Save** at the bottom. "Cancel" goes back to the card as it was.
 
-**Next:** if you are not an admin, the change goes for approval ("Submitted for admin review"): it shows on the card once accepted.
+**Next:** if you are not an admin, the change goes for approval ("Submitted for admin review"): the card changes only once Pem has accepted it.
 
 **Watch out:**
 - **Lines** in "Comments & notes" count at once, without approval: Pem reads them in his Feed.
+- In **Création**, the period, the source and the creation history are also saved at once, without **Save** and without approval.
 - Leaving a changed card without saving: the app asks first.
 
 ## Recording a new work on the phone
@@ -152,7 +170,9 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 3. Fill in what you know: title, technique, support, format, dimensions (cm), place ("Nearest place" suggests a saved place within 2 km), period, source, note. "All fields" opens the rest.
 4. **Create the work**.
 
-**Next:** the work gets its number ("Work #… created"). A voice note can open right after, if you asked for it. If you are not an admin, the new work waits for approval.
+**Next:**
+- **Pem**: the work gets its number ("Work #… created"), with its photos, place, period and source. A voice note can open right after, if you asked for it.
+- **A team member**: the new work goes for approval ("Submitted for admin review"). It has no number yet. The card's fields go with it; the photos, place, period and source do not: add them once the work is approved.
 
 **Watch out:** an unsaved draft is kept on the phone and picked up next time ("Draft from … picked up"); "Clear" throws it away.
 
@@ -165,7 +185,7 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 3. Add a picture, the rework date and a "what changed" line (ground, glaze…).
 4. **Add to #…**.
 
-**Next:** the picture goes at the end of the picture strip and a "Rework" line goes into the creation history. The work keeps its number.
+**Next:** a "Rework" line goes into the creation history at once ("Rework added to #…"). The work keeps its number. The picture goes at the end of the picture strip: directly for Pem; for a team member, it waits for approval ("Pictures awaiting approval").
 
 ## Adding photos
 
@@ -176,7 +196,10 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 3. **Android only**: you can also, from Lightroom or the gallery, Share → PEM Workshop. The images land in "Share inbox", where you choose a new work, one work per image, or attach them to an existing work.
 4. **iPhone**: the Share menu does not list the app; use the card's **+** box, or the "Import from this device" form on the Share inbox page.
 
-**Next:** in the picture strip, drag ⠿ to change the order: the first image is the cover. If you are not an admin, the photos wait for approval ("Pictures awaiting approval").
+**Next:**
+- **Pem**: the photos are on the work at once.
+- **A team member**: the photos wait for approval ("Pictures awaiting approval") and show on the card only once accepted. For a work that is itself awaiting approval, wait until it is approved before adding its photos.
+- In the picture strip, drag ⠿ to change the order: the first image is the cover.
 
 **Watch out:** the app shrinks and converts each image once, on upload. Keep the originals in Lightroom.
 
@@ -185,13 +208,17 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 **When:** you check a work's condition (arrival, departure, loan, framing), or you see a problem.
 
 1. Card → Expanded → **Condition reports** → **+ New report**.
-2. Kind **Examination**, date, condition (Excellent, Good, Fair, Poor, Critical), examined by (empty = you), notes.
-3. For each issue: what it is (crack, stain…), where (top left corner, back…), a photo, then **Add issue**.
+2. Kind **Examination**, date, condition (Excellent, Good, Fair, Poor, Critical), examined by (empty = you), notes; if needed, "Action / treatment" and its follow-up (To do, Done).
+3. For each issue: what it is (crack, stain…), where (top left corner, back…), a photo (12 MB at most), then **Add issue**.
 4. **Save report**.
 
-**Next:** the report stays on the card with its date and author; it can be edited later.
+**Next:** the report counts at once, without approval. It stays on the card with its date and author.
 
-**Watch out:** a destruction, a loss or a theft are also recorded with a report, but only an admin can save them.
+**Who can do what, today:**
+- Any team member can make an **Examination** report on any work, and add an issue to any report.
+- Only a report's author and the admin can **Edit** it; an issue is removed by its author or by the admin.
+- **Delete report** is for the admin only.
+- A **Destruction**, a **Loss** or a **Theft** are also recorded with a report, but only an admin can save them ("Only an admin can record a destruction, a loss or a theft."), and mark a work "Found".
 
 ## The QR label
 
@@ -446,7 +473,10 @@ Contacts (Business → Contacts) gathers collectors, galleries, craftspeople, su
 
 **Next:** the card's photo is kept with the contact, in the Vault (Business).
 
-**Watch out:** a name or an institution is needed.
+**Watch out:**
+- A name or an institution is needed.
+- **Improve with AI** works only when the app runs on Pem's computer, where the studio's AI is installed. On the phone and on the team's computers it is not available (unless installed): skip this step, "Analyse" is enough.
+- Likewise, "URL" in Contacts reads the page without AI (name, email, phone, when the page gives them); the AI fills in the preview only on Pem's computer. Check the preview before creating.
 `,
   },
   {
@@ -584,6 +614,7 @@ The app's words, in French and English.
 - **Commande** (Order): the record of a work leaving the studio, with its steps and papers.
 - **Envoi** (Shipment): a parcel or a collection, for one or more orders.
 - **Constat** (Condition report): a work's condition on a date, with its issues and their photos.
+- **Validation** (Approval): Pem's agreement to a new work, a card change or a photo proposed by the team.
 - **Reprise** (Rework): a work worked on again, keeping its number.
 - **Période, Source** (Period, Source): when and from what the work was made (memory, motif, photo…).
 - **Séance de terrain** (Field session): a photographed work session.

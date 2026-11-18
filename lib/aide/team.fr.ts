@@ -37,7 +37,7 @@ Les outils commerciaux restent simples : ils ne grandissent que lorsqu'un vrai c
 
 - Pem (administrateur) et l'équipe de l'atelier, chacun avec son propre compte. Il n'y a pas d'inscription publique : l'atelier crée les comptes.
 - **Le téléphone sert au terrain** : saisir, corriger, faire avancer. **L'ordinateur sert au travail de fond** : le catalogue, les tableaux, le commercial.
-- Un membre de l'équipe voit presque tout. Ses nouvelles œuvres, les modifications enregistrées sur une fiche et les photos ajoutées attendent la validation d'un administrateur ; quelques écrans sont réservés aux administrateurs.
+- Un membre de l'équipe voit presque tout. Seul l'administrateur (Pem) enregistre directement une nouvelle œuvre, une modification de fiche ou une photo ; celles de l'équipe attendent sa validation (voir Premiers pas → Ce qui attend la validation de Pem). Quelques écrans sont réservés aux administrateurs.
 
 ## Ce que l'application ne fait pas
 
@@ -85,6 +85,23 @@ Aujourd'hui est l'écran d'accueil : la journée. On y voit ce qui a été fait,
 - **En bas** : votre compte, la langue (FR / EN), la déconnexion.
 
 Sur les autres écrans, la pastille « Aujourd'hui » en haut à droite vous ramène à la journée.
+
+## Ce qui attend la validation de Pem
+
+Pem (l'administrateur) enregistre tout directement. Pour un membre de l'équipe, l'application fait deux parts.
+
+**Attend la validation** (le message « Envoyé pour validation par l'administrateur » le dit) :
+- une nouvelle œuvre, au téléphone ou à l'ordinateur ;
+- une modification de la fiche enregistrée avec **Enregistrer** (titre, statut, dimensions, propriétaire, thèmes, groupes…) ;
+- une photo ajoutée à une œuvre, y compris celle d'une reprise ou d'un partage (« Photos en attente de validation »).
+
+Tant que Pem n'a pas validé, rien ne change sur l'œuvre. Pem peut aussi refuser.
+
+**Compte tout de suite :**
+- les lignes de « Commentaires & notes », les écrits et les notes vocales du Journal ;
+- la période, la source et l'historique de création d'une œuvre, dont la ligne « Reprise » ;
+- les constats d'état (voir Œuvres → Faire un constat d'état) ;
+- les idées proposées, les lignes de discussion, les contacts, les fournitures.
 
 ## À l'ordinateur : la barre latérale
 
@@ -137,10 +154,11 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 2. De haut en bas : les photos ; le titre ; **Production** (En production, Catalogué, Disponible) et **Propriété** (Atelier, Réservé, Consigné, Prêt, Vendu, Don, Archive) ; propriétaire, dépositaire, technique, support, dimensions, période ; puis les parties repliables : **Création** (période et source, historique de création, notes, thèmes, liens avec d'autres œuvres, sessions de terrain) et **Objet** (provenance, logistique, présentation, valeur, groupes, constats, étiquette QR).
 3. Modifiez, puis **Enregistrer** en bas. « Annuler » revient à la fiche telle qu'elle était.
 
-**Ensuite :** si vous n'êtes pas administrateur, la modification part en validation (« Envoyé pour validation par l'administrateur ») : elle apparaît sur la fiche une fois acceptée.
+**Ensuite :** si vous n'êtes pas administrateur, la modification part en validation (« Envoyé pour validation par l'administrateur ») : la fiche ne change qu'une fois que Pem l'a acceptée.
 
 **Attention :**
 - Les **lignes** de « Commentaires & notes » comptent tout de suite, sans validation : Pem les lit dans son Fil.
+- Dans **Création**, la période, la source et l'historique de création s'enregistrent aussi tout de suite, sans **Enregistrer** et sans validation.
 - Quitter une fiche modifiée sans enregistrer : l'application demande d'abord.
 
 ## Enregistrer une nouvelle œuvre au téléphone
@@ -152,7 +170,9 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 3. Remplissez ce que vous savez : titre, technique, support, format, dimensions (cm), lieu (« Lieu le plus proche » propose un lieu enregistré à moins de 2 km), période, source, note. « Tous les champs » ouvre le reste.
 4. **Créer l'œuvre**.
 
-**Ensuite :** l'œuvre reçoit son numéro (« Œuvre #… créée »). Une note vocale peut s'ouvrir juste après, si vous l'avez demandé. Si vous n'êtes pas administrateur, la création attend la validation.
+**Ensuite :**
+- **Pem** : l'œuvre reçoit son numéro (« Œuvre #… créée »), avec ses photos, son lieu, sa période et sa source. Une note vocale peut s'ouvrir juste après, si vous l'avez demandé.
+- **Un membre de l'équipe** : la nouvelle œuvre part en validation (« Envoyé pour validation par l'administrateur »). Elle n'a pas encore de numéro. Les champs de la fiche partent avec elle ; les photos, le lieu, la période et la source, non : ajoutez-les une fois l'œuvre validée.
 
 **Attention :** un brouillon non enregistré est gardé sur le téléphone et repris à la prochaine ouverture (« Brouillon du … repris ») ; « Effacer » le jette.
 
@@ -165,7 +185,7 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 3. Ajoutez une photo, la date de la reprise et une ligne « ce qui a changé » (fond, glacis…).
 4. **Ajouter à #…**.
 
-**Ensuite :** la photo s'ajoute à la fin de la bande d'images et une ligne « Reprise » entre dans l'historique de création. L'œuvre garde son numéro.
+**Ensuite :** une ligne « Reprise » entre dans l'historique de création, tout de suite (« Reprise ajoutée à #… »). L'œuvre garde son numéro. La photo s'ajoute à la fin de la bande d'images : directement pour Pem ; pour un membre de l'équipe, elle attend la validation (« Photos en attente de validation »).
 
 ## Ajouter des photos
 
@@ -176,7 +196,10 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 3. **Android seulement** : vous pouvez aussi, depuis Lightroom ou la galerie, Partager → PEM Workshop. Les images arrivent dans « Réception partage », où vous choisissez une nouvelle œuvre, une œuvre par image, ou de les joindre à une œuvre existante.
 4. **iPhone** : le menu Partager ne propose pas l'application ; utilisez la case **+** de la fiche, ou le formulaire « Importer depuis cet appareil » de la page Réception partage.
 
-**Ensuite :** dans la bande d'images, glissez ⠿ pour changer l'ordre : la première image est la couverture. Si vous n'êtes pas administrateur, les photos attendent la validation (« Photos en attente de validation »).
+**Ensuite :**
+- **Pem** : les photos sont sur l'œuvre tout de suite.
+- **Un membre de l'équipe** : les photos attendent la validation (« Photos en attente de validation ») et n'apparaissent sur la fiche qu'une fois acceptées. Pour une œuvre en attente de validation elle-même, attendez qu'elle soit validée avant d'ajouter ses photos.
+- Dans la bande d'images, glissez ⠿ pour changer l'ordre : la première image est la couverture.
 
 **Attention :** l'application réduit et convertit chaque image une fois, à l'envoi. Gardez les originaux dans Lightroom.
 
@@ -185,13 +208,17 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 **Quand :** vous examinez l'état d'une œuvre (arrivée, départ, prêt, encadrement), ou vous voyez un problème.
 
 1. Fiche → Développé → **Constats** → **+ Nouveau constat**.
-2. Type **Examen**, date, état (Excellent, Bon, Moyen, Mauvais, Critique), examiné par (vide = vous), notes.
-3. Pour chaque problème : ce que c'est (craquelure, tache…), où (coin haut gauche, revers…), une photo, puis **Ajouter le problème**.
+2. Type **Examen**, date, état (Excellent, Bon, Moyen, Mauvais, Critique), examiné par (vide = vous), notes ; si besoin, « Action / traitement » et son suivi (À faire, Fait).
+3. Pour chaque problème : ce que c'est (craquelure, tache…), où (coin haut gauche, revers…), une photo (12 Mo au plus), puis **Ajouter le problème**.
 4. **Enregistrer le constat**.
 
-**Ensuite :** le constat reste dans la fiche avec sa date et son auteur ; on peut le modifier plus tard.
+**Ensuite :** le constat compte tout de suite, sans validation. Il reste dans la fiche avec sa date et son auteur.
 
-**Attention :** une destruction, une perte ou un vol se déclarent aussi par un constat, mais seul un administrateur peut les enregistrer.
+**Qui peut faire quoi, aujourd'hui :**
+- Tout membre de l'équipe peut faire un constat d'**Examen** sur n'importe quelle œuvre, et ajouter un problème à n'importe quel constat.
+- Seuls l'auteur d'un constat et l'administrateur peuvent le **Modifier** ; un problème se retire par son auteur ou par l'administrateur.
+- **Supprimer le constat** est réservé à l'administrateur.
+- Une **Destruction**, une **Perte** ou un **Vol** se déclarent aussi par un constat, mais seul un administrateur peut les enregistrer (« Seul un admin peut enregistrer une destruction, une perte ou un vol. »), et marquer une œuvre « Retrouvée ».
 
 ## L'étiquette QR
 
@@ -446,7 +473,10 @@ Contacts (Business → Contacts) réunit les collectionneurs, galeries, artisans
 
 **Ensuite :** la photo de la carte est gardée avec le contact, dans le Coffre (Business).
 
-**Attention :** il faut au moins un nom ou une institution.
+**Attention :**
+- Il faut au moins un nom ou une institution.
+- **Améliorer avec l'IA** ne fonctionne que lorsque l'application tourne sur l'ordinateur de Pem, où l'IA de l'atelier est installée. Au téléphone et sur les ordinateurs de l'équipe, elle n'est pas disponible (sauf installation) : passez cette étape, « Analyser » suffit.
+- De même, « URL » dans Contacts lit la page sans IA (nom, e-mail, téléphone, quand la page les donne) ; l'IA ne complète l'aperçu que sur l'ordinateur de Pem. Vérifiez l'aperçu avant de créer.
 `,
   },
   {
@@ -585,6 +615,7 @@ Les mots de l'application, en français et en anglais.
 - **Commande** (Order) : la trace d'une œuvre qui quitte l'atelier, avec ses étapes et ses papiers.
 - **Envoi** (Shipment) : un colis ou un retrait, pour une ou plusieurs commandes.
 - **Constat** (Condition report) : l'état d'une œuvre à une date, avec ses problèmes et leurs photos.
+- **Validation** (Approval) : l'accord de Pem sur une nouvelle œuvre, une modification de fiche ou une photo proposées par l'équipe.
 - **Reprise** (Rework) : une œuvre retravaillée, qui garde son numéro.
 - **Période, Source** (Period, Source) : quand et à partir de quoi l'œuvre est faite (mémoire, motif, photo…).
 - **Séance de terrain** (Field session) : une séance de travail photographiée.
