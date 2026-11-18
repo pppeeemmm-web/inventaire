@@ -6,6 +6,27 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.62 (2026-11-18) — paid from payments, order address + return to the gallery, ⌘K by number, faster tabs.
+  wn_paid_from_payments_t: { fr: '« Payé » suit les paiements', en: '« Paid » follows the payments' },
+  wn_paid_from_payments_d: {
+    fr: '« Payé » sur une œuvre suit les paiements de sa vente : soldée → payé, retour → non payé. La fiche dit d’où vient la valeur, et elle reste modifiable à la main.',
+    en: '« Paid » on a work follows its sale’s payments: fully paid → paid, returned → not paid. The card says where the value comes from, and it can still be set by hand.',
+  },
+  wn_order_address_return_t: { fr: 'Commandes : l’adresse, et le retour chez la galerie', en: 'Orders: the address, and the return to the gallery' },
+  wn_order_address_return_d: {
+    fr: 'Une commande montre l’adresse où vont les œuvres, et on la choisit quand elle manque. Le « Retour » d’une œuvre vendue depuis un dépôt, payée mais pas livrée, la remet en « Consigné » chez la galerie, et le dépôt reprend.',
+    en: 'An order shows the address the works go to, and you pick it when it is missing. A « Return » of a work sold out of a deposit, paid but not delivered, puts it back « Consigned » at the gallery, and the deposit reopens.',
+  },
+  wn_search_by_number_t: { fr: '⌘K : une œuvre par son numéro', en: '⌘K: a work by its number' },
+  wn_search_by_number_d: {
+    fr: 'Tapez « 2405 » ou « #2405 » dans ⌘K : l’œuvre vient en premier, même si elle n’est pas encore chargée.',
+    en: 'Type « 2405 » or « #2405 » in ⌘K: the work comes first, even if it is not loaded yet.',
+  },
+  wn_faster_tabs_t: { fr: 'Des onglets plus rapides à ouvrir', en: 'Tabs quicker to open' },
+  wn_faster_tabs_d: {
+    fr: 'L’Atelier attend moins entre deux lectures : les compteurs du menu arrivent avec la page, l’onglet ouvert passe en premier (Audit, Logistique), et la recherche d’une séance ne se relance plus à chaque note tapée.',
+    en: 'The Atelier waits less between reads: the menu counts come with the page, the tab you open goes first (Audit, Logistics), and a session’s search no longer re-runs at each note typed.',
+  },
   // 3.1.61 (2026-11-18) — phone navigation, collector share kit, recording draft, old comments field gone.
   wn_phone_nav_t: { fr: 'Téléphone : une seule journée, un vrai menu', en: 'Phone: one day screen, a real menu' },
   wn_phone_nav_d: {

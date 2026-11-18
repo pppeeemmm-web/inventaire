@@ -33,8 +33,6 @@ Trace
 - [ ] 1c. Voice notes over one upload (~4 MB) or recorded offline — only if you hit it twice → [notes](./TODO_NOTES.md#voice-limits)
 
 Value
-- [ ] 9. Custody follow-ups (custodian address on an order; a cancelled sale of a consigned work goes back to the gallery) — written before R7, re-check against the new orders → [notes](./TODO_NOTES.md#custody) **GO 2026-11-18 — building in session paid-custody**
-- [ ] 10. « Paid » on a work derived from its payments (still hand-editable) → [notes](./TODO_NOTES.md#money) **GO 2026-11-18 — building in session paid-custody**
 
 Public site
 - [ ] Phones: show the closing text (« outro ») of a works sequence on `/works` — own last slide, or below?
@@ -44,10 +42,11 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Speed and code health — measure first (**17–19 GO 2026-11-18 — measuring in session speed-measure**; then on the live site as admin: Inventory full catalogue (was 22–27 s), 3 work cards + Overview (was 5.5–10 s), a day on the phone (dev: 2 s))
-- [ ] 17. Session flow speed → [notes](./TODO_NOTES.md#session-flow)
-- [ ] 18. The full catalogue still loads in the background on every Atelier tab · Reports on keyset totals · one status-label layer
-- [ ] 19. Slow first open of Audit / Logistics · fewer silent catches (~258, lint warns). Phone JS budget is in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
+Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
+- [ ] 17. Session flow, next: move the day merge off the session-open path; apply photos from a session (~10 round trips per photo, re-encodes an AVIF shot) → per-item calls.
+- [ ] 18. The catalogue still loads on every Atelier tab (⌘K reads it): load it only when a whole-catalogue tab or the palette opens — first check which tabs read it · Reports on keyset totals · one status-label layer.
+- [ ] 19. Fewer silent catches (~258, lint warns) · one combined badge action on tab switch · `is_admin()` STABLE. Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
+- [ ] Your call: the empty work search on a session returns almost every work with a thumbnail — cap it?
 
 ## 4. To check once, when it happens (no build)
 
@@ -59,6 +58,8 @@ New today
 - [ ] First real supply order: « Recevoir » adds to stock, cost + supplier; an expense with its invoice file.
 - [ ] « Partager » an order paper on the phone (share sheet) and on the computer (download); edit a line's value on a draft.
 - [ ] Your first « #équipe » voice note: the card on a team member's Aujourd'hui; the What's new dots on their menu.
+- [ ] Speed on the live site as admin after the push: Inventory full catalogue (was 22–27 s), 3 work cards + Overview (was 5.5–10 s), Audit / Logistics first open, a day on the phone.
+- [ ] First real sale through « Soldée »: « Payé » ticks itself; a « Retour » of a paid sale out of a deposit puts the work back « Consigné » at the gallery; « Choisir l'adresse » on an order missing one.
 - [ ] Security rules enforced: an image upload and the contact address lookup on the live site.
 - [ ] « Rappels sans projet » on Idées as admin: « En faire une idée » on « Demain ».
 

@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Paid from payments, custody, speed (Pem « 1 - 2 go »)
+
+- 10. « Payé » follows a sale's payments (`22f1295`, side session paid-custody, no SQL): Soldée → `is_paid` true, Retour / cancel of a signed sale → false, still settable by hand; the card says where it comes from (grey from payments, red when hand-set against them), batch edit hints. Seen by the session with local fakes (reverted); no real payment yet.
+- 9. Custody re-checked against R7: address on orders mostly fine — orders from an exhibition send or the phone sale now show and let you pick the address (`setOrderAddress`); cancelled-before-payment was fine; a « Retour » of a paid, not-delivered work sold out of a deposit / loan now puts it back « Consigné » / « Prêt » at the gallery and reopens the deposit (Pem « do the retour fix too »). Not run on data (no such sale).
+- 17–19 first round (`6a1144b`, side session speed-measure): measured — queries < 7 ms; Audit first open 9 actions in line (3.5 → 11.5 s dev), Logistics tab switch 4.5 s (3.5 s badges), Overview 12 actions 10.8 s, Inventory 15 actions ~18 s dev. Built: menu counts in the opening read, badges 1.5 s after a tab switch, Audit / Logistics first, session search not re-run on notes, session open ~3 fewer round trips. Proposals kept in TODO §3. Not measured live after the change.
+- Landed main seen on localhost: Logistics and a work card open, no console error.
+
 ## 2026-11-18 — « Older » checks (Pem « Yes, check and tidy ») and ⌘K by number
 
 - Seen live (as admin, look-only): voice-note chip on #2146's card (« ● note vocale 8 août … »); concept documents section on an idea (empty state + Fichier / Lien / Emplacement local / Depuis le coffre; adding one = normal use). Seen on localhost: Inventory « Périodes à trancher » filter (0 works today); a phone day screen in ~2 s on the dev server.
