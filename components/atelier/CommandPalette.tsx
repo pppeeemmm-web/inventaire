@@ -6,6 +6,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { searchSemanticAtelier, type SemanticSearchHit } from '@/app/atelier/search/actions'
+import { searchMenuWorks, type MenuWork } from '@/app/hub/menu-actions'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 
@@ -55,6 +56,11 @@ export function CommandPalette({
   const [semanticLoading, setSemanticLoading] = useState(false)
   const [semanticUnavailable, setSemanticUnavailable] = useState(false)
   const [semanticPending, setSemanticPending] = useState(false)
+  // A work number (« 2405 » or « #2405 ») opens that work directly — Pem 2026-11-18: ⌘K gave nothing for a
+  // number (titles only, among the loaded works, then the meaning search). Looked up on the server, so a work
+  // not in the loaded batch is found too.
+  const numQ = /^#?(\d{1,6})$/.exec(q.trim())?.[1] ?? null
+  const [numHit, setNumHit] = useState<MenuWork | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -70,8 +76,25 @@ export function CommandPalette({
   }, [open])
 
   useEffect(() => {
+    setNumHit(null)
+    if (!open || !numQ) return
+    let alive = true
+    const local = oeuvres.find((o) => o.OeuvreID === Number(numQ))
+    if (local) {
+      setNumHit({ id: local.OeuvreID, title: local.Titre ?? null, thumb: local.txtImageNameLink ?? null })
+      return
+    }
+    void searchMenuWorks(numQ).then((r) => {
+      if (alive) setNumHit(r.find((w) => w.id === Number(numQ)) ?? null)
+    })
+    return () => {
+      alive = false
+    }
+  }, [numQ, open, oeuvres])
+
+  useEffect(() => {
     const trimmed = q.trim()
-    if (!open || trimmed.length < 3) {
+    if (!open || trimmed.length < 3 || /^#?\d+$/.test(trimmed)) {
       setSemanticHits([])
       setSemanticLoading(false)
       setSemanticUnavailable(false)
@@ -108,6 +131,17 @@ export function CommandPalette({
     const result: Item[] = []
     const qLow = q.toLowerCase()
 
+    if (numHit) {
+      const w = numHit
+      result.push({
+        id: `work:${w.id}`,
+        label: w.title ?? `#${w.id}`,
+        work: { id: w.id, title: w.title, image: w.thumb ?? null },
+        group: t('cmd_palette_group_works'),
+        action: () => { onGoWork(w.id); onClose() },
+      })
+    }
+
     // Quick actions first: navigation tabs already live in the left rail.
     const actionDefs = [
       ...(onCaptureSession
@@ -142,7 +176,7 @@ export function CommandPalette({
     if (q.length >= 2) {
       let wCount = 0
       for (const o of oeuvres) {
-        if ((o.Titre ?? '').toLowerCase().includes(qLow)) {
+        if (o.OeuvreID !== numHit?.id && (o.Titre ?? '').toLowerCase().includes(qLow)) {
           result.push({ id: `work:${o.OeuvreID}`, label: o.Titre ?? `#${o.OeuvreID}`, work: { id: o.OeuvreID, title: o.Titre, image: o.txtImageNameLink ?? null }, group: t('cmd_palette_group_works'), action: () => { onGoWork(o.OeuvreID); onClose() } })
           if (++wCount >= 6) break
         }
@@ -214,7 +248,7 @@ export function CommandPalette({
     q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
-    semanticHits, semanticLoading, semanticUnavailable, semanticPending,
+    semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,
   ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))
