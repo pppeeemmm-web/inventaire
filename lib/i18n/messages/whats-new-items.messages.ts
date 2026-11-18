@@ -7,6 +7,21 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.72 (2026-11-18) — Pem's evening pass + the Aide finished.
+  wn_proposals_reasons_t: { fr: 'Vos propositions et leur suite', en: 'Your proposals and what came of them' },
+  wn_proposals_reasons_d: {
+    fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
+    en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
+  },
+  wn_contact_delete_safe_t: { fr: 'Supprimer un contact ne perd plus rien', en: 'Deleting a contact no longer loses anything' },
+  wn_contact_delete_safe_d: {
+    fr: 'Un contact encore propriétaire ou détenteur d’une œuvre, ou lié à une commande, ne se supprime pas : un message dit ce qui le retient, et rien n’est effacé (avant, ses adresses disparaissaient). Les contacts que vous importez ne sont plus marqués « Privé ».',
+    en: 'A contact who still owns or holds a work, or is on an order, is not deleted: a message says what holds it, and nothing is erased (its addresses used to vanish). Contacts you import are no longer marked « Private ».',
+  },
+  wn_small_slips_1118_t: { fr: 'Petites corrections', en: 'Small fixes' },
+  wn_small_slips_1118_d: {
+    fr: 'Une commande de fournitures reçue en partie le dit, et une nouvelle ligne reprend le dernier prix HT. Au téléphone, le menu ☰ montre les nouveautés et la Logistique distingue « en route » et « en cours ». Le Journal compte les œuvres sans doublon.',
+    en: 'A partly received supply order says so, and a new line takes the last price paid. On the phone, the ☰ menu shows what is new and Logistics tells « on the road » from « under way ». The Journal counts works without doubles.',
+  },
   wn_aide_complete_t: { fr: 'L’Aide est complète', en: 'The Help is complete' },
   wn_aide_complete_d: {
     fr: 'Le guide d’équipe dit ce qui attend la validation de Pem, détaille la fiche, les commandes et leurs papiers (facture comprise) et répond aux questions fréquentes avec les messages de l’application. Le guide admin couvre tout le reste. Les deux se téléchargent en PDF.',

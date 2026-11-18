@@ -74,7 +74,7 @@
 // '3.1.66' (2026-11-18): Aide — Œuvres + Production how-to cards; QR label link opens the work again.
 // '3.1.67' (2026-11-18): Aide — day & Journal, Ideas, Orders, Logistics, Events chapters.
 // '3.1.68' (2026-11-18): Aide — Contacts, Supplies, Reports, Public, the rules, glossary: team guide complete.
-export const WHATS_NEW_RELEASE = '3.1.72'
+export const WHATS_NEW_RELEASE = '3.1.73'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -94,6 +94,9 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'proposals_reasons', day: '2026-11-18', spot: 'overview' },
+  { id: 'contact_delete_safe', day: '2026-11-18', spot: 'contacts' },
+  { id: 'small_slips_1118', day: '2026-11-18', spot: 'stock' },
   { id: 'aide_complete', day: '2026-11-18', spot: 'aide' },
   { id: 'map_back_card_names', day: '2026-11-18', spot: 'map' },
   { id: 'contacts_badge_vault_tree', day: '2026-11-18', spot: 'contacts' },
