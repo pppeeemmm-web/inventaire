@@ -11,7 +11,6 @@ _None open._
 ## 1. Waiting on you, Pem
 
 Decisions (a form or one word):
-- [ ] **R8 look decisions:** A (big painting vs true-scale wall), then B (a work's page), C (landing), D (one name) → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md).
 - [ ] **#2381:** first step or catalogued? (Audit → Règles)
 - [ ] **Docket scan (11e):** GO to read dockets by OCR on the PC, and which scan path.
 
@@ -88,6 +87,7 @@ Older, still unseen live
 
 ## 5. Parked — no GO
 
+- R8 look decisions (A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md)) and so the R8 build (§2) — Pem 2026-11-18: « skip r8 for now ».
 - Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied) — Pem « not sure » 2026-11-18.
 - VAT per sale, from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library, another system, another time → [notes](./TODO_NOTES.md#phototheque)
