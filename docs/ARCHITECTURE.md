@@ -74,7 +74,7 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | `work_order` | `trg_work_order_before_write` | Reference `V/D/P/C/G-YYYY-NNN` per kind and year (advisory lock), checks on update |
 | `work_order` | `trg_work_order_after_step` (security definer) | Sale → paid / delivered, gift → handed over: the work's active lines on other open consignments / loans close as `sold` / `given` |
 | `work_order_work` | `work_order_line_one_open` (security definer) | One open sale / gift and one open consignment / loan / entrusted per work; lock per work; error `ord_err_busy:#<work>` ([`order_race_guards.sql`](../supabase/sql/order_race_guards.sql), 2026-11-18) |
-| `payments` | `payments_within_price` (security definer) | A sale's payments never pass price + shipping; order row locked; error `ord_err_overpaid` (same file) |
+| `payments` | `payments_within_price` (security definer) | A sale's payments never pass price + shipping; order row locked; error `ord_err_overpaid` (same file). Both guard functions: EXECUTE only `postgres` / `service_role` since 2026-11-18 ([`order_race_guards_revoke.sql`](../supabase/sql/order_race_guards_revoke.sql)) — triggers fire for every role |
 | `shipment` | `trg_shipment_before_write` | Stamps each step's time (`photos_at` … `delivered_at`, `cancelled_at`) on the step change |
 | `supply_order` | `trg_supply_order_before_write` | Reference `A-YYYY-NNN` (locked once set); cancel rules |
 | `invoice`, `invoice_order`, `expense` | `trg_invoice_before_write`, `trg_invoice_order_check`, `trg_expense_fiscal_year_default` | Invoice numbering and links; expense fiscal year default |

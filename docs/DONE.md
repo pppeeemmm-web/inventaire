@@ -20,7 +20,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - New blocking check `npm run docs:routes:check` (`scripts/docs-routes-check.mjs`): every page / route handler must be in `SITE_MAP.md`; runs in `ship.ps1` and CI (`dfe0789`). It found 6 routes missing.
 - SITE_MAP, ARCHITECTURE (triggers + callable functions re-read from the live DB: 9 undocumented, 2 gone), SYSTEM_LEDGER (its screen has no route since the Kaizen merge), README stamps, CLAUDE.md (5 checks, land flow, shorter phone-nav rule, stale names) brought up to date. Memory: 2 outdated files deleted (Pem « Yes, delete »), 5 updated.
-- Left: the two order-guard trigger functions keep PUBLIC execute (harmless — trigger functions can't be called through the API; house style would revoke).
+- The two order-guard trigger functions' PUBLIC / anon / authenticated EXECUTE revoked live 2026-11-18 on Pem's OK ([`order_race_guards_revoke.sql`](../supabase/sql/order_race_guards_revoke.sql)); both triggers still enabled.
 
 ## 2026-11-18 — In-app Aide, batch 4: team guide complete (Pem « go batch 4 »)
 
