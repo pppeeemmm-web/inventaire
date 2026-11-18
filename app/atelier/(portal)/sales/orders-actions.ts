@@ -1029,7 +1029,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   const { supabase } = g
   const { data: o, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, party_id, notes, return_window_days, return_window_starts_at, return_window_skipped')
+    .select('id, ref, kind, status, party_id, notes, delivered_at, return_window_days, return_window_starts_at, return_window_skipped')
     .eq('id', orderId).single()
   if (error || !o) return { error: error?.message ?? 'Order not found' }
   if (o.kind !== 'sale' || !['paid', 'delivered'].includes(o.status)) return { error: 'ord_err_step' }

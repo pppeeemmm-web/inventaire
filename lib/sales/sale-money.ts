@@ -12,6 +12,8 @@ export interface SaleWindowFields {
   return_window_days: number | null
   return_window_starts_at: string | null
   return_window_skipped: boolean | null
+  /** Fallback start of the return period for sales delivered without the « Livrée » step (rebuilt / imported history). */
+  delivered_at?: string | null
 }
 
 /** Studio calendar day (Europe/Paris) as YYYY-MM-DD. */
@@ -22,8 +24,11 @@ export function parisToday(): string {
 /** Last day the buyer may return the works (null before delivery, or with no period). */
 export function returnLastDay(o: SaleWindowFields): string | null {
   const days = Number(o.return_window_days ?? 14)
-  if (o.return_window_skipped || days <= 0 || !o.return_window_starts_at) return null
-  return addCalendarDaysIso(o.return_window_starts_at.slice(0, 10), days)
+  // Only the app's « Livrée » step stamps return_window_starts_at; a delivered sale without it (rebuilt / imported)
+  // starts its period at delivery, or its money would stay « en attente » forever (stress test 2026-11-18).
+  const start = o.return_window_starts_at ?? (o.status === 'delivered' ? o.delivered_at ?? null : null)
+  if (o.return_window_skipped || days <= 0 || !start) return null
+  return addCalendarDaysIso(start.slice(0, 10), days)
 }
 
 /**
