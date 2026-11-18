@@ -25,7 +25,7 @@ _None open (B13, B14 closed 2026-11-17 → [DONE](./DONE.md))._
 
 R1–R7 are built and pushed (history → [DONE](./DONE.md)). Only what is left:
 
-- [ ] R1 / R2: storing the ✦ match score (SQL; Pem « if necessary, go »); run the embed worker once with the quieter ✦ settings; the cached-copy check on the phone (airplane mode after one Wi-Fi open).
+- [ ] R1 / R2: storing the ✦ match score (SQL; Pem « if necessary, go »); the cached-copy check on the phone (airplane mode after one Wi-Fi open).
 - [ ] R4: the shared work preview (`WorkChip` / `WorkRef`) is on Vault, Production, Constellation; not yet on Pipeline, Share triage, ⌘K, Orders (Orders has its own thumbnails) — checked in code 2026-11-18.
 - [ ] R6: editions part 2, at the first real edition.
 - [ ] R7: line value editable after creation; « Confié » ↔ Production board tasks; a share button for papers; the order chain (order → prep → COA → shipment → invoice) drafted in [`R7b_OrderCascade.notes.md`](./design/2026-11-18/R7b_OrderCascade.notes.md), questions for Pem.
