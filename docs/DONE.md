@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Approvals no longer overwrite newer edits (TODO §0, Pem « fix all the bugs »)
+
+- Approving a team proposal writes only the fields it changed, on top of the work as it stands (`planPendingEdit`, `formDataForPendingEdit`); a field someone changed since the card was opened (base sent by the card, `__base_json`; older proposals: as saved) stops it: Audit shows « Appliquer quand même » / Rejeter; a Fil « Garder » on it says so and leaves it for Audit. Linked sets: price, stage, custody. Themes / groups not proposed are left alone (`__keep_*`, admin only).
+- Stress chain `review` gains 4 scenarios (not yet run). Flow review run twice; its findings fixed.
+
 ## 2026-11-18 — Rejection reason shown to its author + works bin (Pem « go », TODO §3)
 
 - A team member sees their proposals in Overview « Pour vous » (`listMyProposals`): waiting, approved, or « Refusée le … » with the reason (« Refusée sans raison » when none — a Fil swipe never asks); a rejected field session shows its reason on the work card.

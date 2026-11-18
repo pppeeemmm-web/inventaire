@@ -16,7 +16,12 @@ import {
 } from '@/lib/image-upload'
 import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
-import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
+import {
+  parsePendingLoadedBase,
+  pendingPayloadFromFormData,
+  PENDING_LOADED_BASE_FIELD,
+  type PendingChangeKind,
+} from '@/lib/work-pending-keys'
 import { historiqueToStore } from '@/lib/historique-merge'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
@@ -283,10 +288,15 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
         supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
       ])
+      // The work as the card OPENED it (`__base_json`, drawer + offline queue), else as it is now:
+      // a field changed between opening and saving must not read as part of the proposal.
+      const loaded = parsePendingLoadedBase(formData.get(PENDING_LOADED_BASE_FIELD))
       baseline = {
         ...base,
         themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
         groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
+        ...(loaded ?? {}),
+        ...(loaded ? { __base_from: 'card_open' } : {}),
       }
     }
 
@@ -676,12 +686,18 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       })
     }
 
-    const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
-    if ('error' in themeRes) return { error: themeRes.error }
+    // An approval replay (admin only) leaves a list the proposal did not change as it stands
+    // (`formDataForPendingEdit`, lib/work-pending-keys.ts).
+    if (!(isAdmin && formData.get('__keep_themes') === '1')) {
+      const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
+      if ('error' in themeRes) return { error: themeRes.error }
+    }
 
-    const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
-    const groupRes = await replaceOeuvreWorkGroups(svc, oid, groupIds)
-    if ('error' in groupRes) return { error: groupRes.error }
+    if (!(isAdmin && formData.get('__keep_groups') === '1')) {
+      const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
+      const groupRes = await replaceOeuvreWorkGroups(svc, oid, groupIds)
+      if ('error' in groupRes) return { error: groupRes.error }
+    }
 
     revalidatePath('/atelier')
     revalidatePath('/hub')

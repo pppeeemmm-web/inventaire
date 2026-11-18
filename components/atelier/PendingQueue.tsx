@@ -39,10 +39,19 @@ export function PendingQueue() {
 
   useEffect(() => { reload() }, [])
 
-  function handleApprove(id: number) {
-    if (!confirm(t('pending_confirm_approve'))) return
+  /** The work changed since this proposal: nothing was written; the admin applies anyway or rejects. */
+  const [conflict, setConflict] = useState<{ id: number; fields: string[]; noBaseline: boolean } | null>(null)
+
+  function handleApprove(id: number, force = false) {
+    if (!force && !confirm(t('pending_confirm_approve'))) return
     startTransition(async () => {
-      const r = await approvePendingChange(id)
+      const r = await approvePendingChange(id, force ? { force: true } : undefined)
+      if ('conflict' in r) {
+        setConflict({ id, ...r.conflict })
+        setOpenId(id)
+        return
+      }
+      setConflict(null)
       if ('error' in r) alert(r.error)
       reload()
     })
@@ -105,6 +114,28 @@ export function PendingQueue() {
                   onClick={() => setRejectFor(rejectFor === r.id ? null : r.id)}
                 >{t('pending_reject')}</button>
               </div>
+
+              {conflict?.id === r.id && (
+                <div
+                  role="alert"
+                  data-testid="pending-conflict"
+                  style={{ marginTop: 8, padding: '8px 10px', border: '1px solid var(--ac)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  <span style={{ flex: '1 1 220px', fontSize: 11, color: 'var(--tx)' }}>
+                    {t(conflict.noBaseline ? 'pending_conflict_no_base' : 'pending_conflict').replace('{fields}', conflict.fields.join(', '))}
+                  </span>
+                  <button
+                    className="btn primary sm"
+                    disabled={pending}
+                    onClick={() => handleApprove(r.id, true)}
+                  >{t('pending_conflict_apply_anyway')}</button>
+                  <button
+                    className="btn ghost sm"
+                    disabled={pending}
+                    onClick={() => { setConflict(null); setRejectFor(r.id) }}
+                  >{t('pending_reject')}</button>
+                </div>
+              )}
 
               {rejectFor === r.id && (
                 <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>

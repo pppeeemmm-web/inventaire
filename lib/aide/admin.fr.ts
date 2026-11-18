@@ -40,7 +40,7 @@ Une routine courte garde l'application juste. Rien ici ne presse au jour près ;
 
 ## Chaque jour, ou presque
 
-1. **Le Fil** (téléphone : ☰ → Fil) : gardez ou retirez les lignes, idées et entrées ; validez ou refusez les propositions.
+1. **Le Fil** (téléphone : ☰ → Fil) : gardez ou retirez les lignes, idées et entrées ; validez ou refusez les propositions (une proposition sur une œuvre qui a changé depuis reste là et se règle dans Audit).
 2. **Audit → Validation** si le badge d'Audit montre un chiffre : ce sont des œuvres, des photos ou des modifications que l'équipe attend.
 
 ## Une fois par semaine
@@ -82,7 +82,7 @@ Le Fil rassemble ce que les autres ont ajouté et que vous n'avez pas encore vu.
 3. Vous avez 6 secondes pour « Annuler ».
 
 **Ensuite :**
-- Valider une proposition de fiche l'applique à l'œuvre, comme Audit → Validation (voir Valider le travail de l'équipe).
+- Valider une proposition de fiche l'applique à l'œuvre, comme Audit → Validation (voir Valider le travail de l'équipe). Si l'œuvre a changé depuis sur ces champs, rien n'est écrit : un message le dit, la carte reste, et vous décidez dans Audit → Validation.
 - Une commande en brouillon reste dans le Fil tant qu'elle n'est ni signée ni annulée : « Garder » la laisse, « Retirer » annule le brouillon.
 - Ce qui reste plus de 14 jours sans tri passe dans « Refroidies » : lisible, jamais perdu. Les propositions de fiche et les commandes en brouillon ne refroidissent jamais : elles attendent votre choix.
 
@@ -113,10 +113,12 @@ Ce qu'un membre de l'équipe enregistre sur une œuvre ne s'applique pas tout de
 **Ensuite :**
 - **Nouvelle œuvre** : l'œuvre est créée et reçoit son numéro ; si elle venait de « Réception partage », ses images s'y attachent. Les photos, le lieu, la période et la source choisis au téléphone n'ont pas suivi : la personne les ajoute maintenant.
 - **Nouvelle image** : la photo rejoint la bande d'images de l'œuvre.
-- **Modification** : la fiche est enregistrée comme la personne l'a envoyée, en son nom.
+- **Modification** : seuls les champs que la personne a changés sont écrits, en son nom ; le reste de la fiche reste tel qu'il est aujourd'hui.
 
 **Attention :**
-- **Avant** montre la fiche au moment où la personne a enregistré, pas la fiche d'aujourd'hui. Approuver renvoie toute sa fiche : si vous avez modifié la même œuvre entre-temps, vos valeurs sur ces champs sont remplacées. Regardez la fiche d'abord ; au besoin, revenez à votre version (voir Revenir à une version d'une œuvre). Les lignes de l'historique, elles, ne se perdent jamais.
+- **Avant** montre la fiche telle que la personne l'a ouverte (ou, pour une proposition plus ancienne, au moment où elle a enregistré), pas la fiche d'aujourd'hui.
+- Si l'œuvre a changé depuis sur un champ proposé (ou un champ lié : prix et remise ; stade et cases du stade ; propriétaire, gardien, adresse et acheteur), rien n'est écrit. Un encadré dit « Cette œuvre a changé depuis la proposition » avec les champs : **Appliquer quand même** écrit les champs proposés par-dessus, **Rejeter** ouvre le rejet. Une proposition ancienne sans état de départ s'arrête de la même façon.
+- Les lignes de l'historique ne se perdent jamais.
 - Les règles de l'œuvre s'appliquent à l'approbation comme à vos propres enregistrements : une proposition qui en enfreint une est refusée avec le message de la règle (voir Dépannage).
 
 ## Rejeter

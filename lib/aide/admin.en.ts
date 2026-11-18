@@ -40,7 +40,7 @@ A short routine keeps the app right. Nothing here is urgent to the day; what sta
 
 ## Every day, or nearly
 
-1. **The Feed** (phone: ☰ → Feed): keep or take out lines, ideas and entries; approve or reject proposals.
+1. **The Feed** (phone: ☰ → Feed): keep or take out lines, ideas and entries; approve or reject proposals (a proposal on a work that has changed since stays there and is settled in Audit).
 2. **Audit → Review** if Audit's badge shows a number: these are works, photos or changes the team is waiting for.
 
 ## Once a week
@@ -82,7 +82,7 @@ The Feed gathers what others have added and you have not seen yet.
 3. You have 6 seconds to "Undo".
 
 **Next:**
-- Approving a record proposal applies it to the work, as Audit → Review does (see Approving the team's work).
+- Approving a record proposal applies it to the work, as Audit → Review does (see Approving the team's work). If the work has changed since on those fields, nothing is written: a message says so, the card stays, and you decide in Audit → Review.
 - A draft order stays in the Feed until it is signed or cancelled: "Keep" leaves it, "Take out" cancels the draft.
 - What is left unsorted for more than 14 days goes into "Cooled": readable, never lost. Record proposals and draft orders never cool: they wait for your choice.
 
@@ -113,10 +113,12 @@ What a team member records on a work does not apply at once: a new work, a chang
 **Next:**
 - **New work**: the work is created and gets its number; if it came from "Share inbox", its images attach to it. The photos, place, period and source picked on the phone did not come with it: the person adds them now.
 - **New image**: the photo joins the work's picture strip.
-- **Change**: the card is saved as the person sent it, in their name.
+- **Change**: only the fields the person changed are written, in their name; the rest of the card stays as it is today.
 
 **Watch out:**
-- **Before** shows the card as it was when the person saved, not today's card. Approving sends their whole card: if you changed the same work in the meantime, your values on those fields are replaced. Look at the card first; if needed, go back to your version (see Going back to a version of a work). Lines in the history are never lost.
+- **Before** shows the card as the person opened it (or, for an older proposal, as it was when they saved), not today's card.
+- If the work has changed since on a proposed field (or a linked one: price and discount; stage and its boxes; owner, custodian, address and buyer), nothing is written. A box says "This work has changed since the proposal" with the fields: **Apply anyway** writes the proposed fields over them, **Reject** opens the rejection. An older proposal with no starting state stops the same way.
+- Lines in the history are never lost.
 - A work's rules apply to an approval as to your own saves: a proposal that breaks one is refused with the rule's message (see Troubleshooting).
 
 ## Rejecting

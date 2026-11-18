@@ -18,7 +18,11 @@ const json = (sql) => JSON.parse(psql(`select coalesce(json_agg(_r), '[]') from 
 
 async function step(name, action, args, opts = {}, check) {
   const r = await call(action, args, opts);
-  let verdict = r.ok ? 'ok' : `ERR ${r.error}`;
+  // An approval that stopped on a conflict wrote nothing: not a success unless the step expects it.
+  const conflict = r.ok && r.result && typeof r.result === 'object' && 'conflict' in r.result ? r.result.conflict : null;
+  if (conflict && !opts.expectConflict) r.ok = false;
+  let verdict = r.ok ? 'ok' : conflict && !opts.expectConflict ? `CONFLICT ${JSON.stringify(conflict)}` : `ERR ${r.error}`;
+  if (opts.expectConflict) verdict = conflict ? `ok (conflict: ${conflict.fields.join(', ')})` : `FAIL expected conflict, got ${r.ok ? 'ok' : r.error}`;
   let detail = null;
   if (check) {
     try { detail = await check(r); if (detail && detail.fail) verdict = `FAIL ${detail.fail}`; }
@@ -252,6 +256,40 @@ Object.assign(chains, {
     const pid = Number(one(`select id from public.pending_changes where oeuvre_id=${w} order by id desc limit 1`));
     await step('team approves own change (should refuse)', 'approvePendingChange', [pid], { user: 'team', page: '/atelier/audit', expectError: true });
     await step('admin approves → price applied', 'approvePendingChange', [pid], { page: '/atelier/audit' }, () => expect(Number(wrow(w).prix) === 9999, `prix ${wrow(w).prix}`) ?? { edited_by: wrow(w).edited_by });
+
+    // Approvals write only what the proposal changed (TODO §0, 2026-11-18).
+    const lastPending = (id) => json(`select id, status, payload from public.pending_changes where oeuvre_id=${id} order by id desc limit 1`)[0];
+    const hauteur = (id) => one(`select "Hauteur" from public."Oeuvres" where "OeuvreID"=${id}`);
+    const [wc] = freeWorks(1);
+    await step('conflict: team proposes a price', 'saveWork', [workForm(wc, { prix: 4444 })], { user: 'team', page: '/atelier/inventory' });
+    const pc = lastPending(wc).id;
+    await step('conflict: Pem sets another price since', 'saveWork', [workForm(wc, { prix: 5555 })], { page: '/atelier/inventory' });
+    await step('conflict: approve stops, nothing written', 'approvePendingChange', [pc], { page: '/atelier/audit', expectConflict: true }, () =>
+      expect(Number(wrow(wc).prix) === 5555 && lastPending(wc).status === 'pending', `prix ${wrow(wc).prix}, row ${lastPending(wc).status}`));
+    await step('conflict: apply anyway (force)', 'approvePendingChange', [pc, { force: true }], { page: '/atelier/audit' }, () =>
+      expect(Number(wrow(wc).prix) === 4444 && lastPending(wc).status === 'approved', `prix ${wrow(wc).prix}, row ${lastPending(wc).status}`));
+
+    const [wd] = freeWorks(1);
+    await step('other field: team proposes a height', 'saveWork', [workForm(wd, { hauteur: '77' })], { user: 'team', page: '/atelier/inventory' });
+    const pd = lastPending(wd).id;
+    await step('other field: Pem renames the work since', 'saveWork', [workForm(wd, { titre: 'Titre de Pem' })], { page: '/atelier/inventory' });
+    await step('other field: approve → height in, Pem’s title kept', 'approvePendingChange', [pd], { page: '/atelier/audit' }, () =>
+      expect(wrow(wd).t === 'Titre de Pem' && Number(hauteur(wd)) === 77, `title ${wrow(wd).t}, height ${hauteur(wd)}`));
+
+    const [wb] = freeWorks(1); const orig = wrow(wb);
+    // The team card opened BEFORE Pem's price change: its form still holds the old price, untouched.
+    const teamCard = workForm(wb, { titre: 'Titre équipe', __base_json: JSON.stringify({ Titre: orig.t, Prix: orig.prix }) });
+    await step('card base: Pem changes the price after the card opened', 'saveWork', [workForm(wb, { prix: 7777 })], { page: '/atelier/inventory' });
+    await step('card base: team saves (old price untouched)', 'saveWork', [teamCard], { user: 'team', page: '/atelier/inventory' });
+    await step('card base: approve → title in, Pem’s price kept', 'approvePendingChange', [lastPending(wb).id], { page: '/atelier/audit' }, () =>
+      expect(wrow(wb).t === 'Titre équipe' && Number(wrow(wb).prix) === 7777, `title ${wrow(wb).t}, prix ${wrow(wb).prix}`));
+
+    const [wk] = freeWorks(1, `and exists (select 1 from public.oeuvre_theme t where t.oeuvre_id=o."OeuvreID")`);
+    await step('team form with __keep_themes=1 (not honoured)', 'saveWork', [workForm(wk, { themes: [], __keep_themes: 1, __keep_groups: 1 })], { user: 'team', page: '/atelier/inventory' }, () => {
+      const p = lastPending(wk); return expect(p && !('__keep_themes' in p.payload) && !('__keep_groups' in p.payload), `payload ${JSON.stringify(p?.payload)}`);
+    });
+    await step('approve → the proposed empty theme list applies', 'approvePendingChange', [lastPending(wk).id], { page: '/atelier/audit' }, () =>
+      expect(!wrow(wk).themes, `themes ${wrow(wk).themes}`));
     const [w2] = freeWorks(1);
     await step('team sends __skip_review=1 (should still be reviewed)', 'saveWork', [workForm(w2, { prix: 1, __skip_review: 1 })], { user: 'team', page: '/atelier/inventory' }, (r) => {
       const x = wrow(w2); return Number(x.prix) === 1 ? { fail: `applied without review: price now ${x.prix} (result ${JSON.stringify(r.result)})` } : { result: r.result };

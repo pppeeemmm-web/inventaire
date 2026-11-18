@@ -3,6 +3,8 @@
  * Must stay in sync with saveWork() in app/atelier/works/actions.ts.
  */
 
+import { sameHistorique } from './historique-merge'
+
 export const PENDING_SCALAR_FORM_KEYS = [
   'oeuvre_id',
   'titre',
@@ -291,4 +293,181 @@ export function diffPendingPayload(
     if (before !== after) out.push({ key, before, after })
   }
   return out
+}
+
+// ── Approve an edit: only what the proposal changed ─────────────────────────────────────────
+// Replaying the whole saved form put back the old value of every field the proposer did not touch
+// when the work had changed since (TODO §0, 2026-11-18). An approval now writes only the proposed
+// fields, on top of the work as it stands, and stops on a field someone else changed meanwhile.
+
+/**
+ * Fields that only make sense together: a change to one since the proposal unsettles the others.
+ * A key in several sets (status_id: stage + custody) is linked to every member of each.
+ */
+const PENDING_LINKED_KEY_GROUPS: readonly (readonly string[])[] = [
+  ['prix', 'discount', 'prix_final'],
+  /** Stage: status and the pipeline flags that follow it. */
+  ['status_id', 'catalogued', 'needs_photograph', 'exposable'],
+  /** Custody (docs/WORK_CUSTODY_MODEL.md): owner, custodian, address, buyer — set by the stage. */
+  ['contact_id', 'localisation_id', 'localisation_address_id', 'acheteur_id', 'status_id'],
+]
+
+/** Every key linked to `key` (itself included). */
+function pendingLinkedKeys(key: string): string[] {
+  const out = new Set<string>([key])
+  for (const g of PENDING_LINKED_KEY_GROUPS) if (g.includes(key)) for (const k of g) out.add(k)
+  return Array.from(out)
+}
+
+/** Hidden form field: the work as the card OPENED it (`Oeuvres` columns + themes / groups), JSON. */
+export const PENDING_LOADED_BASE_FIELD = '__base_json'
+
+/** Columns a load-time base may carry: the baseline's own shape (`PENDING_FORM_KEY_TO_COLUMN` values). */
+const PENDING_BASE_COLUMNS = new Set<string>(Object.values(PENDING_FORM_KEY_TO_COLUMN))
+
+/**
+ * Client side: the load-time base from the row the card opened with. Only known columns the row
+ * actually holds; `extra` adds what the card read apart (long text, theme / group ids) when known.
+ */
+export function pendingLoadedBaseFromRow(
+  row: Record<string, unknown>,
+  extra: Record<string, string | null | undefined> = {},
+): Record<string, string | number | boolean | null> {
+  const out: Record<string, string | number | boolean | null> = {}
+  for (const col of Array.from(PENDING_BASE_COLUMNS)) {
+    if (col === 'Historique' || col === 'Commentaires' || col === 'themes' || col === 'groups') continue
+    if (!(col in row)) continue
+    const v = row[col]
+    if (v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') out[col] = v
+  }
+  for (const [col, v] of Object.entries(extra)) {
+    if (PENDING_BASE_COLUMNS.has(col) && typeof v === 'string') out[col] = v
+  }
+  return out
+}
+
+/**
+ * Server side: validate a `__base_json` field. Known columns with plain values only; null when
+ * missing or invalid (the caller then keeps reading the base at save time).
+ */
+export function parsePendingLoadedBase(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw !== 'string' || !raw || raw.length > 200_000) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!PENDING_BASE_COLUMNS.has(k)) continue
+    if (v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') out[k] = v
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
+export type PendingEditPlan = {
+  /** Proposed form keys whose value differs from the work as it stands now. */
+  apply: string[]
+  /** Of `apply`: changed by someone else since the proposal (or base unknown) — not written without force. */
+  conflicts: string[]
+  /** The row has no `baseline`: every proposed difference counts as a conflict. */
+  noBaseline: boolean
+}
+
+/**
+ * Which fields of a queued edit to write, and which collide with a later change.
+ * `baseline` and `current` share one shape: the `Oeuvres` row plus `themes` / `groups` joined ids
+ * (as saveWork() stores the baseline). A key absent from `payload` is never proposed.
+ * Historique is applied whenever edited and never a conflict: saveWork() keeps the lines written since.
+ */
+export function planPendingEdit(
+  payload: Record<string, string>,
+  baseline: Record<string, unknown> | null,
+  current: Record<string, unknown>,
+): PendingEditPlan {
+  const apply: string[] = []
+  const conflicts: string[] = []
+  const now = (key: string) => normalisePendingBaselineValue(key, current[PENDING_FORM_KEY_TO_COLUMN[key]])
+  const base = (key: string) => normalisePendingBaselineValue(key, baseline?.[PENDING_FORM_KEY_TO_COLUMN[key]])
+  const proposedValue = (key: string) => normalisePendingFormValue(key, payload[key])
+
+  /** Someone else changed `key` (or a field linked to it) since the proposal was made. */
+  const changedSince = (key: string): boolean => {
+    return pendingLinkedKeys(key).some((j) => {
+      if (now(j) === base(j)) return false
+      // A linked field already holding the proposal's own value is no collision.
+      return !(j !== key && j in payload && now(j) === proposedValue(j))
+    })
+  }
+
+  for (const [key, raw] of Object.entries(payload)) {
+    if (key.startsWith('__') || PENDING_DIFF_SKIP_KEYS.has(key)) continue
+    const column = PENDING_FORM_KEY_TO_COLUMN[key]
+    if (!column) continue
+    if (key === 'historique') {
+      if (!(raw ?? '').trim()) continue
+      const loaded = 'historique_base' in payload
+        ? payload.historique_base
+        : ((baseline ?? current).Historique as string | null | undefined)
+      if (!sameHistorique(raw, loaded)) apply.push(key)
+      continue
+    }
+    const after = proposedValue(key)
+    if (now(key) === after) continue // already in place
+    if (baseline) {
+      if (base(key) === after) continue // not part of the proposal
+      apply.push(key)
+      if (changedSince(key)) conflicts.push(key)
+    } else {
+      apply.push(key)
+      conflicts.push(key)
+    }
+  }
+  return { apply, conflicts, noBaseline: baseline == null }
+}
+
+/** A stored column value as the form string saveWork() reads back to the same value; null = leave out. */
+function pendingFormValueFromColumn(key: string, raw: unknown): string | null {
+  if (raw == null) return null
+  if (CHECKBOX_KEY_SET.has(key)) return raw === true ? '1' : '0'
+  return String(raw)
+}
+
+/**
+ * FormData for saveWork() approving an edit: the work as it stands, with only `keys` taken from the
+ * proposal (saveWork() writes a whole record, so untouched fields go back as they are now). Themes /
+ * groups not in `keys` are not sent (`__keep_themes` / `__keep_groups`, honoured for an admin only);
+ * Historique not in `keys` is left out, so saveWork() does not write it.
+ */
+export function formDataForPendingEdit(
+  oeuvreId: number,
+  payload: Record<string, string>,
+  current: Record<string, unknown>,
+  keys: readonly string[],
+): FormData {
+  const take = new Set(keys)
+  const fd = new FormData()
+  fd.set('oeuvre_id', String(oeuvreId))
+  for (const [key, column] of Object.entries(PENDING_FORM_KEY_TO_COLUMN)) {
+    if (key === 'historique' || key === 'themes' || key === 'groups') continue
+    const v = take.has(key) ? payload[key] : pendingFormValueFromColumn(key, current[column])
+    if (v != null) fd.append(key, v)
+  }
+  if (take.has('historique')) {
+    fd.set('historique', payload.historique ?? '')
+    if ('historique_base' in payload) fd.set('historique_base', payload.historique_base ?? '')
+  }
+  for (const list of ['themes', 'groups'] as const) {
+    if (!take.has(list)) {
+      fd.set(list === 'themes' ? '__keep_themes' : '__keep_groups', '1')
+      continue
+    }
+    for (const s of (payload[list] ?? '').split(',')) {
+      const v = s.trim()
+      if (v) fd.append(list, v)
+    }
+  }
+  return fd
 }

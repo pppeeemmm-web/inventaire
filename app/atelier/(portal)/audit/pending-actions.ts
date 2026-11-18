@@ -7,6 +7,8 @@ import {
   filterPendingPayloadForReplay,
   filterPendingImageAddPayload,
   formDataFromPendingPayload,
+  formDataForPendingEdit,
+  planPendingEdit,
   resolvePendingChangeKind,
   diffPendingPayload,
   PENDING_FORM_KEY_TO_COLUMN,
@@ -117,6 +119,32 @@ async function loadPendingRefLabels(
 }
 
 export type PendingResult = { ok: true } | { error: string }
+
+/** The work changed since the proposal on `fields` (form keys): nothing written, approve again with `force`. */
+export type PendingConflict = { conflict: { fields: string[]; noBaseline: boolean } }
+
+/** The work as `planPendingEdit` reads it: the `Oeuvres` row + theme / group ids (the baseline's shape). */
+async function loadPendingWorkState(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  oid: number,
+): Promise<{ state: Record<string, unknown> } | { error: string }> {
+  const [{ data: row, error }, { data: themeLinks, error: tErr }, { data: groupLinks, error: gErr }] = await Promise.all([
+    supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle(),
+    supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
+    supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
+  ])
+  const readErr = error ?? tErr ?? gErr
+  if (readErr) return { error: readErr.message }
+  const work = row as Record<string, unknown> | null
+  if (!work || work.deleted_at != null) return { error: 'Œuvre introuvable ou supprimée' }
+  return {
+    state: {
+      ...work,
+      themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
+      groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
+    },
+  }
+}
 
 async function ensureAdmin() {
   const supabase = await createClient()
@@ -254,7 +282,15 @@ export async function listMyProposals(limit = 60): Promise<{ proposals: MyPropos
   }
 }
 
-export async function approvePendingChange(id: number): Promise<PendingResult> {
+/**
+ * Apply a queued proposal. An edit writes only the fields it changed, on top of the work as it
+ * stands; a field someone else changed since returns `conflict` and nothing is written, unless
+ * `force` (Audit « Appliquer quand même »).
+ */
+export async function approvePendingChange(
+  id: number,
+  opts?: { force?: boolean },
+): Promise<PendingResult | PendingConflict> {
   const gate = await ensureAdmin()
   if (gate.error) return { error: gate.error }
   const supabase = gate.supabase!
@@ -296,20 +332,27 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
   }
 
   const filtered = filterPendingPayloadForReplay(rawPayload)
-  const shareInboxId = filtered.__share_inbox_id?.trim()
-  const shareFileIndex = filtered.__share_file_index?.trim()
-  const fd = formDataFromPendingPayload(filtered)
-  fd.set('__skip_review', '1')
-  if (row.author_id) fd.set('__pending_author_id', row.author_id)
-  const result = await saveWork(fd)
-  if ('error' in result) return { error: result.error }
 
-  if (shareInboxId && typeof result.newId === 'number') {
-    const idx =
-      shareFileIndex != null && shareFileIndex !== '' ? Number(shareFileIndex) : undefined
-    const indexes = idx != null && Number.isFinite(idx) ? [idx] : undefined
-    const attach = await attachShareInboxFilesToWork(shareInboxId, result.newId, indexes)
-    if (attach) return { error: attach.error }
+  if (kind === 'edit') {
+    const oid = row.oeuvre_id ?? Number(filtered.oeuvre_id)
+    if (!Number.isInteger(oid) || oid <= 0) return { error: 'Œuvre introuvable' }
+    const work = await loadPendingWorkState(supabase, oid)
+    if ('error' in work) return { error: work.error }
+    const plan = planPendingEdit(filtered, row.baseline as Record<string, unknown> | null, work.state)
+    if (plan.conflicts.length > 0 && !opts?.force) {
+      return { conflict: { fields: plan.conflicts, noBaseline: plan.noBaseline } }
+    }
+    // Nothing left to write (already in place): the proposal is simply marked approved.
+    if (plan.apply.length > 0) {
+      const fd = formDataForPendingEdit(oid, filtered, work.state, plan.apply)
+      fd.set('__skip_review', '1')
+      if (row.author_id) fd.set('__pending_author_id', row.author_id)
+      const result = await saveWork(fd)
+      if ('error' in result) return { error: result.error }
+    }
+  } else {
+    const created = await replayPendingCreate(filtered, row.author_id)
+    if ('error' in created) return created
   }
 
   const { error: uErr } = await supabase
@@ -322,6 +365,29 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
   revalidatePath('/atelier')
   revalidatePath('/hub')
   revalidatePath('/works')
+  return { ok: true }
+}
+
+/** A new work proposal: the whole form is the proposal, replayed as saved. */
+async function replayPendingCreate(
+  filtered: Record<string, string>,
+  authorId: string | null,
+): Promise<{ ok: true } | { error: string }> {
+  const shareInboxId = filtered.__share_inbox_id?.trim()
+  const shareFileIndex = filtered.__share_file_index?.trim()
+  const fd = formDataFromPendingPayload(filtered)
+  fd.set('__skip_review', '1')
+  if (authorId) fd.set('__pending_author_id', authorId)
+  const result = await saveWork(fd)
+  if ('error' in result) return { error: result.error }
+
+  if (shareInboxId && typeof result.newId === 'number') {
+    const idx =
+      shareFileIndex != null && shareFileIndex !== '' ? Number(shareFileIndex) : undefined
+    const indexes = idx != null && Number.isFinite(idx) ? [idx] : undefined
+    const attach = await attachShareInboxFilesToWork(shareInboxId, result.newId, indexes)
+    if (attach) return { error: attach.error }
+  }
   return { ok: true }
 }
 

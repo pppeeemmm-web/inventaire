@@ -8,7 +8,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - 🔎 §0 Contacts: refuse deleting a contact still linked to works / orders (no address loss) + « Privé » code side — built; lead reviewing (flow review running)
 - ⏳ §0 « Privé » SQL (`supabase/sql/contact_private_rls.sql`, not applied): 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 of them own / hold / bought works; 1 is a team member) — Pem reviews that list first, then OK
-- 🔧 §0 Approvals apply only the fields the proposal changed, and warn when someone edited them since — review found one gap (a field changed between opening and saving the card); agent fixing it
 - 🔎 §3 Website legal pages, part 1 (visitor ID 13 months, no Vercel Analytics, « don't count me », own fonts + QR) — built; lead reviewing (flow review running)
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
 - 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
@@ -21,7 +20,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - [ ] Contacts: deleting a contact that owns or holds a work removes its addresses, then fails on the work link — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message before touching anything. Not reproduced.
 - [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
-- [ ] **Approvals overwrite newer edits:** approving a proposal saves the whole card as its author saw it. Fix: apply only the fields the proposal changed, or warn when the work changed since.
 - [ ] **Local AI only (Pem 2026-11-18):** if `OPENAI_API_KEY` is set on Vercel, delete it — until then the live site can still send card photos to OpenAI. Bureau IA (`/atelier/ai`) shows « Clé OpenAI sur ce serveur : oui / non ».
 
 ## 1. Waiting on you, Pem

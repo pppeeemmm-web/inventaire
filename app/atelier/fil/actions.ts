@@ -17,6 +17,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { diffPendingPayload } from '@/lib/work-pending-keys'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { approvePendingChange, rejectPendingChange } from '@/app/atelier/(portal)/audit/pending-actions'
 import { cancelWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 
@@ -302,6 +303,10 @@ export async function decideFil(kind: FilKind, id: string, decision: FilDecision
   if (kind === 'pending_change') {
     const res = decision === 'keep' ? await approvePendingChange(Number(id)) : await rejectPendingChange(Number(id), '')
     if ('error' in res) return res
+    // The work changed since the proposal: nothing written, the card stays; Audit decides.
+    if ('conflict' in res) {
+      return { error: resolveMessage('fr', 'pending_conflict_fil').replace('{fields}', res.conflict.fields.join(', ')) }
+    }
   }
 
   // A draft order stays in the Fil until it is signed or cancelled in Commandes (no « seen » state):

@@ -36,6 +36,7 @@ import {
   enqueueOfflineWorkSaveFromFormData,
   isLikelyOfflineSaveError,
 } from '@/lib/mobile/offline-work-queue'
+import { PENDING_LOADED_BASE_FIELD, pendingLoadedBaseFromRow } from '@/lib/work-pending-keys'
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
 import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
@@ -246,6 +247,10 @@ export function DrawerContent({
   /** False after a session draft is restored: its Historique was edited from an older text, so the
    *  server must keep every stored line (no base sent → union). docs/WORK_RULES.md rule 14. */
   const historiqueBaseKnownRef = useRef(true)
+  /** The work as this card opened it — sent with a team member's save as the proposal's base
+   *  (`__base_json`), so a field changed elsewhere after opening is not read as proposed. Null after
+   *  a session draft is restored (its values predate this open): the server then reads the base itself. */
+  const loadedBaseRef = useRef<{ id: number; row: Record<string, unknown>; extra: Record<string, string> } | null>(null)
   const { confirmStep, confirmDialog } = useConfirmStep()
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
@@ -549,6 +554,15 @@ export function DrawerContent({
     const persisted = submittedByOeuvreRef.current.get(o.OeuvreID) ?? null
     const mapThemes = oeuvreThemeMap.get(o.OeuvreID) ?? []
     const mapGroups = oeuvreGroupMap.get(o.OeuvreID) ?? []
+    // Empty junction maps may simply not be hydrated yet: leave themes / groups unknown (filled below).
+    loadedBaseRef.current = {
+      id: o.OeuvreID,
+      row: { ...(o as unknown as Record<string, unknown>) },
+      extra: {
+        ...(mapThemes.length ? { themes: mapThemes.map(String).join(',') } : {}),
+        ...(mapGroups.length ? { groups: mapGroups.join(',') } : {}),
+      },
+    }
     setLongTextReady(false)
     setNoteBaseline({ c: '', h: '' })
     setTitre(o.Titre ?? '')
@@ -691,6 +705,7 @@ export function DrawerContent({
           setHistorique(h)
           setNoteBaseline({ c, h })
           historiqueBaseKnownRef.current = true
+          if (loadedBaseRef.current?.id === o.OeuvreID) loadedBaseRef.current.extra.Commentaires = c
           setEditorBaseline((prev) =>
             prev ? normalizeWorkFormDraftContent({ ...prev, commentaires: c, historique: h }) : prev,
           )
@@ -885,6 +900,11 @@ export function DrawerContent({
     const mapThemes = oeuvreThemeMap.get(o.OeuvreID) ?? []
     const mapGroups = oeuvreGroupMap.get(o.OeuvreID) ?? []
     if (mapThemes.length === 0 && mapGroups.length === 0) return
+    const lb = loadedBaseRef.current
+    if (lb?.id === o.OeuvreID) {
+      if (lb.extra.themes === undefined && mapThemes.length > 0) lb.extra.themes = mapThemes.map(String).join(',')
+      if (lb.extra.groups === undefined && mapGroups.length > 0) lb.extra.groups = mapGroups.join(',')
+    }
     setSelThemes((prev) => {
       if (prev.size > 0) return prev
       if (mapThemes.length === 0) return prev
@@ -1002,6 +1022,11 @@ export function DrawerContent({
     fd.append('admin_override_anonymity', '0')
     selThemes.forEach((id) => fd.append('themes', String(id)))
     selGroups.forEach((id) => fd.append('groups', id))
+    // A team member's save becomes a proposal: send the work as this card opened it (its base).
+    const lb = loadedBaseRef.current
+    if (!isAdmin && lb?.id === o.OeuvreID) {
+      fd.append(PENDING_LOADED_BASE_FIELD, JSON.stringify(pendingLoadedBaseFromRow(lb.row, lb.extra)))
+    }
     return fd
   }
 
@@ -1132,6 +1157,7 @@ export function DrawerContent({
     onJunctionSaved,
     onWorkSaved,
     captureDrawerDraftContent,
+    isAdmin,
   ])
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -1208,6 +1234,7 @@ export function DrawerContent({
     }
     applyDraftContentToForm(d)
     historiqueBaseKnownRef.current = false
+    loadedBaseRef.current = null
   }, [longTextReady, draftKey, draftSnapshot, editorBaseline, applyDraftContentToForm, t])
 
   useEffect(() => {
