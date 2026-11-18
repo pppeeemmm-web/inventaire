@@ -88,6 +88,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'expense_year', day: '2026-11-18', spot: 'fiscal' },
   { id: 'ideas_one_place', day: '2026-11-18', spot: 'concepts' },
   { id: 'supply_orders', day: '2026-11-18', spot: 'stock' },
   { id: 'order_calendar', day: '2026-11-18', spot: 'sales' },

@@ -7,6 +7,11 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.59 (2026-11-18) — ideas in one place.
+  wn_expense_year_t: { fr: 'Dépenses : la bonne année', en: 'Expenses: the right year' },
+  wn_expense_year_d: {
+    fr: 'Une dépense est rangée dans l’année de sa date, à chaque enregistrement : une dépense saisie à la main ne disparaît plus de la liste, et changer sa date d’année la déplace aussi.',
+    en: 'An expense is filed under its date’s year on every save: a hand-typed expense no longer drops out of the list, and moving its date to another year moves it too.',
+  },
   wn_ideas_one_place_t: { fr: 'Les idées au même endroit : Idées', en: 'Ideas in one place: Ideas' },
   wn_ideas_one_place_d: {
     fr: 'Kaizen « Création » rejoint Idées : ses entrées sont devenues des idées ou des lignes sur leurs œuvres, rien n’est perdu. Neuf rappels qui étaient en fait des idées y sont aussi, à leur date d’origine. Nouveautés est maintenant dans Opérations & Stratégie.',
