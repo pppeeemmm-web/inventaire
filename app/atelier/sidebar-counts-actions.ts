@@ -11,8 +11,9 @@ import { ORDER_FINISHED } from '@/lib/orders/kinds'
 
 export type SidebarCounts = { orders: number; production: number; pipeline: number; events: number; logistics: number }
 
-/** A process that is over: won, lost, finished, cancelled. */
-const PROCESS_CLOSED = ['termine', 'gagne', 'perdu', 'annule']
+/** A process that is over: finished, lost, cancelled. « Gagné » is not the end — the work still has to be done,
+ *  so it stays on the badge, like on the Pipeline tab (Pem 2026-11-18: « if it's not completed, it has to be shown »). */
+const PROCESS_CLOSED = ['termine', 'perdu', 'annule']
 
 export async function getSidebarCounts(): Promise<SidebarCounts | { error: string }> {
   const supabase = await createClient()
