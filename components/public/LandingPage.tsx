@@ -157,15 +157,13 @@ export default function LandingPage({
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
   }, [])
 
-  // §4.5 — a11y knobs: sync type zoom + high contrast to html root
+  // §4.5 — a11y knobs: high contrast on the html root. The text-size zoom is NOT applied here (Pem
+  // 2026-11-18): the landing is one fixed screen, and zooming the whole page at 125 % made it taller than
+  // the window — a scroll bar, and the corner hub dot pushed off-screen. Other pages still apply it.
   useEffect(() => {
     const root = document.documentElement
-    const { type_size_step, high_contrast } = effectiveKnobs.a11y
-    if (type_size_step !== 1) {
-      root.style.setProperty('--pem-root-zoom', String(type_size_step))
-    } else {
-      root.style.removeProperty('--pem-root-zoom')
-    }
+    const { high_contrast } = effectiveKnobs.a11y
+    root.style.removeProperty('--pem-root-zoom')
     if (high_contrast) {
       root.dataset.highContrast = 'true'
     } else {

@@ -233,7 +233,9 @@ export function WorkForm({
         prodStage: 'atelier',
         needsPhoto: false,
         ownStage: 'artist',
-        contactId: '',
+        // A new work starts with Pem as holder (effect F below sets it at once): the baseline must say so too,
+        // or an untouched form counts as changed and leaves an empty « Brouillon local » to restore.
+        contactId: String(contacts.find(c => (c.NomInstitution ?? '').toLowerCase().includes('pem'))?.ContactID ?? ''),
         localisationAddressId: '',
         anonymityLevel: 0,
         prix: '0',
@@ -274,7 +276,7 @@ export function WorkForm({
       selThemes: [...currentThemeIds],
       selGroups: [...currentGroupIds],
     }
-  }, [oeuvre, currentThemeIds, currentGroupIds])
+  }, [oeuvre, currentThemeIds, currentGroupIds, contacts])
 
   const isDirty = !workFormDraftContentEquals(
     normalizeWorkFormDraftContent(draftSnapshot),
