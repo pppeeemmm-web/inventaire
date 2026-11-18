@@ -38,19 +38,18 @@ Trace
 - [ ] 1c. Voice notes longer than one upload (~4 MB) or recorded offline → build only if Pem hits either ≥2× → [notes](./TODO_NOTES.md#voice-limits)
 
 Links
-- [ ] 23. **Theme notes** (Pem 2026-11-17): `theme` has only `id, name`, so the text goes in the title (4 names over 40 characters, longest 166) → add a notes field so titles stay short. SQL GO → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1)
-- [ ] 24. **A more human « What's new »** (Pem 2026-11-17): the team doesn't read it — too many updates, too complex, impersonal. Ideas: a « new » dot on the changed button with one plain sentence on first tap, or a short voice note from Pem per batch; the list stays as the archive → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1)
+- [ ] 23. **Theme notes** (Pem 2026-11-17): `theme` has only `id, name`, so the text goes in the title (4 names over 40 characters, longest 166) → add a notes field so titles stay short. SQL GO → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — building in session theme-notes-kit (SQL to Pem before apply).
+- [ ] 24. **A more human « What's new »** (Pem 2026-11-17): the team doesn't read it — too many updates, too complex, impersonal. Ideas: a « new » dot on the changed button with one plain sentence on first tap, or a short voice note from Pem per batch; the list stays as the archive → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — lead drafts the design first.
 
 Transmission (safety of what is kept)
-- [ ] 8. Security remaining: CSP is report-only (2026-11-16) — watch the live console, then enforce → [notes](./TODO_NOTES.md#security) (anon grants, ledger, `xlsx`, `system_log` / `studio_task` closed 2026-11-16 → [DONE](./DONE.md))
 
 Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)
 - [ ] 10. Money: `is_paid` from payments; clean `sales-client.ts` extras → [notes](./TODO_NOTES.md#money)
-- [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies)
-- [ ] 11d. **Supplier invoice → stock + supplier** (Pem 2026-11-15 asked how it works: **it does not today**). An expense (Income & Expenses: bill / ticket) is typed by hand and touches neither stock quantities nor the supplier list; stock moves only by Count. Design with 11; reading the invoice by itself = OCR → needs GO → [notes](./TODO_NOTES.md#supplies)
+- [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** — design + build in session supplies-stock (with 11d).
+- [ ] 11d. **Supplier invoice → stock + supplier** (Pem 2026-11-15 asked how it works: **it does not today**). An expense (Income & Expenses: bill / ticket) is typed by hand and touches neither stock quantities nor the supplier list; stock moves only by Count. Design with 11; reading the invoice by itself = OCR → needs GO → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** (no OCR) — session supplies-stock.
 - [ ] 11e. **Batch scan of expenses and dockets** (Pem 2026-11-15): scan many dockets in one go on the iPhone → a folder the PC sees → a PC batch (like `scripts/transcribe/`) reads each one and proposes an expense (date, supplier, amount, VAT, `receipt_ref`) to confirm, the scan kept in the Vault « Factures ». Needs the OCR GO (§1); with 11d (lines → stock) → [notes](./TODO_NOTES.md#docket-scan)
-- [ ] 11b. Collector share kit (F5): a private link for one collector with a selection, a PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md)
+- [ ] 11b. Collector share kit (F5): a private link for one collector with a selection, a PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md) **Draft asked 2026-11-18** — session theme-notes-kit, no code.
 
 Public site — next batch
 - [ ] Phones must show the closing text ("outro") of a works sequence on `/works` — decide its place (own last slide, or below)

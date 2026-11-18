@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Content security policy enforced (TODO 8, Pem « go »)
+
+- 8. Security remaining: CSP is report-only (2026-11-16) — watch the live console, then enforce → [notes](./TODO_NOTES.md#security) (anon grants, ledger, `xlsx`, `system_log` / `studio_task` closed 2026-11-16 → [DONE](./DONE.md))
+- Enforced 2026-11-18 (`next.config.ts`: `Content-Security-Policy`): live report-only pass first, as admin in Chrome, violations read with `ReportingObserver` (probe image to example.com caught, so the watcher works): no violation on the work panel + full image, Expositions, Commandes, hub, Journal + audio, Carte Création (20 tiles), /works. Local after the switch: inventory + full image, Carte (42 tiles) clean. Not seen live: an image upload, the contact address lookup (both sources listed). Google sign-in starts client-side (`signInWithOAuth`, a navigation — not limited by CSP).
+
 ## 2026-11-18 — Rethink history (moved from TODO when it was tidied; text unchanged)
 
 - [ ] R1 / R2 leftovers (R1 + R2 closed 2026-11-17 → [DONE](./DONE.md); board: [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html)). **Pem:** phone checks (Aujourd'hui on 4G vs the [baseline](./design/2026-11-17/PhoneToday.notes.md#baseline-measured-2026-11-17-on-production-as-admin), cached copy, a Journal day with a voice note + « Relier… », the Fil rows on Overview, one sign-out); SQL GO: Inspiration photo (linked to a work / idée) and storing the ✦ match score. **Lead:** old notes → lines written 2026-11-17 (98 `note_line` rows on 96 works, `187fe9f`; 83 undated show « avant mai 2026 »); **Pem:** the old « Commentaires & notes » field still shows above the lines, so each moved comment appears twice — hide or retire it?; run the embed worker once with the quieter ✦ settings; the servers are in Stockholm (`vercel.json` `arn1`, Pem's GO 2026-11-17; live `6a98ce5`: dynamic routes answer from `arn1`, signed-out `/hub` redirect 0.17–0.25 s warm, 1.65 s cold, from Pem's PC) — the signed-in measure is Pem's phone check. Parked: the team's phone; `components/hub/HubLauncherClient.tsx` no longer routed (delete needs Pem's OK).

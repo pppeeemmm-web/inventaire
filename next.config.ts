@@ -28,13 +28,15 @@ function originOf(raw: string | undefined): string {
 }
 
 /**
- * Content security policy, REPORT-ONLY (TODO 8, 2026-11-16): the browser blocks nothing, it only logs
- * violations in the console. Every source the site loads, listed from the code:
+ * Content security policy, ENFORCED since 2026-11-18 (TODO 8, Pem « go »; report-only 2026-11-16 → 18: no violation
+ * on the live site as admin — work panel + full image, Expositions, Commandes, hub, Journal + audio, Carte Création,
+ * /works; Vault, PDF preview, Constellation on 11-16). A source not listed here is now blocked: add it here first.
+ * Every source the site loads, listed from the code:
  * Supabase (REST + realtime), R2 public images + signed uploads/previews, Google fonts (portal / card / selection
  * export), Leaflet CSS + marker icons (unpkg) + OpenStreetMap tiles (Carte), address lookups (api-adresse,
  * zippopotam) in the contact editor, the QR image on /card, Vercel analytics (same origin in prod).
  * Next.js inline scripts need 'unsafe-inline' (no nonce yet); dev also needs 'unsafe-eval'.
- * Enforce only after the live console stays clean across the site.
+ * Not yet seen live under it: an image upload, the contact address lookup (both sources are listed).
  */
 const supabaseOrigin = originOf(process.env.NEXT_PUBLIC_SUPABASE_URL)
 const r2Origin = originOf(process.env.NEXT_PUBLIC_R2_PUBLIC_URL)
@@ -97,7 +99,7 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Content-Security-Policy-Report-Only', value: csp },
+          { key: 'Content-Security-Policy', value: csp },
         ],
       },
     ]
