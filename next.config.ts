@@ -48,7 +48,10 @@ const csp = [
   "font-src 'self' data: https://fonts.gstatic.com",
   `img-src 'self' data: blob: ${r2Origin} ${supabaseOrigin} https://*.tile.openstreetmap.org https://unpkg.com https://api.qrserver.com`,
   `media-src 'self' data: blob: ${r2Origin}`,
-  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, 'wss:')} ${r2Origin} https://*.r2.cloudflarestorage.com https://api-adresse.data.gouv.fr https://api.zippopotam.us https://vitals.vercel-insights.com${isDev ? ' ws: wss:' : ''}`,
+  // The service worker fetches cross-origin files itself (Serwist's default rules: any .png, Google fonts, …), and
+  // inside the worker that is `connect-src`, not img-src / font-src: the map tiles, Google fonts and the QR image
+  // must be listed here too, or the worker's fetch is blocked (map tiles blank on the live site, 2026-11-18).
+  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace(/^https:/, 'wss:')} ${r2Origin} https://*.r2.cloudflarestorage.com https://api-adresse.data.gouv.fr https://api.zippopotam.us https://vitals.vercel-insights.com https://*.tile.openstreetmap.org https://unpkg.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.qrserver.com${isDev ? ' ws: wss:' : ''}`,
   `frame-src 'self' blob: ${r2Origin} https://*.r2.cloudflarestorage.com`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
