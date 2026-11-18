@@ -7,6 +7,7 @@
 // Its own chunk (PhoneMenu.tsx loads it): nothing here weighs on the first screen of /hub.
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { aideChapterForPath } from '@/lib/aide/screen-map'
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type TouchEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -285,6 +286,15 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
           })}
         </nav>
         {failed ? <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 16px 8px' }}>{t('today_load_error')}</p> : null}
+
+        {/* « ? » on the phone: the Aide chapter for the screen under the menu (lib/aide/screen-map.ts). */}
+        <div style={{ borderTop: '1px solid var(--bd)', padding: '0 16px' }}>
+          {(() => {
+            const h = aideChapterForPath(pathname, isAdmin)
+            const href = `/atelier/aide?${h.guide === 'admin' ? 'g=admin&' : ''}ch=${h.ch}`
+            return link(href, <><span aria-hidden="true" style={{ width: 22, textAlign: 'center', fontWeight: 600 }}>?</span>{t('aide_help_button')}</>, row, 'phone-menu-help')
+          })()}
+        </div>
 
         <details className="pem-fold" data-testid="phone-menu-rest" style={{ borderTop: '1px solid var(--bd)' }}>
           <summary style={summary}>{t('pn_rest')}</summary>

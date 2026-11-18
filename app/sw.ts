@@ -1,6 +1,6 @@
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { CacheFirst, ExpirationPlugin, NetworkFirst, Serwist } from 'serwist'
+import { CacheFirst, ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from 'serwist'
 import { clearUserCaches, TODAY_CACHE_PREFIX } from '../lib/sw-install/user-caches'
 
 declare global {
@@ -70,6 +70,11 @@ async function todayHandler({ request, event }: { request: Request; event: Exten
 }
 
 const pemRuntimeCache = [
+  {
+    // The guide PDF (admin guide included) is built fresh on each download: never kept on the device.
+    matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) => sameOrigin && url.pathname === '/atelier/aide/guide.pdf',
+    handler: new NetworkOnly(),
+  },
   {
     matcher: ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
       sameOrigin && request.method === 'GET' && request.mode === 'navigate' && TODAY_PATHS.has(url.pathname) && url.search === '',

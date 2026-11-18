@@ -79,6 +79,7 @@ Today is the home screen: the day. It shows what was done, the works of the day,
 
 - **At the top, search**: type #1234 or part of a title, and the work's card opens.
 - **The tiles**, with their counts: Today, Works, Production, Ideas, Orders, Logistics, Events, Journal. Admins also see the Feed.
+- **"? Help for this screen"**: the chapter of this guide about the screen open under the menu.
 - **"Everything else"** (folded): all the other screens.
 - **"Actions"** (folded): Sale, Contact (business card), Document, Issue, Pipeline, Triage.
 - **At the bottom**: your account, the language (FR / EN), sign out.
@@ -100,6 +101,7 @@ Everywhere:
 
 - **⌘K** (Mac) or **Ctrl+K** (PC) opens search: a work, a screen, an action.
 - Clicking a work opens its card at the side.
+- **?** in the header (or the **?** key) opens help for the screen you are on, over the page, with a search. Esc closes it.
 - The **FR / EN** buttons in the header change the language.
 
 ## This guide
@@ -107,6 +109,7 @@ Everywhere:
 - Each chapter carries the date it was checked in the app. If the screen no longer matches the guide, the screen is right: report it in Kaizen → Operations & Strategy (+ New entry).
 - What changed since: Kaizen → Operations & Strategy → **What's new**.
 - The guide follows the app's language.
+- **"Download the guide (PDF)"**, under the contents: the whole guide, laid out, to read or print away from the computer. It is always the same text as the Help.
 `,
   },
   {

@@ -79,6 +79,7 @@ Aujourd'hui est l'écran d'accueil : la journée. On y voit ce qui a été fait,
 
 - **En haut, la recherche** : tapez #1234 ou un morceau de titre, la fiche de l'œuvre s'ouvre.
 - **Les tuiles**, avec leurs compteurs : Aujourd'hui, Œuvres, Production, Idées, Commandes, Logistique, Événements, Journal. Les administrateurs voient aussi le Fil.
+- **« ? Aide pour cet écran »** : le chapitre de ce guide qui parle de l'écran ouvert sous le menu.
 - **« Tout le reste »** (replié) : tous les autres écrans.
 - **« Actions »** (replié) : Vente, Contact (carte de visite), Document, Problème, Pipeline, Triage.
 - **En bas** : votre compte, la langue (FR / EN), la déconnexion.
@@ -100,6 +101,7 @@ Partout :
 
 - **⌘K** (Mac) ou **Ctrl+K** (PC) ouvre la recherche : une œuvre, un écran, une action.
 - Un clic sur une œuvre ouvre sa fiche sur le côté.
+- **?** dans l'en-tête (ou la touche **?**) ouvre l'aide de l'écran où vous êtes, par-dessus la page, avec une recherche. Échap la ferme.
 - Les boutons **FR / EN** de l'en-tête changent la langue.
 
 ## Ce guide
@@ -107,6 +109,7 @@ Partout :
 - Chaque chapitre porte la date du jour où il a été vérifié dans l'application. Si l'écran ne correspond plus au guide, c'est l'écran qui a raison : signalez-le dans Kaizen → Opérations & Stratégie (+ Nouvelle entrée).
 - Ce qui a changé depuis : Kaizen → Opérations & Stratégie → **Nouveautés**.
 - Le guide suit la langue de l'application.
+- **« Télécharger le guide (PDF) »**, sous le sommaire : tout le guide, mis en page, à lire ou imprimer hors de l'ordinateur. C'est toujours le même texte que l'Aide.
 `,
   },
   {

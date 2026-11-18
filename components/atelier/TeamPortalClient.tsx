@@ -16,6 +16,8 @@ import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
 import dynamic from 'next/dynamic'
+// « ? » help panel: its chapters' text loads only when it opens.
+const HelpPanel = dynamic(() => import('./HelpPanel').then((m) => m.HelpPanel), { ssr: false })
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
@@ -106,6 +108,7 @@ function AtelierHeaderChrome({
   onPaletteOpen,
   onNewWork,
   onReports,
+  onHelp,
   pendingReviewCount = 0,
   onPendingReview,
   hideNewWork,
@@ -116,6 +119,8 @@ function AtelierHeaderChrome({
   onPaletteOpen: () => void
   onNewWork: () => void
   onReports: () => void
+  /** « ? »: the Aide chapter for this screen, in a panel over it. */
+  onHelp?: () => void
   /** Admin: changes waiting in Audit. The header shows a "To review" button while > 0. */
   pendingReviewCount?: number
   onPendingReview?: () => void
@@ -171,6 +176,19 @@ function AtelierHeaderChrome({
         >
           {t('tab_reports')}
         </button>
+        {onHelp ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={onHelp}
+            title={`${t('aide_help_button')} (?)`}
+            aria-label={t('aide_help_button')}
+            data-testid="atelier-header-help"
+            style={{ ...actionStyle, minWidth: 32, fontSize: 13 }}
+          >
+            ?
+          </button>
+        ) : null}
         {/* Audit items waiting (owner 2026-11-03: "be better informed on the desktop"). */}
         {onPendingReview && pendingReviewCount > 0 ? (
           <button
@@ -907,6 +925,7 @@ export function TeamPortalClient({
     }
   }, [isAdmin])
   const [paletteOpen,    setPaletteOpen]    = useState(false)
+  const [helpOpen,       setHelpOpen]       = useState(false)
 
   useEffect(() => {
     setIsAdmin(initialIsAdmin)
@@ -933,6 +952,11 @@ export function TeamPortalClient({
       }
       if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault(); setPaletteOpen(p => !p)
+      }
+      // « ? » opens the help panel for this screen (not while typing).
+      const el = e.target as HTMLElement | null
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement) && !(el instanceof HTMLSelectElement) && !el?.isContentEditable) {
+        e.preventDefault(); setHelpOpen(true)
       }
     }
     window.addEventListener('keydown', onPaletteKey)
@@ -1168,6 +1192,7 @@ export function TeamPortalClient({
       {drawerLeaveDialog}
       {/* "www.thepemworkshop.com 3.0" (owner 2026-11-03); Kaizen shows the same list in place. */}
       <WhatsNewDialog suppressed={activeTab === 'kaizen' || activeTab === 'kaizen-ops'} />
+      {helpOpen ? <HelpPanel pathname={pathname ?? ''} isAdmin={isAdmin} onClose={() => setHelpOpen(false)} onNavigate={phoneNavigate} /> : null}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -1263,6 +1288,7 @@ export function TeamPortalClient({
               onPaletteOpen={() => setPaletteOpen(true)}
               onNewWork={() => void router.push('/atelier/works/new')}
               onReports={() => handleSetTab('reports')}
+              onHelp={() => setHelpOpen(true)}
               pendingReviewCount={isAdmin ? pendingReviewCount : 0}
               onPendingReview={isAdmin ? () => handleSetTab('audit') : undefined}
             />

@@ -46,6 +46,16 @@ export function Aide({ isAdmin }: { isAdmin: boolean }) {
     bodyRef.current?.scrollTo({ top: 0 })
   }, [chapter?.id, guide])
 
+  // A new ?ch= / ?g= while the Aide is already open (the « ? » panel, the phone « Aide pour cet écran »).
+  const urlCh = params.get('ch')
+  const urlG = params.get('g')
+  useEffect(() => {
+    if (urlG === 'admin' && guides.includes('admin')) setGuide('admin')
+    else if (urlG == null) setGuide('team')
+    if (urlCh) setChId(urlCh)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- follow the URL only
+  }, [urlCh, urlG])
+
   function open(id: string | null) {
     setChId(id)
     syncUrl(guide, id)
@@ -74,6 +84,19 @@ export function Aide({ isAdmin }: { isAdmin: boolean }) {
         ))}
       </div>
     ) : null
+
+  // The whole guide as a PDF, built on demand from these chapters (route `aide/guide.pdf`; admin guide: admins only).
+  const pdfLink = (
+    <a
+      href={`/atelier/aide/guide.pdf?g=${guide}&lang=${lang}`}
+      download
+      className="btn ghost sm"
+      data-testid="aide-pdf"
+      style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', marginTop: 16, textDecoration: 'none' }}
+    >
+      {t('aide_pdf_download')}
+    </a>
+  )
 
   const contents = (
     <nav aria-label={t('aide_contents')}>
@@ -151,6 +174,7 @@ export function Aide({ isAdmin }: { isAdmin: boolean }) {
           <>
             {guideSwitch}
             {contents}
+            {pdfLink}
           </>
         )}
       </div>
@@ -162,6 +186,7 @@ export function Aide({ isAdmin }: { isAdmin: boolean }) {
       <aside style={{ width: 260, flexShrink: 0, padding: '24px 16px', borderRight: '1px solid var(--bd)', overflowY: 'auto' }}>
         {guideSwitch}
         {contents}
+        {pdfLink}
       </aside>
       <div ref={bodyRef} style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '28px 40px 60px' }}>
         {article}

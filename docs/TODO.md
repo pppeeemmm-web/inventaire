@@ -50,7 +50,9 @@ Public site
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
-Guides — in-app Aide (`/atelier/aide`): team guide complete 2026-11-18 (15 chapters, FR + EN); design: one how-to card per task — When · Steps · What happens next · Pitfalls
+Guides — in-app Aide (`/atelier/aide`): team guide 15 chapters, admin guide 8, FR + EN; design: one how-to card per task — When · Steps · What happens next · Pitfalls. PDF download + « ? » panel built 2026-11-18. Pem 2026-11-18: the Aide is too short (team ≈ 4 800 words vs 14 800 in the old guide; admin ≈ 1 200 vs 11 200) — « proper admin and user guides » (GO):
+- [ ] Admin guide in full (~16 chapters): Audit sub-tab by sub-tab, approvals in depth, versions, hard delete, contact privacy + merge, Diffusion, backups + a restore drill, live checks + the work rules, AI engines + keys (`docs/AI_ENGINES.md`), troubleshooting, a weekly admin routine.
+- [ ] Team guide: a « Référence » part under each chapter — every field of the work card, every status / stage, every order step and paper (the Aide never says « facture » today), phone vs computer — plus FAQ / troubleshooting.
 
 Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
 - [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).

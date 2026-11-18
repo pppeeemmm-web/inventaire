@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.71 (2026-11-18) — guide PDF + « ? » help.
+  wn_help_pdf_and_panel_t: { fr: 'L’Aide en PDF, et un « ? » sur chaque écran', en: 'Help as a PDF, and a « ? » on every screen' },
+  wn_help_pdf_and_panel_d: {
+    fr: 'Dans Kaizen → Aide, « Télécharger le guide (PDF) » : le guide complet, mis en page, à lire hors de l’ordinateur — toujours le même texte que l’Aide. Sur chaque écran de l’Atelier, le bouton « ? » (ou la touche ?) ouvre l’aide de cet écran par-dessus, avec une recherche. Au téléphone : ☰ → « Aide pour cet écran ».',
+    en: 'In Kaizen → Help, « Download the guide (PDF) »: the whole guide, laid out, to read away from the computer — always the same text as the Help. On every Atelier screen, the « ? » button (or the ? key) opens help for that screen on top of it, with a search. On the phone: ☰ → « Help for this screen ».',
+  },
   // 3.1.70 (2026-11-18) — Aide batch 6: the Studio Bible and the old guides retired.
   wn_bible_to_aide_t: { fr: 'La Bible Atelier laisse place à l’Aide', en: 'The Studio Bible gives way to Help' },
   wn_bible_to_aide_d: {

@@ -25,7 +25,7 @@
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-16 |
 | [`TODO_REFUSED.md`](./TODO_REFUSED.md) | Items dropped on purpose, with the reason | 2026-11-13 |
 | [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md) | Voice / handwriting / image-description scripts (`scripts/transcribe/`), local GPU | 2026-11-13 |
-| [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; the old guides and the Studio Bible retired 2026-11-18 → `archive/`) | Team 1–15 + admin 1–8 verified 2026-11-18 |
+| [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; the old guides and the Studio Bible retired 2026-11-18 → `archive/`). One parser (`markdown.ts`) for the page, the « ? » panel (`screen-map.ts`: screen → chapter) and the PDF guide (`pdf.ts`, `/atelier/aide/guide.pdf`) | Team 1–15 + admin 1–8 verified 2026-11-18 |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill; image copy + readable archive (`npm run archive`) | 2026-11-13 |
 | [`AI_ENGINES.md`](./AI_ENGINES.md) | Which AI engines run where (public site: none; Atelier: Ollama on the PC, optional OpenAI, Make captions) | 2026-11-18 |

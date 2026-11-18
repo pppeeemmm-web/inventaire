@@ -64,6 +64,10 @@ const csp = [
 const lanDevHost = process.env.DEV_LAN_HOST?.trim()
 
 const nextConfig: NextConfig = {
+  /** The PDF guide reads its font files at run time (lib/aide/pdf.ts): ship them with that route. */
+  outputFileTracingIncludes: {
+    '/atelier/aide/guide.pdf': ['./lib/aide/pdf/fonts/**'],
+  },
   /** Phone opens http://<LAN>:3000 — allow dev chunks/HMR from that origin (Next 15+). */
   ...(lanDevHost ? { allowedDevOrigins: [lanDevHost] } : {}),
   /** Dev: slow disk/AV can hit webpack’s default chunk fetch timeout → ChunkLoadError on `app/layout`. */
