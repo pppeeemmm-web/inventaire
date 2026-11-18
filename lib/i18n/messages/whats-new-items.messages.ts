@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.59 (2026-11-18) — ideas in one place.
+  wn_ideas_one_place_t: { fr: 'Les idées au même endroit : Idées', en: 'Ideas in one place: Ideas' },
+  wn_ideas_one_place_d: {
+    fr: 'Kaizen « Création » rejoint Idées : ses entrées sont devenues des idées ou des lignes sur leurs œuvres, rien n’est perdu. Neuf rappels qui étaient en fait des idées y sont aussi, à leur date d’origine. Nouveautés est maintenant dans Opérations & Stratégie.',
+    en: 'Kaizen « Creation » joins Ideas: its entries became ideas or lines on their works, nothing lost. Nine reminders that were really ideas are there too, at their original date. What’s new now sits in Operations & Strategy.',
+  },
   // 3.1.58 (2026-11-18) — supply orders.
   wn_supply_orders_t: { fr: 'Fournitures : commandes et achats', en: 'Supplies: orders and purchases' },
   wn_supply_orders_d: {

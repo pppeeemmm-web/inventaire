@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Ideas in one place (R1 leftover)
+
+- Kaizen « Création » folded into Idées (`f4d59a2`, session « Order process and operations review », Pem « OK as written »; data by migration `kaizen_creation_to_ideas`: 6 ideas, 18 work lines, 2 to Business, Création rows kept + done). CLAUDE.md menu line updated (Pem « Yes, update it »).
+- 9 past-due reminders that were ideas → Idées (`supabase/sql/reminders_to_ideas.sql`, Pem's form): dated on their reminder's day, origin in notes, reminders marked read; « Demain » and the handwriting test stay reminders. 22 ideas, 2 unread reminders after. Pem: a dated idea may stay a reminder but must show in Idées — open, see TODO.
+
 ## 2026-11-18 — Supply orders (TODO 11 + 11d)
 
 - 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** — design + build in session supplies-stock (with 11d).

@@ -25,7 +25,7 @@ _None open (B13, B14 closed 2026-11-17 → [DONE](./DONE.md))._
 
 R1–R7 are built and pushed (history → [DONE](./DONE.md)). Only what is left:
 
-- [ ] R1 / R2: storing the ✦ match score (SQL; Pem « if necessary, go »); the cached-copy check on the phone (airplane mode after one Wi-Fi open).
+- [ ] R1 / R2: **reminders vs Idées** (Pem 2026-11-18: « it can go in reminders but needs to be visible in Idées »): a dated idea shows in Idées with its date; the Overview « Idées » panel shows only « mûre » ideas (0 of 22) — show the latest instead? · storing the ✦ match score (SQL; Pem « if necessary, go »); the cached-copy check on the phone (airplane mode after one Wi-Fi open).
 - [ ] R6: editions part 2, at the first real edition.
 - [ ] R7: line value editable after creation; « Confié » ↔ Production board tasks; a share button for papers. R7b order chain **built 2026-11-18** (`ac04469`, SQL live; not clicked on data — it would use real order / invoice numbers) → [`R7b_OrderCascade.notes.md`](./design/2026-11-18/R7b_OrderCascade.notes.md) « Built » for its gaps; order dates in the calendar live (`f18fb99`, SQL applied on Pem's « Apply both »); Kaizen Création → Idées proposal waits for Pem ([notes](./design/2026-11-18/KaizenCreation_to_Ideas.notes.md)).
 - [ ] R8. **Public site** → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md): first batch and enquiry categories live; knobs saved; next after Pem's look decisions — one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram, needs SQL + a screen design + GO).
