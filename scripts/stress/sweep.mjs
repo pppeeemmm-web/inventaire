@@ -15,7 +15,7 @@ fs.mkdirSync(out, { recursive: true });
 const who = process.argv[2] || 'admin';
 const filter = process.argv[3] || '';
 const today = new Date().toISOString().slice(0, 10);
-const ROUTES = [
+const ROUTES = process.env.SWEEP_ROUTES ? process.env.SWEEP_ROUTES.split(',') : [
   '/atelier/contacts', '/atelier/sales', '/atelier/sale/new', '/atelier/journal', '/atelier/notes', '/atelier/ai',
   '/atelier/field-inbox', '/atelier/session/new', '/atelier/capture?mode=card', '/atelier/triage', '/atelier/share-triage',
   '/atelier/scan', '/atelier/documents/new', '/atelier/issue/new', '/atelier/works/new',

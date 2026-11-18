@@ -326,6 +326,47 @@ works bin) only looked at, not fixed.
 - Phone Journal day card lists the same work twice (« Œuvre test 1196 · #1196 Œuvre test 1196 » two times).
 - Copy harness: `next start` crashed again (0xC0000409) — a restart loop kept the runs going.
 
+## Works, Revenus & Dépenses, the other pages (2026-11-18 night, round 3, Pem « keep going with the next section »)
+
+Copy on main `026accf` (no new SQL to apply: `contact_private_rls.sql` and `retention_page_view_inquiry.sql` are not on
+production either). Real screens again (`scripts/stress/works-ui.mjs`; `sweep.mjs` now takes `SWEEP_ROUTES=…`). Nothing fixed
+in this round: the bugs below touch the work save (the approvals agent's function) or money rules — Pem / lead decide.
+
+**Held up**
+- « Nouvelle œuvre » at 1280 and 375 with a photo picked in the form, « Enregistrer » / « Créer l'œuvre » double-clicked: one work,
+  the photo stored and set as cover (#1204, #1205).
+- 25 more pages swept as admin at 1280 and 375 (Inventory, Rapports, Revenus & Dépenses, Logistique, Coffre, Fournitures,
+  Suivi, Production, Expositions, Vue d'ensemble, Audit, Portfolio, Site, Thèmes, Constellation, Chronologie, Carte, Diffusion,
+  Analytiques, Inventaire physique, Idées, Diaporamas, Aide, Système): all 200, no console error, no failed request, no sideways scroll.
+- « À rembourser » on Revenus & Dépenses (19 250 €) = payments of cancelled sales not marked refunded.
+
+**Bugs (not fixed — need a decision)**
+1. **Two tabs on one work card: the later save silently undoes the earlier one.** Tab B opened #1191, tab A then saved the
+   price 7 777 €, tab B (still showing « aucune modification ») changed only the title and saved → price back to 2 500 €, no
+   warning. Any save sends the whole card as it was when opened (only « Historique » is merged, rule 14) — « Enregistrer » on an
+   untouched card does the same. Two people (Pem + a helper), or a phone and a computer, lose edits this way; the old value is in
+   the work's versions (12 for #1191) but nobody is told. Proposal: the card sends the work's `edited_at` it loaded; `saveWork`
+   updates only `where edited_at = that` and otherwise answers « Cette œuvre a changé depuis que vous l'avez ouverte » with a
+   reload. Same function the approvals-overwrite agent works in — land together.
+2. **Older delivered sales never become income.** `saleMoneyState` keeps a delivered sale « en attente » until its return period
+   ends, and reads the start only from `return_window_starts_at`; sales delivered outside the app's « Livrée » step (rebuilt /
+   imported history) have none, so they stay « en attente » forever and count in no year. On the copy: 90 rebuilt sales,
+   184 000 € — the page shows « En attente : 326 050 € » for 142 050 € really received on open sales. `definitiveDay` already
+   falls back to `delivered_at`, `saleMoneyState` does not. One-line fix (`returnLastDay`: start = `return_window_starts_at ??
+   delivered_at`) — but it moves money into past years' income: Pem's call, after a read-only count on production
+   (`kind='sale' and status='delivered' and return_window_starts_at is null and not return_window_skipped`).
+
+**Questions / smaller**
+- Revenus & Dépenses shows « Micro-BNC : éligible » and « TVA franchise : exonéré » from definitive money only, with 326 050 €
+  « en attente » on the copy: the thresholds are assessed on money received (to check with the accountant — house rule vs law).
+- Revenus & Dépenses at 375: « Cadre fiscal » and the year buttons are past the right edge, the page doesn't scroll → no other
+  year on the phone; « 270,00 € » breaks before « € ».
+- Production's technique list has « Tempera » twice (ids 6 and 25) — every technique picker shows it twice.
+- Phone taps under 44 px: Inventory « ⊕ » 14 × 13, Thèmes « Retirer du thème » 28 × 28, Carte zoom 30 × 30, Chronologie
+  « Plus tôt / Plus tard » 31 × 32, Site editor (39 controls, 4 past the edge — an admin desktop screen).
+- After « Nouvelle œuvre » on the computer the page lands on Vue d'ensemble with the card open (`/atelier?work=` redirect) — fine,
+  but not back where the user started (Inventory).
+
 ## Proposals, ranked
 
 1. **Guard the money in the database (B1, B2, B3).** A unique partial index or trigger: at most one live sale line (signed → delivered) per work; `recordOrderPayment` and `receive_supply_order` as one SQL function each that locks the order row (`for update`), checks the remaining amount / quantity and writes step + payment together; disable the button while the call runs.
