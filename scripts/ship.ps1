@@ -29,11 +29,11 @@ $willPush = -not $NoPush -and ($dirty -or (G rev-list --count origin/main..HEAD)
 
 # Checks before any commit and before any push (landed worktree commits included), ~10 s.
 if (-not $NoChecks -and ($dirty -or $willPush)) {
-  foreach ($c in @("i18n:check", "atelier:chrome:check", "typecheck", "lint")) {
+  foreach ($c in @("i18n:check", "atelier:chrome:check", "docs:routes:check", "typecheck", "lint")) {
     $out = & npm run -s $c 2>&1
     if ($LASTEXITCODE -ne 0) { $out | Select-Object -Last 30 | Write-Host; throw "Check failed: $c" }
   }
-  Write-Host "Checks: i18n, chrome, typecheck, lint passed"
+  Write-Host "Checks: i18n, chrome, routes in SITE_MAP, typecheck, lint passed"
 }
 
 # Work rule checks (docs/WORK_RULES.md §6, Pem's GO 2026-11-17): before a push, read only, only when a

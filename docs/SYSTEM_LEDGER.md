@@ -1,8 +1,10 @@
 # System Ledger
 
-**Location:** Atelier → **System** tab (`components/atelier/SystemTab.tsx`)
+_Re-checked against live code 2026-11-18._
 
-**Purpose:** Record maintenance, improvements, and suggestions for the studio system. Entries are stored in Supabase table **`system_log`** (manual rows: `event_type` is null; audit machine rows are excluded from this tab).
+**Where it is now:** `/atelier/system` redirects to Kaizen → Opérations & Stratégie → **Système** (`/atelier/kaizen-ops?view=website`, since 2026-11-02). There, `SystemTab` runs `embedded`: only the **Regenerate Studio Bible** tool shows. App / site entries are written as Kaizen items (`kaizen_item`), not here. The full ledger screen below (form + list on `system_log`) is still in [`SystemTab.tsx`](../components/atelier/SystemTab.tsx) but no menu or URL reaches it — kept as its contract until it is removed or brought back.
+
+**`system_log` itself is live:** written by the app (`lib/utils/logging.ts` `logSystemEvent`, status events from the `trg_oeuvre_status_event` trigger, `lib/error-reporter/server.ts`) and by the service client (`/api/system/log-error`, cron); read by Audit. Access (2026-11-18, [`system_log_team_only.sql`](../supabase/sql/system_log_team_only.sql)): read and insert = team only; update / delete = admin only. Manual rows have `event_type` null; audit prune never deletes them ([`audit_log_ttl.sql`](../supabase/sql/audit_log_ttl.sql)).
 
 ---
 
@@ -42,7 +44,7 @@ Submitted rows insert into `system_log` with: `action`, `details`, `type`, `stat
 
 - **Column:** `system_log.attachments` (`jsonb`, default `[]`). Migration: `supabase/sql/system_log_attachments.sql`.
 - **Shape:** `[{ "key": "ledger/L_<uuid>_<hash8>.<ext>" }, …]`
-- **Upload:** Server action `uploadLedgerAttachment` in `app/atelier/system/ledger-attachment-actions.ts` (team gate `is_team()`, Sharp validation via `validateWorkImageBuffer`, `r2PutObject`).
+- **Upload:** Server action `uploadLedgerAttachment` in `app/atelier/(portal)/system/ledger-attachment-actions.ts` (team gate `is_team()`, Sharp validation via `validateWorkImageBuffer`, `r2PutObject`).
 - **Retention:** R2 lifecycle on bucket `paintings` — prefix **`ledger/`**, delete objects after **30 days** (configure in Cloudflare; documented in `CLAUDE.md`). Thumbnails use `onError` + i18n `system_ledger_attachment_expired` when the object is gone.
 
 ---
@@ -123,6 +125,6 @@ R2 credentials are in `.env.local` (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) 
 | Area | Path |
 |------|------|
 | UI | `components/atelier/SystemTab.tsx` |
-| Ledger screenshot upload | `app/atelier/system/ledger-attachment-actions.ts` |
-| Studio Bible vault | `app/atelier/vault/bible-action.ts` → `vaultStudioBible` |
+| Ledger screenshot upload | `app/atelier/(portal)/system/ledger-attachment-actions.ts` |
+| Studio Bible vault | `app/atelier/(portal)/vault/bible-action.ts` → `vaultStudioBible` (team check before the service client, 2026-11-18) |
 | Copy (strings) | Legacy `lib/i18n/dictionary/` (`system_*`, `system_task_type_*`); new Atelier copy → `defineMessages` per [`archive/HANDOFF_SLICE4.md`](./archive/HANDOFF_SLICE4.md) |

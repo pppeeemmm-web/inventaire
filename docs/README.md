@@ -7,7 +7,8 @@
 
 | Doc | Use when | Verified |
 |-----|----------|----------|
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-17 (batch 1 of WORK_RULES) |
+| [`../SITE_MAP.md`](../SITE_MAP.md) | Every route and tab, the API route handlers — enforced by `npm run docs:routes:check` | 2026-11-18 |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-18 (triggers, §7 re-read live; orders, share kit) |
 | [`WORK_RULES.md`](./WORK_RULES.md) | **Work rulebook** — Pem's rules on a work's state, where each is enforced, who writes it, live breaks, what is next (batch 1 applied) | 2026-11-17 |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`POLICY_NOTES.md`](./POLICY_NOTES.md) | Running list of small policy points to settle (delivery, returns, insurance, fate, COA, files) — each says where it will be written and who confirms | 2026-11-18 |
@@ -28,7 +29,7 @@
 | [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (batches 2–6 to come) | Chapters 1–2 verified 2026-11-18 |
 | [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | Onboarding (admin): encyclopedia, every feature — being replaced by the in-app Aide | Accurate to 2026-07 (dated banner 2026-11-13; later changes → Kaizen → Nouveautés) |
 | [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) | Onboarding (non-admin team) — being replaced by the in-app Aide | Same banner as the admin guide |
-| [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab UI contract (also loaded in-app) | 2026-05-29 |
+| [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill; image copy + readable archive (`npm run archive`) | 2026-11-13 |
 | [`BROADCAST.md`](./BROADCAST.md) | Broadcast HTTP API + DB columns + key files | 2026-05-23 |
 | [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack (outside this repo) | 2026-05-23 |

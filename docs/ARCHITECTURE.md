@@ -1,6 +1,6 @@
 # Architecture map — rules, triggers, who writes what
 
-_Read from the live DB (functions, triggers) and live code on 2026-11-12. Goal (brief phase 1 C): no more audits — **update this file in the same commit as any change to a rule, trigger or writer it describes.** Something learned later that this map did not anticipate goes in "Found later" at the end, dated._
+_Read from the live DB (functions, triggers) and live code on 2026-11-12; triggers (§3, §4) and §7 re-read live 2026-11-18. Goal (brief phase 1 C): no more audits — **update this file in the same commit as any change to a rule, trigger or writer it describes.** Something learned later that this map did not anticipate goes in "Found later" at the end, dated._
 
 Schema itself: always live (Supabase MCP / `lib/types/supabase.generated.ts`), never from this file. Custody detail: [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md).
 
@@ -42,6 +42,7 @@ Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Catal
 | 2a | `trg_oeuvre_a_status_follows_stage` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph`, `fate` | Status 1 / 2 with no fate → 2 if catalogued and photo validated, else 1 (WORK_RULES rule 5, 2026-11-17) |
 | 2b | `trg_oeuvre_archive_guard` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph` | §2 Archive: status 3 needs `Catalogué`; 3 → 2 needs the photo done. Errors `archive_requires_catalogue`, `archive_exit_requires_photo` (2026-11-17) |
 | 3 | `trg_oeuvre_fate_guard` | `statusId`, `fate` | §1 |
+| 3a | `trg_oeuvre_fate_not_showable` | INSERT; `fate`, `Exposable` | A fate set → `Exposable` false |
 | 4 | `trg_oeuvre_field_defaults` | `LocalisationID`, `ContactID`, `Profondeur`, `Encadree`, `Montee`, `Technique` | No holder → owner (else Pem 13); empty depth, not framed/mounted/sculpture → `0.1` |
 | 5 | `trg_oeuvre_holder_check` | `statusId`, `ContactID`, `LocalisationID` | 1/2/3: Pem owns + holds. 4: Pem owns. 7/8: custodian ≠ Pem + active custody order. 6: owner ≠ Pem + paid sale order; custody to buyer only on delivery. 11: owner ≠ Pem. Errors `custody_order_required`, `holder_required`, `sale_order_required` |
 | 6 | `trg_oeuvre_location_by_stage` | `statusId`, `Catalogué`, `NeedsPhotograph`, `LocalisationID`, `localisation_address_id`, `fate` | Address must belong to the holder. Holder ≠ Pem with one address → that address. Pem: address follows stage (Atelier in production, Principal from Disponible) unless picked by hand |
@@ -50,10 +51,11 @@ Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Catal
 | 9 | `trg_sync_is_public` | `statusId`, `fate`, `Catalogué`, `NeedsPhotograph` | `is_public` = status in (2, 4, 6, 7, 8, 11) and no fate |
 | 10 | `trg_zz_oeuvre_history` (security definer) | every UPDATE | Last BEFORE trigger: status line (« Vendu à X », « Réservé — X », « A → B »…), destroyed / lost / found / report removed, custodian line — appended to `Historique` unless already there (rule 14) |
 | after | `trg_oeuvre_archive_tasks` (security definer) | `statusId` | Into 3 / 9 / 10 → open `work_action` set aside (`paused_at`); out to any other status → back (rule 12) |
+| after | `trg_oeuvre_bin_tasks` (security definer) | `deleted_at` | Into the bin → open `work_action` paused; restored → resumed unless status 3 / 9 / 10 (rule 18, [`bin_pauses_tasks.sql`](../supabase/sql/bin_pauses_tasks.sql), 2026-11-18) |
 | after | `trg_oeuvre_tasks_follow_stage` (security definer) | INSERT; `Catalogué`, `NeedsPhotograph` | Cataloguer open ⇔ not catalogued; Photographier open ⇔ catalogued + photo to take (rule 6) |
 | after | `trg_oeuvre_status_event` (security definer) | UPDATE where status changed | `system_log` STATUS_CHANGE, source `db` (rule 14) |
 | after | `graph_register_oeuvre_node` / `graph_unregister_oeuvre_node` | INSERT / DELETE | Index node in `nodes` |
-| after | `graph_oeuvre_embedding_dirty` | `Titre`, `Commentaires`, `Technique` | Marks the work's index text for re-embedding |
+| after | `graph_oeuvre_embedding_dirty` | `Titre`, `Commentaires`, `Technique`, `Support`, `Année`, `production_started_on` | Marks the work's index text for re-embedding (`Commentaires` is retired and empty since 2026-11-18; note lines feed the index instead, §8) |
 | after | `graph_sync_oeuvre_contact_edges` | `AcheteurID`, `ContactID`, `LocalisationID` | Graph edges work ↔ contacts |
 
 Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE statement**, not on values another trigger changes.
@@ -69,9 +71,15 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | `condition_report` | §1 | Fate |
 | `work_action` | `trg_work_action_before_write` (security definer) | Task added / reopened on an archived / destroyed / lost work → set aside; ticked → pause cleared, `done_at` stamped; unticked → `done_at` cleared (rules 7, 12) |
 | `Contact` | `ensure_admin_flags_protected` | Only an admin may change `is_admin`, `is_team_member`, `IsTeamMember` |
-| `shipment` | `trg_shipment_return_window` | Sale order return window from delivery |
-| `sale_order` | `trg_sale_order_ref` | Order reference |
+| `work_order` | `trg_work_order_before_write` | Reference `V/D/P/C/G-YYYY-NNN` per kind and year (advisory lock), checks on update |
+| `work_order` | `trg_work_order_after_step` (security definer) | Sale → paid / delivered, gift → handed over: the work's active lines on other open consignments / loans close as `sold` / `given` |
+| `work_order_work` | `work_order_line_one_open` (security definer) | One open sale / gift and one open consignment / loan / entrusted per work; lock per work; error `ord_err_busy:#<work>` ([`order_race_guards.sql`](../supabase/sql/order_race_guards.sql), 2026-11-18) |
+| `payments` | `payments_within_price` (security definer) | A sale's payments never pass price + shipping; order row locked; error `ord_err_overpaid` (same file) |
+| `shipment` | `trg_shipment_before_write` | Stamps each step's time (`photos_at` … `delivered_at`, `cancelled_at`) on the step change |
+| `supply_order` | `trg_supply_order_before_write` | Reference `A-YYYY-NNN` (locked once set); cancel rules |
+| `invoice`, `invoice_order`, `expense` | `trg_invoice_before_write`, `trg_invoice_order_check`, `trg_expense_fiscal_year_default` | Invoice numbering and links; expense fiscal year default |
 | `oeuvre_theme`, `working_group_work` | graph edge sync | Graph edges |
+| `note_line`, `work_description`, `work_creation_step`, `work_period(_override)`, `work_source_link`, `place`, `tblImage` (palette) | `graph_*_text_dirty` | The work's index text is marked pending (§8) |
 | `Contact`, `theme`, `concept`, `working_group`, `suivi_process` (exposition) | graph node register / dirty | Index nodes |
 
 ## 5. Who writes what (app)
@@ -84,6 +92,8 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | Image descriptions (`describe_batch.py`, service role) | `work_description` (AI, unverified); feeds `oeuvre_search_text` → node pending | Never writes `Commentaires`; one row per work + cover + engine + prompt |
 | Work drawer links (`WorkLinksSection`), See again **Link** | `tblrelations` (source = this work, target = other; `lib/work-links.ts` types: painted_on, derived_from, answers, series, diptych, influence, proximity) via `insertConstellationRelation` | Human links only; the Constellation draws unknown types with its default edge |
 | Orders: sales, consignments, gifts, exhibitions | `statusId`, `ContactID`, `LocalisationID` | Through the holder check |
+| Orders (`sales/orders-actions.ts`, `cascade-actions.ts`) | `work_order`, `work_order_work`, `payments`, `shipment`; `is_paid` follows payments (« Soldée ») | `advanceWorkOrder` moves only from the step it read; `recordOrderPayment` refuses more than price + shipping; cancel / return / closed by hand take the works off a shipment not yet left (2026-11-18); DB guards in §4 |
+| Collector share kit (`/c/[token]`, service role after the token check) | `private_link` open / PDF counters, `inquiry.private_link_token` | Team makes / extends / revokes kits; visitors only read the frozen kit (2026-11-18) |
 | Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address (no « gift » flag since 2026-11-17) | Archive: checks first and names the works not catalogued; « Catalogué »: names the works with no photo (WORK_RULES rule 2); nothing changes if one blocks (2026-11-17) |
 | Field session apply (`app/atelier/session/actions.ts`) | New work (`Titre`, size, `Technique`, `Support`, `statusId` 1, `NeedsPhotograph`, `production_started_on`, `Historique`); images via `addWorkImage` | Existing works: size/technique/support display-only, never written back |
 | Condition reports | `condition_report` → fate via §1 | Admin for destroyed/lost |
@@ -106,7 +116,7 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | Hide / visibility change: admin only | guard → `journal_admin_only` |
 | Links entry → work or concept; immutable target; AI proposals later (`proposed_by 'ai'`, `validated_at` null) | `journal_entry_link`, `trg_journal_entry_link_guard` |
 
-Writer: `app/atelier/(portal)/journal/entry-actions.ts` (`createJournalEntry` links works from `#1234` in the text; dictated text → provenance `voice`, verification `unverified`; `setJournalEntryHidden`). Reader: `getJournalDayExtras(day)` = entries + Kaizen Création items created that day (`kaizen_item` section `creation`, read in place — Création stays in Kaizen, owner 2026-11-12) + voice notes + works changed (from `oeuvre_versions`, admin only by RLS). `listJournalSourceDays()` = days that have entries / Création items / voice notes; the journal index merges them with field-session days and today (a day with no session is not a DB row). UI: `components/atelier/journal/JournalDayExtras.tsx` in the journal day page. Compared fields: one list, [`lib/oeuvre-version-fields.ts`](../lib/oeuvre-version-fields.ts) (journal compare, drawer history, day changes).
+Writer: `app/atelier/(portal)/journal/entry-actions.ts` (`createJournalEntry` links works from `#1234` in the text; dictated text → provenance `voice`, verification `unverified`; `setJournalEntryHidden`). Reader: `getJournalDayExtras(day)` = entries + old Kaizen « Création » items created that day (`kaizen_item` section `creation`, read in place; new ideas go to Idées since 2026-11-18, `kaizen_creation_to_ideas.sql`) + voice notes + works changed (from `oeuvre_versions`, admin only by RLS). `listJournalSourceDays()` = days that have entries / Création items / voice notes; the journal index merges them with field-session days and today (a day with no session is not a DB row). UI: `components/atelier/journal/JournalDayExtras.tsx` in the journal day page. Compared fields: one list, [`lib/oeuvre-version-fields.ts`](../lib/oeuvre-version-fields.ts) (journal compare, drawer history, day changes).
 
 ## 7. Callable database functions (API exposure)
 
@@ -118,6 +128,8 @@ Every `public` function is reachable through PostgREST `/rest/v1/rpc/…` by any
 | `replace_oeuvre_themes`, `replace_oeuvre_work_groups` | no | yes (team checked inside) | yes | Work save |
 | `graph_node_id`, `oeuvre_order_exists` | no | yes | yes | Constellation; holder-check trigger |
 | `graph_upsert_relation_edge`, `node_search_text` | no | no | yes | Graph triggers (definer); embed worker |
+| `receive_supply_order` | no | yes | yes | Supplies « Recevoir » (stock + cost in one step) |
+| `private_link_count_open`, `private_link_count_pdf` | no | no | yes | Collector share kit counters (`/c/[token]`, server side) |
 
 Source: [`security_definer_revoke_anon.sql`](../supabase/sql/security_definer_revoke_anon.sql) (2026-11-12). Trigger functions are not callable through the API.
 
@@ -127,7 +139,7 @@ Every function sets `search_path` (`set search_path to 'public'`) — new ones t
 
 ## 8. Indexing
 
-- `nodes` = one row per work, contact, theme, concept, working group, exhibition; text from `node_search_text`. Work text (2026-11-13, [`oeuvre_search_text_wider.sql`](../supabase/sql/oeuvre_search_text_wider.sql), function `oeuvre_search_text`) = title. comments. technique, support, year. themes (not those named like a working code, `^\d{4}[_-]`). period (override, else by year — same rule as `lib/work-periods.ts`). sources + note. `colours:` families ≥ 8 % of the cover image (max 4). Re-marked for indexing when `Titre`, `Commentaires`, `Technique`, `Support`, `Année`, `production_started_on` change, or a row of `oeuvre_theme`, `work_source_link`, `work_period_override`, or the cover / palette in `tblImage` changes (`graph_trg_oeuvre_child_dirty`). Renaming a theme / period / source does not re-mark its works (`npm run embed:worker -- --reembed-all`). Empty text → `skipped` (0 works on 2026-11-13; was 61).
+- `nodes` = one row per work, contact, theme, concept, working group, exhibition; text from `node_search_text`. Work text (2026-11-13, [`oeuvre_search_text_wider.sql`](../supabase/sql/oeuvre_search_text_wider.sql), function `oeuvre_search_text`) = title. note lines (all of the work's `note_line` bodies; the old `Commentaires` field until 2026-11-18, [`old_comments_retire.sql`](../supabase/sql/old_comments_retire.sql)). technique, support, year. themes (not those named like a working code, `^\d{4}[_-]`). period (override, else by year — same rule as `lib/work-periods.ts`). sources + note. `colours:` families ≥ 8 % of the cover image (max 4). Re-marked for indexing when `Titre`, `Commentaires`, `Technique`, `Support`, `Année`, `production_started_on` change, or a row of `oeuvre_theme`, `work_source_link`, `work_period_override`, or the cover / palette in `tblImage` changes (`graph_trg_oeuvre_child_dirty`). Renaming a theme / period / source does not re-mark its works (`npm run embed:worker -- --reembed-all`). Empty text → `skipped` (0 works on 2026-11-13; was 61).
 - **Journal entries** (`node_type 'journal_entry'`, [`journal_entry_nodes.sql`](../supabase/sql/journal_entry_nodes.sql)): registered on insert; text = `body`, none when hidden or private (→ `skipped`, vector dropped). After each embed-worker pass, `journal_propose_links()` (service role) proposes, among the nearest works and concepts, those with cosine ≥ 0.60 **and** above that target's average closeness to all entries by a margin (hub correction, [`journal_link_threshold.sql`](../supabase/sql/journal_link_threshold.sql), 2026-11-12). Quieter since R1 step 7 (2026-11-17): the embed worker passes **1 work + 1 concept, margin ≥ 0.05** ([`scripts/embed-worker/config.mjs`](../scripts/embed-worker/config.mjs), env `JOURNAL_LINK_K` / `_MIN` / `_MARGIN`; SQL defaults 3 / 0.60 / 0.03 unchanged), measured on Pem's 17 accepted / 18 rejected; the score is not stored as `journal_entry_link` rows `proposed_by 'ai'`; an admin validates (`validated_at`) or rejects (`rejected_at`; `rejected_by` NULL = retired by that rule); nothing deleted. In search: the `entity` view labels them (first 80 chars, [`journal_entry_search.sql`](../supabase/sql/journal_entry_search.sql)); ⌘K hits open `/atelier/journal?day=`. Constellation: the canvas stays works-only; the selected work's side panel lists its validated entries (`ConstellationJournalEntries`).
 - Not indexed: kaizen, voice notes, documents, suivi, work_action notes, image notes, condition reports, stock.
 

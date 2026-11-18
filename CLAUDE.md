@@ -14,11 +14,11 @@ Repo guide. Conflict → ask owner before edit.
 
 ## Parallel Sessions and Tool Isolation
 - One writing session per checkout. One session at a time → main checkout is fine. Read-only sessions may share.
-- Second code-writing session while another runs → worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. One session inside.
+- Second code-writing session while another runs → its own worktree: `git worktree add ../app-worktrees/<name> -b wt-<name> origin/main`, junction `node_modules` to the main one. One session inside.
 - Worktree branches stay local. `origin/main` only push target.
 - No git pre-push hook installed. Claude Code PreToolUse hooks (`.claude/settings.json` → `.claude/hooks/commit-guard.ps1`, `pre-push-checks.ps1`) deny: commit with unstaged source, push off `main`, push with dirty tree, force push. They fire on `git commit` / `git push` in Bash or PowerShell tool commands (block = exit 2; tested 2026-11-03). `.claude/` is gitignored; these three files are force-tracked (`git add -f`) so worktrees get them — `settings.local.json` stays local. Git run inside scripts (incl. `ship.ps1`) bypasses them; `ship.ps1` does its own checks.
-- Reconcile from main checkout: `git merge --ff-only wt-<name>`, then push. Rebase onto main first if FF impossible.
-- Remove worktree only after committing or stashing: `git worktree remove ../app-wt-<name>`. Never `--force` with uncommitted changes.
+- Land from the main checkout with `& .\scripts\land.ps1 <name> -m '…'` (commits in the worktree, rebases onto local main, fast-forwards; refuses a dirty main, stops on conflict).
+- Remove a worktree only after landing or committing: unlink its `node_modules` junction first, then `git worktree remove ../app-worktrees/<name>`. Never `--force` with uncommitted changes.
 - State unclear? `git worktree list` and `pwsh scripts/release-truth.ps1` from inside worktree.
 - CLAUDE.md = source of truth. Hook/rule conflict → this section wins.
 
@@ -27,7 +27,7 @@ Repo guide. Conflict → ask owner before edit.
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
 - Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local`, open `/hub` on LAN URL. No Google OAuth on `192.168.*` unless in Supabase Auth redirect allowlist. Use real PEM account email in `DEV_AUTO_LOGIN_EMAIL` (dev password on that Supabase user) for same `work_session` rows as prod; separate `dev@…` user sees own (often empty) drafts.
 - `work_session` journal: any `is_team()` user can read all team sessions; writes = session-owner or admin. Journal empty for team members → run `supabase/sql/work_session_team_read.sql` on project DB.
-- Checks: `npm run i18n:check`, `npm run atelier:chrome:check`, `npm run typecheck`, `npm run lint`. GitHub `ci.yml` runs all four on `main`. Hooks not substitute for manual verification.
+- Checks (CI `ci.yml` + `ship.ps1`, all blocking): `i18n:check`, `atelier:chrome:check`, `docs:routes:check` (every page / route handler in `SITE_MAP.md`), `typecheck`, `lint`. Hooks not substitute for manual verification.
 - `i18n:check`: fails on missing legacy dict keys and hardcoded UI copy outside [`scripts/i18n-check-allowlist.json`](scripts/i18n-check-allowlist.json) (keep in sync with `.eslintrc.json` `no-hardcoded-jsx-text` overrides).
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
@@ -38,7 +38,7 @@ Repo guide. Conflict → ask owner before edit.
 - UI/copy: `npm run i18n:check` (must pass — 0 blocking hotspots), `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when logged-in dev session available.
 - Type/data flow: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL live, then `npm run typecheck`.
-- Commit + push (owner 2026-11-16, lean): `& .\scripts\ship.ps1 -m '…'` — on `main`: four checks → `git add -A` (prints staged list, refuses build artifacts) → commit → push → prints `pushed to origin/main <sha>`. `-NoPush` = commit only (`committed locally`); no args = push the local commits already made; `-NoChecks` for docs-only. One writing session per checkout, so `add -A` is safe; never run it while a session shares this checkout for writing.
+- Commit + push (owner 2026-11-16, lean): `& .\scripts\ship.ps1 -m '…'` — on `main`: the five checks → `git add -A` (prints staged list, refuses build artifacts) → commit → push → prints `pushed to origin/main <sha>`. `-NoPush` = commit only (`committed locally`); no args = push the local commits already made; `-NoChecks` for docs-only. One writing session per checkout, so `add -A` is safe; never run it while a session shares this checkout for writing.
 - Batch rhythm: one local commit per item (`-NoPush`), docs (TODO → DONE, What's new + release bump) once at batch end, one push per batch.
 - Parallel batch (owner 2026-11-16: the main session controls commits and merges): side sessions edit in their own worktree and **leave the work uncommitted** — no commit, no push, no `git -C` / script around the guards; never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new.messages.ts` (merge clashes). The main checkout lands each one with `& .\scripts\land.ps1 <worktree-name> -m '…'` (commits in the worktree, rebases onto local main, fast-forwards; stops on conflict), writes those docs, ships once.
 - `ship.ps1` output is the push evidence (it checks origin/main == HEAD). `pwsh scripts/release-truth.ps1` only when state is unclear.
@@ -55,19 +55,19 @@ Repo guide. Conflict → ask owner before edit.
 ## Architecture
 - Next.js 15 App Router + React 19 + Supabase + Cloudflare R2.
 - Server Components fetch, pass to Client Components.
-- Mutations: Server Actions in `app/**/actions.ts`. Existing `app/api/*` exceptions: calendar OAuth callbacks, geocode, field-weather, export (CSV, work images), inventory broadcast, cron `return-window`, `system/log-error`. New API route needs a stated reason.
+- Mutations: Server Actions in `app/**/actions.ts`. Route handlers (`route.ts`) are the listed exceptions in `SITE_MAP.md` §4 (OAuth callbacks, exports, cron, broadcast, error log, collector PDF…). New one needs a stated reason.
 - Atelier tabs live under route group `app/atelier/(portal)/`.
 - Bootstrap reads may live in `'use server'` modules under `app/atelier/`. Domain writes still actions.
 - Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`, `/collection`, `/maps`; document redirects only, never RSC/Flight/Server Action redirects. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
 - Supabase clients: `createClient()` anon/RLS; `createServiceClient()` service-role/admin bypass.
 - Atelier shell: first paint loads exact `Oeuvres` count + first keyset chunk; references hydrate post-paint via `fetchAtelierShellPostPaint`; subset UI must disclose loaded batch vs catalogue total.
-- Keep `SITE_MAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/README.md` in sync when routes/features change; don't trust over live code when stale.
+- Docs that track code: routes → `SITE_MAP.md` (enforced by `docs:routes:check`); triggers, DB functions, who writes what → `docs/ARCHITECTURE.md` (read live DB when touching); `docs/README.md` table → `Verified` dates. Live code wins over a stale doc.
 
 ## Docs ↔ Code Currency
 - Session bootstrap: `docs/README.md` = orientation table with freshness stamps; live checklist = `docs/TODO.md` (closed items in `docs/DONE.md`); current batch = latest `docs/HANDOFF_*.md` listed in the README; owner strategy/non-goals = `docs/STRATEGY.md`.
 - DB schema: read live (Supabase MCP or `lib/types/supabase.generated.ts`), never from guides.
 - Owner requests triage: bug (fix now) / lived friction ≥2× (batch) / idea (park in TODO). Problem statements over prescribed solutions.
-- Refactor/feature landing → update affected docs IN THE SAME change (handoff "Open work", `docs/TODO.md`, `SITE_MAP.md`, `docs/SYSTEM_LEDGER.md` as relevant). A change with stale docs is not done.
+- Refactor/feature landing → update affected docs IN THE SAME change (`docs/TODO.md`, `SITE_MAP.md`, `docs/ARCHITECTURE.md`, handoff « Open work » as relevant). A change with stale docs is not done.
 - Before marking any item done/shipped/complete in a handoff or TODO, VERIFY against live code (read the file / grep the symbol) — never from memory or prior handoff prose. Same evidence bar as the git status words.
 - Handoff "Open work" sections carry a `Verified against live code <YYYY-MM-DD>` stamp. Touch the feature → re-verify + re-stamp. Unstamped, or stamp older than the code it describes → treat as suspect; re-check before acting or quoting "done".
 - Completed handoffs move to `docs/archive/` (historical; never execute from there). Live checklist = `docs/TODO.md`.
@@ -88,7 +88,7 @@ Repo guide. Conflict → ask owner before edit.
 - **Phone work images:** canonical path is Lightroom Mobile → Export (JPEG) → iOS Share Sheet → PWA `share_target` → `/atelier/share-receive` → `WorkForm` or **work session** (`/atelier/session/new` → Lightroom workflow steps → Share back → triage **Add to work session**). No `lightroom-cc://` from PWA (iOS often refuses). No native `capture="environment"` on work paths (`WorkForm`, `WorkDrawerImageArea`).
 - **Exceptions:** business-card capture at `/atelier/capture?mode=card` (`CaptureCardClient`) and session/concept native capture may still use `capture="environment"`.
 - `/hub` mobile entry changes → smoke WorkForm, WorkDrawer, Inventory small viewport.
-- Phone navigation (option A, 2026-11-18, `docs/design/2026-11-18/PhoneNav.notes.md`): no side drawer on the phone. ☰ opens one menu sheet over the page, the same on `/hub`, `/hub/fil` and the Atelier phone header (`components/shared/PhoneMenu.tsx` → `PhoneMenuSheet.tsx`, own chunk): « #numéro ou titre » search → the work card, 9 tiles with counts (Aujourd'hui · Œuvres · Production · Idées · Fil (admin) · Commandes · Logistique · Événements · Journal), « Tout le reste » and « Actions » (ex-Bureau) folded, the account at the bottom. Home has one name: **Aujourd'hui** (`/hub` = the one day screen, `?day=`); the phone Journal is the list of days; Écrire opens a sheet over the day (`DayWriteSheet`). Desktop (owner 2026-11-14): Kaizen → Catalogue (`inventory` first, then reports / themes / constellation) → Field (production / journal) → Studio → Commercial → Public. Kaizen group = `audit` (admin only, first) + `kaizen-ops` **Opérations & Stratégie** (`/atelier/kaizen-ops`: Système / Business pills, What's new); it has an Audit-style count badge of entries others added since you last opened it (`kaizen_seen`, per user). Kaizen « Création » is folded into Idées (2026-11-18, Pem « OK as written »): `/atelier/kaizen` redirects (`?whatsnew=1` / `?view=` → kaizen-ops, else → `/atelier/concepts`). Contacts + Carte live in Commercial; System is merged into Kaizen: Opérations & Stratégie → **Système** (the `website` section, renamed) holds app/site entries + the site tools; `/atelier/system` redirects to `/atelier/kaizen-ops?view=website`; Audit (admin only) heads the Kaizen group; no Admin group (owner 2026-11-12). Supplies counting lives in Studio → Fournitures (`/atelier/stock?view=count`; `/atelier/stock-take` redirects there, owner 2026-11-02). Notes are in the Journal (R1 step 7, 2026-11-17): a voice note is a Journal entry, « Relier… » on it links a work / idea / project / constat / reminder; `/atelier/notes` redirects to the Journal (`?note=<id>` → that note's day).
+- Phone navigation (option A, 2026-11-18, `docs/design/2026-11-18/PhoneNav.notes.md`): no side drawer on the phone. ☰ opens one menu sheet, the same on `/hub`, `/hub/fil` and the Atelier phone header (`components/shared/PhoneMenu.tsx` → `PhoneMenuSheet.tsx`): « #numéro ou titre » search, 9 tiles with counts, « Tout le reste », « Actions », account. Home = **Aujourd'hui** (`/hub`, `?day=`); phone Journal = list of days; Écrire = sheet over the day. Desktop sidebar groups + redirects (Création → Idées, Notes → Journal, System → Kaizen › Système, stock-take → Fournitures): `SITE_MAP.md` « Tab list ».
 - Rings: A Atelier narrow chrome; B Hub day screen + phone menu + input bar + `VoiceNoteSheet`; B.3 PWA share target; C field verb routes/stubs + business-card capture at `/atelier/capture?mode=card`.
 
 ## Drawer / Panel Guard
@@ -105,12 +105,12 @@ Repo guide. Conflict → ask owner before edit.
 - Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 (thumb q=70) + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
 - No AVIF pass-through. Tried and removed: a phone export at q80 is ~5.8x the stored size for ~230ms saved. Storage wins across the archive. If revisited: libvips reports AVIF as `heif` + `compression: 'av1'`, so `meta.format === 'avif'` never matches.
 - Mobile client shrinks before upload (`downscaleImageFileForMobileIfNeeded`): re-encode when long side > maxEdge **or** bytes > `MOBILE_MAX_UPLOAD_BYTES`. Vercel caps a Server Action body at 4.5MB — above it the platform returns HTML 413 and Next reports "An unexpected response was received from the server" before any app code runs.
-- Storage keys: `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes (`lib/image-upload.ts`). Constat issue photos: `constat/C_{oid}_{report}_{rand8}_{hash8}.avif` + `thumbs/constat/…` (2100 px, like session shots).
+- Storage keys: `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes (`lib/image-upload.ts`). Constat issue photos: `constat/C_{oid}_{report}_{rand8}_{hash8}.avif` + `thumbs/constat/…`; inspiration photos `inspiration/I_…` (2100 px, like session shots). Vault bucket: documents; business-card photos `cards/K_{contactId}_{hash8}.avif`.
 - Image URLs only via `imageUrl()` / `thumbUrl()` from `lib/data.ts`. Never hand-build R2 URLs.
 
 ## DB Logic
 - Status: `Oeuvres.statusId` FK → `OeuvreStatus.id`.
-- Themes: `OeuvreTheme` junction. `Oeuvres.theme` read-only/dead.
+- Themes: `oeuvre_theme` junction. `Oeuvres.theme` read-only/dead.
 - Images: `tblImage` trigger updates Oeuvres cover.
 - Dates: `Oeuvres.Année` DATE (`YYYY-01-01`); use `yearOf()`.
 - Sort UI dropdowns alphabetically.
@@ -121,10 +121,10 @@ Repo guide. Conflict → ask owner before edit.
 ## Admin / Audit Protection
 - Admin identity = `Contact.is_admin = true` linked to `auth.uid()`. `is_admin()` single source.
 - Hard delete admin only: `purgeWorkPermanently`, `deleteWorkImage`; RLS defense-in-depth.
-- Non-admin existing-work edits → `pending_changes`; allow-list keys in `lib/work-pending-keys.ts`; approval replays via `saveWork` + `__skip_review=1`.
+- Non-admin existing-work edits → `pending_changes`; allow-list keys in `lib/work-pending-keys.ts`; approval replays via `saveWork` + `__skip_review=1` (honoured for admins only).
 - Oeuvre versions: trigger snapshots OLD row to `oeuvre_versions`; admin restore via `restoreOeuvreVersion(versionId)`.
-- R2 delete: use `r2SoftDelete(key)` copy to `recycle/<YYYY-MM-DD>/<key>` before delete. Lifecycle: `recycle/` 90d; `ledger/` screenshots 30d.
-- Backups: `.github/workflows/backup.yml` daily pg_dump → R2 `art-db-backups` via boto3 EU endpoint. See `docs/BACKUP_RECOVERY.md`.
+- R2 delete: use `r2SoftDeleteObject(key)` (copies to `recycle/<YYYY-MM-DD>/<key>` before delete). Lifecycle: `recycle/` 90d; `ledger/` screenshots 30d.
+- Backups: DB daily — `.github/workflows/backup.yml` pg_dump → R2 `art-db-backups` (boto3, EU endpoint). Images + Vault: weekly mirror to this PC only (`npm run archive`, scheduled task « PEM archive export » → `%USERPROFILE%\PEM-Archive`). See `docs/BACKUP_RECOVERY.md`.
 - Audit prune: `supabase/sql/audit_log_ttl.sql`; never auto-delete manual `system_log` (`event_type IS NULL`) or error broadcast events.
 
 ## Calendar Sync
