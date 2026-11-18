@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Business card outdoors (Pem « Yes, all 4 »)
+
+- Card capture hung outdoors (Pem: the AI on the PC is out of reach): « Analyser » now reads the Live Text with rules only, at once; « Améliorer avec l'IA » is a separate button, one 15 s budget for photo reading + tidy-up (`timeoutMs` on `refineContactWithLlm`, vision timeout), the contact stays when it fails; the photo is shrunk on the phone; on « Créer le contact » it is kept in the Vault (`cards/K_<id>_<hash8>.avif`, folder Business, `document.contact_id`, no SQL) (`a1df594`). Seen on localhost at 375 px: analyse instant, AI gave up at 15.6 s with its message. Not tried on an iPhone (« Scanner le texte », a real photo kept).
+
 ## 2026-11-18 — Badges, the bin rule, speed round 2, after the laptop crash
 
 - Menu badges match their tabs (`7acf891`, `1073ae6`): Pipeline counts « Gagné » as open (Pem: « if it's not completed, it has to be shown »); Production leaves out works in the bin. Seen on localhost: Production 137, Pipeline 2.
