@@ -1,7 +1,8 @@
 -- Two clicks at the same moment (two tabs, two people) — stress test 2026-11-18, B1 and B2
 -- (docs/design/2026-11-18/StressTest.notes.md). The app checks then writes; two requests at once both
 -- passed the check. These two triggers make the database refuse the second one.
--- NOT YET APPLIED to production — needs Pem's OK. Tested on the local stress copy.
+-- APPLIED 2026-11-18 (migration order_race_guards), after the code was live (x-build-sha 6f43117), on Pem's
+-- « Yes, after landing ». Tested on the local stress copy first.
 --
 -- 1. One open order per work and family (B1): a work's line can be active on one open sale / gift and on
 --    one open consignment / loan / entrusted at most — the same rule as busyWorks() in orders-actions.ts.

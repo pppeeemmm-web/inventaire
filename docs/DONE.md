@@ -6,7 +6,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Stress test on a throwaway local copy (fake records, prod read only): report [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md), scripts in `scripts/stress/` (refuse anything not local; `dump/` gitignored — login tokens).
 - Security S1/S2 (`6c2ce5a`): `saveWork` honours `__skip_review` only for an admin; team check before the service client in 5 actions; system log team-only (`system_log_team_only.sql`, applied live on Pem's OK).
-- Orders (`fc0398d`): no double sale / double payment / overpayment (`advanceWorkOrder` moves only from the step it read; `recordOrderPayment` cap incl. shipping); « Recevoir » locks on a double tap; shipments follow their orders (B4); order reads in batches of 100 (`lib/supabase/in-chunks.ts`, B5 « URI too long » past ~200). Seen on the local copy only (races-plus 21 checks, 0 failed). `order_race_guards.sql` (DB-level guard for two tabs / two people) to apply after the push (Pem « Yes, after landing »).
+- Orders (`fc0398d`): no double sale / double payment / overpayment (`advanceWorkOrder` moves only from the step it read; `recordOrderPayment` cap incl. shipping); « Recevoir » locks on a double tap; shipments follow their orders (B4); order reads in batches of 100 (`lib/supabase/in-chunks.ts`, B5 « URI too long » past ~200). Seen on the local copy only (races-plus 21 checks, 0 failed). `order_race_guards.sql` (DB-level guard for two tabs / two people) applied after the push, once x-build-sha showed 6f43117 (Pem « Yes, after landing »); both triggers checked enabled.
 
 ## 2026-11-18 — Business card outdoors (Pem « Yes, all 4 »)
 
