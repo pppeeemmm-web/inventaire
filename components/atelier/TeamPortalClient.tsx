@@ -31,6 +31,7 @@ import { useAtelierNarrow } from '@/lib/atelier/use-atelier-narrow'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { BottomStack, BottomStackLayer } from '@/components/shared/BottomStack'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
+import { PhoneHomeChip, PhoneMenuButton } from '@/components/shared/PhoneMenu'
 import { SegmentRoutePanel } from '@/components/atelier/team-portal-segment-panel'
 import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
@@ -831,11 +832,6 @@ export function TeamPortalClient({
   const portalRootRef = useRef<HTMLDivElement>(null)
   const sidebarNavScrollRef = useRef<HTMLDivElement>(null)
   const atelierNarrow = useAtelierNarrow(portalRootRef)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  useEffect(() => {
-    if (!atelierNarrow) setSidebarOpen(false)
-  }, [atelierNarrow])
 
   useLayoutEffect(() => {
     const root = sidebarNavScrollRef.current
@@ -964,7 +960,15 @@ export function TeamPortalClient({
       }
       setTab(next)
       localStorage.setItem('pem_team_tab', next)
-      setSidebarOpen(false)
+    }
+    attemptNavigateWithDrawerGuard()
+  }
+
+  /** Phone menu sheet + « Aujourd'hui » chip (PhoneNav.notes.md): any href, through the unsaved-changes guard. */
+  function phoneNavigate(href: string) {
+    pendingNavRef.current = () => {
+      if (href === `${window.location.pathname}${window.location.search}`) return
+      router.push(href)
     }
     attemptNavigateWithDrawerGuard()
   }
@@ -1105,43 +1109,25 @@ export function TeamPortalClient({
 
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
-  /** 6 rooms. Desktop and phone differ in order (and Inventaire sits in Catalogue on desktop, Terrain on phone). */
+  /** 6 rooms, desktop sidebar. The phone has no sidebar: ☰ opens the menu sheet (PhoneMenuSheet: 9 tiles,
+   *  « Tout le reste », « Actions »; PhoneNav.notes.md option A, 2026-11-18). */
   // System lives inside Kaizen (Opérations & Stratégie → Système) since 2026-11-02.
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
-  // Kaizen: top of the sidebar on desktop, right after Terrain on phone. Audit (admin only) heads
-  // it — reviews are improvement work too (owner 2026-11-12); the Admin group is gone.
+  // Kaizen: top of the sidebar. Audit (admin only) heads it — reviews are improvement work too
+  // (owner 2026-11-12); the Admin group is gone.
   // « Création » left Kaizen for Idées (R1, Pem 2026-11-18): Kaizen = Audit + Opérations & Stratégie.
   const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen-ops'] : ['kaizen-ops']) as Tab[] }
-  // Phone: « Idées » (concepts) sits in the top block, so Studio drops it there.
-  const studioGroup = {
-    label: t('nav_group_studio'),
-    tabs: (atelierNarrow ? ['overview', 'pipeline', 'exhibitions', 'stock'] : ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock']) as Tab[],
-  }
-  const commercialGroup = { label: t('nav_group_business'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] as Tab[] }
-  const publicGroup = { label: t('nav_group_public_tab'), tabs: publicTabs }
   // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
-  // Phone (R2 phone 6, 2026-11-17): a top block Aujourd'hui · Fil · Idées (rendered below, before
-  // GROUPS), then Terrain (with Inventaire), then Kaizen, then the rest. Notes are in the Journal on
-  // both (R1 step 7): /atelier/notes redirects there.
-  const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
-    ? [
-        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal'] },
-        kaizenGroup,
-        studioGroup,
-        { label: t('nav_group_catalogue'), tabs: ['reports', 'themes', 'constellation', 'slideshows'] },
-        commercialGroup,
-        publicGroup,
-      ]
-    : [
-        kaizenGroup,
-        // R4 (Pem 2026-11-17): the Chronologie is computer only — not in the phone menu.
-        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'chronologie', 'slideshows'] },
-        { label: t('nav_group_field'), tabs: ['production', 'journal'] },
-        studioGroup,
-        commercialGroup,
-        publicGroup,
-      ]
+  // Notes are in the Journal (R1 step 7): /atelier/notes redirects there.
+  const GROUPS: { label: string; tabs: Tab[] }[] = [
+    kaizenGroup,
+    { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'chronologie', 'slideshows'] },
+    { label: t('nav_group_field'), tabs: ['production', 'journal'] },
+    { label: t('nav_group_studio'), tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
+    { label: t('nav_group_business'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] },
+    { label: t('nav_group_public_tab'), tabs: publicTabs },
+  ]
 
   const activeTab = effectiveRouteTab ?? tab
   const showDock = selection.size > 0 && activeTab !== 'constellation'
@@ -1212,28 +1198,8 @@ export function TeamPortalClient({
         minWidth: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-          {atelierNarrow && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label={t('aria_open_navigation')}
-              style={{
-                flexShrink: 0,
-                fontSize: 18,
-                lineHeight: 1,
-                color: 'var(--tx2)',
-                background: 'var(--bg0)',
-                border: '1px solid var(--bd)',
-                padding: '6px 10px',
-                cursor: 'pointer',
-                minWidth: 44,
-                minHeight: 44,
-                boxSizing: 'border-box',
-              }}
-            >
-              ☰
-            </button>
-          )}
+          {/* Phone (PhoneNav.notes.md, option A): ☰ opens the one menu sheet, over the page. */}
+          {atelierNarrow ? <PhoneMenuButton onNavigate={phoneNavigate} style={{ margin: '-6px 0' }} /> : null}
           {!atelierNarrow && (
             <>
               <button
@@ -1278,33 +1244,7 @@ export function TeamPortalClient({
             />
           ) : null}
           {atelierNarrow ? (
-          <button
-            type="button"
-            data-testid="atelier-header-hub"
-            onClick={() => {
-              pendingNavRef.current = () => router.push('/hub')
-              attemptNavigateWithDrawerGuard()
-            }}
-            className="t-mono-sm"
-            aria-label={t('field_stub_cta_hub')}
-            style={{
-              flexShrink: 0,
-              color: 'var(--tx3)',
-              cursor: 'pointer',
-              background: 'var(--bg0)',
-              border: '1px solid var(--bd)',
-              padding: '8px 12px',
-              minHeight: 44,
-              minWidth: 44,
-              boxSizing: 'border-box',
-              fontSize: 10,
-              letterSpacing: 1.2,
-              textTransform: 'uppercase',
-              fontFamily: 'inherit',
-            }}
-          >
-            {t('pub_hub_short')}
-          </button>
+            <PhoneHomeChip onNavigate={phoneNavigate} />
           ) : (
             <AtelierHeaderChrome
               variant="desktop"
@@ -1333,172 +1273,15 @@ export function TeamPortalClient({
       )}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
-        {atelierNarrow && sidebarOpen && (
+        {/* Phone: no side drawer — ☰ opens the menu sheet (PhoneMenu, PhoneNav.notes.md option A). */}
+        {!atelierNarrow ? (
+        <div style={{ width: 200, flexShrink: 0, borderRight: '1px solid var(--bd)', overflow: 'visible', position: 'relative' }}>
           <div
-            role="presentation"
-            aria-hidden
-            onClick={() => setSidebarOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 140,
-              background: 'rgba(0,0,0,0.45)',
-            }}
-          />
-        )}
-        <div style={{
-          width: atelierNarrow ? 0 : 200,
-          flexShrink: 0,
-          borderRight: atelierNarrow ? 'none' : '1px solid var(--bd)',
-          overflow: 'visible',
-          position: 'relative',
-          zIndex: atelierNarrow ? 150 : undefined,
-        }}>
-          <div
-            className={atelierNarrow ? 'pem-atelier-sidebar pem-atelier-sidebar--narrow' : 'pem-atelier-sidebar'}
-            style={{
-            ...(atelierNarrow
-              ? {
-                  position: 'fixed',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 'min(300px, 88vw)',
-                  background: 'var(--bg1)',
-                  borderRight: '1px solid var(--bd)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  padding: 'max(24px, env(safe-area-inset-top)) 0 max(24px, env(safe-area-inset-bottom))',
-                  transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                  transition: 'transform 0.2s ease',
-                  boxShadow: sidebarOpen ? '8px 0 28px rgba(0,0,0,0.35)' : undefined,
-                }
-              : {
-                  width: 200,
-                  height: '100%',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  padding: 0,
-                  background: 'var(--bg1)',
-                }),
-          }}>
-            <div style={{ flexShrink: 0, padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-                <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>{t('atelier')}</span>
-                <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.35 }} aria-hidden>/</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    pendingNavRef.current = () => {
-                      setSidebarOpen(false)
-                      router.push('/hub')
-                    }
-                    attemptNavigateWithDrawerGuard()
-                  }}
-                  className="t-mono-sm"
-                  style={{
-                    color: 'var(--tx3)',
-                    cursor: 'pointer',
-                    background: 'none',
-                    border: 'none',
-                    padding: '10px 4px',
-                    margin: '-10px 0',
-                    minHeight: 44,
-                    minWidth: 44,
-                    boxSizing: 'border-box',
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                    textTransform: 'uppercase',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {t('pub_hub_short')}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                  color: 'var(--tx2)',
-                  background: 'transparent',
-                  border: '1px solid var(--bd)',
-                  padding: '6px 10px',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {t('close')}
-              </button>
-            </div>
-            {atelierNarrow && sidebarOpen && (
-              <div
-                style={{
-                  flexShrink: 0,
-                  padding: '0 16px 12px',
-                  borderBottom: '1px solid var(--bd)',
-                  marginBottom: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  minWidth: 0,
-                  flexWrap: 'wrap',
-                  gap: 8,
-                }}
-              >
-                <AtelierHeaderChrome
-                  variant="drawer"
-                  lang={lang}
-                  setLang={setLang}
-                  onPaletteOpen={() => setPaletteOpen(true)}
-                  onNewWork={() => void router.push('/atelier/works/new')}
-                  onReports={() => handleSetTab('reports')}
-                  pendingReviewCount={isAdmin ? pendingReviewCount : 0}
-                  onPendingReview={isAdmin ? () => handleSetTab('audit') : undefined}
-                  hideNewWork
-                />
-              </div>
-            )}
-            <div
-              className="t-mono-sm"
-              style={{ flexShrink: 0, display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}
-              title={oeuvresCataloguePartial ? t('atelier_header_works_badge_title') : undefined}
-            >
-              {oeuvresCataloguePartial && oeuvresPaging
-                ? `${oeuvres.length} / ${oeuvresPaging.totalCount}`
-                : oeuvres.length}{' '}
-              {t('inventoryWorksBadge')}
-            </div>
+            className="pem-atelier-sidebar"
+            style={{ width: 200, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--bg1)' }}
+          >
             <div ref={sidebarNavScrollRef} className="pem-atelier-sidebar-nav-scroll">
               <div data-testid="atelier-nav-groups" className="pem-atelier-sidebar-nav-inner">
-                {atelierNarrow ? (
-                  <div data-testid="atelier-nav-phone-top" className="pem-atelier-sidebar-group">
-                    <div className="pem-atelier-sidebar-tabs">
-                      {[
-                        { key: 'today', label: t('today_nav_today'), on: () => { pendingNavRef.current = () => router.push('/hub'); attemptNavigateWithDrawerGuard() }, active: false },
-                        ...(isAdmin
-                          ? [{ key: 'fil', label: t('fil_title'), on: () => { pendingNavRef.current = () => router.push('/hub/fil'); attemptNavigateWithDrawerGuard() }, active: false }]
-                          : []),
-                        { key: 'ideas', label: t('today_nav_ideas'), on: () => handleSetTab('concepts'), active: tab === 'concepts' },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          data-testid={`atelier-nav-phone-${item.key}`}
-                          onClick={item.on}
-                          className={item.active ? 'pem-sidebar-tab pem-sidebar-tab--on pem-sidebar-tab--narrow' : 'pem-sidebar-tab pem-sidebar-tab--narrow'}
-                          style={{ fontSize: 11, textAlign: 'left', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center' }}
-                        >
-                          <span style={{ fontWeight: item.active ? 600 : 400 }}>{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 {GROUPS.filter((g) => g.tabs.length > 0).map((g) => (
                   <div key={g.label || g.tabs.join('-')} className="pem-atelier-sidebar-group">
                     {g.label ? <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div> : null}
@@ -1508,7 +1291,7 @@ export function TeamPortalClient({
                         if (!item) return null
                         const [key, label, count] = item
                         const isActive = tab === key
-                        const tabLayoutClass = atelierNarrow ? 'pem-sidebar-tab--narrow' : 'pem-sidebar-tab--desktop'
+                        const tabLayoutClass = 'pem-sidebar-tab--desktop'
                         return (
                           <button
                             key={key}
@@ -1554,6 +1337,7 @@ export function TeamPortalClient({
             </div>
           </div>
         </div>
+        ) : null}
 
         {/* ── Content ────────────────────────────────────────────── */}
         <div

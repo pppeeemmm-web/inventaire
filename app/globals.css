@@ -122,6 +122,12 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Phone navigation (docs/design/2026-11-18/PhoneNav.notes.md): no signed-in badge on the phone — the
+   account is at the bottom of the ☰ menu sheet and the header's right corner holds « Aujourd'hui ». */
+@media (max-width: 767px) {
+  .pem-logged-in-bar { display: none; }
+}
+
 /* Ring D — prevent iOS form zoom on narrow viewports */
 @media (max-width: 767px) {
   html, body {

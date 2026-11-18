@@ -1,7 +1,9 @@
 'use client'
 
 // R2 « Aujourd'hui » v1 — light view of the day (docs/design/2026-11-17/PhoneToday.notes.md).
-// Read-only first screen + the sticky input bar; actions open the existing full screens.
+// Phone navigation (docs/design/2026-11-18/PhoneNav.notes.md, option A): this is THE day screen on the
+// phone — today or any other day; the phone Journal day page opens here. ☰ opens the menu sheet over
+// the page (the Bureau rows and the account moved there), Écrire writes on the day shown.
 // Streaming (Speed first, rule 2): `TodayFrame` (header, bar) is in the first HTML; each section below
 // is its own component, filled by app/hub/today/page.tsx as its query finishes (Suspense).
 import Link from 'next/link'
@@ -10,7 +12,7 @@ import { useEffect, useState, useTransition, type CSSProperties, type ReactNode,
 import { usePathname, useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
-import { AccountActions } from '@/components/shared/AccountActions'
+import { PhoneMenuButton } from '@/components/shared/PhoneMenu'
 import type { FieldPulseMetric, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
 import type { SeeAgainSlots, SeeAgainWork } from '@/app/atelier/see-again/actions'
 import {
@@ -19,9 +21,11 @@ import {
   type JournalDayChange,
   type JournalDayCreation,
   type JournalDayEntry,
+  type JournalDayVoice,
 } from '@/app/atelier/(portal)/journal/entry-actions'
+import type { InspirationPhoto } from '@/lib/inspiration-photo'
 import { toast } from '@/lib/ui/toast'
-import { thumbUrl } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
@@ -36,6 +40,9 @@ const VoiceNoteSheet = dynamic(
 )
 /** Pem's « #équipe » voice card (TODO 24): its own chunk, so the phone page stays light. */
 const TeamVoiceCard = dynamic(() => import('@/components/hub/TeamVoiceCard'), { ssr: false })
+/** Entry / session tools (Relier, hide, Modifier la séance): their own chunk, loaded on tap. */
+const DayEntryTools = dynamic(() => import('@/components/hub/DayTools').then((m) => m.DayEntryTools), { ssr: false })
+const DaySessionEdit = dynamic(() => import('@/components/hub/DayTools').then((m) => m.DaySessionEdit), { ssr: false })
 
 export type TodayWork = { id: number; title: string | null; thumb: string | null }
 
@@ -47,7 +54,6 @@ const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
 }
 
 const workHref = (id: number) => `/atelier/inventory?work=${id}`
-const journalDayHref = (day: string, isToday: boolean) => (isToday ? '/atelier/journal?today=1' : `/atelier/journal?day=${day}`)
 
 /** YYYY-MM-DD ± n days (calendar arithmetic at noon UTC: no DST edge). */
 function shiftDay(day: string, n: number): string {
@@ -74,16 +80,6 @@ function WorkChip({ work }: { work: SeeAgainWork | TodayWork }) {
   const file = 'image' in work ? work.image : work.thumb
   return <WorkPreviewChip id={work.id} href={workHref(work.id)} title={work.title ?? null} image={file ?? null} style={{ fontSize: 14 }} />
 }
-
-/** Former /hub launcher rows (owner 2026-11-17: « Bureau », folded). */
-const BUREAU_ROWS: Array<{ testId: string; emoji: string; labelKey: DictKey; href: string }> = [
-  { testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', href: '/atelier/pipeline' },
-  { testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', href: '/atelier/sale/new' },
-  { testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', href: '/atelier/triage' },
-  { testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', href: '/atelier/capture?mode=card' },
-  { testId: 'hub-field-verb-document', emoji: '✍️', labelKey: 'hub_field_document', href: '/atelier/documents/new' },
-  { testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', href: '/atelier/issue/new' },
-]
 
 export function TodayFrame({ day, today, children }: { day: string; today: string; children: ReactNode }) {
   const { t, lang } = useI18n()
@@ -121,9 +117,9 @@ export function TodayFrame({ day, today, children }: { day: string; today: strin
 
   return (
     <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: 'hidden', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
-      {/* Right padding keeps 📅 clear of the floating signed-in badge (LoggedInBar). */}
-      <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 48px 4px 8px' }}>
-        <Link href="/atelier" aria-label={t('today_menu')} style={iconLink}>☰</Link>
+      {/* One header row: ☰ · date · ‹ › · 📅 (the signed-in badge is off on the phone: the account is in the menu). */}
+      <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 8px 4px 8px' }}>
+        <PhoneMenuButton />
         <h1 data-testid="hub-today-date" data-day={day} style={{ fontSize: sameYear ? 22 : 18, margin: '0 4px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</h1>
         <Link href={dayHref(shiftDay(day, -1))} aria-label={t('today_prev_day')} data-testid="hub-today-prev" style={iconLink}>‹</Link>
         {isToday ? (
@@ -136,21 +132,7 @@ export function TodayFrame({ day, today, children }: { day: string; today: strin
 
       {children}
 
-      <details className="pem-fold" data-testid="hub-today-bureau" style={{ ...section }}>
-        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <span style={{ fontSize: 14, color: 'var(--tx2)' }}>{t('today_bureau')}</span>
-          <span style={{ fontSize: 11, color: 'var(--tx3)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('today_bureau_sub')}</span>
-        </summary>
-        {BUREAU_ROWS.map((row) => (
-          <Link key={row.testId} href={row.href} data-testid={row.testId} style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--bd)', color: 'var(--tx)', textDecoration: 'none', fontSize: 15 }}>
-            <span aria-hidden="true" style={{ width: 22, textAlign: 'center' }}>{row.emoji}</span>
-            {t(row.labelKey)}
-          </Link>
-        ))}
-        <AccountActions compact style={{ justifyContent: 'center', marginTop: 12 }} />
-      </details>
-
-      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" />
+      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" writeDay={day} />
 
       {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
     </div>
@@ -245,39 +227,152 @@ export function TodayPhotographed({ works, more }: { works: TodayWork[]; more: n
   )
 }
 
-export function TodayEntries({ entries, day, isToday = true }: { entries: JournalDayEntry[]; day: string; isToday?: boolean }) {
+type DayItem =
+  | { at: string; entry: JournalDayEntry; voice?: undefined; photo?: undefined }
+  | { at: string; voice: JournalDayVoice; entry?: undefined; photo?: undefined }
+  | { at: string; photo: InspirationPhoto; entry?: undefined; voice?: undefined }
+
+/** The day's writings, voice notes (before their PC transcript) and inspiration photos, by time — the
+ *  Journal day page's content in this screen's look. « ⋯ » opens that item's tools (DayTools chunk). */
+export function TodayEntries({
+  entries,
+  voices = [],
+  photos = [],
+  isToday = true,
+  isAdmin = false,
+}: {
+  entries: JournalDayEntry[]
+  voices?: JournalDayVoice[]
+  photos?: InspirationPhoto[]
+  isToday?: boolean
+  isAdmin?: boolean
+}) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  const [toolsOpen, setToolsOpen] = useState<string | null>(null)
+  const items: DayItem[] = [
+    ...entries.map((e) => ({ at: e.created_at, entry: e })),
+    ...voices.filter((v) => !v.hasEntry).map((v) => ({ at: v.created_at, voice: v })),
+    ...photos.map((p) => ({ at: p.created_at, photo: p })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+  const meta: CSSProperties = { fontSize: 12, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4, minHeight: 20 }
+  const more = (key: string) => (
+    <button
+      type="button"
+      aria-label={t('pn_entry_tools')}
+      aria-expanded={toolsOpen === key}
+      data-testid={`hub-today-entry-tools-${key}`}
+      onClick={() => setToolsOpen((k) => (k === key ? null : key))}
+      style={{ minWidth: 44, minHeight: 44, margin: '-12px -8px -12px auto', background: 'none', border: 0, color: 'var(--tx3)', fontSize: 18, cursor: 'pointer' }}
+    >
+      ⋯
+    </button>
+  )
+  const audio = (key: string | null) =>
+    key ? <audio controls preload="none" src={imageUrl(key) ?? undefined} style={{ display: 'block', width: '100%', margin: '4px 0' }} /> : null
+
   return (
     <section data-testid="hub-today-entries" style={section}>
       <h2 style={heading}>{t('today_entries')}</h2>
-      {entries.length ? (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
-          {entries.map((e) => (
-            <li key={e.id} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-              <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
-                {time(e.created_at)}
-                {' · '}
-                {e.author}
-                {e.voiceNoteId ? <>{' · '}{t('today_voice_note')}</> : null}
-              </span>
-              <br />
-              <WorkRefText text={e.body.length > 220 ? `${e.body.slice(0, 220)}…` : e.body} />
-              {e.voiceLinks?.oeuvre_id != null ? (
-                <div style={{ marginTop: 4 }}>
-                  <WorkPreviewChip id={e.voiceLinks.oeuvre_id} href={workHref(e.voiceLinks.oeuvre_id)} size="chip" />
-                </div>
-              ) : null}
-            </li>
-          ))}
+      {items.length ? (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
+          {items.map((it) => {
+            if (it.photo) {
+              const p = it.photo
+              return (
+                <li key={`p-${p.id}`} data-testid={`hub-today-photo-${p.id}`} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                  <span style={meta}>
+                    {time(p.created_at)} · {p.author} · ✦ {t('pn_inspiration')}
+                  </span>
+                  <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb, like the Journal */}
+                    <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
+                  </a>
+                  {p.caption?.trim() ? <WorkRefText text={p.caption} /> : null}
+                  {p.oeuvre_id != null ? (
+                    <div style={{ marginTop: 4 }}>
+                      <WorkPreviewChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" />
+                    </div>
+                  ) : null}
+                </li>
+              )
+            }
+            if (it.voice) {
+              const v = it.voice
+              const key = `v-${v.id}`
+              return (
+                <li key={key} data-testid={`hub-today-voice-${v.id}`} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                  <span style={meta}>
+                    {time(v.created_at)} · {v.author} · {t('today_voice_note')}
+                    {v.duration_ms != null ? ` · ${Math.round(v.duration_ms / 1000)} s` : ''}
+                    {more(key)}
+                  </span>
+                  {v.subject?.trim() ? <b style={{ display: 'block' }}>{v.subject}</b> : null}
+                  {audio(v.audioKey)}
+                  {v.transcript?.trim() ? <WorkRefText text={v.transcript} /> : null}
+                  {v.oeuvre_id != null ? (
+                    <div style={{ marginTop: 4 }}>
+                      <WorkPreviewChip id={v.oeuvre_id} href={workHref(v.oeuvre_id)} size="chip" />
+                    </div>
+                  ) : null}
+                  {toolsOpen === key ? <DayEntryTools voice={v} isAdmin={isAdmin} /> : null}
+                </li>
+              )
+            }
+            const e = it.entry
+            const key = `e-${e.id}`
+            const hasTools = isAdmin || !!(e.voiceNoteId && e.voiceLinks)
+            return (
+              <li key={key} data-testid={`hub-today-entry-${e.id}`} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', opacity: e.hidden ? 0.5 : 1 }}>
+                <span style={meta}>
+                  {time(e.created_at)}
+                  {' · '}
+                  {e.author}
+                  {e.voiceNoteId ? <>{' · '}{t('today_voice_note')}</> : null}
+                  {e.hidden ? <>{' · '}{t('je_hidden_label')}</> : null}
+                  {hasTools ? more(key) : null}
+                </span>
+                {e.voiceLinks?.subject?.trim() ? <b style={{ display: 'block' }}>{e.voiceLinks.subject}</b> : null}
+                {audio(e.audioKey)}
+                <WorkRefText text={e.body} />
+                {e.voiceLinks?.oeuvre_id != null ? (
+                  <div style={{ marginTop: 4 }}>
+                    <WorkPreviewChip id={e.voiceLinks.oeuvre_id} href={workHref(e.voiceLinks.oeuvre_id)} size="chip" />
+                  </div>
+                ) : null}
+                {toolsOpen === key ? <DayEntryTools entry={e} isAdmin={isAdmin} /> : null}
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <p style={muted}>{t(isToday ? 'today_entries_empty' : 'today_entries_empty_day')}</p>
       )}
-      <Link href={journalDayHref(day, isToday)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
-        {t('today_open_full')}
-      </Link>
+    </section>
+  )
+}
+
+/** The day's field session: its note for everyone, « Modifier la séance » for an admin. */
+export function TodaySession({ sessionId, day, notes, isAdmin }: { sessionId: string; day: string; notes: string | null; isAdmin: boolean }) {
+  const { t } = useI18n()
+  const [editing, setEditing] = useState(false)
+  if (!notes?.trim() && !isAdmin) return null
+  return (
+    <section data-testid="hub-today-session" style={section}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h2 style={{ ...heading, margin: 0, flex: 1 }}>{t('pn_session_notes')}</h2>
+        {isAdmin && !editing ? (
+          <button type="button" className="btn ghost sm" data-testid="hub-today-session-edit" onClick={() => setEditing(true)} style={{ minHeight: 44 }}>
+            {t('pn_session_edit')}
+          </button>
+        ) : null}
+      </div>
+      {editing ? (
+        <DaySessionEdit sessionId={sessionId} day={day} notes={notes ?? ''} onDone={() => setEditing(false)} />
+      ) : notes?.trim() ? (
+        <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{notes}</p>
+      ) : null}
     </section>
   )
 }

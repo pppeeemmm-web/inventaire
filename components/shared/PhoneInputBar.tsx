@@ -3,13 +3,20 @@
 // R2 — the one sticky input bar on every phone screen (docs/design/2026-11-17/PhoneToday.notes.md,
 // « Rules shown »): Écrire · Vocal · Œuvre · Photo · doc. Replaces the old Atelier `MobileActionBar`
 // (QR moved into Photo · doc; reminders stay in the menu and the pulse line).
+// Écrire opens a writing sheet over the page, saved on the day shown (PhoneNav.notes.md, option A):
+// `?write=1` (empty) or `?write=#1234` (a mention) on the URL, or the PHONE_WRITE_EVENT, open it too.
 import Link from 'next/link'
-import { useState, type CSSProperties } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
+import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
+import { PHONE_WRITE_EVENT } from '@/lib/phone-write-event'
+
+const DayWriteSheet = dynamic(() => import('@/components/shared/DayWriteSheet').then((m) => m.DayWriteSheet), { ssr: false })
 
 const DOC_CHOICES = [
   { href: '/atelier/capture?mode=doc', icon: '📄', label: 'today_doc_document', sub: 'today_doc_document_sub' },
@@ -75,10 +82,31 @@ function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choic
   )
 }
 
-export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; workHref: string }) {
+export function PhoneInputBar({ onVoice, workHref, writeDay }: { onVoice: () => void; workHref: string; writeDay?: string }) {
   const { t } = useI18n()
   const [docOpen, setDocOpen] = useState(false)
   const [workOpen, setWorkOpen] = useState(false)
+  /** Écrire sheet: null = closed, else the text it starts with. */
+  const [writing, setWriting] = useState<string | null>(null)
+
+  useEffect(() => {
+    const onWrite = (ev: Event) => setWriting(String((ev as CustomEvent<string>).detail ?? ''))
+    window.addEventListener(PHONE_WRITE_EVENT, onWrite)
+    const url = new URL(window.location.href)
+    const w = url.searchParams.get('write')
+    // On the Journal the phone goes on to the day screen, which opens the sheet (`?write=` is carried over).
+    if (w && !url.pathname.startsWith('/atelier/journal')) {
+      setWriting(w === '1' ? '' : /^(#\d+ ?)+$/.test(`${w.trim()} `) ? w : '')
+      url.searchParams.delete('write')
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+    // The sheet's code, fetched once the page is idle, so the tap never waits on it.
+    const id = window.setTimeout(() => void import('@/components/shared/DayWriteSheet'), 1500)
+    return () => {
+      window.removeEventListener(PHONE_WRITE_EVENT, onWrite)
+      window.clearTimeout(id)
+    }
+  }, [])
   // Capture is admin-only: only the session-capture href gets the sheet; anyone else keeps the plain link.
   const workSheet = workHref === SESSION_CAPTURE_HREF
 
@@ -105,7 +133,7 @@ export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; work
           background: 'var(--bg1)', borderTop: '1px solid var(--bd)',
         }}
       >
-        <Link href="/atelier/journal?today=1&write=1" data-testid="phone-bar-write" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</Link>
+        <button type="button" onClick={() => setWriting('')} aria-expanded={writing != null} data-testid="phone-bar-write" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</button>
         <button type="button" onClick={onVoice} data-testid="phone-bar-voice" style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
         {workSheet ? (
           <button type="button" onClick={() => setWorkOpen(true)} aria-expanded={workOpen} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</button>
@@ -123,6 +151,7 @@ export function PhoneInputBar({ onVoice, workHref }: { onVoice: () => void; work
           testId="phone-doc-sheet"
         />
       ) : null}
+      {writing != null ? <DayWriteSheet day={writeDay ?? todayCalendarDayInParis()} initialText={writing} onClose={() => setWriting(null)} /> : null}
       {workOpen ? <ChoiceSheet title={t('today_work_title')} choices={WORK_CHOICES} onClose={() => setWorkOpen(false)} testId="phone-work-sheet" /> : null}
     </>
   )

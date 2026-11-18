@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test'
 
 /**
  * Phone « Aujourd'hui » at /hub (R2 step 2, docs/design/2026-11-17/PhoneToday.notes.md):
- * streamed day page (also /hub/today), shared PhoneInputBar, Bureau fold with the former launcher rows.
+ * streamed day page (also /hub/today), shared PhoneInputBar; the former launcher rows (« Bureau ») are the
+ * ☰ menu sheet's « Actions » fold since the phone navigation build (docs/design/2026-11-18/PhoneNav.notes.md).
  * Requires authenticated session — same as other ATELIER_E2E tests.
  */
 test.describe('Hub « Aujourd’hui » (R2)', () => {
@@ -18,8 +19,10 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await expect(page.getByTestId('hub-today-root')).toBeVisible({ timeout: 45_000 })
   }
 
+  /** ☰ → menu sheet → « Actions » fold (ex-Bureau). */
   async function openBureau(page: Page) {
-    await page.getByTestId('hub-today-bureau').locator('summary').click()
+    await page.getByTestId('phone-menu-open').click()
+    await page.getByTestId('phone-menu-actions').locator('summary').click({ timeout: 45_000 })
   }
 
   test('input bar is in the viewport with 44 px+ buttons, no horizontal scroll', async ({ page }) => {
@@ -42,7 +45,7 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await expect(page.getByTestId('hub-today-entries')).toBeVisible()
   })
 
-  test('Bureau holds the former launcher rows', async ({ page }) => {
+  test('menu « Actions » holds the former launcher rows', async ({ page }) => {
     await openHub(page)
     await openBureau(page)
     for (const id of ['pipeline', 'sale', 'triage', 'contact', 'document', 'issue']) {
@@ -50,11 +53,31 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     }
   })
 
-  test('Écrire opens today in the journal with the form', async ({ page }) => {
+  test('Écrire opens the writing sheet over the day (no page change)', async ({ page }) => {
     await openHub(page)
     await page.getByTestId('phone-bar-write').click()
-    await expect(page).toHaveURL(/\/atelier\/journal/)
-    await expect(page.getByTestId('journal-entry-form')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('day-write-sheet')).toBeVisible({ timeout: 45_000 })
+    await expect(page).toHaveURL(/\/hub/)
+  })
+
+  test('the phone Journal day opens in the day screen, with ?write= kept', async ({ page }) => {
+    await page.goto('/atelier/journal?today=1&write=1')
+    await expect(page).toHaveURL(/\/hub/, { timeout: 45_000 })
+    await expect(page.getByTestId('day-write-sheet')).toBeVisible({ timeout: 45_000 })
+  })
+
+  test('☰ opens the menu sheet at once, with the tiles and the search', async ({ page }) => {
+    await openHub(page)
+    await page.getByTestId('phone-menu-open').click()
+    await expect(page.getByTestId('phone-menu-sheet')).toBeVisible({ timeout: 45_000 })
+    await expect(page).toHaveURL(/\/hub/)
+    for (const id of ['today', 'works', 'production', 'ideas', 'orders', 'logistics', 'events', 'journal']) {
+      const box = await page.getByTestId(`phone-menu-tile-${id}`).boundingBox()
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+    }
+    await expect(page.getByTestId('phone-menu-search')).toBeVisible()
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+    expect(overflow).toBe(false)
   })
 
   test('Vocal opens the voice note sheet', async ({ page }) => {
@@ -88,8 +111,8 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await expect(page.getByTestId('work-record-mode-reprise')).toHaveAttribute('aria-pressed', 'true', { timeout: 45_000 })
   })
 
-  test('journal day opens the voice note sheet', async ({ page }) => {
-    await page.goto('/atelier/journal?today=1')
+  test('journal list opens the voice note sheet', async ({ page }) => {
+    await page.goto('/atelier/journal')
     await page.getByTestId('phone-bar-voice').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
     if ((await page.getByTestId('ring-b-voice-sheet').getAttribute('data-phase')) === 'recording') {
@@ -125,7 +148,7 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
   test('Bureau › issue opens studio issue form', async ({ page }) => {
     await openHub(page)
     await openBureau(page)
-    // Last Bureau row: centre it so the fixed input bar does not cover it.
+    // An « Actions » row: centre it so nothing covers it.
     const issue = page.getByTestId('hub-field-verb-issue')
     await issue.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await issue.click()

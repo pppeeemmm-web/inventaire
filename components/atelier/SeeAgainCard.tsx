@@ -14,6 +14,7 @@ import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { PHONE_WRITE_EVENT } from '@/lib/phone-write-event'
 
 /** Journal page listens for this to open its entry form with the text prefilled. */
 export const JOURNAL_COMPOSE_EVENT = 'pem:journal-compose'
@@ -52,6 +53,9 @@ export function SeeAgainCard({
   function write(text: string) {
     if (context === 'journal') {
       window.dispatchEvent(new CustomEvent(JOURNAL_COMPOSE_EVENT, { detail: text }))
+    } else if (context === 'today') {
+      // Phone day screen: the Écrire sheet opens over the day (PhoneInputBar), no jump into the Journal.
+      window.dispatchEvent(new CustomEvent(PHONE_WRITE_EVENT, { detail: text }))
     } else {
       window.location.assign(`/atelier/journal?today=1&write=${encodeURIComponent(text)}`)
     }
@@ -109,7 +113,7 @@ export function SeeAgainCard({
             {slots.then.snippet.length >= 220 ? '…' : ''}
           </p>
           <Actions>
-            <Link href={`/atelier/journal?day=${slots.then.day}`} className="btn ghost sm" style={{ ...btn, display: 'inline-flex', alignItems: 'center' }}>
+            <Link href={context === 'today' ? `/hub?day=${slots.then.day}` : `/atelier/journal?day=${slots.then.day}`} className="btn ghost sm" style={{ ...btn, display: 'inline-flex', alignItems: 'center' }}>
               {t('sa_open_day')}
             </Link>
             <button type="button" className="btn ghost sm" style={btn} disabled={pending} onClick={() => run(() => dismissSeeAgain('then', slots.then!.id))}>

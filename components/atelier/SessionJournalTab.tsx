@@ -676,6 +676,21 @@ function JournalDayPage({
   )
 }
 
+/** Phone (PhoneNav.notes.md, option A): a day opens in the day screen (/hub), not in the Journal. */
+function hubDayHref(day: string, today: string): string {
+  return day >= today ? '/hub' : `/hub?day=${day}`
+}
+
+/** Phone: `?day=` / `?today=1` (search hit, Constellation, old links) go to the day screen, `?write=` kept. */
+function phoneDayRedirectFromUrl(): string | null {
+  if (typeof window === 'undefined' || !window.matchMedia('(max-width: 767px)').matches) return null
+  const day = requestedDayFromUrl()
+  if (!day) return null
+  const href = hubDayHref(day, todayCalendarDayInParis())
+  const write = new URLSearchParams(window.location.search).get('write')
+  return write ? `${href}${href.includes('?') ? '&' : '?'}write=${encodeURIComponent(write)}` : href
+}
+
 function requestedDayFromUrl(): string | null {
   if (typeof window === 'undefined') return null
   const params = new URLSearchParams(window.location.search)
@@ -689,6 +704,11 @@ export function SessionJournalTab() {
   const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
   const todayDay = todayCalendarDayInParis()
+  // Phone: the Journal is the list of days; a requested day opens in the day screen instead.
+  const [phoneRedirect] = useState<string | null>(() => phoneDayRedirectFromUrl())
+  useEffect(() => {
+    if (phoneRedirect) router.replace(phoneRedirect)
+  }, [phoneRedirect, router])
   const [sessionRows, setSessionRows] = useState<WorkSessionJournalRow[]>([])
   const [sourceDays, setSourceDays] = useState<JournalSourceDay[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -700,7 +720,7 @@ export function SessionJournalTab() {
   // `/atelier/journal?today=1` (Hub → Journal) opens today's page; `?day=YYYY-MM-DD` (search hit,
   // Constellation panel) opens that day. Read before the first paint (the tab is client-only), so the
   // phone opens straight on the day instead of flashing the list first (Pem 2026-11-14).
-  const [openDay, setOpenDay] = useState<string | null>(() => requestedDayFromUrl())
+  const [openDay, setOpenDay] = useState<string | null>(() => (phoneRedirect ? null : requestedDayFromUrl()))
   const [phoneView, setPhoneView] = useState<'list' | 'day'>(() => (requestedDayFromUrl() ? 'day' : 'list'))
   const [composeSignal, setComposeSignal] = useState(0)
   const [captureSignal, setCaptureSignal] = useState(0)
@@ -756,14 +776,17 @@ export function SessionJournalTab() {
   useEffect(() => {
     if (!openDay || loading) return
     const row = rows.find((r) => rowDay(r) === openDay)
-    if (row) {
+    if (row && narrow) {
+      // Phone: date jump / ✦ bar open the day in the day screen.
+      router.push(hubDayHref(openDay, todayDay))
+    } else if (row) {
       setSelectedId(row.id)
       setPhoneView('day')
       // Bring the day into view in the list (date jump, ✦ bar, ?day=).
       requestAnimationFrame(() => document.getElementById(`journal-day-${openDay}`)?.scrollIntoView({ block: 'center' }))
     }
     setOpenDay(null)
-  }, [openDay, loading, rows])
+  }, [openDay, loading, rows, narrow, router, todayDay])
 
   // Date jump (owner 2026-11-13: "avoid long scrolling"): the picked day, or the nearest day that has something.
   const jumpToDate = (d: string) => {
@@ -817,6 +840,11 @@ export function SessionJournalTab() {
   }, [selected])
 
   const writeToday = () => {
+    if (narrow) {
+      // Phone: today's day screen with the Écrire sheet open.
+      router.push('/hub?write=1')
+      return
+    }
     const row = rows.find((r) => rowDay(r) === todayDay)
     if (row) setSelectedId(row.id)
     setPhoneView('day')
@@ -825,6 +853,10 @@ export function SessionJournalTab() {
   }
 
   const captureToday = () => {
+    if (narrow) {
+      router.push('/atelier/session/new')
+      return
+    }
     const row = rows.find((r) => rowDay(r) === todayDay)
     if (row) setSelectedId(row.id)
     setPhoneView('day')
@@ -842,13 +874,11 @@ export function SessionJournalTab() {
       })
       return
     }
-    setSelectedId(row.id)
     if (narrow) {
-      setPhoneView('day')
-      requestAnimationFrame(() => {
-        document.getElementById('journal-day-panel')?.scrollTo({ top: 0 })
-      })
+      router.push(hubDayHref(rowDay(row), todayDay))
+      return
     }
+    setSelectedId(row.id)
   }
 
   const saveSessionEdit = () => {
@@ -921,8 +951,10 @@ export function SessionJournalTab() {
 
   /** A requested day that is not today waits for the list (today's row exists before it loads). */
   const waitingForDay = loading && openDay != null && openDay !== todayDay
-  const showPage = Boolean(selected) && (!narrow || phoneView === 'day') && !waitingForDay
-  const showIndex = !narrow || phoneView === 'list'
+  // Phone: only the list of days (a day opens in the day screen, /hub).
+  const showPage = Boolean(selected) && !narrow && !waitingForDay
+  const showIndex = true
+  if (phoneRedirect) return null
 
   return (
     <div

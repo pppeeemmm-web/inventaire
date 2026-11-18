@@ -8,10 +8,12 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { orderBody } from '@/lib/orders/fil-order-text'
 import { thumbUrl } from '@/lib/data'
 import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
+import { PhoneHomeChip, PhoneMenuButton } from '@/components/shared/PhoneMenu'
 import { SwipeDeck, type SwipeDecision, type SwipeResult } from '@/components/shared/SwipeDeck'
 import { decideFil, listFil, type FilItem, type FilSection } from '@/app/atelier/fil/actions'
 
@@ -88,12 +90,13 @@ export function FilClient() {
       }}
     >
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        {/* Right padding keeps the header clear of the floating signed-in badge (LoggedInBar). */}
-        <header style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 48px 4px 8px' }}>
-          <Link href="/hub" data-testid="hub-fil-back" style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 8px', color: 'var(--tx2)', textDecoration: 'none', fontSize: 13 }}>
-            {t('fil_back')}
-          </Link>
-          <h1 style={{ fontSize: 22, margin: 0, flex: 1 }}>{t('fil_title')}</h1>
+        {/* Phone header (PhoneNav.notes.md, option A): ☰ · title · « Aujourd'hui ». */}
+        <header style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 8px 4px 8px' }}>
+          <PhoneMenuButton />
+          <h1 data-testid="hub-fil-title" style={{ fontSize: 20, margin: '0 4px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {items ? t('fil_title_count').replace('{n}', String(live.length)) : t('fil_title')}
+          </h1>
+          <PhoneHomeChip />
         </header>
 
         {!isAdmin ? (
@@ -143,6 +146,7 @@ export function FilClient() {
                   keepLabel={t(fiches ? 'fil_approve' : 'fil_keep')}
                   discardLabel={t(fiches ? 'fil_reject' : 'fil_discard')}
                   emptyText={t('fil_empty')}
+                  arrows
                 />
               )}
             </div>
@@ -177,18 +181,7 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const date = new Date(item.at).toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' })
 
-  const kindLabel =
-    item.kind === 'work_order'
-      ? t('fil_order_title').replace('{ref}', item.order?.ref ?? '')
-      : item.kind === 'idea'
-      ? t('fil_idea')
-      : item.kind === 'kaizen_item'
-        ? t('fil_kaizen')
-        : item.kind === 'pending_change'
-          ? t(item.changeKind === 'create' ? 'fil_fiche_create' : item.changeKind === 'image_add' ? 'fil_fiche_image' : 'fil_fiche_change')
-          : item.lineKind === 'proposal'
-            ? t('fil_proposal')
-            : null
+  const sentence = filSentence(item, t)
 
   const text = item.order ? orderBody(item.order, t) : item.body
   const body = text.length > BODY_MAX ? `${text.slice(0, BODY_MAX)}…` : text
@@ -203,22 +196,19 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
         display: 'grid', gap: 8, overflowWrap: 'anywhere',
       }}
     >
-      <div style={{ fontSize: 12, color: 'var(--tx3)', display: 'flex', flexWrap: 'wrap', gap: '2px 8px' }}>
-        {item.flagged ? <span style={{ color: 'var(--ac)' }}>{t('fil_flagged')}</span> : null}
-        {kindLabel ? <span>{kindLabel}</span> : null}
-        <span>{[item.author, date].filter(Boolean).join(' · ')}</span>
-      </div>
+      {/* One sentence: who did what, where; the date at the end, grey (PhoneNav.notes.md « Fil cards »). */}
+      {item.flagged ? <span style={{ fontSize: 12, color: 'var(--ac)' }}>{t('fil_flagged')}</span> : null}
+      <p data-testid="hub-fil-card-sentence" style={{ margin: 0, fontSize: 14, lineHeight: 1.35, fontWeight: 600 }}>
+        {sentence}
+        <span style={{ fontWeight: 400, color: 'var(--tx3)', fontSize: 12 }}> · {date}</span>
+      </p>
 
       {item.work ? (
         <Link href={workHref(item.work.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, color: 'var(--tx)', textDecoration: 'none' }}>
           <Thumb file={item.work.thumb} size={44} />
           <span style={{ fontSize: 13, lineHeight: 1.3, minWidth: 0 }}>
-            {item.kind === 'note_line' && item.lineKind === 'work' ? (
-              <span style={{ display: 'block', color: 'var(--tx3)' }}>{t('fil_in_work').replace('{id}', String(item.work.id))}</span>
-            ) : (
-              <span style={{ color: 'var(--tx3)' }}>#{item.work.id}{item.work.title ? ' · ' : ''}</span>
-            )}
-            {item.work.title ?? (item.kind === 'note_line' && item.lineKind === 'work' ? t('fil_untitled') : null)}
+            <span style={{ color: 'var(--tx3)' }}>#{item.work.id} · </span>
+            {item.work.title ?? t('fil_untitled')}
           </span>
         </Link>
       ) : null}
@@ -258,4 +248,30 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
       ) : null}
     </article>
   )
+}
+
+/** The card's first line: « Anna a écrit dans les notes de #2233 », « Léa a préparé une commande (prêt) pour M. Dupont »… */
+function filSentence(item: FilItem, t: (k: DictKey) => string): string {
+  const who = item.author?.trim() || t('fil_s_someone')
+  const id = item.work ? String(item.work.id) : ''
+  const fill = (key: DictKey) => t(key).replace('{who}', who).replace('{id}', id)
+  switch (item.kind) {
+    case 'work_order': {
+      const k = item.order?.kind ?? ''
+      const kind = ['sale', 'consignment', 'loan', 'gift', 'entrusted'].includes(k) ? t(`ord_kind_${k}` as DictKey) : k
+      return fill('fil_s_order').replace('{kind}', kind).replace('{party}', item.order?.party ?? '')
+    }
+    case 'idea':
+      return fill('fil_s_idea')
+    case 'kaizen_item':
+      return fill('fil_s_kaizen')
+    case 'pending_change':
+      if (item.changeKind === 'create') return fill('fil_s_fiche_create')
+      if (item.changeKind === 'image_add') return fill(item.work ? 'fil_s_fiche_image' : 'fil_s_fiche_create')
+      return item.changes?.length
+        ? fill('fil_s_fiche_change_fields').replace('{fields}', item.changes.slice(0, 3).map((c) => c.key).join(', ') + (item.changes.length > 3 ? '…' : ''))
+        : fill('fil_s_fiche_change')
+    default:
+      return item.lineKind === 'work' && item.work ? fill('fil_s_note_work') : fill('fil_s_proposal')
+  }
 }

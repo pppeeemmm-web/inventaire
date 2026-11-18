@@ -19,9 +19,9 @@ test.describe('Atelier mobile action bar', () => {
     await expect(page.getByTestId('atelier-mobile-bar-new-work')).toHaveCount(0)
   })
 
-  test('narrow atelier header exposes hub launchpad', async ({ page }) => {
+  test('narrow atelier header has the « Aujourd’hui » chip', async ({ page }) => {
     await page.goto('/atelier/inventory', { waitUntil: 'domcontentloaded' })
-    const hub = page.getByTestId('atelier-header-hub')
+    const hub = page.getByTestId('phone-home-chip')
     await expect(hub).toBeVisible({ timeout: 45_000 })
     await hub.click()
     await expect(page).toHaveURL(/\/hub/)

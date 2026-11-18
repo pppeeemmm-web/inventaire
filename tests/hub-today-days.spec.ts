@@ -84,16 +84,20 @@ test.describe('Aujourd’hui — days, folds, phone menu (R2)', () => {
     await expect(page.getByTestId('hub-today-date')).toHaveText('23/09/2024')
   })
 
-  test('phone menu: Aujourd’hui · (Fil) · Idées on top, no Notes in Terrain', async ({ page }) => {
+  test('phone menu in the Atelier: the same sheet, Aujourd’hui first, Idées a tile', async ({ page }) => {
     await page.goto('/atelier/journal')
-    await page.getByRole('button', { name: /open navigation|ouvrir le menu/i }).click({ timeout: 45_000 })
-    const nav = page.getByTestId('atelier-nav-groups')
-    await expect(nav).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByTestId('atelier-nav-phone-today')).toHaveText(/Aujourd’hui|Today/)
-    await expect(page.getByTestId('atelier-nav-phone-ideas')).toHaveText(/Idées|Ideas/)
-    await expect(nav.locator('.t-eyebrow').first()).toHaveText(/Field|Terrain/)
-    await expect(nav.getByRole('button', { name: /^(Notes)$/ })).toHaveCount(0)
-    const box = await page.getByTestId('atelier-nav-phone-today').boundingBox()
+    await page.getByTestId('phone-menu-open').click({ timeout: 45_000 })
+    await expect(page.getByTestId('phone-menu-sheet')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('phone-menu-tile-today')).toContainText(/Aujourd’hui|Today/)
+    await expect(page.getByTestId('phone-menu-tile-ideas')).toContainText(/Idées|Ideas/)
+    await expect(page.getByTestId('atelier-nav-groups')).toHaveCount(0)
+    const box = await page.getByTestId('phone-menu-tile-today').boundingBox()
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  })
+
+  test('a day in the phone Journal opens in the day screen', async ({ page }) => {
+    await page.goto('/atelier/journal?day=2024-09-23')
+    await expect(page).toHaveURL(/\/hub\?day=2024-09-23/, { timeout: 45_000 })
+    await expect(page.getByTestId('hub-today-date')).toHaveText('23/09/2024')
   })
 })

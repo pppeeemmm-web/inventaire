@@ -6,6 +6,9 @@
 // `?day=YYYY-MM-DD` shows another day (‹ › in the header; never after today). « À revoir » and the
 // pulse line (Fil count, field inbox) belong to today only and are not read for another day.
 // The two folds (« Attributs d'œuvres modifiés », « Création ») are read only when opened.
+// Phone navigation (docs/design/2026-11-18/PhoneNav.notes.md): the phone Journal day page opens here,
+// so the day also shows its voice notes, inspiration photos, the session note (+ admin « Modifier la
+// séance ») and, for an admin, hidden entries dimmed with their tools.
 import { Suspense } from 'react'
 import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
@@ -23,6 +26,7 @@ import {
   TodayPhotographed,
   TodayPulse,
   TodaySeeAgain,
+  TodaySession,
   TodaySkeleton,
   TodaySuggestions,
   TodaySummary,
@@ -104,7 +108,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </Suspense>
       ) : null}
       <Suspense key={`e-${day}`} fallback={<TodaySkeleton rows={3} />}>
-        <EntriesSection extras={extras} day={day} isToday={isToday} />
+        <EntriesSection extras={extras} isToday={isToday} />
+      </Suspense>
+      <Suspense key={`n-${day}`} fallback={null}>
+        <SessionSection extras={extras} sessions={sessions} day={day} />
       </Suspense>
       <Suspense key={`x-${day}`} fallback={null}>
         <SuggestionsSection extras={extras} />
@@ -152,9 +159,27 @@ async function WorksSection({ sessions, day, isToday }: { sessions: Promise<Sess
   return Array.isArray(s) ? <TodayWorks works={worksOfDay(s, day)} isToday={isToday} /> : <TodayLoadError />
 }
 
-async function EntriesSection({ extras, day, isToday }: { extras: Promise<Extras>; day: string; isToday: boolean }) {
+async function EntriesSection({ extras, isToday }: { extras: Promise<Extras>; isToday: boolean }) {
   const x = await extras
-  return 'error' in x ? <TodayLoadError /> : <TodayEntries entries={x.entries.filter((e) => !e.hidden)} day={day} isToday={isToday} />
+  if ('error' in x) return <TodayLoadError />
+  // An admin sees hidden entries dimmed (to unhide them); everyone else does not.
+  return (
+    <TodayEntries
+      entries={x.isAdmin ? x.entries : x.entries.filter((e) => !e.hidden)}
+      voices={x.voices}
+      photos={x.inspirations}
+      isToday={isToday}
+      isAdmin={x.isAdmin}
+    />
+  )
+}
+
+/** The day's field session (if any): its note, and « Modifier la séance » for an admin. */
+async function SessionSection({ extras, sessions, day }: { extras: Promise<Extras>; sessions: Promise<Sessions>; day: string }) {
+  const [x, s] = await Promise.all([extras, sessions])
+  const row = Array.isArray(s) ? s.find((r) => r.calendar_day === day) : undefined
+  if (!row) return null
+  return <TodaySession sessionId={row.id} day={day} notes={row.journal_notes} isAdmin={!('error' in x) && x.isAdmin} />
 }
 
 async function PhotographedSection({ photographed }: { photographed: Promise<Awaited<ReturnType<typeof worksPhotographedOn>> | { error: string }> }) {

@@ -26,6 +26,7 @@ export function SwipeDeck<T>({
   discardLabel,
   emptyText,
   testId = 'swipe-deck',
+  arrows = false,
 }: {
   items: T[]
   getKey: (item: T) => string
@@ -36,6 +37,8 @@ export function SwipeDeck<T>({
   discardLabel: string
   emptyText: string
   testId?: string
+  /** The buttons say which way each swipe goes: « ← Retirer » · « Garder → » (the Fil, PhoneNav.notes.md). */
+  arrows?: boolean
 }) {
   const { t } = useI18n()
   /** Keys decided here (waiting or sent): they stay out of the deck until the list changes. */
@@ -184,7 +187,7 @@ export function SwipeDeck<T>({
           onClick={() => decide('discard')}
           style={{ minHeight: 48, flex: 1, color: 'var(--rust)' }}
         >
-          <span aria-hidden="true">✕ </span>
+          <span aria-hidden="true">{arrows ? '← ' : '✕ '}</span>
           {discardLabel}
         </button>
         <button
@@ -194,8 +197,9 @@ export function SwipeDeck<T>({
           onClick={() => decide('keep')}
           style={{ minHeight: 48, flex: 1 }}
         >
-          <span aria-hidden="true">✓ </span>
+          {arrows ? null : <span aria-hidden="true">✓ </span>}
           {keepLabel}
+          {arrows ? <span aria-hidden="true"> →</span> : null}
         </button>
       </div>
       <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', textAlign: 'center', margin: '8px 0 0' }}>

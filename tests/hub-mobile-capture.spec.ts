@@ -18,10 +18,11 @@ test.describe('Hub mobile + atelier narrow', () => {
     await expect(page.getByTestId('phone-input-bar')).toBeVisible()
   })
 
-  test('pipeline row in Bureau opens pipeline tab', async ({ page }) => {
+  test('pipeline row in the menu « Actions » opens pipeline tab', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-today-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-today-bureau').locator('summary').click()
+    await page.getByTestId('phone-menu-open').click()
+    await page.getByTestId('phone-menu-actions').locator('summary').click({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-pipeline').click()
     await expect(page).toHaveURL(/\/atelier\/pipeline/)
   })

@@ -9,7 +9,8 @@ type Props = {
   fullName?: string
 }
 
-/** Fixed corner hint — no layout shift, does not capture clicks. */
+/** Fixed corner hint — no layout shift, does not capture clicks. Off on the phone (globals.css): the account
+ *  is at the bottom of the ☰ menu sheet and every phone header uses its right corner (PhoneNav.notes.md). */
 export function LoggedInBar({ displayName, fullName }: Props) {
   const { t } = useI18n()
   if (!displayName) return null
@@ -19,6 +20,7 @@ export function LoggedInBar({ displayName, fullName }: Props) {
 
   return (
     <div
+      className="pem-logged-in-bar"
       data-testid="logged-in-bar"
       role="status"
       aria-label={fullLabel}
