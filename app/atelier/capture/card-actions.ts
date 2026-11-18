@@ -1,6 +1,8 @@
 'use server'
 
 /** Business-card capture — Contact-only (no Oeuvres reads). See docs/archive/GRAPHIFY_NOTES.md. */
+import crypto from 'crypto'
+import sharp from 'sharp'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { importGoogleContacts } from '@/app/atelier/(portal)/contacts/actions'
@@ -18,8 +20,12 @@ import {
 } from '@/lib/contact-url-enrich'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { vaultR2Put } from '@/lib/vault-r2-put'
+import { logError } from '@/lib/error-reporter/server'
 
 const MAX_BYTES = 12 * 1024 * 1024
+/** The optional AI step gives up after this long (Pem 2026-11-18: outdoors the studio AI is out of reach). */
+const AI_BUDGET_MS = 15_000
 
 export type CardCaptureMeta = {
   sources: string[]
@@ -31,10 +37,10 @@ export type CardCaptureMeta = {
 async function guardTeam() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'auth' as const, supabase: null }
+  if (!user) return { error: 'auth' as const, supabase: null, userId: null }
   const { data: isTeam } = await supabase.rpc('is_team')
-  if (!isTeam) return { error: 'forbidden' as const, supabase: null }
-  return { error: null, supabase }
+  if (!isTeam) return { error: 'forbidden' as const, supabase: null, userId: null }
+  return { error: null, supabase, userId: user.id }
 }
 
 export async function previewBusinessCardCapture(
@@ -55,6 +61,9 @@ export async function previewBusinessCardCapture(
 
   let ocrText: string | null = null
   let ocrUsed = false
+  // « Analyser » sends text only and never waits for an AI; the photo and the AI come with
+  // « Améliorer avec l'IA » (refineWithLlm), which shares one time budget.
+  const deadline = Date.now() + AI_BUDGET_MS
 
   if (hasFile && file instanceof File) {
     if (file.size > MAX_BYTES) return { error: 'file_too_large' }
@@ -63,7 +72,12 @@ export async function previewBusinessCardCapture(
     if ('error' in validated) return { error: validated.error }
 
     if (resolveCardVisionMode() !== 'none') {
-      ocrText = await extractTextFromCardImage(buf)
+      try {
+        ocrText = await extractTextFromCardImage(buf, AI_BUDGET_MS)
+      } catch (e) {
+        ocrText = null // timed out or unreachable: fall back to the pasted text
+        await logError('capture_card: photo reading failed', e)
+      }
       ocrUsed = Boolean(ocrText)
     }
 
@@ -100,6 +114,7 @@ export async function previewBusinessCardCapture(
         openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         ollamaHost: resolveOllamaClientUrl(),
         ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2:1b',
+        timeoutMs: Math.max(2_000, deadline - Date.now()),
       }
       if (mode === 'openai' && !env.openaiKey) {
         meta.llmNote = 'OPENAI_API_KEY manquante'
@@ -120,11 +135,54 @@ export async function previewBusinessCardCapture(
   return { ok: true, contact: draft, meta }
 }
 
+/** The card photo goes to the Vault (« Business »), linked to the new contact, so the AI can reread it
+ *  later (Pem 2026-11-18). Normalised like a session shot: AVIF q50, long side 2100. False = not kept. */
+async function keepCardPhoto(
+  supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>,
+  userId: string | null,
+  contactId: number,
+  label: string,
+  file: File,
+): Promise<boolean> {
+  try {
+    if (file.size > MAX_BYTES) return false
+    const raw = Buffer.from(await file.arrayBuffer())
+    const validated = await validateWorkImageBuffer(raw)
+    if ('error' in validated) return false
+    const avif = await sharp(raw)
+      .rotate()
+      .resize({ width: 2100, height: 2100, fit: 'inside', withoutEnlargement: true })
+      .avif({ quality: 50 })
+      .toBuffer()
+    const hash8 = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)
+    const key = `cards/K_${contactId}_${hash8}.avif`
+    await vaultR2Put(key, avif, 'image/avif', 'capture_card', userId)
+    const { error } = await supabase.from('document').insert({
+      name: `Carte — ${label}`.slice(0, 200),
+      kind: 'carte',
+      folder: 'Business',
+      source: 'file',
+      storage_path: key,
+      file_size: avif.length,
+      mime_type: 'image/avif',
+      contact_id: contactId,
+      doc_date: new Date().toISOString().slice(0, 10),
+      notes: 'Photo de la carte de visite (capture terrain)',
+    })
+    if (error) await logError('capture_card: card photo document insert', error)
+    return !error
+  } catch (e) {
+    await logError('capture_card: keeping the card photo', e)
+    return false
+  }
+}
+
 export async function commitBusinessCardCapture(
   contact: ImportedContact,
-): Promise<{ ok: true; href: string } | { error: string }> {
+  photo?: FormData,
+): Promise<{ ok: true; href: string; photoKept: boolean | null } | { error: string }> {
   const g = await guardTeam()
-  if (g.error) return { error: g.error }
+  if (g.error || !g.supabase) return { error: g.error ?? 'auth' }
 
   if (!hasCardIdentity(contact)) return { error: 'no_identity' }
 
@@ -144,6 +202,13 @@ export async function commitBusinessCardCapture(
     metadata: { source: 'capture_card' },
   })
 
+  const file = photo?.get('file')
+  let photoKept: boolean | null = null
+  if (file instanceof File && file.size > 0) {
+    const label = [contact.prenom, contact.nom].filter(Boolean).join(' ') || contact.institution || String(contactId)
+    photoKept = await keepCardPhoto(g.supabase, g.userId, contactId, label, file)
+  }
+
   revalidatePath('/atelier')
-  return { ok: true, href: `/atelier/contacts?contact=${contactId}` }
+  return { ok: true, href: `/atelier/contacts?contact=${contactId}`, photoKept }
 }

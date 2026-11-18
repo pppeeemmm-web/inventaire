@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { ImportedContact } from '@/lib/contact-import-types'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import {
   commitBusinessCardCapture,
   previewBusinessCardCapture,
@@ -81,10 +82,11 @@ export function CaptureCardClient() {
   const narrow = useMediaQuery('(max-width: 767px)')
   const [text, setText] = useState('')
   const [shot, setShot] = useState<Shot | null>(null)
-  const [refineLlm, setRefineLlm] = useState(true)
   const [parsed, setParsed] = useState<ImportedContact | null>(null)
   const [meta, setMeta] = useState<CardCaptureMeta | null>(null)
   const [busy, startBusy] = useTransition()
+  const [aiBusy, setAiBusy] = useState(false)
+  const [shrinking, setShrinking] = useState(false)
   const textRef = useRef<HTMLTextAreaElement | null>(null)
 
   const inputStyle: CSSProperties = {
@@ -109,19 +111,23 @@ export function CaptureCardClient() {
     setMeta(null)
   }, [])
 
-  const onFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
+  const onFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0]
     e.target.value = ''
-    if (!f || !f.type.startsWith('image/')) return
+    if (!picked || !picked.type.startsWith('image/')) return
+    // Shrink on the phone first, like work photos: a camera photo can pass the 4.5 MB upload cap.
+    setShrinking(true)
+    const f = await downscaleImageFileForMobileIfNeeded(picked, narrow).catch(() => picked)
+    setShrinking(false)
     setShot((prev) => {
       if (prev) URL.revokeObjectURL(prev.preview)
       return { id: crypto.randomUUID(), file: f, preview: URL.createObjectURL(f) }
     })
-    setParsed(null)
-    setMeta(null)
-  }, [])
+  }, [narrow])
 
-  const canAnalyze = Boolean(shot || text.trim())
+  // « Analyser » reads the text only, with fixed rules: instant, works outdoors, never waits for an AI.
+  const canAnalyze = Boolean(text.trim())
+  const canImprove = Boolean(shot || text.trim())
 
   useEffect(() => {
     if (window.location.hash !== '#capture-card-live-text') return
@@ -134,14 +140,12 @@ export function CaptureCardClient() {
 
   const analyze = () => {
     if (!canAnalyze) {
-      toast.error(t('capture_card_err_empty'))
+      toast.error(t(shot ? 'cc_need_text' : 'capture_card_err_empty'))
       return
     }
     startBusy(async () => {
       const fd = new FormData()
-      if (text.trim()) fd.set('text', text.trim())
-      if (shot) fd.set('file', shot.file)
-      if (refineLlm) fd.set('refineWithLlm', '1')
+      fd.set('text', text.trim())
       const res = await previewBusinessCardCapture(fd)
       if ('error' in res) {
         toast.error(mapError(t, res.error))
@@ -152,15 +156,47 @@ export function CaptureCardClient() {
     })
   }
 
+  // Optional AI pass (photo reading + tidy-up). The server gives up after ~15 s; whatever is already
+  // on screen stays as it is when the AI can't be reached.
+  const improve = async () => {
+    if (!canImprove || aiBusy) return
+    setAiBusy(true)
+    try {
+      const fd = new FormData()
+      if (text.trim()) fd.set('text', text.trim())
+      if (shot) fd.set('file', shot.file)
+      fd.set('refineWithLlm', '1')
+      const res = await previewBusinessCardCapture(fd)
+      if ('error' in res || (res.meta.llm === 'none' && !res.meta.ocrUsed)) {
+        toast.error(t('cc_ai_failed'))
+        return
+      }
+      setParsed(res.contact)
+      setMeta(res.meta)
+      toast.success(t('cc_ai_done'))
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- not silent: the toast says the AI is out of reach
+    } catch {
+      toast.error(t('cc_ai_failed'))
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   const createContact = () => {
     if (!parsed) return
     startBusy(async () => {
-      const res = await commitBusinessCardCapture(parsed)
+      let photo: FormData | undefined
+      if (shot) {
+        photo = new FormData()
+        photo.set('file', shot.file)
+      }
+      const res = await commitBusinessCardCapture(parsed, photo)
       if ('error' in res) {
         toast.error(mapError(t, res.error))
         return
       }
-      toast.success(t('capture_card_ok'))
+      if (res.photoKept === false) toast.error(t('cc_photo_not_saved'))
+      else toast.success(t('capture_card_ok'))
       window.location.href = res.href
     })
   }
@@ -176,10 +212,7 @@ export function CaptureCardClient() {
     >
       <h1 className="serif" style={{ fontSize: 22 }}>{t('capture_card_title')}</h1>
       <p className="t-mono-sm" style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.5, marginBottom: 8 }}>
-        {t('capture_card_intro')}
-      </p>
-      <p className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.5, marginBottom: 16 }}>
-        {t('capture_card_vision_note')}
+        {t('cc_intro')}
       </p>
       <label
         className="btn ghost"
@@ -193,7 +226,7 @@ export function CaptureCardClient() {
           position: 'relative',
         }}
       >
-        <span>{t('capture_card_add_photo')}</span>
+        <span>{shrinking ? t('cc_shrinking') : t('capture_card_add_photo')}</span>
         <input
           type="file"
           accept="image/*"
@@ -231,6 +264,9 @@ export function CaptureCardClient() {
           >
             ×
           </button>
+          <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.5, marginTop: 6 }}>
+            {t('cc_photo_kept')}
+          </div>
         </div>
       ) : null}
       <button
@@ -256,20 +292,29 @@ export function CaptureCardClient() {
         style={inputStyle}
         aria-label={t('capture_card_placeholder')}
       />
-      <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer', marginTop: 12 }}>
-        <input type="checkbox" checked={refineLlm} onChange={(e) => setRefineLlm(e.target.checked)} />
-        <span className="t-mono-sm">{t('capture_card_refine_llm')}</span>
-      </label>
       <button
         type="button"
         className="btn primary"
         style={{ minHeight: 44, width: '100%', marginTop: 16 }}
-        disabled={busy || !canAnalyze}
+        disabled={busy || aiBusy || !canAnalyze}
         data-testid="capture-card-analyze"
         onClick={analyze}
       >
         {busy && !parsed ? t('capture_card_analyzing') : t('capture_card_analyze')}
       </button>
+      <button
+        type="button"
+        className="btn ghost"
+        style={{ minHeight: 44, width: '100%', marginTop: 8 }}
+        disabled={busy || aiBusy || !canImprove}
+        data-testid="capture-card-ai"
+        onClick={() => void improve()}
+      >
+        {aiBusy ? t('cc_ai_busy') : t('cc_ai')}
+      </button>
+      <p className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.5, marginTop: 6 }}>
+        {t('cc_ai_note')}
+      </p>
       {meta ? <MetaLine meta={meta} t={t} /> : null}
       {parsed ? <CardPreview contact={parsed} t={t} /> : null}
       {parsed ? (
@@ -283,7 +328,7 @@ export function CaptureCardClient() {
             position: 'sticky',
             bottom: 'max(12px, env(safe-area-inset-bottom))',
           }}
-          disabled={busy}
+          disabled={busy || aiBusy}
           data-testid="capture-card-create"
           onClick={createContact}
         >

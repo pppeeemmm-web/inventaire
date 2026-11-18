@@ -60,6 +60,7 @@ import { overviewDashMessages } from './overview-dash.messages'
 import { workDescriptionMessages } from './work-description.messages'
 import { exportUiMessages } from './export-ui.messages'
 import { voiceCaptureMessages } from './voice-capture.messages'
+import { captureCardMessages } from './capture-card.messages'
 import { constellationToolsMessages } from './constellation-tools.messages'
 import { versionFieldsMessages } from './version-fields.messages'
 import { workRulesMessages } from './work-rules.messages'
@@ -129,6 +130,7 @@ export const featureMessages = {
   ...workDescriptionMessages,
   ...exportUiMessages,
   ...voiceCaptureMessages,
+  ...captureCardMessages,
   ...constellationToolsMessages,
   ...versionFieldsMessages,
   ...workRulesMessages,

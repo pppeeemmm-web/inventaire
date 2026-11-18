@@ -379,8 +379,11 @@ export async function refineContactWithLlm(
     openaiModel: string
     ollamaHost: string
     ollamaModel: string
+    /** Give up after this long (card capture: the studio AI may be out of reach). Unset = no limit. */
+    timeoutMs?: number
   },
 ): Promise<{ merged: ImportedContact; llm: 'openai' | 'ollama'; note?: string }> {
+  const signal = env.timeoutMs ? AbortSignal.timeout(env.timeoutMs) : undefined
   const user = JSON.stringify(
     {
       pageUrl,
@@ -405,6 +408,7 @@ export async function refineContactWithLlm(
           { role: 'user', content: user },
         ],
       }),
+      signal,
     })
     if (!res.ok) {
       const t = await res.text()
@@ -439,6 +443,7 @@ export async function refineContactWithLlm(
         { role: 'user', content: user },
       ],
     }),
+    signal,
   })
   if (!res.ok) {
     const t = await res.text()

@@ -26,7 +26,7 @@ async function resizeForVision(buf: Buffer): Promise<Buffer> {
     .toBuffer()
 }
 
-export async function extractTextFromCardImage(buf: Buffer): Promise<string | null> {
+export async function extractTextFromCardImage(buf: Buffer, timeoutMs = 45_000): Promise<string | null> {
   if (resolveCardVisionMode() !== 'openai') return null
 
   const key = process.env.OPENAI_API_KEY ?? ''
@@ -69,7 +69,7 @@ export async function extractTextFromCardImage(buf: Buffer): Promise<string | nu
         },
       ],
     }),
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
 
   if (!res.ok) return null
