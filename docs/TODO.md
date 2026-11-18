@@ -6,7 +6,13 @@ _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md).
 
 ## 0. Bugs — fix now
 
-_None open._
+From Pem's pass, 2026-11-18 evening (screenshots in that chat; not yet reproduced):
+- [ ] Carte (map) shows nothing.
+- [ ] Contacts: deleting a contact does not update the sidebar badge count.
+- [ ] Business card: photo taken in the app → « nothing happened » (Live Text pasted from a photo taken outside worked).
+- [ ] Vault folder tree: a nested folder (Commandes → Confiés) draws its row out of line, buttons overlapping (also check speed).
+- [ ] Contact editor: phone labels « Main / Other / Work » in English in the French UI.
+- [ ] Aide (team guide) says team members record new works, reworks and photos; in fact only Pem (admin) does / approves; card « Améliorer avec l'IA » only works on Pem's laptop (Ollama) — say so. Condition report: who should make it (the custodian / closest person?) — Pem's call.
 
 ## 1. Waiting on you, Pem
 
@@ -27,6 +33,14 @@ Things only you can do:
 R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archived ([`archive/RETHINK_2026-11-14.md`](./archive/RETHINK_2026-11-14.md), 2026-11-18). Its two leftovers are in §3; R8 is parked (§5).
 
 ## 3. To build — needs a GO
+
+Contacts and Vault (Pem 2026-11-18 evening)
+- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed).
+- [ ] Vault: a naming policy for every non-picture file (today a mess).
+- [ ] AI desk: one place on the computer to run the AI passes (card « Améliorer », web address) for items captured on the phone, since the phone can't reach Ollama — needs a GO (deferred-feature rule).
+- [ ] Website legal pages: prepare the A.2 batch (8 gaps: legal pages + footer, enquiry privacy line, 13 / 25-month retention, one audience counter, opt-out, self-hosted fonts, team notice, OpenAI DPA) → `WEBSITE_LEGAL_PAGES.md`.
+- [ ] « Check the next site playbook » — which document? (ask Pem).
+
 
 Stress-test look leftovers (2026-11-18, [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
