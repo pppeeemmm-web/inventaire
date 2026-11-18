@@ -411,4 +411,184 @@ Exhibitions & events (Studio → Exhibitions) brings together exhibitions, colla
 **Next:** "Export to calendar" sends the event to a calendar. The list groups events on now, coming and past, with the works out and the returns due soon.
 `,
   },
+  {
+    id: 'contacts',
+    title: 'Contacts',
+    verified: '2026-11-18',
+    md: `
+Contacts (Business → Contacts) gathers collectors, galleries, craftspeople, suppliers, friends and institutions.
+
+## Finding a contact
+
+1. The search box looks in the name, institution, city, email and notes; the "everywhere" and "all roles" lists narrow it.
+2. The **Works**, **Holds** and **Bought** columns count the works the contact owns, the ones they keep, and the ones they bought.
+3. Clicking a row opens the contact's card.
+
+## Adding a contact
+
+- On the computer: **+ New contact**.
+- "Google CSV" imports a Google contacts export; "URL" suggests a contact from a web page, with a preview before creating it.
+
+**Watch out:** an email already used by another contact is refused.
+
+## A business card, on the phone
+
+**When:** someone hands you a card, at a fair or in the street.
+
+1. Bottom bar → **Photo · doc** → **Business card**.
+2. Photograph the card.
+3. Tap the text box twice, "Scan Text" (Live Text), point at the card, then **Analyse**: the contact fills in at once, with no AI and no studio network.
+4. If you like: **Improve with AI** (stops after 30 s; the contact stays as it is if the AI does not answer).
+5. Check the preview, then **Create contact**.
+
+**Next:** the card's photo is kept with the contact, in the Vault (Business).
+
+**Watch out:** a name or an institution is needed.
+`,
+  },
+  {
+    id: 'supplies',
+    title: 'Supplies',
+    verified: '2026-11-18',
+    md: `
+Supplies (Studio → Supplies) keeps the studio's stock: colours, binders, supports, equipment. Four tabs: **Stock**, **Count**, **Restock / Order**, **Orders**.
+
+## The stock
+
+1. Search an item by name or notes; filter by category or supplier; "low stock only" shows what is under its threshold.
+2. **−** and **+** adjust a quantity in one tap; **Edit** opens the item.
+3. **New item** adds a material; "Suppliers" (folded) lists the suppliers.
+
+## Counting
+
+1. **Count**: for each item, the recorded quantity ("System") and the counted quantity, adjusted with − and +.
+2. "Differences only" shows only what differs.
+3. **Apply** updates the stock with what was counted.
+
+## Ordering and receiving
+
+1. **Restock / Order** lists what is missing or under its minimum, by supplier. Type the quantities "To order", then "Copy order" copies its text. The minimum is set here and lights the "Low" badge.
+2. **Orders** follows supply orders; **+ Order** creates one by hand.
+3. On delivery: **Receive…**, with the quantities received; "Receive the rest…" for a delivery in several parts.
+
+**Next:** the stock updates on receipt.
+`,
+  },
+  {
+    id: 'reports',
+    title: 'Reports',
+    verified: '2026-11-18',
+    md: `
+Reports (Catalogue → Reports) makes lists to print or export, from six sources: Works, Production, Condition reports, Kaizen, Sales, Contacts.
+
+## Making a report
+
+1. Pick the source (tabs at the top).
+2. **Fields**: tick the ones to show; ▲ ▼ change their order; "Filter" on a field keeps only some values.
+3. "Search in the report…" narrows the list further.
+4. **Print**, **Export XLSX**, **CSV** or **Export PDF** at the bottom.
+
+## Keeping a report
+
+"Save as…" keeps it under a name; "Saved reports" opens it again.
+
+## Crossing the data
+
+- **Pivot** counts and adds up by rows and columns (for example: works by year and by technique).
+- "Pivot Atlas (graph)" shows the same data as a graph.
+`,
+  },
+  {
+    id: 'public',
+    title: 'Public site, Portfolio, Analytics',
+    verified: '2026-11-18',
+    md: `
+The Public group sets what the world sees: the www.thepemworkshop.com site, the PDF portfolio, and the visits.
+
+## What shows on the site
+
+A work is public when it is Available, Reserved, Sold, Consigned, on Loan or given, and neither destroyed nor lost. The app decides from the status: nothing is ticked by hand.
+
+## Public site
+
+- At the top: **Site**, **↓ PDF** and **/works** open the site, the portfolio PDF and the works page; the publish button puts the settings online (the date of the last publication is under it).
+- **Composition**: the blocks of each page (Home, Works, About); add, reorder, hide.
+- **Ambiance**: the light and shadows of each page, with rotary knobs.
+
+## Portfolio
+
+**Portfolio sections**: each section has a title, a text, a theme and the order of its works; together they make the downloadable PDF. **+ Add** creates a section; "Edit the text" opens its text.
+
+## Analytics
+
+The site's visits: page views and visitors (without Atelier sessions), the trend per day, the most viewed pages, countries and sources. "Site pages" or "All (raw)", and 7, 30 or 90 days at the top.
+`,
+  },
+  {
+    id: 'rules',
+    title: 'What the app does by itself',
+    verified: '2026-11-18',
+    md: `
+Some rules are kept by the database: every screen follows them, and nobody has to do them by hand.
+
+## A work's path
+
+- A work goes through three stages: **studio** (not catalogued yet), **catalogued, photo to take**, **ready** (catalogued and photo validated). It can go back.
+- Cataloguing needs at least one photo.
+- In the studio, the status follows the stage: **Available** when ready, **In production** otherwise.
+- Production steps follow the stage: "Catalogue" stays open while the work is not catalogued, "Photograph" while the photo is still to do.
+- Production ends the day the work becomes ready; going back clears that date and writes it in the history.
+- **Archive**: the work is catalogued first, its steps are paused; it only comes out by choice.
+
+## Who has the work
+
+- A work only leaves the studio through an order: sale, consignment, loan, gift or Entrusted.
+- The owner, the custodian and the address follow the order's steps.
+- Every change of status, owner or custodian leaves a dated line in the history.
+
+## Accidents
+
+- A destruction, a loss or a theft are recorded with a condition report. Its open orders close; a destroyed work closes its steps, a lost work pauses them (they come back if it is found).
+- A destroyed or lost work is never "Showable".
+- A work put in the bin pauses its steps; they come back if it is taken out of the bin.
+- Only an admin can delete a sold or given work.
+
+## The site
+
+What is public follows from the status (see Public site). Validating the photo of a studio work makes it Available and visible: the app asks first.
+`,
+  },
+  {
+    id: 'glossary',
+    title: 'Glossary',
+    verified: '2026-11-18',
+    md: `
+The app's words, in French and English.
+
+- **Œuvre** (Work): a piece by Pem, with its number (#2407).
+- **Fiche** (Card): a work's page, which opens at the side.
+- **Catalogué** (Catalogued): the work is described and photographed at least once.
+- **En production** (In production): the work is in the studio and not ready yet.
+- **Disponible** (Available): ready, in the studio, shown on the site.
+- **Archive** (Archive): kept by the studio, out of circulation.
+- **Réservé, Vendu** (Reserved, Sold): steps of a sale.
+- **Consigné / Dépôt** (Consigned / Consignment): left with a gallery that may sell it.
+- **Prêt** (Loan): lent for a time, then back.
+- **Don** (Gift): given; the recipient becomes the owner at the hand-over.
+- **Confié** (Entrusted): with a craftsperson (framer, restorer) for a job.
+- **Propriétaire** (Owner): who the work belongs to.
+- **Dépositaire** (Custodian): who has it in hand.
+- **Commande** (Order): the record of a work leaving the studio, with its steps and papers.
+- **Envoi** (Shipment): a parcel or a collection, for one or more orders.
+- **Constat** (Condition report): a work's condition on a date, with its issues and their photos.
+- **Reprise** (Rework): a work worked on again, keeping its number.
+- **Période, Source** (Period, Source): when and from what the work was made (memory, motif, photo…).
+- **Séance de terrain** (Field session): a photographed work session.
+- **Journal** (Journal): one page per day, writings and voice notes.
+- **Fil** (Feed): Pem's queue: proposals, lines and drafts to sort (admins).
+- **Kaizen**: continuous improvement of the studio and the app; "Operations & Strategy" and this Help.
+- **Coffre** (Vault): the documents (order papers, certificates, business cards).
+- **Cartel** (Label): the small printed text next to an exhibited work.
+`,
+  },
 ]

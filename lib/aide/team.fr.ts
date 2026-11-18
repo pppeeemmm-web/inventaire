@@ -411,4 +411,185 @@ Expositions & événements (Studio → Expositions) réunit les expositions, col
 **Ensuite :** « Exporter au calendrier » envoie l'événement vers un agenda. La liste groupe les événements en cours, à venir et passés, avec les œuvres sorties et les retours proches.
 `,
   },
+  {
+    id: 'contacts',
+    title: 'Contacts',
+    verified: '2026-11-18',
+    md: `
+Contacts (Business → Contacts) réunit les collectionneurs, galeries, artisans, fournisseurs, amis et institutions.
+
+## Trouver un contact
+
+1. La case de recherche cherche dans le nom, l'institution, la ville, l'e-mail et les notes ; « Partout » et « Tous rôles » affinent.
+2. Les colonnes **Œuvres**, **Détient** et **Achats** comptent les œuvres dont il est propriétaire, celles qu'il garde chez lui, et celles qu'il a achetées.
+3. Un clic sur une ligne ouvre la fiche du contact.
+
+## Ajouter un contact
+
+- À l'ordinateur : **+ Nouveau contact**.
+- « Google CSV » importe un export de contacts Google ; « URL » propose un contact à partir d'une page web, avec un aperçu avant de créer.
+
+**Attention :** un e-mail déjà utilisé par un autre contact est refusé.
+
+## Une carte de visite, au téléphone
+
+**Quand :** on vous tend une carte, sur un salon ou dans la rue.
+
+1. Barre du bas → **Photo · doc** → **Carte de visite**.
+2. Photographiez la carte.
+3. Touchez deux fois la case de texte, « Scanner le texte » (Live Text), visez la carte, puis **Analyser** : le contact se remplit tout de suite, sans IA ni réseau de l'atelier.
+4. Si vous voulez : **Améliorer avec l'IA** (s'arrête après 30 s ; le contact reste tel quel si l'IA ne répond pas).
+5. Vérifiez l'aperçu, puis **Créer le contact**.
+
+**Ensuite :** la photo de la carte est gardée avec le contact, dans le Coffre (Business).
+
+**Attention :** il faut au moins un nom ou une institution.
+`,
+  },
+  {
+    id: 'supplies',
+    title: 'Fournitures',
+    verified: '2026-11-18',
+    md: `
+Fournitures (Studio → Fournitures) tient le stock de l'atelier : couleurs, liants, supports, matériel. Quatre onglets : **Stock**, **Comptage**, **Réassort / Commande**, **Commandes**.
+
+## Le stock
+
+1. Cherchez un article par nom ou notes ; filtrez par catégorie ou fournisseur ; « Stock bas seulement » montre ce qui passe sous son seuil.
+2. **−** et **+** ajustent la quantité d'un geste ; **Éditer** ouvre l'article.
+3. **Nouvel article** ajoute un matériau ; « Fournisseurs » (replié) liste les fournisseurs.
+
+## Compter
+
+1. **Comptage** : pour chaque article, la quantité enregistrée (« Système ») et la quantité comptée, à ajuster avec − et +.
+2. « Écarts seulement » ne montre que ce qui diffère.
+3. **Appliquer** met le stock à jour avec ce qui a été compté.
+
+## Commander et recevoir
+
+1. **Réassort / Commande** liste ce qui manque ou passe sous son minimum, par fournisseur. Saisissez les quantités « À commander », puis « Copier la commande » copie son texte. Le minimum se règle ici et allume le badge « Bas ».
+2. **Commandes** suit les commandes de fournitures ; **+ Commande** en crée une à la main.
+3. À la livraison : **Recevoir…**, avec les quantités reçues ; « Recevoir le reste… » pour une livraison en plusieurs fois.
+
+**Ensuite :** le stock se met à jour à la réception.
+`,
+  },
+  {
+    id: 'reports',
+    title: 'Rapports',
+    verified: '2026-11-18',
+    md: `
+Rapports (Catalogue → Rapports) fait des listes à imprimer ou à exporter, à partir de six sources : Œuvres, Production, Constats, Kaizen, Ventes, Contacts.
+
+## Faire un rapport
+
+1. Choisissez la source (onglets du haut).
+2. **Champs** : cochez ceux à afficher ; ▲ ▼ changent leur ordre ; « Filtrer » sur un champ ne garde que certaines valeurs.
+3. « Rechercher dans le rapport… » réduit encore la liste.
+4. **Imprimer**, **Exporter XLSX**, **CSV** ou **Exporter PDF** en bas.
+
+## Garder un rapport
+
+« Enregistrer sous… » le garde avec un nom ; « Rapports enregistrés » le rouvre.
+
+## Croiser les données
+
+- **Tableau croisé** compte et additionne par lignes et colonnes (par exemple : œuvres par année et par technique).
+- « Pivot Atlas (graphe) » montre les mêmes données en graphique.
+
+`,
+  },
+  {
+    id: 'public',
+    title: 'Site public, Portfolio, Analytiques',
+    verified: '2026-11-18',
+    md: `
+Le groupe Public règle ce que le monde voit : le site www.thepemworkshop.com, le portfolio PDF, et les visites.
+
+## Ce qui apparaît sur le site
+
+Une œuvre est publique quand elle est Disponible, Réservée, Vendue, Consignée, Prêtée ou donnée, sans être détruite ni perdue. L'application le décide d'après le statut : on ne coche rien à la main.
+
+## Site public
+
+- En haut : **Site**, **↓ PDF** et **/works** ouvrent le site, le PDF du portfolio et la page des œuvres ; **Publier →** met les réglages en ligne (la date de la dernière publication est dessous).
+- **Composition** : les blocs de chaque page (Accueil, Œuvres, À propos) ; ajouter, réordonner, masquer.
+- **Ambiance** : la lumière et les ombres de chaque page, avec des boutons rotatifs.
+
+## Portfolio
+
+**Sections Portfolio** : chaque section a un titre, un texte, un thème et l'ordre de ses œuvres ; elles composent le PDF téléchargeable. **+ Ajouter** crée une section ; « Éditer le texte » ouvre son texte.
+
+## Analytiques
+
+Les visites du site : pages vues et visiteurs (sans les sessions de l'Atelier), la tendance par jour, les pages les plus vues, les pays et les sources. « Pages site » ou « Tout brut », et 7, 30 ou 90 jours en haut.
+`,
+  },
+  {
+    id: 'rules',
+    title: 'Ce que l\'application fait d\'elle-même',
+    verified: '2026-11-18',
+    md: `
+Certaines règles sont tenues par la base de données : chaque écran les suit, et personne n'a à les faire à la main.
+
+## Le parcours d'une œuvre
+
+- Une œuvre passe par trois stades : **atelier** (pas encore cataloguée), **cataloguée, photo à faire**, **prête** (cataloguée et photo validée). On peut revenir en arrière.
+- Cataloguer demande au moins une photo.
+- À l'atelier, le statut suit le stade : **Disponible** quand elle est prête, **En production** sinon.
+- Les étapes de Production suivent le stade : « Cataloguer » est ouverte tant que l'œuvre n'est pas cataloguée, « Photographier » tant que la photo reste à faire.
+- La production se termine le jour où l'œuvre devient prête ; revenir en arrière efface cette date et l'écrit dans l'historique.
+- **Archive** : l'œuvre est cataloguée d'abord, ses étapes sont mises en pause ; elle n'en ressort que par un choix.
+
+## Qui a l'œuvre
+
+- Une œuvre ne quitte l'atelier que par une commande : vente, dépôt, prêt, don ou Confié.
+- Le propriétaire, le dépositaire et l'adresse suivent les étapes de la commande.
+- Chaque changement de statut, de propriétaire ou de dépositaire laisse une ligne datée dans l'historique.
+
+## Les accidents
+
+- Une destruction, une perte ou un vol se déclarent par un constat. Ses commandes ouvertes se ferment ; une œuvre détruite ferme ses étapes, une œuvre perdue les met en pause (elles reviennent si on la retrouve).
+- Une œuvre détruite ou perdue n'est jamais « Exposable ».
+- Une œuvre mise à la corbeille met ses étapes en pause ; elles reviennent si on la sort de la corbeille.
+- Seul un administrateur peut supprimer une œuvre vendue ou donnée.
+
+## Le site
+
+Ce qui est public découle du statut (voir Site public). Valider la photo d'une œuvre de l'atelier la rend Disponible et visible : l'application demande d'abord.
+`,
+  },
+  {
+    id: 'glossary',
+    title: 'Glossaire',
+    verified: '2026-11-18',
+    md: `
+Les mots de l'application, en français et en anglais.
+
+- **Œuvre** (Work) : une pièce de Pem, avec son numéro (#2407).
+- **Fiche** (Card) : la page d'une œuvre, qui s'ouvre sur le côté.
+- **Catalogué** (Catalogued) : l'œuvre est décrite et photographiée au moins une fois.
+- **En production** (In production) : l'œuvre est à l'atelier et pas encore prête.
+- **Disponible** (Available) : prête, à l'atelier, visible sur le site.
+- **Archive** (Archive) : gardée par l'atelier, hors circulation.
+- **Réservé, Vendu** (Reserved, Sold) : étapes d'une vente.
+- **Consigné / Dépôt** (Consigned / Consignment) : confiée à une galerie qui peut la vendre.
+- **Prêt** (Loan) : prêtée pour un temps, puis rentrée.
+- **Don** (Gift) : donnée ; le bénéficiaire devient propriétaire à la remise.
+- **Confié** (Entrusted) : chez un artisan (encadreur, restaurateur) pour un travail.
+- **Propriétaire** (Owner) : à qui l'œuvre appartient.
+- **Dépositaire** (Custodian) : qui l'a entre les mains.
+- **Commande** (Order) : la trace d'une œuvre qui quitte l'atelier, avec ses étapes et ses papiers.
+- **Envoi** (Shipment) : un colis ou un retrait, pour une ou plusieurs commandes.
+- **Constat** (Condition report) : l'état d'une œuvre à une date, avec ses problèmes et leurs photos.
+- **Reprise** (Rework) : une œuvre retravaillée, qui garde son numéro.
+- **Période, Source** (Period, Source) : quand et à partir de quoi l'œuvre est faite (mémoire, motif, photo…).
+- **Séance de terrain** (Field session) : une séance de travail photographiée.
+- **Journal** (Journal) : une page par jour, écrits et notes vocales.
+- **Fil** (Feed) : la file de Pem : propositions, lignes et brouillons à trier (administrateurs).
+- **Kaizen** : l'amélioration continue de l'atelier et de l'application ; « Opérations & Stratégie » et cette Aide.
+- **Coffre** (Vault) : les documents (papiers des commandes, certificats, cartes de visite).
+- **Cartel** (Label) : le petit texte imprimé à côté d'une œuvre exposée.
+`,
+  },
 ]
