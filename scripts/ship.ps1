@@ -9,11 +9,13 @@
   & .\scripts\ship.ps1 -m "fix(atelier): ..."            # checks, commit, push
   & .\scripts\ship.ps1 -m "fix(atelier): ..." -NoPush    # checks, commit only (push later with: & .\scripts\ship.ps1)
   & .\scripts\ship.ps1                                     # push the local commits already made
+  & .\scripts\ship.ps1 -NoWhatsNew                         # push feat/fix commits that have no team-facing effect
 #>
 param(
   [string]$m = "",
   [switch]$NoPush,
-  [switch]$NoChecks
+  [switch]$NoChecks,
+  [switch]$NoWhatsNew
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +28,20 @@ if ((G branch --show-current) -ne "main") { throw "Refusing: not on main." }
 $dirty = G status --porcelain
 if ($dirty -and -not $m) { throw "Changes in the tree but no -m message." }
 $willPush = -not $NoPush -and ($dirty -or (G rev-list --count origin/main..HEAD) -ne "0")
+
+# What's new (owner GO 2026-11-18): a push carrying feat/fix commits must carry a lib/whats-new.ts change.
+# Admin-only or internal changes (no team-facing effect) pass with -NoWhatsNew.
+if ($willPush -and -not $NoWhatsNew) {
+  $subjects = @((G log --format=%s origin/main..HEAD) -split "`r?`n" | Where-Object { $_ })
+  if ($dirty) { $subjects += $m }
+  $teamFacing = @($subjects | Where-Object { $_ -match '^(feat|fix)(\(|:|!)' })
+  if ($teamFacing.Count) {
+    $changed = @((G diff --name-only origin/main..HEAD) -split "`r?`n") + @((G status --porcelain) -split "`r?`n" | ForEach-Object { if ($_.Length -gt 3) { $_.Substring(3) } })
+    if (-not ($changed -contains 'lib/whats-new.ts')) {
+      throw "Refusing: $($teamFacing.Count) feat/fix commit(s) in this push but no lib/whats-new.ts change. Add the What's new item (FR + EN), or pass -NoWhatsNew for an admin-only / internal change.`n  $($teamFacing -join "`n  ")"
+    }
+  }
+}
 
 # Checks before any commit and before any push (landed worktree commits included), ~10 s.
 if (-not $NoChecks -and ($dirty -or $willPush)) {

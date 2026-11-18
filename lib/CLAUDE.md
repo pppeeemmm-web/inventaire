@@ -1,0 +1,10 @@
+# lib/ — What's new, images, storage (loaded when working here; root CLAUDE.md still applies)
+
+- What's new: item in `WHATS_NEW_ITEMS` (`lib/whats-new.ts`, newest first, with day) + its `wn_<id>_t` / `wn_<id>_d` copy FR + EN in `lib/i18n/messages/whats-new-items.messages.ts` (NOT registered in `index.ts`: `WhatsNewList` loads it on open). `whats-new.messages.ts` = dialog chrome only. New batch = bump `WHATS_NEW_RELEASE`. Plain language; admin-only tools go to the Aide, not here. `ship.ps1` refuses a feat/fix push without it (`-NoWhatsNew` to pass).
+
+- R2 endpoint: EU only, `https://<account_id>.eu.r2.cloudflarestorage.com`. No global endpoint.
+- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 (thumb q=70) + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
+- No AVIF pass-through. Tried and removed: a phone export at q80 is ~5.8x the stored size for ~230ms saved. If revisited: libvips reports AVIF as `heif` + `compression: 'av1'`, so `meta.format === 'avif'` never matches. Sharp 0.34.5 / libheif 1.20 read AVIF.
+- Mobile client shrinks before upload (`downscaleImageFileForMobileIfNeeded`): re-encode when long side > maxEdge **or** bytes > `MOBILE_MAX_UPLOAD_BYTES`. Vercel caps a Server Action body at 4.5MB — above it the platform returns HTML 413 and Next reports "An unexpected response was received from the server" before any app code runs.
+- Storage keys (`lib/image-upload.ts`): `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes. Constat photos `constat/C_{oid}_{report}_{rand8}_{hash8}.avif` + `thumbs/constat/…`; inspiration `inspiration/I_…` (2100 px). Vault bucket: documents; business cards `cards/K_{contactId}_{hash8}.avif`.
+- R2 delete: `r2SoftDeleteObject(key)` (copies to `recycle/<YYYY-MM-DD>/<key>` first). Lifecycle: `recycle/` 90d; `ledger/` screenshots 30d.
