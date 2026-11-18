@@ -2,7 +2,7 @@
 
 // Cooling-off window of a sale (« délai de rétractation », R7): read from the sale `work_order`
 // the work is on. The window starts at « Livrée » (`return_window_starts_at`, stamped by
-// `advanceWorkOrder`) and lasts `return_window_days`. Was: `sale_order` + `BATCH_IDS` notes.
+// `advanceWorkOrder`) and lasts `return_window_days`. Was: the former sale table + a works list kept in its notes.
 
 import { createClient } from '@/lib/supabase/server'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'

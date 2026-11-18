@@ -41,6 +41,19 @@ export function saleMoneyState(o: SaleWindowFields, today = parisToday()): SaleM
   return today > last ? 'definitive' : 'held'
 }
 
+/**
+ * The day a sale's money became definitive (Pem 2026-11-18: held money counts « the year it becomes
+ * definitive »): the day after the last return day; delivery day when the sale has no period.
+ * Null while the money is not definitive.
+ */
+export function definitiveDay(o: SaleWindowFields & { delivered_at?: string | null; paid_at?: string | null }, today = parisToday()): string | null {
+  if (saleMoneyState(o, today) !== 'definitive') return null
+  const last = returnLastDay(o)
+  if (last) return addCalendarDaysIso(last, 1)
+  const at = o.return_window_starts_at ?? o.delivered_at ?? o.paid_at
+  return at ? at.slice(0, 10) : null
+}
+
 /** Whole days left to return (0 on the last day), or null when no period is running. */
 export function returnDaysLeft(o: SaleWindowFields, today = parisToday()): number | null {
   if (o.status !== 'delivered') return null

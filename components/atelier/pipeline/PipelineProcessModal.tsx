@@ -8,6 +8,7 @@ import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrde
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
+import { ProcessOrders } from '@/components/atelier/pipeline/PipelineProcessDrawer'
 import { fromSuiviProcess, fromSuiviEtape } from '@/lib/pipeline/suivi-client'
 import { toLayoutJson } from '@/lib/exhibitions/exhibition-client'
 import {
@@ -588,6 +589,10 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
                 </div>
               </div>
             </div>
+          )}
+
+          {process?.id && (type === 'vente' || type === 'consignment') && (
+            <div style={{ marginBottom: 20 }}><ProcessOrders process={process} type={type} /></div>
           )}
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 120px', gap:20 }}>

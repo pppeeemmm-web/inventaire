@@ -11,6 +11,7 @@ import { untitledLine } from '@/lib/work-preview-cache'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { completeMobileSale, searchSaleWorks, type CompleteMobileSaleResult } from '@/app/atelier/sale/new/actions'
+import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
 export type MobileSaleWork = {
   OeuvreID: number
@@ -24,6 +25,8 @@ export type MobileSaleWork = {
   Catalogué: boolean | null
   NeedsPhotograph: boolean | null
   txtImageNameLink: string | null
+  /** VAT rate set on the work (0 / null = not decided yet). */
+  tva_rate?: number | null
 }
 
 export type MobileSaleContact = {
@@ -89,6 +92,8 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0][0])
   const [notes, setNotes] = useState('')
+  /** « Emportée aujourd'hui »: null = follows the payment (on when paid in full on the spot). */
+  const [takeawayPick, setTakeawayPick] = useState<boolean | null>(null)
   const [result, setResult] = useState<CompleteMobileSaleResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, startTransition] = useTransition()
@@ -162,6 +167,8 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
   const finalNumber = Number(finalPrice || 0)
   const paidNumber = Number(paymentAmount || 0)
   const remaining = Math.max(0, finalNumber - paidNumber)
+  const paidInFull = finalNumber > 0 && paidNumber >= finalNumber - 0.005
+  const takeaway = paidInFull && (takeawayPick ?? true)
 
   function formatEur(n: number): string {
     return n > 0 ? `€ ${n.toLocaleString(locale)}` : '—'
@@ -243,6 +250,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
     fd.set('payment_method', paymentMethod)
     fd.set('deposit_pct', finalNumber > 0 && paidNumber > 0 && paidNumber < finalNumber ? String(Math.round((paidNumber / finalNumber) * 100)) : '')
     fd.set('notes', notes)
+    if (takeaway) fd.set('takeaway', '1')
 
     startTransition(() => {
       void completeMobileSale(fd).then((response) => {
@@ -259,7 +267,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
           <div className="t-label" style={{ color: 'var(--sage)' }}>{t('sale_mobile_done_kicker')}</div>
           <h1 className="serif" style={titleStyle}>{t('sale_mobile_done_title')}</h1>
           <p style={mutedStyle}>
-            {t(result.status === 'paid' ? 'sale_mobile_done_completed' : result.status === 'draft' ? 'sale_mobile_done_draft' : 'sale_mobile_done_pending')}
+            {t(result.status === 'delivered' ? 'ord_mobile_done_delivered' : result.status === 'paid' ? 'sale_mobile_done_completed' : result.status === 'draft' ? 'sale_mobile_done_draft' : 'sale_mobile_done_pending')}
           </p>
           <div style={summaryGridStyle}>
             <span>{t('sale_mobile_summary_order')}</span>
@@ -373,8 +381,19 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
               />
               <label style={labelStyle}>{t('sale_mobile_final_price')}</label>
               <input value={finalPrice} onChange={(event) => setFinalPrice(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-final-price" />
+              <VatLine price={finalNumber || null} rates={selectedWorks.map((w) => w.tva_rate)} />
               <label style={labelStyle}>{t('sale_mobile_payment_amount')}</label>
               <input value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-payment-amount" />
+              {paidInFull ? (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, cursor: 'pointer', marginTop: 4 }}>
+                  <input type="checkbox" checked={takeaway} onChange={(event) => setTakeawayPick(event.target.checked)} data-testid="mobile-sale-takeaway"
+                    style={{ width: 22, height: 22, marginTop: 2, flex: 'none', accentColor: 'var(--ac)' }} />
+                  <span style={{ fontSize: 14 }}>
+                    {t('ord_takeaway')}
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t(takeaway ? 'ord_takeaway_on' : 'ord_takeaway_off')}</span>
+                  </span>
+                </label>
+              ) : null}
               <label style={labelStyle}>{t('sale_mobile_payment_method')}</label>
               <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} style={inputStyle}>
                 {PAYMENT_METHODS.map(([value, key]) => (
@@ -399,6 +418,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
               <strong>{formatEur(paidNumber)}</strong>
               <span>{t('sale_mobile_summary_remaining')}</span>
               <strong>{formatEur(remaining)}</strong>
+              {paidInFull ? <><span>{t('ord_takeaway')}</span><strong>{t(takeaway ? 'yes' : 'no')}</strong></> : null}
             </div>
           </section>
 

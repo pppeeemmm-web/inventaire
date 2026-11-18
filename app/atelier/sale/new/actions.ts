@@ -14,7 +14,7 @@ import {
   recordOrderPayment,
 } from '@/app/atelier/(portal)/sales/orders-actions'
 
-export type MobileSaleStatus = 'draft' | 'signed' | 'deposit_paid' | 'paid'
+export type MobileSaleStatus = 'draft' | 'signed' | 'deposit_paid' | 'paid' | 'delivered'
 
 export type CompleteMobileSaleResult =
   | { ok: true; order: { id: string; ref: string | null }; status: MobileSaleStatus; totalPaid: number }
@@ -31,6 +31,8 @@ export async function completeMobileSale(formData: FormData): Promise<CompleteMo
   const finalPrice = numberFromFormData(formData, 'prix_final')
   const paymentAmount = numberFromFormData(formData, 'payment_amount')
   const paymentMethod = String(formData.get('payment_method') || '').trim() || 'Paiement externe'
+  // « Emportée aujourd'hui » (Pem 2026-11-18): paid at the studio and taken away → « Livrée » at once.
+  const takeaway = formData.get('takeaway') === '1' ? '1' : '0'
 
   if (formData.getAll('oeuvre_ids').length === 0) return { error: 'ord_err_no_work' }
   if (finalPrice <= 0) return { error: 'ord_err_price' }
@@ -45,6 +47,7 @@ export async function completeMobileSale(formData: FormData): Promise<CompleteMo
     if (typeof v === 'string' && v.trim() !== '') fd.append(to, v)
   }
 
+  if (takeaway === '1') fd.append('takeaway', '1')
   const created = await createWorkOrder(fd)
   if ('error' in created) return { error: created.error }
   const order = { id: created.id, ref: created.ref }
@@ -58,6 +61,7 @@ export async function completeMobileSale(formData: FormData): Promise<CompleteMo
     pay.append('order_id', order.id)
     pay.append('amount', String(paymentAmount))
     pay.append('method', paymentMethod)
+    pay.append('takeaway', takeaway)
     const paid = await recordOrderPayment(pay)
     if ('error' in paid) return { error: paid.error }
     status = paid.status as MobileSaleStatus
@@ -80,7 +84,7 @@ export async function searchSaleWorks(q: string): Promise<MobileSaleWork[]> {
   if (!term) return []
   let query = supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Technique, "Année", Prix, PrixFinal, Discount, statusId, "Catalogué", NeedsPhotograph, txtImageNameLink')
+    .select('OeuvreID, Titre, Technique, "Année", Prix, PrixFinal, Discount, statusId, "Catalogué", NeedsPhotograph, txtImageNameLink, tva_rate')
     .is('deleted_at', null)
     .limit(14)
   query = /^-?\d+$/.test(term) ? query.eq('OeuvreID', Number(term)) : query.ilike('Titre', `%${term.replace(/[%_]/g, '')}%`)

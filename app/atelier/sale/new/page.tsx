@@ -23,7 +23,7 @@ export default async function SaleNewPage() {
   const [worksRes, contactsRes, statusesRes, techniquesRes, groupsRes] = await Promise.all([
     supabase
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, "Année", Prix, PrixFinal, Discount, statusId, "Catalogué", NeedsPhotograph, txtImageNameLink')
+      .select('OeuvreID, Titre, Technique, "Année", Prix, PrixFinal, Discount, statusId, "Catalogué", NeedsPhotograph, txtImageNameLink, tva_rate')
       .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
       .limit(300),

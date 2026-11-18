@@ -215,8 +215,11 @@ const ORDER_LETTER: Record<string, string> = { sale: 'V', consignment: 'D', loan
 /**
  * R7: a sale / consignment process links to its order(s) in « Commandes »; the papers and the
  * steps live there (was: a « Bon commercial » PDF regenerated here — found issue 1).
+ * Shown in the process drawer and, for a saved process, in its edit dialog (Pem 2026-11-18 review:
+ * the dialog is where a process is opened from the Gantt « edit » and it showed nothing).
+ * `type` = the type picked in the dialog (it may differ from the saved one).
  */
-function ProcessOrders({ process }: { process: Process }) {
+export function ProcessOrders({ process, type }: { process: Process; type?: string }) {
   const { t } = useSuiviLabels()
   const [orders, setOrders] = useState<ProcessOrderLink[] | null>(null)
   useEffect(() => {
@@ -225,14 +228,15 @@ function ProcessOrders({ process }: { process: Process }) {
     return () => { live = false }
   }, [process.id])
 
-  const commercial = process.type === 'consignment' || process.type === 'vente'
+  const kindOf = type ?? process.type
+  const commercial = kindOf === 'consignment' || kindOf === 'vente'
   if (orders === null || (!commercial && orders.length === 0)) return null
 
-  const q = new URLSearchParams({ new: process.type === 'vente' ? 'sale' : 'consignment', process: process.id })
+  const q = new URLSearchParams({ new: kindOf === 'vente' ? 'sale' : 'consignment', process: process.id })
   if (process.oeuvre_id) q.set('works', String(process.oeuvre_id))
   if (process.contact_id) q.set('party', String(process.contact_id))
-  if (process.type === 'consignment' && process.date_debut) q.set('start', process.date_debut)
-  if (process.type === 'consignment' && process.date_fin) q.set('end', process.date_fin)
+  if (kindOf === 'consignment' && process.date_debut) q.set('start', process.date_debut)
+  if (kindOf === 'consignment' && process.date_fin) q.set('end', process.date_fin)
 
   return (
     <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>

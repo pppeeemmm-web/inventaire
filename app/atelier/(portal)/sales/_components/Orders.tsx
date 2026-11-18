@@ -9,9 +9,10 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useSearchParams } from 'next/navigation'
-import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
+import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
+import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 import { WorkLoupeThumb, WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
-import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, recordOrderPayment, returnSaleOrder, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, markSaleRefunded, recordOrderPayment, returnSaleOrder, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
 import { returnDaysLeft, returnLastDay, saleMoneyState } from '@/lib/sales/sale-money'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
@@ -140,7 +141,9 @@ export function Orders({ openWork, contacts }: Props) {
   const [formOpen, setFormOpen] = useState(false)
   const [formInitial, setFormInitial] = useState<NewOrderInitial | undefined>(undefined)
   const [payOpen, setPayOpen] = useState(false)
-  const [pay, setPay] = useState({ amount: '', method: PAY_METHODS[0][0], date: '' })
+  const [pay, setPay] = useState({ amount: '', method: PAY_METHODS[0][0], date: '', takeaway: false })
+  const [refundOpen, setRefundOpen] = useState(false)
+  const [refundDay, setRefundDay] = useState('')
   const [stepBusy, setStepBusy] = useState(false)
   const [stepErr, setStepErr] = useState<string | null>(null)
   const [paperBusy, setPaperBusy] = useState(false)
@@ -224,7 +227,7 @@ export function Orders({ openWork, contacts }: Props) {
   function openPay(o: WorkOrderView) {
     const left = Math.max(0, (o.price_final ?? 0) - o.paid_total)
     const deposit = o.status === 'signed' && o.deposit_pct && o.price_final ? Math.round(o.price_final * o.deposit_pct) / 100 : null
-    setPay({ amount: String(deposit ?? left), method: PAY_METHODS[0][0], date: new Date().toISOString().slice(0, 10) })
+    setPay({ amount: String(deposit ?? left), method: PAY_METHODS[0][0], date: new Date().toISOString().slice(0, 10), takeaway: o.shipping_method === 'emportee' })
     setPayOpen(true); setStepErr(null)
   }
 
@@ -237,9 +240,24 @@ export function Orders({ openWork, contacts }: Props) {
       fd.append('amount', pay.amount)
       fd.append('method', pay.method)
       fd.append('payment_date', pay.date)
+      // « Emportée aujourd'hui » only matters when this payment settles the price.
+      if (paysInFull(o, pay.amount)) fd.append('takeaway', pay.takeaway ? '1' : '0')
       const res = await recordOrderPayment(fd)
       if ('error' in res) setStepErr(orderErrorText(res.error, t))
       else setPayOpen(false)
+      await load()
+    } finally {
+      setStepBusy(false)
+    }
+  }
+
+  async function saveRefund(o: WorkOrderView) {
+    if (!refundDay) return
+    setStepBusy(true); setStepErr(null)
+    try {
+      const res = await markSaleRefunded(o.id, refundDay)
+      if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      else setRefundOpen(false)
       await load()
     } finally {
       setStepBusy(false)
@@ -278,6 +296,9 @@ export function Orders({ openWork, contacts }: Props) {
     }
     return c
   }, [orders, showClosed])
+
+  /** Finished orders for the kind on screen (shown with « + closes »: livrées, rentrées, remis…). */
+  const finishedCount = useMemo(() => (orders ?? []).filter((o) => FINISHED.has(o.status) && (kind === 'all' || o.kind === kind)).length, [orders, kind])
 
   const visible = useMemo(() => (orders ?? []).filter((o) =>
     (kind === 'all' || o.kind === kind) && (showClosed || !FINISHED.has(o.status)),
@@ -350,10 +371,10 @@ export function Orders({ openWork, contacts }: Props) {
         )
       })}
       <span style={{ flex: 1 }} />
-      <button type="button" onClick={() => setShowClosed((v) => !v)} aria-pressed={showClosed} style={{
+      <button type="button" onClick={() => setShowClosed((v) => !v)} aria-pressed={showClosed} title={t('ord_filter_closed_tt')} style={{
         minHeight: narrow ? 44 : 30, padding: '0 10px', borderRadius: 16, border: `1px solid ${showClosed ? 'var(--bd3)' : 'var(--bd2)'}`,
         background: showClosed ? 'var(--bg3)' : 'none', color: showClosed ? 'var(--tx)' : 'var(--tx2)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-      }}>{t('ord_filter_closed')}</button>
+      }}>{t('ord_filter_closed')}<span style={{ color: 'var(--tx3)', fontSize: 11, marginLeft: 6 }}>{finishedCount}</span></button>
     </div>
   )
 
@@ -467,6 +488,16 @@ export function Orders({ openWork, contacts }: Props) {
                   {PAY_METHODS.map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
                 </select>
               </label>
+              {paysInFull(o, pay.amount) && (
+                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, cursor: 'pointer', color: 'var(--tx)' }}>
+                  <input type="checkbox" checked={pay.takeaway} onChange={(e) => setPay((p) => ({ ...p, takeaway: e.target.checked }))} data-testid="order-pay-takeaway"
+                    style={{ width: 22, height: 22, marginTop: 2, flex: 'none', accentColor: 'var(--ac)' }} />
+                  <span style={{ fontSize: 14 }}>
+                    {t('ord_takeaway')}
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t(pay.takeaway ? 'ord_takeaway_on' : 'ord_takeaway_off')}</span>
+                  </span>
+                </label>
+              )}
               <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--tx3)' }}>{t('ord_pay_hint')}</div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row' }}>
                 <button type="button" className="btn primary" disabled={stepBusy} onClick={() => { void savePay(o) }} style={{ minHeight: 44 }}>
@@ -519,6 +550,7 @@ export function Orders({ openWork, contacts }: Props) {
               {o.commission_pct != null && <><span style={{ color: 'var(--tx3)' }}>{t('ord_commission')}</span><span>{`${o.commission_pct} %`}</span></>}
               {o.kind === 'sale' && o.price_final != null && (
                 <>
+                  <span style={{ gridColumn: '1 / -1' }}><VatLine price={o.price_final} rates={o.works.map((w) => w.tva_rate)} currency={o.currency} /></span>
                   <span style={{ color: 'var(--tx3)' }}>{t('ord_paid_total')}</span><span>{fmtMoney(o.paid_total, o.currency)}</span>
                   <span style={{ color: 'var(--tx3)' }}>{t('ord_remaining')}</span><span>{fmtMoney(Math.max(0, o.price_final - o.paid_total), o.currency)}</span>
                 </>
@@ -529,13 +561,34 @@ export function Orders({ openWork, contacts }: Props) {
               const state = saleMoneyState(o)
               const last = returnLastDay(o)
               const text = state === 'refund'
-                ? (o.paid_total > 0 ? t('ord_money_refund').replace('{amount}', fmtMoney(o.paid_total, o.currency)) : null)
+                ? (o.paid_total > 0
+                    ? o.refunded_at ? t('ord_refunded_on').replace('{date}', fmtDate(o.refunded_at) ?? '') : t('ord_money_refund').replace('{amount}', fmtMoney(o.paid_total, o.currency))
+                    : null)
                 : state === 'definitive' ? t('ord_money_definitive_on').replace('{date}', fmtDate(last ? addCalendarDaysIso(last, 1) : o.delivered_at) ?? '')
                 : t('ord_money_held')
               return text ? (
-                <div data-testid="order-money-state" style={{ marginTop: 8, fontSize: 12, color: state === 'refund' ? 'var(--rust)' : state === 'definitive' ? 'var(--sage)' : 'var(--tx2)' }}>{text}</div>
+                <div data-testid="order-money-state" style={{ marginTop: 8, fontSize: 12, color: state === 'refund' && !o.refunded_at ? 'var(--rust)' : state === 'definitive' || o.refunded_at ? 'var(--sage)' : 'var(--tx2)' }}>{text}</div>
               ) : null
             })()}
+            {REFUNDED_AT_LIVE && o.kind === 'sale' && o.status === 'cancelled' && o.paid_total > 0 && !o.refunded_at && (
+              refundOpen ? (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: 8, alignItems: narrow ? 'stretch' : 'flex-end', flexWrap: 'wrap' }}>
+                  <label style={payLabel}>
+                    {t('ord_refund_date')}
+                    <input className="input" type="date" value={refundDay} onChange={(e) => setRefundDay(e.target.value)} style={payInput} />
+                  </label>
+                  <button type="button" className="btn primary" disabled={stepBusy || !refundDay} onClick={() => { void saveRefund(o) }} style={{ minHeight: 44 }}>
+                    {stepBusy ? t('ord_working') : t('ord_refund_save')}
+                  </button>
+                  <button type="button" className="btn ghost" disabled={stepBusy} onClick={() => setRefundOpen(false)} style={{ minHeight: 44 }}>{t('ord_new_cancel')}</button>
+                  <div style={{ flexBasis: '100%', fontSize: 12, color: 'var(--tx3)' }}>{t('ord_refund_hint')}</div>
+                </div>
+              ) : (
+                <button type="button" className="btn ghost" data-testid="order-mark-refunded" onClick={() => { setRefundDay(new Date().toISOString().slice(0, 10)); setRefundOpen(true) }} style={{ minHeight: 44, marginTop: 10 }}>
+                  {t('ord_do_refunded')}
+                </button>
+              )
+            )}
             {o.payments.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>{t('ord_payments')}</div>
@@ -604,7 +657,16 @@ export function Orders({ openWork, contacts }: Props) {
     : orders === null
       ? <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>{t('ord_loading')}</div>
       : visible.length === 0
-        ? <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>{orders.length === 0 ? t('ord_empty') : t('ord_empty_filtered')}</div>
+        ? (
+          <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>
+            {orders.length === 0 ? t('ord_empty') : !showClosed && finishedCount > 0 ? t('ord_empty_open_only') : t('ord_empty_filtered')}
+            {orders.length > 0 && !showClosed && finishedCount > 0 && (
+              <button type="button" className="btn ghost" onClick={() => setShowClosed(true)} style={{ display: 'block', marginTop: 10, minHeight: 44, maxWidth: '100%', whiteSpace: 'normal', textAlign: 'left', height: 'auto', padding: '8px 12px', boxSizing: 'border-box' }}>
+                {t('ord_show_closed_n').replace('{n}', String(finishedCount))}
+              </button>
+            )}
+          </div>
+        )
         : null
 
   // ── Phone ────────────────────────────────────────────────────────────────────────
@@ -626,7 +688,7 @@ export function Orders({ openWork, contacts }: Props) {
         {chips}
         {status}
         {[...openRows, ...closedRows].map((o) => (
-          <button key={o.id} type="button" onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false) }} style={{
+          <button key={o.id} type="button" onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false); setRefundOpen(false) }} style={{
             display: 'block', width: 'calc(100% - 32px)', margin: '10px 16px 0', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
             border: '1px solid var(--bd2)', borderRadius: 4, background: 'var(--bg2)', padding: 10, color: 'var(--tx)',
             opacity: FINISHED.has(o.status) ? 0.75 : 1,
@@ -652,7 +714,7 @@ export function Orders({ openWork, contacts }: Props) {
   const row = (o: WorkOrderView) => {
     const on = o.id === selectedId
     return (
-      <tr key={o.id} onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false) }} style={{ cursor: 'pointer', background: on ? 'color-mix(in srgb, var(--ac) 7%, transparent)' : undefined, color: FINISHED.has(o.status) ? 'var(--tx3)' : undefined }}>
+      <tr key={o.id} onClick={() => { setSelectedId(o.id); setStepErr(null); setPayOpen(false); setRefundOpen(false) }} style={{ cursor: 'pointer', background: on ? 'color-mix(in srgb, var(--ac) 7%, transparent)' : undefined, color: FINISHED.has(o.status) ? 'var(--tx3)' : undefined }}>
         <td style={{ ...CELL, width: 34 }}>{kindChip(o.kind)}</td>
         <td style={{ ...CELL, whiteSpace: 'nowrap' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ac)' }}>{o.ref}</span></td>
         <td style={CELL}>{thumbs(o, 28, 4)}</td>
@@ -718,6 +780,9 @@ const isReturned = (o: WorkOrderView) => o.kind === 'sale' && o.status === 'canc
 /** « Retour »: a paid sale before delivery, or a delivered one still inside its 14-day period. */
 const canReturn = (o: WorkOrderView) => o.kind === 'sale' && (o.status === 'paid' || (o.status === 'delivered' && returnDaysLeft(o) != null))
 
+/** The amount typed settles the sale (what was paid + this ≥ the price). */
+const paysInFull = (o: WorkOrderView, amount: string) =>
+  !!o.price_final && o.paid_total + (Number(amount.replace(',', '.')) || 0) >= o.price_final - 0.005
 const canPay = (o: WorkOrderView) => o.kind === 'sale' && (o.status === 'signed' || o.status === 'deposit_paid')
 const payLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', minWidth: 0 } as const
 const payInput = { minHeight: 44, fontSize: 15, width: '100%', boxSizing: 'border-box' } as const

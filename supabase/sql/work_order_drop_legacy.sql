@@ -1,10 +1,14 @@
 -- Orders (R7) step 3 of 3 — drop the old order tables and add the gift rule.
 --
--- DRAFT — NOT APPLIED, and NOT READY until the code no longer reads the old tables. Own OK.
+-- Ready; Pem OK 2026-11-18 (review checklist « ok ») — applied by main at land.
+-- Dependency work_order_r7_decisions.sql: applied live (migration work_order_r7_decisions; checked 2026-11-18:
+-- work_order_kind_check and oeuvre_order_exists include 'entrusted').
 -- Before running, both must return nothing:
 --   rg -n "sale_order|consignment_order|BATCH_IDS|sale_order_seq" app components lib scripts
 --   select count(*) from sale_order union all select count(*) from consignment_order;  -- 0, 0
 -- Then: npm run gen:types, npm run typecheck.
+-- Error names (R7 review 2026-11-18): « sold » now raises `paid_sale_required` (was `sale_order_required`),
+-- « gift » raises `gift_order_required`; lib/work-save-error.ts maps both — land that code with this file.
 -- Apply work_order_r7_decisions.sql before this file (it adds the « entrusted » kind this file keeps
 -- in its custody checks; the 'entrusted' cases are harmless if that kind never appears).
 --
@@ -91,14 +95,14 @@ begin
     if s = 6 then
       if (was is distinct from 6 or old."ContactID" is distinct from new."ContactID")
          and not oeuvre_order_exists(new."OeuvreID", 'paid', new."ContactID") then
-        raise exception 'sale_order_required' using errcode = '23514',
+        raise exception 'paid_sale_required' using errcode = '23514',
           detail = 'Sold: ownership moves on a paid sale order.';
       end if;
       if new."LocalisationID" <> 13
          and (was is distinct from 6 or old."LocalisationID" is distinct from new."LocalisationID")
          and new."LocalisationID" <> coalesce(old."LocalisationID", 13)
          and not oeuvre_order_exists(new."OeuvreID", 'delivered', new."ContactID") then
-        raise exception 'sale_order_required' using errcode = '23514',
+        raise exception 'paid_sale_required' using errcode = '23514',
           detail = 'Sold: custody moves to the buyer on delivery.';
       end if;
     else

@@ -19,9 +19,13 @@ export const custodyMessages = defineMessages({
     fr: 'Une œuvre ne quitte l’atelier que par une commande (dépôt, prêt, vente) ; en production, disponible ou archivée, Pem en est propriétaire et dépositaire.',
     en: 'A work leaves Pem only through an order (consignment, loan, sale); in production, available or archived, Pem owns and holds it.',
   },
-  err_sale_order_required: {
+  err_paid_sale_required: {
     fr: 'Vendu : la propriété passe à l’acheteur quand la commande est réglée, la garde à la livraison.',
     en: 'Sold: ownership moves to the buyer when the order is paid, custody on delivery.',
+  },
+  err_gift_order_required: {
+    fr: 'Don : la propriété et la garde passent au bénéficiaire à la remise, par une commande de don.',
+    en: 'Gift: ownership and custody move to the recipient at hand-over, through a gift order.',
   },
   err_archive_requires_catalogue: {
     fr: 'Archive : cataloguez d’abord l’œuvre (une fiche partielle suffit). Ses tâches ouvertes seront mises en pause.',

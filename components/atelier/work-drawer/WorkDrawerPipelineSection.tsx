@@ -6,6 +6,7 @@
 // the custodian's address. Contact confidentiality lives in Objet (`ContactConfidentialityPart`).
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n/context'
@@ -152,6 +153,21 @@ export function WorkDrawerPipelineSection({
     return ''
   }
   const shownStage: ProdStageId = isArchived && prodStage === 'available' ? 'catalogued' : prodStage
+  /**
+   * Sold / given (Pem 2026-11-18: « This shouldn't be movable back to catalogued and why is this still
+   * available? »): the work has left the studio, so the production row is closed like a destroyed one —
+   * no « Disponible » lit, no step to tap — and shows the order it left through.
+   */
+  const leftStudio = !locked && (loadedOwnStage === 'sold' || loadedOwnStage === 'gift')
+  const leftLabel = (() => {
+    const stage = OWNERSHIP_STAGES.find((x) => x.id === loadedOwnStage)?.label ?? ''
+    if (!orderLink || orderLink.kind === 'entrusted') return stage
+    const st = orderLink.status ?? ''
+    const stKey: DictKey | null = !st ? null
+      : orderLink.kind === 'gift' && st === 'signed' ? 'ord_st_gift_signed'
+      : (`ord_st_${st}` as DictKey)
+    return [stage, orderLink.ref, stKey ? t(stKey) : ''].filter(Boolean).join(' · ')
+  })()
   const pemName = pemContact?.NomInstitution ?? 'Pem'
   /** Pem is not always in the drawer's contact list; name it from the id. */
   const isPem = (id: string) => id === String(PEM_CONTACT_ID) || (!!pemContact && id === String(pemContact.ContactID))
@@ -220,7 +236,26 @@ export function WorkDrawerPipelineSection({
     <div data-testid="work-drawer-status-bar" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       <div>
         <TopLabel title={t('wc_prod_label_tt')}>{t('wc_prod_label')}</TopLabel>
-        {locked && fateText ? (
+        {leftStudio ? (
+          <button
+            type="button"
+            data-testid="work-drawer-stage-left"
+            disabled={!orderLink}
+            onClick={() => { if (orderLink) window.location.assign(`/atelier/sales?order=${orderLink.id}`) }}
+            title={orderLink ? t('wc_order_link_tt').replace('{ref}', orderLink.ref ?? '') : undefined}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left', fontFamily: 'inherit', color: 'var(--tx)',
+              marginTop: 5, minHeight: narrow ? 44 : 36, padding: '6px 10px', fontSize: 12, lineHeight: 1.3, minWidth: 0,
+              border: '1px solid var(--bd3)', background: 'var(--bg2)', cursor: orderLink ? 'pointer' : 'default',
+            }}
+          >
+            <span style={{ display: 'block', fontWeight: 600, overflowWrap: 'anywhere' }}>{leftLabel}</span>
+            <span style={{ display: 'block', fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+              {t('wc_stage_left_note')}
+              {orderLink ? <span style={{ color: 'var(--ac)', marginLeft: 6 }}>{`${t('wc_stage_left_open')} ↗`}</span> : null}
+            </span>
+          </button>
+        ) : locked && fateText ? (
           // A destroyed / lost work has no production stage: the lit « En production » read as live.
           <div
             data-testid="work-drawer-stage-fate"

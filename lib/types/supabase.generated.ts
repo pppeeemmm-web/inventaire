@@ -1251,6 +1251,54 @@ export type Database = {
           },
         ]
       }
+      inspiration_photo: {
+        Row: {
+          author_id: string
+          caption: string | null
+          concept_id: string | null
+          created_at: string
+          day: string
+          id: string
+          image_key: string
+          oeuvre_id: number | null
+        }
+        Insert: {
+          author_id?: string
+          caption?: string | null
+          concept_id?: string | null
+          created_at?: string
+          day: string
+          id?: string
+          image_key: string
+          oeuvre_id?: number | null
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          concept_id?: string | null
+          created_at?: string
+          day?: string
+          id?: string
+          image_key?: string
+          oeuvre_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspiration_photo_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspiration_photo_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       journal_entry: {
         Row: {
           ai_links_at: string | null
@@ -1963,6 +2011,7 @@ export type Database = {
           notes: string | null
           order_id: string | null
           payment_date: string
+          refunded_at: string | null
           work_order_id: string | null
         }
         Insert: {
@@ -1973,6 +2022,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           payment_date?: string
+          refunded_at?: string | null
           work_order_id?: string | null
         }
         Update: {
@@ -1983,6 +2033,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           payment_date?: string
+          refunded_at?: string | null
           work_order_id?: string | null
         }
         Relationships: [

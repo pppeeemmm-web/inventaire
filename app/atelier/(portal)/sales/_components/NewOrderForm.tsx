@@ -20,6 +20,8 @@ import {
   type PartyAddress,
   type WorkOrderKind,
 } from '@/app/atelier/(portal)/sales/orders-actions'
+import { saveContactWithConflictCheck } from '@/app/atelier/(portal)/contacts/actions'
+import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
 export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null }
 
@@ -86,6 +88,14 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
   const [terms, setTerms] = useState<Record<string, string>>(initial?.terms ?? {})
   const [lineValues, setLineValues] = useState<Record<number, string>>({})
   const [notes, setNotes] = useState(initial?.notes ?? '')
+  /** Sale paid on the spot and taken away (Pem 2026-11-18): « Livrée » follows the full payment. */
+  const [takeaway, setTakeaway] = useState(true)
+  /** The final price follows price − discount until it is typed by hand. */
+  const finalTyped = useRef(!!initial?.terms?.price_final)
+  const catalogueTyped = useRef(!!initial?.terms?.price_catalogue)
+  /** « + Nouveau contact »: created at once (shared action), then picked as the party. */
+  const [newC, setNewC] = useState<Record<string, string> | null>(null)
+  const [newCBusy, setNewCBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -93,7 +103,10 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
   const snap = (k: WorkOrderKind | null, ids: number[], p: number | null, tm: Record<string, string>, n: string) =>
     JSON.stringify([k, [...ids].sort((x, y) => x - y), p, Object.entries(tm).filter(([, v]) => v).sort(), n])
   const [baseline] = useState(() => snap(initial?.kind ?? null, initial?.workIds ?? [], initial?.partyId && initial.partyId !== PEM ? initial.partyId : null, initial?.terms ?? {}, initial?.notes ?? ''))
-  const dirty = snap(kind, works.map((w) => w.id), party?.ContactID ?? null, terms, notes) !== baseline
+  // Prices the form worked out by itself are not a change by the person (only typed ones are).
+  const typedTerms = Object.fromEntries(Object.entries(terms).filter(([k]) =>
+    !(k === 'price_catalogue' && !catalogueTyped.current) && !(k === 'price_final' && !finalTyped.current)))
+  const dirty = snap(kind, works.map((w) => w.id), party?.ContactID ?? null, typedTerms, notes) !== baseline
   const dirtyRef = useRef(dirty)
   dirtyRef.current = dirty
 
@@ -143,6 +156,38 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     })
   }, [party])
 
+  // Sale prices work themselves out (Pem 2026-11-18: « Calculations in prices not auto »):
+  // catalogue = the works' prices added up, final = catalogue − discount; each stops following once typed.
+  const worksTotal = works.reduce((sum, w) => sum + (w.price ?? 0), 0)
+  useEffect(() => {
+    if (kind !== 'sale') return
+    setTerms((tm) => {
+      const next = { ...tm }
+      if (!catalogueTyped.current && worksTotal > 0) next.price_catalogue = String(worksTotal)
+      const cat = Number(String(next.price_catalogue ?? '').replace(',', '.'))
+      const disc = Number(String(next.discount_pct ?? '').replace(',', '.')) || 0
+      if (!finalTyped.current && cat > 0) next.price_final = String(Math.round(cat * (1 - disc / 100) * 100) / 100)
+      return next.price_catalogue === tm.price_catalogue && next.price_final === tm.price_final ? tm : next
+    })
+  }, [kind, worksTotal, terms.price_catalogue, terms.discount_pct])
+
+  async function createContact() {
+    if (!newC) return
+    if (!newC.prenom?.trim() && !newC.nom?.trim() && !newC.institution?.trim()) { setErr(t('ord_newc_err_name')); return }
+    setNewCBusy(true); setErr(null)
+    try {
+      const fd = new FormData()
+      for (const [k, v] of Object.entries(newC)) if (v.trim()) fd.append(k, v)
+      const res = await saveContactWithConflictCheck(fd)
+      if ('error' in res) { setErr(`${t('error_prefix')} ${res.error}`); return }
+      partyPicked.current = true
+      setParty({ ContactID: res.id, NomInstitution: newC.institution?.trim() || null, Nom: newC.nom?.trim() || null, Prénom: newC.prenom?.trim() || null, Ville: newC.ville?.trim() || null })
+      setNewC(null); setPartyQ('')
+    } finally {
+      setNewCBusy(false)
+    }
+  }
+
   const partyHits = useMemo(() => {
     const term = partyQ.trim().toLowerCase()
     if (!term) return []
@@ -171,6 +216,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     if (LINE_VALUE_LABEL[kind]) for (const w of works) { const v = lineValues[w.id]; if (v) fd.append(`line_value_${w.id}`, v) }
     if (notes) fd.append('notes', notes)
     if (initial?.processId) fd.append('process_id', initial.processId)
+    if (kind === 'sale' && takeaway) fd.append('takeaway', '1')
     setBusy(true)
     try {
       const res = await createWorkOrder(fd)
@@ -193,7 +239,11 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', minWidth: 0 }}>
       {required ? `${t(label)} *` : t(label)}
       <input className="input" type={type} required={required} inputMode={type === 'number' ? 'decimal' : undefined} value={terms[key] ?? ''}
-        onChange={(e) => setTerms((s) => ({ ...s, [key]: e.target.value }))}
+        onChange={(e) => {
+          if (key === 'price_final') finalTyped.current = e.target.value !== ''
+          if (key === 'price_catalogue') catalogueTyped.current = e.target.value !== ''
+          setTerms((s) => ({ ...s, [key]: e.target.value }))
+        }}
         style={{ minHeight: 44, fontSize: 15, width: '100%', boxSizing: 'border-box' }} />
     </label>
   )
@@ -205,7 +255,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
       {sectionLabel('ord_new_kind')}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 8 }}>
         {KINDS.filter((k) => !initial?.lockKind || k === initial.kind).map((k) => (
-          <button key={k} type="button" onClick={() => { setKind(k); setTerms({}) }} aria-pressed={kind === k} style={{
+          <button key={k} type="button" onClick={() => { setKind(k); setTerms({}); finalTyped.current = false; catalogueTyped.current = false }} aria-pressed={kind === k} style={{
             minHeight: 52, border: `1px solid ${kind === k ? 'var(--ac)' : 'var(--bd2)'}`, borderRadius: 4,
             background: kind === k ? 'color-mix(in srgb, var(--ac) 10%, transparent)' : 'none',
             color: kind === k ? 'var(--ac)' : 'var(--tx)', fontSize: 15, cursor: 'pointer', fontFamily: 'inherit',
@@ -265,6 +315,38 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
                   {c.Ville && <span style={{ color: 'var(--tx3)', fontSize: 12 }}>{c.Ville}</span>}
                 </button>
               ))}
+              {newC ? (
+                <div data-testid="order-new-contact" style={{ marginTop: 8, padding: 12, border: '1px solid var(--bd2)', borderRadius: 4, display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 8 }}>
+                  <div className="t-label" style={{ gridColumn: '1 / -1' }}>{t('ord_newc_title')}</div>
+                  {([
+                    ['prenom', 'ord_newc_first'], ['nom', 'ord_newc_last'], ['institution', 'ord_newc_inst', true],
+                    ['email', 'ord_newc_email'], ['phone', 'ord_newc_phone'], ['adresse', 'ord_newc_street', true],
+                    ['code_postal', 'ord_newc_zip'], ['ville', 'ord_newc_city'], ['pays', 'ord_newc_country'],
+                  ] as [string, DictKey, boolean?][]).map(([k, label, wide]) => (
+                    <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', minWidth: 0, gridColumn: wide ? '1 / -1' : undefined }}>
+                      {t(label)}
+                      <input className="input" value={newC[k] ?? ''} type={k === 'email' ? 'email' : k === 'phone' ? 'tel' : 'text'}
+                        autoComplete="off" onChange={(e) => setNewC((c) => ({ ...(c ?? {}), [k]: e.target.value }))}
+                        style={{ minHeight: 44, fontSize: 15, width: '100%', boxSizing: 'border-box' }} />
+                    </label>
+                  ))}
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row' }}>
+                    <button type="button" className="btn primary" disabled={newCBusy} onClick={() => { void createContact() }} style={{ minHeight: 44 }}>
+                      {newCBusy ? t('ord_newc_saving') : t('ord_newc_save')}
+                    </button>
+                    <button type="button" className="btn ghost" disabled={newCBusy} onClick={() => setNewC(null)} style={{ minHeight: 44 }}>{t('ord_new_cancel')}</button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="btn ghost sm" data-testid="order-new-contact-open" style={{ minHeight: 44, marginTop: 6 }}
+                  onClick={() => {
+                    // What was typed in the search becomes the name (« Prénom Nom »).
+                    const words = partyQ.trim().split(/\s+/).filter(Boolean)
+                    setNewC(words.length > 1 ? { prenom: words[0], nom: words.slice(1).join(' ') } : { nom: words[0] ?? '' })
+                  }}>
+                  {t('ord_newc_open')}
+                </button>
+              )}
             </>
           )}
           {party && addresses.length > 0 && (
@@ -290,6 +372,20 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
               {field('end_date', 'ord_new_end', 'date', true)}
             </>}
           </div>
+          {kind === 'sale' && (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_price_auto_hint')}</div>
+              <VatLine price={Number(String(terms.price_final ?? '').replace(',', '.')) || null} rates={works.map((w) => w.tva_rate)} />
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 12, minHeight: 44, cursor: 'pointer' }}>
+                <input type="checkbox" checked={takeaway} onChange={(e) => setTakeaway(e.target.checked)} data-testid="order-takeaway"
+                  style={{ width: 22, height: 22, marginTop: 2, flex: 'none', accentColor: 'var(--ac)' }} />
+                <span style={{ fontSize: 14 }}>
+                  {t('ord_takeaway')}
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t(takeaway ? 'ord_takeaway_on' : 'ord_takeaway_off')}</span>
+                </span>
+              </label>
+            </>
+          )}
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--tx3)', marginTop: 12 }}>
             {t('ord_new_notes')}

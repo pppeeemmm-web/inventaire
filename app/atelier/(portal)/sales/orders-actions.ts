@@ -15,7 +15,7 @@ import { ORDER_KEY_PREFIX, VAULT_ORDER_FOLDERS } from '@/lib/vault/folder-routin
 import { buildOrderPaper, PAPER_SLUG, PAPER_TITLE, type PaperParty } from '@/lib/orders/order-paper'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
-import { ENTRUSTED_LIVE } from '@/lib/orders/kinds'
+import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { saleMoneyState } from '@/lib/sales/sale-money'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
@@ -28,6 +28,8 @@ export interface WorkOrderLineView {
   line_status: string
   /** Agreed price (consignment), insurance value (loan, entrusted) or reference value (gift — never printed). */
   value: number | null
+  /** The work's VAT rate (0 / null = not decided yet, Pem 2026-11-18). */
+  tva_rate: number | null
 }
 
 export interface WorkOrderPaperView {
@@ -73,11 +75,16 @@ export interface WorkOrderView {
   return_window_days: number
   return_window_starts_at: string | null
   return_window_skipped: boolean
+  /** Sale: `'emportee'` = paid and taken away at the studio, « Livrée » follows the full payment (Pem 2026-11-18). */
+  shipping_method: string | null
   works: WorkOrderLineView[]
   papers: WorkOrderPaperView[]
   /** Money received (sale), newest first; counted in Revenue & expenses. */
   payments: WorkOrderPaymentView[]
   paid_total: number
+  /** Returned / cancelled sale: when its money was marked refunded (latest payment's `refunded_at`), else null.
+   *  Always null until `payments.refunded_at` exists (REFUNDED_AT_LIVE). */
+  refunded_at: string | null
 }
 
 export type FetchWorkOrdersResult = { ok: true; orders: WorkOrderView[] } | { error: string }
@@ -91,7 +98,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const { data: orders, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped')
+    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped, shipping_method')
     .order('created_at', { ascending: false })
   if (error) return { error: error.message }
   if (!orders || orders.length === 0) return { ok: true, orders: [] }
@@ -111,9 +118,10 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   if (paymentsRes.error) return { error: paymentsRes.error.message }
 
   const lines = linesRes.data ?? []
+  const refunded = await refundedByOrder(supabase, orderIds)
   const oeuvreIds = [...new Set(lines.map((l) => l.oeuvre_id))]
   const worksRes = oeuvreIds.length
-    ? await supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', oeuvreIds)
+    ? await supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink, tva_rate').in('OeuvreID', oeuvreIds)
     : { data: [], error: null }
   if (worksRes.error) return { error: worksRes.error.message }
 
@@ -132,7 +140,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       .map((l) => {
         const w = workById.get(l.oeuvre_id)
         const value = o.kind === 'consignment' ? (l.price ?? l.insurance_value) : o.kind === 'sale' ? l.price : l.insurance_value
-        return { oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null, line_status: l.line_status, value: value == null ? null : Number(value) }
+        return { oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null, line_status: l.line_status, value: value == null ? null : Number(value), tva_rate: w?.tva_rate == null ? null : Number(w.tva_rate) }
       })
     const papers = (papersRes.data ?? [])
       .filter((d) => d.work_order_id === o.id)
@@ -149,10 +157,24 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       papers,
       payments,
       paid_total: payments.reduce((sum, p) => sum + p.amount, 0),
+      refunded_at: refunded.get(o.id) ?? null,
     }
   })
 
   return { ok: true, orders: view }
+}
+
+/** Order id → refund date, for orders whose every payment is marked refunded (payments_refunded_at.sql). */
+async function refundedByOrder(supabase: Awaited<ReturnType<typeof createClient>>, orderIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (!REFUNDED_AT_LIVE || orderIds.length === 0) return out
+  const { data } = await supabase.from('payments').select('work_order_id, refunded_at').in('work_order_id', orderIds)
+  const rows = data ?? []
+  for (const id of orderIds) {
+    const mine = rows.filter((r) => r.work_order_id === id)
+    if (mine.length && mine.every((r) => r.refunded_at)) out.set(id, mine.map((r) => r.refunded_at!).sort().at(-1)!)
+  }
+  return out
 }
 
 // ── Writes (R7 slice 2) ─────────────────────────────────────────────────────────────────────
@@ -172,6 +194,8 @@ const GIFT_FROM = [2, 4, 7, 8] as const
 /** A work may go to a framer / restorer from the studio, available or archived — it keeps its stage. */
 const ENTRUST_FROM = [1, 2, 3] as const
 const CUSTODY_KINDS: WorkOrderKind[] = ['consignment', 'loan', 'entrusted']
+/** `work_order.shipping_method` of a sale paid and taken away at the studio (Pem 2026-11-18). */
+const TAKEAWAY = 'emportee'
 
 /** Allowed next steps per kind (cancel handled apart). */
 const NEXT: Record<WorkOrderKind, Record<string, string[]>> = {
@@ -329,6 +353,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
       commission_pct: kind === 'consignment' ? numOrNull(formData.get('commission_pct')) : null,
       notes: strOrNull(formData.get('notes')),
       process_id: processId,
+      shipping_method: kind === 'sale' && formData.get('takeaway') === '1' ? TAKEAWAY : null,
     })
     .select('id, ref')
     .single()
@@ -561,9 +586,15 @@ export async function recordOrderPayment(formData: FormData): Promise<PaymentRes
   const date = strOrNull(formData.get('payment_date')) ?? new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: 'ord_err_amount' }
 
-  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, price_final, ref').eq('id', orderId).single()
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, price_final, ref, shipping_method').eq('id', orderId).single()
   if (error || !o) return { error: error?.message ?? 'Order not found' }
   if (o.kind !== 'sale' || !['signed', 'deposit_paid'].includes(o.status)) return { error: 'ord_err_step' }
+  // « Emportée aujourd'hui » (Pem 2026-11-18): the choice made at payment wins over the one stored at creation.
+  const takeawayField = formData.get('takeaway')
+  const takeaway = takeawayField === null ? o.shipping_method === TAKEAWAY : takeawayField === '1'
+  if (takeawayField !== null && takeaway !== (o.shipping_method === TAKEAWAY)) {
+    await supabase.from('work_order').update({ shipping_method: takeaway ? TAKEAWAY : null }).eq('id', o.id)
+  }
   if (!(o.price_final && o.price_final > 0)) return { error: 'ord_err_price' }
 
   const { data: before, error: sumErr } = await supabase.from('payments').select('amount').eq('work_order_id', o.id)
@@ -588,9 +619,17 @@ export async function recordOrderPayment(formData: FormData): Promise<PaymentRes
     return { error: `ord_err_payment:${payErr.message}` }
   }
   await logSystemEvent({ eventType: 'PAYMENT_GRAIN', tableName: 'work_order', rowId: o.id, metadata: { ref: o.ref, amount, method, date } })
+  // Paid at the studio and taken away: handed over now, the 14 return days start today.
+  // Pre-orders / commissions / held items stay « Soldée » until « Livrée » is marked by hand.
+  let status = to ?? o.status
+  if (to === 'paid' && takeaway) {
+    const handed = await advanceWorkOrder(o.id, 'delivered')
+    if ('error' in handed) await logError('Takeaway sale not marked delivered', handed.error, { source: 'orders.recordOrderPayment', metadata: { orderId: o.id } })
+    else status = 'delivered'
+  }
   revalidatePath('/atelier/sales')
   revalidatePath('/atelier/fiscal')
-  return { ok: true, status: to ?? o.status }
+  return { ok: true, status }
 }
 
 /** Works by number, for a form opened prefilled from elsewhere (work card, Pipeline, phone). */
@@ -599,11 +638,11 @@ export async function getWorksForOrder(ids: number[]): Promise<OrderWorkHit[]> {
   if ('error' in g) return []
   const clean = [...new Set(ids.filter((n) => Number.isInteger(n) && n !== 0))].slice(0, 50)
   if (clean.length === 0) return []
-  const { data } = await g.supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix').in('OeuvreID', clean).is('deleted_at', null)
+  const { data } = await g.supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix, tva_rate').in('OeuvreID', clean).is('deleted_at', null)
   const byId = new Map((data ?? []).map((w) => [w.OeuvreID, w]))
   return clean.flatMap((id) => {
     const w = byId.get(id)
-    return w ? [{ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix) }] : []
+    return w ? [{ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix), tva_rate: w.tva_rate == null ? null : Number(w.tva_rate) }] : []
   })
 }
 
@@ -617,7 +656,7 @@ export async function findOrdersForProcess(processId: string): Promise<ProcessOr
   return (data ?? []).map((o) => ({ id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status }))
 }
 
-/** A sale order as Reports « Ventes » reads it (same field names as the former `sale_order` row). */
+/** A sale order as Reports « Ventes » reads it (same field names as the former sale table's rows). */
 export type ReportSaleOrder = {
   id: string
   order_ref: string | null
@@ -751,7 +790,31 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   return { ok: true }
 }
 
-export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null; price: number | null }
+/**
+ * « Marquer remboursé » (Pem 2026-11-18): after a « Retour » or a cancel, the money received is marked
+ * refunded on the day given — the record of Pem's own transfer; the app moves no money. Needs
+ * supabase/sql/payments_refunded_at.sql (REFUNDED_AT_LIVE).
+ */
+export async function markSaleRefunded(orderId: string, day: string): Promise<SimpleOrderResult> {
+  if (!REFUNDED_AT_LIVE) return { error: 'ord_err_step' }
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { supabase } = g
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'ord_err_amount' }
+  const { data: o, error } = await supabase.from('work_order').select('id, ref, kind, status').eq('id', orderId).single()
+  if (error || !o) return { error: error?.message ?? 'Order not found' }
+  if (o.kind !== 'sale' || o.status !== 'cancelled') return { error: 'ord_err_step' }
+  const { error: upErr } = await supabase.from('payments')
+    .update({ refunded_at: new Date(`${day}T12:00:00Z`).toISOString() })
+    .eq('work_order_id', o.id).is('refunded_at', null)
+  if (upErr) return { error: upErr.message }
+  await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: o.id, newValue: 'refunded', metadata: { ref: o.ref, day } })
+  revalidatePath('/atelier/sales')
+  revalidatePath('/atelier/fiscal')
+  return { ok: true }
+}
+
+export type OrderWorkHit = { id: number; title: string | null; statusId: number | null; image: string | null; price: number | null; tva_rate: number | null }
 
 /** Work picker for a new order: by number (« 2210 », « #2210 ») or by title. */
 export async function searchWorksForOrder(q: string): Promise<OrderWorkHit[]> {
@@ -760,10 +823,10 @@ export async function searchWorksForOrder(q: string): Promise<OrderWorkHit[]> {
   const { supabase } = g
   const term = q.trim().replace(/^#/, '')
   if (!term) return []
-  let query = supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix').is('deleted_at', null).limit(12)
+  let query = supabase.from('Oeuvres').select('OeuvreID, Titre, statusId, txtImageNameLink, Prix, tva_rate').is('deleted_at', null).limit(12)
   query = /^\d+$/.test(term) ? query.eq('OeuvreID', Number(term)) : query.ilike('Titre', `%${term.replace(/[%_]/g, '')}%`)
   const { data } = await query.order('OeuvreID', { ascending: false })
-  return (data ?? []).map((w) => ({ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix) }))
+  return (data ?? []).map((w) => ({ id: w.OeuvreID, title: w.Titre, statusId: w.statusId, image: w.txtImageNameLink, price: w.Prix == null ? null : Number(w.Prix), tva_rate: w.tva_rate == null ? null : Number(w.tva_rate) }))
 }
 
 export type PartyAddress = { id: number; label: string | null; ville: string | null }

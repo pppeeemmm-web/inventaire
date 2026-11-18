@@ -283,8 +283,6 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
     { table: 'Oeuvres', col: 'AcheteurID' },
     { table: 'suivi_process', col: 'contact_id' },
     { table: 'document', col: 'contact_id' },
-    { table: 'sale_order', col: 'buyer_id' },
-    { table: 'consignment_order', col: 'partner_id' },
     { table: 'work_order', col: 'party_id' },
     { table: 'expense', col: 'contact_id' },
     { table: 'shipment', col: 'to_contact_id' },
@@ -489,7 +487,13 @@ export async function checkOllamaListening(): Promise<OllamaListenResult> {
   }
 }
 
-export async function saveContactWithConflictCheck(formData: FormData): Promise<{ ok: true; id: number } | { error: string }> {
+/**
+ * Quick contact creation (Contacts quick add, R7 « + Nouveau contact » in an order's party picker).
+ * Optional `phone` and `adresse` / `code_postal` / `ville` / `pays` are written as the contact editor
+ * writes them: the Contact columns plus one primary row each in `contact_phones` / `contact_emails` /
+ * `contact_addresses` (label « Principal »). Returns the new address id when one was written.
+ */
+export async function saveContactWithConflictCheck(formData: FormData): Promise<{ ok: true; id: number; addressId: number | null } | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
@@ -500,6 +504,10 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   const email      = (formData.get('email') as string | null)?.trim()
   const inst       = (formData.get('institution') as string | null)?.trim()
   const is_private = formData.get('is_private') === 'true'
+  const opt = (k: string) => (formData.get(k) as string | null)?.trim() || null
+  const phone = opt('phone')
+  const addr = { adresse: opt('adresse'), code_postal: opt('code_postal'), ville: opt('ville'), pays: opt('pays') }
+  const hasAddr = !!(addr.adresse || addr.code_postal || addr.ville || addr.pays)
 
   // 2. SECRET CHECK (Bypass RLS to find collisions)
   const serviceClient = createServiceClient()
@@ -529,10 +537,29 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
     Prénom: prenom,
     Email: email,
     NomInstitution: inst,
-    is_private: is_private
+    is_private: is_private,
+    ...(phone ? { Téléphone1: phone } : {}),
+    ...(hasAddr ? { Adresse: addr.adresse, CodePostal: addr.code_postal, Ville: addr.ville, Pays: addr.pays } : {}),
   }).select('ContactID').single()
 
   if (insertErr || !contact) return { error: insertErr?.message ?? 'Insert failed' }
+
+  // The child rows the contact card reads (same shape as ContactEditorPanel).
+  let addressId: number | null = null
+  if (hasAddr) {
+    const { data: a, error: aErr } = await supabase.from('contact_addresses')
+      .insert({ contact_id: contact.ContactID, label: 'Principal', position: 0, ...addr }).select('id').single()
+    if (aErr) return { error: aErr.message }
+    addressId = a.id
+  }
+  if (email) {
+    const { error: eErr } = await supabase.from('contact_emails').insert({ contact_id: contact.ContactID, email, label: 'Personnel', is_primary: true })
+    if (eErr) return { error: eErr.message }
+  }
+  if (phone) {
+    const { error: pErr } = await supabase.from('contact_phones').insert({ contact_id: contact.ContactID, phone, label: 'Mobile', is_primary: true })
+    if (pErr) return { error: pErr.message }
+  }
 
   // 4. Record Conflict if detected
   if (conflictWithId && !is_private) {
@@ -546,5 +573,5 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   }
 
   revalidatePath('/atelier')
-  return { ok: true, id: contact.ContactID }
+  return { ok: true, id: contact.ContactID, addressId }
 }

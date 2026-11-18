@@ -27,7 +27,9 @@ const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
   bulk_admin_only: 'err_bulk_admin_only',
   work_out_of_circulation: 'err_work_out_of_circulation',
   custody_order_required: 'err_custody_order_required',
-  sale_order_required: 'err_sale_order_required',
+  // Raised by oeuvre_holder_check once work_order_drop_legacy.sql is applied (R7: the old order tables go).
+  paid_sale_required: 'err_paid_sale_required',
+  gift_order_required: 'err_gift_order_required',
   archive_requires_catalogue: 'err_archive_requires_catalogue',
   archive_exit_requires_photo: 'err_archive_exit_requires_photo',
 }

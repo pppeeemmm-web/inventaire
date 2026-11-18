@@ -27,7 +27,7 @@
 | `/works` | Public works / portfolio layout (collections from atelier config) |
 | `/practice` | Artist practice / démarche |
 | `/about` | Biography / CV |
-| `/enquiry` | Visitor contact / enquiry (optional `?oeuvre_id=` / `?sale_order_id=` for after-sales routing) |
+| `/enquiry` | Visitor contact / enquiry (optional `?oeuvre_id=` / `?order=<work_order id>` for after-sales routing) |
 | `/verify/[certId]` | Certificate of authenticity verification (QR target; `SUPABASE_SERVICE_ROLE_KEY` required server-side) |
 | `/card` | Printable business card sheet (`noindex`) |
 | `/c/[token]` | Private selection link: validates `private_link` server-side, shows grouped works (`noindex`) |
@@ -189,7 +189,7 @@ These are **`'use server'`** modules (callable from Server Components and from t
 
 | Route | Auth | Purpose |
 |-------|------|---------|
-| `POST` | Bearer `CRON_SECRET` | [`app/api/cron/return-window/route.ts`](../app/api/cron/return-window/route.ts) — applies expired sale return windows (`sale_order` → archive sold works) |
+| `POST` | Bearer `CRON_SECRET` | [`app/api/cron/return-window/route.ts`](../app/api/cron/return-window/route.ts) — counts delivered sale orders (`work_order`) whose 14-day return period ended (cooling-off; sold works stay « Vendu ») |
 | `GET` | Supabase session cookie (2026-11-13; was open) | [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) — geocoding helper for the Atelier map |
 | `GET` | Supabase session cookie | [`app/api/field-weather/route.ts`](../app/api/field-weather/route.ts) — Open-Meteo current conditions proxy for field sessions (`latitude` / `longitude` query) |
 | `GET` | `is_admin()` session | [`app/api/export/csv/route.ts`](../app/api/export/csv/route.ts) — Slice 7 graph CSV export (`?view=entity` \| `edge_fact`; UTF-8 BOM) |
