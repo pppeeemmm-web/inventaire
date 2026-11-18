@@ -2,6 +2,16 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — The Aide finished (Pem « finish the guides work we started »)
+
+Side session guides-finish, four batches, each landed by the lead after reading its diff:
+- `2a63ec8` team guide corrected against the code: « Ce qui attend la validation de Pem » (team new works / card edits / photos wait; Journal, note lines, creation history, condition reports, ideas, contacts count at once), condition-report rights, card AI only on Pem's computer.
+- `9392148` admin guide in full: 15 chapters (the admin's week, Fil, approvals, field sessions, Audit tab by tab, versions, bins and permanent deletion, the work rules and their checks, contact confidentiality and merging, accounts and access, Diffusion, AI engines and keys, backups + restore drill, troubleshooting); environment variables named, never their values.
+- `6b88f69` team guide « Référence » parts: phone vs computer, the card part by part, order steps and papers (invoice, credit note, certificates, deeds, money), statuses / stages / gates / fate.
+- `ed01409` team guide « Questions fréquentes et dépannage » (the app's messages word for word, with what to do).
+- Size now: team ~8,700 words FR / 8,200 EN (16 chapters), admin ~5,700 / 5,200 (15) — the old encyclopedias were 14,800 / 11,200 but described July's app. Team PDFs 37 / 35 pages. Not seen yet: the admin PDF's pages (Pem's admin account).
+- Found while writing (→ TODO): « Privé » contacts not hidden from the team; approvals overwrite newer edits; rejection reasons unseen; no screen for the works bin.
+
 ## 2026-11-18 — Pem's evening pass: bugs (Pem « go »)
 
 - **Map blank on the live site** (`7b192d6`): the CSP (enforced today) lets the page load OSM tiles (img-src), but the service worker fetches cross-origin files itself (Serwist defaults: any .png, Google fonts, cross-origin catch-all) and inside the worker that is `connect-src`, which listed none of them — every tile failed in ~5 ms. Added the OSM tile hosts, unpkg, Google fonts and the QR host to `connect-src`. Dev has no service worker, so the map always worked locally; proven only once deployed.

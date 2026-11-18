@@ -6,7 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
-  // 3.1.72 (2026-11-18) — Pem's evening pass.
+  // 3.1.72 (2026-11-18) — Pem's evening pass + the Aide finished.
+  wn_aide_complete_t: { fr: 'L’Aide est complète', en: 'The Help is complete' },
+  wn_aide_complete_d: {
+    fr: 'Le guide d’équipe dit ce qui attend la validation de Pem, détaille la fiche, les commandes et leurs papiers (facture comprise) et répond aux questions fréquentes avec les messages de l’application. Le guide admin couvre tout le reste. Les deux se téléchargent en PDF.',
+    en: 'The team guide says what waits for Pem’s approval, details the card, the orders and their papers (invoice included) and answers frequent questions with the app’s own messages. The admin guide covers the rest. Both download as PDF.',
+  },
   wn_map_back_card_names_t: { fr: 'La carte revient, la fiche nomme le propriétaire', en: 'The map is back, the card names the owner' },
   wn_map_back_card_names_d: {
     fr: 'La Carte affiche de nouveau son fond (il était bloqué depuis ce matin sur le site). Une fiche ouverte depuis l’étiquette QR ou ⌘K montre le propriétaire et le dépositaire, et propose tous les contacts.',

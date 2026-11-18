@@ -94,6 +94,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'aide_complete', day: '2026-11-18', spot: 'aide' },
   { id: 'map_back_card_names', day: '2026-11-18', spot: 'map' },
   { id: 'contacts_badge_vault_tree', day: '2026-11-18', spot: 'contacts' },
   { id: 'help_pdf_and_panel', day: '2026-11-18', spot: 'aide' },
