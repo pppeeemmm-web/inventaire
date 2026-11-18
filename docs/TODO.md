@@ -2,7 +2,7 @@
 
 _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md). Board → [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html)._
 
-**Refreshed 2026-11-18, late** — everything built is on `origin/main` (What's new 3.1.60). Item numbers are kept (other docs point to them); a closed item moves to [DONE](./DONE.md) the same day.
+**Refreshed 2026-11-18, late** — everything built is on `origin/main` (What's new 3.1.61). Item numbers are kept (other docs point to them); a closed item moves to [DONE](./DONE.md) the same day.
 
 ## 0. Bugs — fix now
 
@@ -11,10 +11,6 @@ _None open._
 ## 1. Waiting on you, Pem
 
 Decisions (a form or one word):
-- [ ] **Old comments:** empty the old field on the 94 works whose text is already in a line (#2381…); move the 8 others into a line? (form sent 2026-11-18)
-- [ ] **Work card (22):** delete the 3 unused card files? « Brouillon » on the phone recording screen? (form sent 2026-11-18)
-- [ ] **Phone navigation:** designed with your 6 answers ([`PhoneNav.notes.md`](./design/2026-11-18/PhoneNav.notes.md), option A) — GO to build.
-- [ ] **Collector share kit (11b):** designed with your 8 answers ([`Collector_ShareKit.notes.md`](./design/2026-11-18/Collector_ShareKit.notes.md)) — GO to build.
 - [ ] **R8 look decisions:** A (big painting vs true-scale wall), then B (a work's page), C (landing), D (one name) → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md).
 - [ ] **#2381:** first step or catalogued? (Audit → Règles)
 - [ ] **Docket scan (11e):** GO to read dockets by OCR on the PC, and which scan path.
@@ -63,6 +59,10 @@ Speed and code health — measure first
 ## 4. To check once, when it happens (no build)
 
 New today
+- [ ] Collector share kit: the first real kit — made with its PDF, opened on a phone, an enquiry from it (Triage chip with the collector's name), the PDF download, « Prolonger » / « Retirer » (not tried: it would write real rows).
+- [ ] Phone navigation as admin: the Fil tile and its count, « Actions » rows; saving a real entry from the « Écrire » sheet (seen as a non-admin at 375 / 360 px only).
+- [ ] Landing: the corner dot back and no scroll bar on the live site after the push (fixed: the page ignores the 125 % text-size setting).
+- [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (works were re-marked; search now reads note lines).
 - [ ] First real order through the chain (signed → shipment, paid → certificate, invoice paper), its calendar dates, its first payment — not clicked on data (it would use real numbers).
 - [ ] First real supply order: « Recevoir » adds to stock, cost + supplier; an expense with its invoice file.
 - [ ] « Partager » an order paper on the phone (share sheet) and on the computer (download); edit a line's value on a draft.

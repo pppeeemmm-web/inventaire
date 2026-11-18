@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Pem's « next » form: old comments, work card 22, phone navigation, share kit
+
+- Old « Commentaires » retired (`067a4b8`, `supabase/sql/old_comments_retire.sql` applied on Pem's form « Empty the 94, move the 8 into a line, hide the field »): 94 works whose text was in a note line + 6 « ? » placeholders emptied (each kept in `oeuvre_versions`); the « 8 » were 6 « ? » + 2 works in the bin (#2343 « test », #2398), left as they are, so no new line. `oeuvre_search_text` reads note lines instead + trigger `graph_note_line_text_dirty`. Field gone from the card (checked on #2381).
+- 22. Work card leftovers: 3 unused card files deleted; « Brouillon » on the phone recording screen (`WorkRecordPhone`, localStorage, no photos; checked at 390 px with a test draft, cleared). The full form's empty « Brouillon local » prompt fixed (`4ebd9cc`: baseline holder = Pem). Place dates stay parked (§5).
+- Phone navigation option A built (`7b381f1`, side session phone-nav-build; [design](./design/2026-11-18/PhoneNav.notes.md)). Seen in Chrome at 390 px as non-admin: day screen, ☰ menu with search + tiles + folds. Admin parts not seen (§4).
+- 11b. Collector share kit built (`cfd948e`, side session share-kit-build; [design](./design/2026-11-18/Collector_ShareKit.notes.md)); `collector_share_kit.sql` applied on Pem's OK (kit columns, `private_link_work`, `inquiry.private_link_token`, service-role counters; RLS team, anon nothing). Sheet seen opening on a group, nothing created (§4).
+- Landing: the corner hub dot was pushed off-screen and a scroll bar showed — the a11y text size (saved at 125 %) zoomed the one-screen page; the landing no longer applies it (`4ebd9cc`, Pem's quick one).
+
 ## 2026-11-18 — Rethink leftovers picked by Pem (form)
 
 - R7: line value editable after creation, « Partager » sends the paper file (no link), Confié works on the Production board (`351c6ba`, side session r7-leftovers; no SQL; new team-only route `/api/export/order-paper`, reason in its header). Seen loading in Chrome; a real save / the phone share sheet not tried (no draft or signed order exists).

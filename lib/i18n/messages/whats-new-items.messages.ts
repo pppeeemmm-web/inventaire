@@ -6,6 +6,27 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.61 (2026-11-18) — phone navigation, collector share kit, recording draft, old comments field gone.
+  wn_phone_nav_t: { fr: 'Téléphone : une seule journée, un vrai menu', en: 'Phone: one day screen, a real menu' },
+  wn_phone_nav_d: {
+    fr: 'Sur le téléphone, « Aujourd’hui » est la journée, quel que soit le jour : le Journal devient la liste des jours. « Écrire » ouvre une feuille sur la journée, sans quitter l’écran. ☰ ouvre tout de suite un menu : chercher une œuvre par numéro ou titre, les grands écrans en tuiles avec leurs comptes, le reste et les actions repliés en dessous.',
+    en: 'On the phone, « Today » is the day, whichever day: the Journal becomes the list of days. « Write » opens a sheet over the day, without leaving the screen. ☰ opens a menu at once: find a work by number or title, the main screens as tiles with their counts, the rest and the actions folded below.',
+  },
+  wn_share_kit_t: { fr: 'Partager une sélection à un collectionneur', en: 'Share a selection with a collector' },
+  wn_share_kit_d: {
+    fr: 'Sur un groupe de travail (Thèmes / Groupes) ou la fiche d’un contact : « Partager à un collectionneur… ». On choisit le collectionneur, les œuvres et leur ordre, les prix à montrer, la langue et un message ; le lien privé et son PDF sont faits ensemble, valables 14 jours. Le collectionneur voit une page calme, une œuvre par écran, et peut écrire à l’atelier : sa demande arrive dans Triage à son nom. La fiche du contact liste ses sélections (prolonger, retirer).',
+    en: 'On a working group (Themes / Groups) or a contact’s card: « Share with a collector… ». Pick the collector, the works and their order, which prices to show, the language and a message; the private link and its PDF are made together, valid 14 days. The collector sees a calm page, one work per screen, and can write to the studio: the enquiry lands in Triage under their name. The contact’s card lists their selections (extend, withdraw).',
+  },
+  wn_record_draft_t: { fr: 'Enregistrer : « Brouillon »', en: 'Record: « Draft »' },
+  wn_record_draft_d: {
+    fr: 'Sur l’écran « Enregistrer » du téléphone, « Brouillon » garde ce que vous avez tapé (sans les photos) et ferme l’écran ; il revient la prochaine fois, avec « Effacer » si vous n’en voulez plus.',
+    en: 'On the phone « Record » screen, « Draft » keeps what you typed (without the photos) and closes the screen; it comes back next time, with « Clear » if you no longer want it.',
+  },
+  wn_old_comments_gone_t: { fr: 'Fiche d’œuvre : l’ancien champ « Commentaires » disparaît', en: 'Work card: the old « Comments » field is gone' },
+  wn_old_comments_gone_d: {
+    fr: 'Son texte était déjà dans les lignes de notes de chaque œuvre. Les notes s’ajoutent en lignes, avec leur auteur et leur date ; la recherche les lit.',
+    en: 'Its text was already in each work’s note lines. Notes are added as lines, with their author and date; search reads them.',
+  },
   // 3.1.60 (2026-11-18) — order leftovers, ideas visible.
   wn_order_leftovers_t: { fr: 'Commandes : valeur modifiable, papier à partager, « Confié » visible', en: 'Orders: editable value, paper to share, « Entrusted » visible' },
   wn_order_leftovers_d: {
