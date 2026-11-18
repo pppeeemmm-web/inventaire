@@ -61,7 +61,6 @@ Speed and code health — measure first
 New today
 - [ ] Collector share kit: the first real kit — made with its PDF, opened on a phone, an enquiry from it (Triage chip with the collector's name), the PDF download, « Prolonger » / « Retirer » (not tried: it would write real rows).
 - [ ] Phone navigation as admin: the Fil tile and its count, « Actions » rows; saving a real entry from the « Écrire » sheet (seen as a non-admin at 375 / 360 px only).
-- [ ] Landing: the corner dot back and no scroll bar on the live site after the push (fixed: the page ignores the 125 % text-size setting).
 - [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (works were re-marked; search now reads note lines).
 - [ ] First real order through the chain (signed → shipment, paid → certificate, invoice paper), its calendar dates, its first payment — not clicked on data (it would use real numbers).
 - [ ] First real supply order: « Recevoir » adds to stock, cost + supplier; an expense with its invoice file.
