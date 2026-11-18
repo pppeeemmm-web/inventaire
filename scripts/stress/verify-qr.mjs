@@ -1,0 +1,20 @@
+// The label QR link in a real browser (LOCAL copy): /atelier/works/<id> → where it lands, and does the work open?
+import { chromium } from 'playwright';
+import { BASE } from './actions.mjs';
+import { USERS } from './seed.mjs';
+const browser = await chromium.launch();
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+await page.goto(`${BASE}/login`);
+await page.getByLabel('E-mail').fill(USERS.admin.email);
+await page.getByLabel('Mot de passe', { exact: true }).fill(USERS.admin.password);
+await page.getByRole('button', { name: 'Se connecter' }).click();
+await page.waitForURL(/atelier|hub/, { timeout: 60000 });
+const seen = [];
+page.on('framenavigated', (f) => { if (f === page.mainFrame()) seen.push(f.url().replace(BASE, '')); });
+await page.goto(`${BASE}/atelier/works/1199`);
+await page.waitForTimeout(20000); console.log('owner shown:', await page.getByText('Noa Collector14').first().isVisible().catch(() => false));
+const opened = await page.getByText('#1199').first().isVisible().catch(() => false);
+await page.screenshot({ path: 'scripts/stress/dump/todo4-shots/09-qr-link-opens-work.png' });
+console.log('navigations:', seen.join(' → '));
+console.log('work #1199 shown:', opened);
+await browser.close();

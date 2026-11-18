@@ -1,6 +1,6 @@
 'use client'
 
-import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, PEM_CONTACT_ID } from '@/lib/data'
 import { deleteWork, purgeWorkPermanently, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -95,6 +95,14 @@ function extraFromOeuvre(o: object): ExtraFields {
     presentationId: String(r.PresentationID ?? ''),
     seed: String(r.broadcast_caption_seed ?? ''),
   }
+}
+
+/** The card's contacts + the shell's list: the card's rows win (made here with « + », renamed in the contact
+ *  pop-up), the shell's list only adds the ones the card doesn't have. */
+function mergeCardContacts(card: DrawerContactRow[], incoming: DrawerContactRow[]): DrawerContactRow[] {
+  const have = new Set(card.map((c) => c.ContactID))
+  const add = incoming.filter((c) => !have.has(c.ContactID))
+  return add.length ? [...card, ...add] : card
 }
 
 export function DrawerContent({
@@ -555,15 +563,20 @@ export function DrawerContent({
     const loadedProd = prodStageFromOeuvre(o)
     setProdStage(loadedProd)
     setOwnStage(loadedOwn)
-    const pemRow = (initialContacts as DrawerContactRow[]).find((c) =>
-      (c.NomInstitution ?? '').toLowerCase().includes('pem'),
-    )
+    // Pem by id, not by name, and whether or not the contact list has arrived yet: the stage effects below
+    // set owner / custodian to Pem as soon as `pemContact` exists, so the baseline must already say Pem —
+    // otherwise a card opened before the list (QR link, ⌘K) turns « unsaved » with no input.
+    const pemRow = (initialContacts as DrawerContactRow[]).find((c) => c.ContactID === PEM_CONTACT_ID)
+    const pemId = String(pemRow?.ContactID ?? PEM_CONTACT_ID)
     let loadedContactId = String(o.LocalisationID ?? '')
     let loadedOwnerId = String(o.ContactID ?? '')
-    if ((loadedOwn === 'artist' || loadedOwn === 'artist_archive') && pemRow) {
+    if (loadedOwn === 'artist' || loadedOwn === 'artist_archive') {
       // Archive: the artist holds it by default, but an admin may have set another custodian (R3 rule).
-      if (loadedOwn === 'artist' || !loadedContactId) loadedContactId = String(pemRow.ContactID)
-      loadedOwnerId = String(pemRow.ContactID)
+      if (loadedOwn === 'artist' || !loadedContactId) loadedContactId = pemId
+      loadedOwnerId = pemId
+    } else if (loadedOwn === 'reserved') {
+      // Reserved: payment not cleared, Pem still owns it — the stage effect below sets the owner to Pem too.
+      loadedOwnerId = pemId
     }
     const loadedBuyerId = String((o as { AcheteurID?: number | null }).AcheteurID ?? '')
     const loadedAddressId = String(
@@ -597,7 +610,7 @@ export function DrawerContent({
       setSelGroups(new Set(mapGroups))
     }
     setAnonymityLevel(normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level))
-    setLocalContacts(initialContacts)
+    setLocalContacts((prev) => mergeCardContacts(prev, initialContacts as DrawerContactRow[]))
     setCommentaires('')
     setHistorique('')
     setImageCacheKeys({})
@@ -715,6 +728,13 @@ export function DrawerContent({
   useEffect(() => {
     setLocalFormats((prev) => [...initialFormats, ...prev.filter((p) => !initialFormats.some((i) => i.FormatID === p.FormatID))])
   }, [initialFormats])
+  // Same for contacts: every tab fills them post-paint, but the card took them only when the work changed,
+  // so a card opened before that (QR link `?work=`, ⌘K) named owner / custodian « — » and its pickers
+  // offered almost no one (stress test 2026-11-18). The card's own rows win (made with « + », renamed in the
+  // contact pop-up); the list only fills in what the card doesn't have.
+  useEffect(() => {
+    setLocalContacts((prev) => mergeCardContacts(prev, initialContacts as DrawerContactRow[]))
+  }, [initialContacts])
 
   /** Addresses belonging to the contact that currently holds the work. */
   const locationAddresses = useMemo(
@@ -736,7 +756,7 @@ export function DrawerContent({
   // save; the drawer shows it and lets you pick (docs/WORK_CUSTODY_MODEL.md).
 
   const pemContact = useMemo(
-    () => localContacts.find((c: DrawerContactRow) => (c.NomInstitution ?? '').toLowerCase().includes('pem')),
+    () => localContacts.find((c: DrawerContactRow) => c.ContactID === PEM_CONTACT_ID),
     [localContacts],
   )
   const currentOwner = useMemo(
@@ -2050,10 +2070,14 @@ export function DrawerContent({
           narrow={narrow}
           onClose={() => setQuickContactId(null)}
           onSaved={(c) =>
+            // Upsert: before the shell's list arrives the contact may not be on the card yet; as a card row its new
+            // name then wins over the list (mergeCardContacts).
             setLocalContacts((prev) =>
-              prev.map((x) =>
-                x.ContactID === c.ContactID ? { ...x, NomInstitution: c.NomInstitution, Nom: c.Nom, Prénom: c.Prénom, Role: c.Role } : x,
-              ),
+              prev.some((x) => x.ContactID === c.ContactID)
+                ? prev.map((x) =>
+                    x.ContactID === c.ContactID ? { ...x, NomInstitution: c.NomInstitution, Nom: c.Nom, Prénom: c.Prénom, Role: c.Role } : x,
+                  )
+                : [...prev, { ContactID: c.ContactID, NomInstitution: c.NomInstitution, Nom: c.Nom, Prénom: c.Prénom, Role: c.Role }],
             )
           }
         />

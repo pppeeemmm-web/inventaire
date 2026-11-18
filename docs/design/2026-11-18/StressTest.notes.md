@@ -235,6 +235,39 @@ drag-and-drop, Shift on its own drags) the same server action or DOM event was u
 unregistered — worth checking that an old `sw.js` on the live domain can never block pages. The fake image server now listens on
 IPv6 too; the test scripts' Flight parser reads large text chunks (labels / PDFs).
 
+**Re-check after the fixes landed (main `709e0ec`, copy rebuilt):**
+- Bug 2 sign-out — **verified**: browser B (admin) « Se déconnecter » → B on /login; the same admin's other session A still
+  reads the 404 orders (`scripts/stress/verify-qr-signout.mjs`).
+- Bug 1 QR link — **verified, with a new gap**: `/atelier/works/1199` → `/atelier?work=1199` → `/atelier/overview?work=1199` and
+  the card opens (`verify-qr.mjs`, shot 09). But on Vue d'ensemble the card shows « Propriétaire — » / « Dépositaire — » for a
+  sold work (DB: owner Noa Collector14), still after 20 s; the same card from `/atelier/inventory?work=1199` shows the owner.
+  Cause (found by the lead's flow review, checked in the code): the list is not missing — every tab fills `contacts` after first
+  paint (`TeamPortalClient.tsx`), but the card copied `initialContacts` into its own list only when the work changed
+  (`syncFormFieldsFromOeuvre`), so a card opened before the fill (`?work=` deep link, ⌘K) kept an empty list: names « — » and
+  owner / custodian / buyer pickers with almost no one. A first fix that fetched only the card's 4 contacts was not landed
+  (it left the pickers short, and a late Pem made artist / archive cards « unsaved » with no input).
+  **Fixed (local draft, Pem « Yes, fix the card »), `DrawerContent.tsx` only:** the card re-merges `initialContacts` when the prop
+  fills (as techniques / supports / formats already do, keeping contacts made with « + »); Pem is found by `ContactID ===
+  PEM_CONTACT_ID`, not by name, both in the baseline (`pemRow?.ContactID ?? PEM_CONTACT_ID`, so an artist / archive work's
+  baseline already says Pem) and in `pemContact`. Left as is: `WorkForm.tsx` (new-work form) still finds Pem by name (lines 238, 378).
+  Verified on the copy (`scripts/stress/verify-card-owner.mjs`, `verify-card-picker.mjs`): owner / custodian named — QR link
+  admin 1280 (#1199), 375 (#1160), team (#1150), ⌘K on Vue d'ensemble (#1181), Inventory (#1181) (shots 10–12); the card opened
+  by the QR link holds the whole contact list (its gift form finds Noa Collector25, Galerie Test A, Fournisseur Test 1); opened
+  by the QR link and closed after 6 s, no « Modifications non enregistrées » and « aucune modification » on: an available work
+  Pem holds (#1197), a work out at a framer through a « Confié » order (#1196, custodian « Galerie Test A » kept; shot 13 = the page right after closing, no dialog), an
+  archive work (#4). (The database refuses an artist / archive work held by anyone but Pem without a « Confié » order out.)
+  Second flow review (lead), 3 more points, fixed in the same file: (1) a « Réservée » card's baseline now takes owner = Pem as
+  the stage effect does, so a late Pem no longer makes it « unsaved »; (2) `mergeCardContacts`: the card's own rows win (made
+  with « + », renamed in the contact pop-up — whose « saved » handler now adds the contact when the card doesn't have it yet),
+  the shell's list only fills in the rest; (3) the work-change reset and both discards (`syncFormFieldsFromOeuvre`) use the same
+  merge, so « + » contacts survive. Verified (`scripts/stress/verify-card-contacts.mjs`): reserved #32 with owner 124 in the
+  data (made on the copy with the holder check off for that one update — the database refuses it otherwise) opens clean from
+  the QR link; a contact made with « + » on #32 is still in the card's pickers after « Annuler »; a contact renamed in the
+  pop-up keeps its new name on the card 8 s later (the list arriving during the pop-up — the « before the list » timing could
+  not be forced). All earlier card checks rerun on this build: pass.
+- Harness: the copy's `next start` died twice today with Windows code 0xC0000409 (native crash, likely the image library on
+  Windows), not killed from outside as first thought. Production runs on Linux; noted only.
+
 ## Proposals, ranked
 
 1. **Guard the money in the database (B1, B2, B3).** A unique partial index or trigger: at most one live sale line (signed → delivered) per work; `recordOrderPayment` and `receive_supply_order` as one SQL function each that locks the order row (`for update`), checks the remaining amount / quantity and writes step + payment together; disable the button while the call runs.
