@@ -6,9 +6,9 @@ import crypto from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError, logWarn } from '@/lib/error-reporter/server'
-import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
+import { makeAvifThumbFromMain, makeImageStorageFilename, normalizeImageToAvifPair, validateWorkImageBuffer, workImageThumbKey } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer, isR2ObjectNotFound } from '@/lib/r2-s3-object'
-import { addWorkImage, deleteWorkImage } from '@/app/atelier/works/actions'
+import { addWorkImage, commitWorkImage, deleteWorkImage } from '@/app/atelier/works/actions'
 import {
   countWorkSessionItems,
   sessionItemHasContent,
@@ -39,6 +39,8 @@ function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
 
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const SESSION_WORK_FETCH_PAGE_SIZE = 1000
+/** Rows the session work search returns while its box is empty (TODO 17). */
+const SESSION_WORK_EMPTY_SEARCH_LIMIT = 40
 
 function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
@@ -285,6 +287,66 @@ function formatSessionHistoryDate(value: string): string {
 async function rpcIsAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
   const { data } = await supabase.rpc('is_admin')
   return !!data
+}
+
+/** A shot staged by this module: AVIF normalised at upload (since 2026-08-16), with its thumb. */
+function isStagedSessionAvif(shot: WorkSessionShot): boolean {
+  return /\.avif$/i.test(shot.r2_key) && !!shot.thumb_r2_key
+}
+
+/**
+ * Put one staged shot on a work (TODO 17, Pem « do what is common sense »). The staged file was
+ * normalised once at upload — AVIF, Artist/Copyright EXIF, ≤ 2100 px, its 400 px thumb — the spec a
+ * work image gets from that input, so it is stored under the work's name as it is: no second
+ * decode / encode (one generation loss less) and no second sign-in / rights check (the caller checked
+ * is_admin). Same filename rule as addWorkImage (hash of the input bytes); `commitWorkImage` still
+ * checks the admin, writes tblImage, the cover and the palette.
+ */
+async function addStagedShotToWork(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  oeuvreId: number,
+  mainBuf: Buffer,
+  shot: WorkSessionShot,
+  captureMeta: Record<string, unknown>,
+): Promise<{ ok: true } | { error: string }> {
+  const [{ data: seqRow, error: seqErr }, thumbBuf] = await Promise.all([
+    supabase
+      .from('tblImage')
+      .select('SeqNo')
+      .eq('OeuvreID', oeuvreId)
+      .order('SeqNo', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // The staged thumb is the same 400 px AVIF; rebuilt from the main file if it is unreadable.
+    r2GetObjectBuffer(shot.thumb_r2_key!).catch(() => makeAvifThumbFromMain(mainBuf)),
+  ])
+  if (seqErr) return { error: `tblImage seq: ${seqErr.message}` }
+  const seqNo = ((seqRow?.SeqNo ?? 0) as number) + 1
+  const filename = makeImageStorageFilename(oeuvreId, seqNo, mainBuf, 'avif')
+  const linkedRefs = [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }]
+  try {
+    await Promise.all([
+      r2PutObject(mainBuf, filename, 'image/avif', {
+        source: 'work_image',
+        classification: 'linked',
+        linkedRefs,
+        uploadedBy: userId,
+        metadata: { seq: seqNo },
+      }),
+      r2PutObject(thumbBuf, workImageThumbKey(filename), 'image/avif', {
+        source: 'work_image_thumb',
+        classification: 'linked',
+        linkedRefs,
+        uploadedBy: userId,
+        metadata: { original_key: filename, seq: seqNo },
+      }),
+    ])
+  } catch (e) {
+    return { error: String(e) }
+  }
+  const res = await commitWorkImage(supabase, oeuvreId, filename, { captureMeta, sha256: shot.sha256 || null })
+  return 'error' in res ? { error: res.error } : { ok: true }
 }
 
 export type SessionActionResult = { ok: true } | { error: string }
@@ -852,6 +914,23 @@ export async function openWorkSessionForDay(
   const canCapture = await canCaptureWorkSession(supabase)
 
   if (canCapture) {
+    // Fast path (TODO 17, Pem « makes sense »): the day's one row, found by its stored day → reopen it
+    // directly, without the 400-row scan and merge below. Two rows, none, or a row missing its time →
+    // the full path. Every row stores session_day since 2026-07 (0 without one on 2026-11-18); the
+    // Journal list still merges any duplicate day it meets.
+    const { data: keyedRows, error: keyedErr } = await workSessionTable(supabase)
+      .select('id,status,payload,oeuvre_id,created_at,updated_at,user_id')
+      .in('status', [...WORK_SESSION_OPEN_STATUSES])
+      .filter('payload->>session_day', 'eq', calendarDay)
+      .order('updated_at', { ascending: false })
+      .limit(2)
+    if (!keyedErr && keyedRows?.length === 1) {
+      const only = keyedRows[0] as WorkSessionDayRow
+      if (parseWorkSessionPayload(only.payload).session_at) {
+        return reopenWorkSessionRow(supabase, only, calendarDay, oeuvreId, { readOnly: false })
+      }
+    }
+
     // Capture path: consolidate merges the day into one keeper row (donors deleted)
     // and returns its id, so we reopen that row directly instead of re-scanning the
     // whole day a second time. preferredSessionId is moot here — any preferred donor
@@ -1319,7 +1398,7 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
     if (!data || data.length < SESSION_WORK_FETCH_PAGE_SIZE) break
   }
 
-  return rows
+  const sorted = rows
     .filter(isSessionWorkCandidate)
     .sort((a, b) => {
       const aInProgress = isSessionWorkInProgress(a)
@@ -1327,6 +1406,9 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
       if (aInProgress !== bInProgress) return aInProgress ? -1 : 1
       return b.OeuvreID - a.OeuvreID
     })
+  // Empty box: the newest works, in progress first — not all ~960 rows with a thumbnail each on the
+  // phone (TODO 17, Pem « do what's best »). Typing searches the whole catalogue as before.
+  return q ? sorted : sorted.slice(0, SESSION_WORK_EMPTY_SEARCH_LIMIT)
 }
 
 async function workMapsForIds(
@@ -2082,20 +2164,31 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
         })
         return { error: `Lecture R2: ${String(e)}` }
       }
-      const file = new File([new Uint8Array(buf)], 'session.avif', { type: 'image/avif' })
-      const fd = new FormData()
-      fd.set('oeuvre_id', String(oeuvreId))
-      fd.set('image', file)
-      fd.set('image_sha256', shot.sha256)
-      fd.set('image_capture_meta', JSON.stringify({ ...captureMeta, shot_sha256: shot.sha256 }))
-      const res = await addWorkImage(fd)
+      const shotMeta = { ...captureMeta, shot_sha256: shot.sha256 }
+      let res: { ok: true } | { error: string }
+      if (isStagedSessionAvif(shot)) {
+        res = await addStagedShotToWork(supabase, user.id, oeuvreId, buf, shot, shotMeta)
+      } else {
+        // Not a staged AVIF (none on 2026-11-18): the general upload path, which re-encodes.
+        const file = new File([new Uint8Array(buf)], 'session.avif', { type: 'image/avif' })
+        const fd = new FormData()
+        fd.set('oeuvre_id', String(oeuvreId))
+        fd.set('image', file)
+        fd.set('image_sha256', shot.sha256)
+        fd.set('image_capture_meta', JSON.stringify(shotMeta))
+        const added = await addWorkImage(fd)
+        res = 'error' in added ? { error: added.error } : { ok: true }
+      }
       if ('error' in res) return { error: res.error }
       applied += 1
       const persistErr = await consumeShot(shot)
       if (persistErr) return { error: persistErr }
       try {
-        await r2DeleteObject(shot.r2_key)
-        if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
+        // Both staged copies at once (the shot is already consumed above).
+        await Promise.all([
+          r2DeleteObject(shot.r2_key),
+          shot.thumb_r2_key ? r2DeleteObject(shot.thumb_r2_key) : Promise.resolve(),
+        ])
       } catch (err) {
         await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
           source: 'work_session.r2Cleanup',

@@ -1147,6 +1147,11 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
                   style={{ minHeight: 44 }}
                 />
               </label>
+              {!workSearch.trim() && workResults.length > 0 ? (
+                <p className="t-mono-sm" style={{ margin: 0, color: 'var(--tx3)', fontSize: 10 }}>
+                  {t('session_work_search_empty_hint')}
+                </p>
+              ) : null}
               <div
                 data-testid="session-work-search-results"
                 style={{

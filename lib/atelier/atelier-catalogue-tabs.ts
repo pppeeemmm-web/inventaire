@@ -23,3 +23,15 @@ export const ATELIER_TABS_WITHOUT_CATALOGUE_CHUNK: ReadonlySet<SegmentedAtelierT
 export function tabNeedsCatalogueChunkOnColdStart(tab: SegmentedAtelierTab): boolean {
   return !ATELIER_TABS_WITHOUT_CATALOGUE_CHUNK.has(tab)
 }
+
+/**
+ * Tabs that show the first chunk but never the whole catalogue (TODO 18, Pem « OK » 2026-11-18):
+ * Overview counts on the server until the list is complete and shows the 16 newest works; Stock reads
+ * no works. Checked against `team-portal-segment-panel.tsx` on 2026-11-18.
+ */
+const ATELIER_TABS_FIRST_CHUNK_ONLY: ReadonlySet<SegmentedAtelierTab> = new Set(['overview', 'stock'])
+
+/** True when the tab reads the whole catalogue: the rest of the works loads in the background there. */
+export function tabNeedsWholeCatalogue(tab: SegmentedAtelierTab): boolean {
+  return tabNeedsCatalogueChunkOnColdStart(tab) && !ATELIER_TABS_FIRST_CHUNK_ONLY.has(tab)
+}

@@ -265,6 +265,10 @@ export const atelierMessages = defineMessages({
     fr: 'Titre, ID, dimensions...',
     en: 'Title, ID, dimensions...',
   },
+  session_work_search_empty_hint: {
+    fr: 'Les plus récentes, œuvres en cours d’abord. Tapez un titre ou un numéro pour les autres.',
+    en: 'The most recent, works in progress first. Type a title or a number for the others.',
+  },
   session_item_notes_label: {
     fr: 'Notes pour cette peinture',
     en: 'Notes for this painting',

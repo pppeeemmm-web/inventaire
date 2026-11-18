@@ -128,6 +128,11 @@ export async function validateWorkImageBuffer(
  * Server-only: canonical R2 key for a work image (content hash + validated extension).
  * Pattern: W_{oid}_{seq:02}_{sha256-prefix8}.{ext}
  */
+/** R2 key of a work image's 400 px thumb (same rule as `thumbNameFor` in app/atelier/works/actions.ts). */
+export function workImageThumbKey(filename: string): string {
+  return `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
+}
+
 export function makeImageStorageFilename(
   oid: number,
   seq: number,

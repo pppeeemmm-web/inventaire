@@ -40,7 +40,7 @@ import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById, fetchOeuvresRest } from '@/app/atelier/works/actions'
-import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
+import { tabNeedsCatalogueChunkOnColdStart, tabNeedsWholeCatalogue } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
 import { getSidebarCounts, type SidebarCounts } from '@/app/atelier/sidebar-counts-actions'
@@ -534,44 +534,13 @@ export function TeamPortalClient({
     }
   }, [oeuvresNextCursor, oeuvresPaging, t])
 
-  // Background eager-load: fetch remaining pages automatically after first paint.
-  // The loop runs once on mount; cursor is managed locally to avoid stale-closure issues.
+  // The rest of the catalogue loads in the background — once a tab that reads the whole catalogue is
+  // open (effect below, after `tab`). A hop away does not stop it; leaving the Atelier does.
+  const catalogueRestLoadingRef = useRef(false)
+  const portalUnmountedRef = useRef(false)
   useEffect(() => {
-    if (oeuvresPaging == null) return
-    if (oeuvres.length >= oeuvresPaging.totalCount) return
-    const initialCursor = oeuvresPaging.nextCursor
-    if (initialCursor == null) return
-
-    const toastId = toast.info(t('catalogue_loading'), { ttlMs: 120_000 })
-    let cancelled = false
-
-    ;(async () => {
-      let cursor: number | null = initialCursor
-      await afterForeground()
-      while (cursor != null && !cancelled) {
-        try {
-          // The whole rest in one call (TODO 19): one round trip instead of one per 500 works.
-          const { rows, nextCursor, hasMore } = await fetchOeuvresRest(cursor)
-          if (cancelled) break
-          setOeuvres((prev) => {
-            const seen = new Set(prev.map((o) => o.OeuvreID))
-            return [...prev, ...rows.filter((o) => !seen.has(o.OeuvreID))]
-          })
-          setOeuvresNextCursor(hasMore ? nextCursor : null)
-          cursor = hasMore ? nextCursor : null
-        } catch (e) {
-          console.error('[atelier bg load]', e)
-          break
-        }
-      }
-      if (!cancelled) dismissToast(toastId)
-    })()
-
-    return () => {
-      cancelled = true
-      dismissToast(toastId)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount with SSR values
+    portalUnmountedRef.current = false
+    return () => { portalUnmountedRef.current = true }
   }, [])
 
   const oeuvresCataloguePartial =
@@ -784,6 +753,41 @@ export function TeamPortalClient({
       window.clearTimeout(timer)
     }
   }, [tab])
+
+  // The rest of the catalogue (~1 MB) only where a tab reads it whole: Inventory, Reports, Themes,
+  // Production… — not on Overview (server counts, newest works from the first chunk), Stock, or the tabs
+  // without works (TODO 18, Pem « OK » 2026-11-18; ⌘K searches the server meanwhile). Once per page.
+  const wholeCatalogueTab = tabNeedsWholeCatalogue(effectiveRouteTab ?? tab)
+  useEffect(() => {
+    if (!wholeCatalogueTab || oeuvresPaging == null) return
+    // An empty list = the first chunk is still coming (shell opened on a tab without works); this runs again when it lands.
+    if (oeuvres.length === 0 || oeuvres.length >= oeuvresPaging.totalCount) return
+    if (oeuvresNextCursor == null || catalogueRestLoadingRef.current) return
+    catalogueRestLoadingRef.current = true
+    const toastId = toast.info(t('catalogue_loading'), { ttlMs: 120_000 })
+    let cursor: number | null = oeuvresNextCursor
+    void (async () => {
+      await afterForeground()
+      while (cursor != null && !portalUnmountedRef.current) {
+        try {
+          // The whole rest in one call (TODO 19): one round trip instead of one per 500 works.
+          const { rows, nextCursor, hasMore } = await fetchOeuvresRest(cursor)
+          if (portalUnmountedRef.current) break
+          setOeuvres((prev) => {
+            const seen = new Set(prev.map((o) => o.OeuvreID))
+            return [...prev, ...rows.filter((o) => !seen.has(o.OeuvreID))]
+          })
+          setOeuvresNextCursor(hasMore ? nextCursor : null)
+          cursor = hasMore ? nextCursor : null
+        } catch (e) {
+          console.error('[atelier bg load]', e)
+          break
+        }
+      }
+      dismissToast(toastId)
+      catalogueRestLoadingRef.current = false
+    })()
+  }, [wholeCatalogueTab, oeuvres.length, oeuvresNextCursor, oeuvresPaging, t])
 
   useLayoutEffect(() => {
     if (effectiveRouteTab) {
@@ -1177,9 +1181,11 @@ export function TeamPortalClient({
         onClose={() => setPaletteOpen(false)}
         tabs={TABS_RAW.map(([id, label]) => ({ id, label }))}
         oeuvres={oeuvres}
+        catalogueComplete={!oeuvresCataloguePartial}
         contacts={contacts}
         onGoTab={(t) => { handleSetTab(t as Tab); setPaletteOpen(false) }}
-        onGoWork={(id) => { const o = oeuvres.find(x => x.OeuvreID === id); if (o) setInspected(o); setPaletteOpen(false) }}
+        // A work outside the loaded list (number / server / meaning hit) is fetched, not dropped (TODO 18).
+        onGoWork={(id) => { openWorkOverlay(id); setPaletteOpen(false) }}
         onCaptureSession={
           isAdmin ? () => void router.push('/atelier/session/new') : undefined
         }

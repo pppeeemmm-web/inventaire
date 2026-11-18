@@ -19,6 +19,8 @@ interface Props {
   onClose: () => void
   tabs: TabEntry[]
   oeuvres: Oeuvre[]
+  /** False while only part of the catalogue is loaded: titles are then searched on the server (TODO 18). */
+  catalogueComplete?: boolean
   contacts: Contact[]
   onGoTab: (tab: string) => void
   onGoWork: (id: number) => void
@@ -44,7 +46,7 @@ interface Item {
 }
 
 export function CommandPalette({
-  open, onClose, tabs, oeuvres, contacts,
+  open, onClose, tabs, oeuvres, catalogueComplete = true, contacts,
   onGoTab, onGoWork, onCaptureSession, onScanQr, onFieldNote, onReminders,
   onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
 }: Props) {
@@ -91,6 +93,25 @@ export function CommandPalette({
       alive = false
     }
   }, [numQ, open, oeuvres])
+
+  // Titles: among the loaded works when the whole catalogue is in; on the server while it is not
+  // (TODO 18 — Overview and the tabs without works no longer load it), so ⌘K still finds every work.
+  const [serverTitleHits, setServerTitleHits] = useState<MenuWork[]>([])
+  useEffect(() => {
+    const trimmed = q.trim()
+    setServerTitleHits([])
+    if (!open || catalogueComplete || trimmed.length < 2 || /^#?\d+$/.test(trimmed)) return
+    let alive = true
+    const timer = setTimeout(() => {
+      void searchMenuWorks(trimmed).then((r) => {
+        if (alive) setServerTitleHits(r)
+      })
+    }, 200)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [q, open, catalogueComplete])
 
   useEffect(() => {
     const trimmed = q.trim()
@@ -173,7 +194,14 @@ export function CommandPalette({
     }
 
     // Works (search by title, min 2 chars)
-    if (q.length >= 2) {
+    if (q.length >= 2 && !catalogueComplete) {
+      let wCount = 0
+      for (const w of serverTitleHits) {
+        if (w.id === numHit?.id) continue
+        result.push({ id: `work:${w.id}`, label: w.title ?? `#${w.id}`, work: { id: w.id, title: w.title, image: w.thumb ?? null }, group: t('cmd_palette_group_works'), action: () => { onGoWork(w.id); onClose() } })
+        if (++wCount >= 6) break
+      }
+    } else if (q.length >= 2) {
       let wCount = 0
       for (const o of oeuvres) {
         if (o.OeuvreID !== numHit?.id && (o.Titre ?? '').toLowerCase().includes(qLow)) {
@@ -249,6 +277,7 @@ export function CommandPalette({
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,
+    catalogueComplete, serverTitleHits,
   ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))
