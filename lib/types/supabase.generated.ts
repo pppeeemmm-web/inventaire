@@ -327,72 +327,6 @@ export type Database = {
           },
         ]
       }
-      consignment_order: {
-        Row: {
-          catalog_price: number | null
-          commission_pct: number | null
-          created_at: string | null
-          end_date: string | null
-          id: string
-          insurance_value: number | null
-          kind: string
-          notes: string | null
-          oeuvre_id: number | null
-          order_ref: string | null
-          partner_id: number | null
-          pdf_path: string | null
-          start_date: string | null
-          status: string | null
-        }
-        Insert: {
-          catalog_price?: number | null
-          commission_pct?: number | null
-          created_at?: string | null
-          end_date?: string | null
-          id?: string
-          insurance_value?: number | null
-          kind?: string
-          notes?: string | null
-          oeuvre_id?: number | null
-          order_ref?: string | null
-          partner_id?: number | null
-          pdf_path?: string | null
-          start_date?: string | null
-          status?: string | null
-        }
-        Update: {
-          catalog_price?: number | null
-          commission_pct?: number | null
-          created_at?: string | null
-          end_date?: string | null
-          id?: string
-          insurance_value?: number | null
-          kind?: string
-          notes?: string | null
-          oeuvre_id?: number | null
-          order_ref?: string | null
-          partner_id?: number | null
-          pdf_path?: string | null
-          start_date?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "consignment_order_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "consignment_order_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "Contact"
-            referencedColumns: ["ContactID"]
-          },
-        ]
-      }
       constellation_map: {
         Row: {
           auth_user_id: string
@@ -1199,7 +1133,6 @@ export type Database = {
           message: string
           name: string
           oeuvre_id: number | null
-          sale_order_id: string | null
           status: string
           work_order_id: string | null
         }
@@ -1211,7 +1144,6 @@ export type Database = {
           message: string
           name: string
           oeuvre_id?: number | null
-          sale_order_id?: string | null
           status?: string
           work_order_id?: string | null
         }
@@ -1223,7 +1155,6 @@ export type Database = {
           message?: string
           name?: string
           oeuvre_id?: number | null
-          sale_order_id?: string | null
           status?: string
           work_order_id?: string | null
         }
@@ -1234,13 +1165,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "inquiry_sale_order_id_fkey"
-            columns: ["sale_order_id"]
-            isOneToOne: false
-            referencedRelation: "sale_order"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "inquiry_work_order_id_fkey"
@@ -2009,10 +1933,9 @@ export type Database = {
           id: string
           method: string | null
           notes: string | null
-          order_id: string | null
           payment_date: string
           refunded_at: string | null
-          work_order_id: string | null
+          work_order_id: string
         }
         Insert: {
           amount: number
@@ -2020,10 +1943,9 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          order_id?: string | null
           payment_date?: string
           refunded_at?: string | null
-          work_order_id?: string | null
+          work_order_id: string
         }
         Update: {
           amount?: number
@@ -2031,19 +1953,11 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          order_id?: string | null
           payment_date?: string
           refunded_at?: string | null
-          work_order_id?: string | null
+          work_order_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "payments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "sale_order"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "payments_work_order_id_fkey"
             columns: ["work_order_id"]
@@ -2252,121 +2166,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sale_order: {
-        Row: {
-          balance_due: string | null
-          balance_paid: boolean
-          buyer_id: number | null
-          commission_amount: number | null
-          completed_at: string | null
-          consignment_order_id: string | null
-          created_at: string
-          currency: string
-          delivered: boolean
-          delivery_address: string | null
-          delivery_date: string | null
-          deposit_due: string | null
-          deposit_paid: boolean
-          deposit_pct: number | null
-          discount_pct: number | null
-          id: string
-          notes: string | null
-          oeuvre_id: number
-          order_ref: string | null
-          payment_method: string | null
-          pdf_path: string | null
-          prix_catalogue: number | null
-          prix_final: number | null
-          return_window_days: number
-          return_window_skipped: boolean
-          return_window_starts_at: string | null
-          shipping_method: string | null
-          statut: string
-        }
-        Insert: {
-          balance_due?: string | null
-          balance_paid?: boolean
-          buyer_id?: number | null
-          commission_amount?: number | null
-          completed_at?: string | null
-          consignment_order_id?: string | null
-          created_at?: string
-          currency?: string
-          delivered?: boolean
-          delivery_address?: string | null
-          delivery_date?: string | null
-          deposit_due?: string | null
-          deposit_paid?: boolean
-          deposit_pct?: number | null
-          discount_pct?: number | null
-          id?: string
-          notes?: string | null
-          oeuvre_id: number
-          order_ref?: string | null
-          payment_method?: string | null
-          pdf_path?: string | null
-          prix_catalogue?: number | null
-          prix_final?: number | null
-          return_window_days?: number
-          return_window_skipped?: boolean
-          return_window_starts_at?: string | null
-          shipping_method?: string | null
-          statut?: string
-        }
-        Update: {
-          balance_due?: string | null
-          balance_paid?: boolean
-          buyer_id?: number | null
-          commission_amount?: number | null
-          completed_at?: string | null
-          consignment_order_id?: string | null
-          created_at?: string
-          currency?: string
-          delivered?: boolean
-          delivery_address?: string | null
-          delivery_date?: string | null
-          deposit_due?: string | null
-          deposit_paid?: boolean
-          deposit_pct?: number | null
-          discount_pct?: number | null
-          id?: string
-          notes?: string | null
-          oeuvre_id?: number
-          order_ref?: string | null
-          payment_method?: string | null
-          pdf_path?: string | null
-          prix_catalogue?: number | null
-          prix_final?: number | null
-          return_window_days?: number
-          return_window_skipped?: boolean
-          return_window_starts_at?: string | null
-          shipping_method?: string | null
-          statut?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sale_order_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
-            referencedRelation: "Contact"
-            referencedColumns: ["ContactID"]
-          },
-          {
-            foreignKeyName: "sale_order_consignment_order_id_fkey"
-            columns: ["consignment_order_id"]
-            isOneToOne: false
-            referencedRelation: "consignment_order"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sale_order_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-        ]
-      }
       saved_report: {
         Row: {
           config: Json
@@ -2452,8 +2251,6 @@ export type Database = {
           id: string
           kind: string | null
           note: string | null
-          order_id: string | null
-          sale_order_id: string | null
           scheduled_for: string | null
           shipped_at: string | null
           status: string | null
@@ -2466,8 +2263,6 @@ export type Database = {
           id?: string
           kind?: string | null
           note?: string | null
-          order_id?: string | null
-          sale_order_id?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
           status?: string | null
@@ -2480,8 +2275,6 @@ export type Database = {
           id?: string
           kind?: string | null
           note?: string | null
-          order_id?: string | null
-          sale_order_id?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
           status?: string | null
@@ -2489,13 +2282,6 @@ export type Database = {
           work_order_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "shipment_sale_order_id_fkey"
-            columns: ["sale_order_id"]
-            isOneToOne: false
-            referencedRelation: "sale_order"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "shipment_to_contact_id_fkey"
             columns: ["to_contact_id"]
@@ -4204,10 +3990,6 @@ export type Database = {
       }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
-      oeuvre_batch_ids: {
-        Args: { p_notes: string; p_oeuvre: number }
-        Returns: Json
-      }
       oeuvre_contact_label: {
         Args: { p_id: number; p_with_place?: boolean }
         Returns: string

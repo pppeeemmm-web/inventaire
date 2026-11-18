@@ -1,6 +1,8 @@
 -- Orders (R7) step 3 of 3 — drop the old order tables and add the gift rule.
 --
--- Ready; Pem OK 2026-11-18 (review checklist « ok ») — applied by main at land.
+-- APPLIED 2026-11-18 (Pem OK, review checklist « ok »), migration work_order_drop_legacy, at the land of
+-- orders-review-fixes. First try refused (trg_shipment_return_window listed sale_order_id); trigger rebuilt
+-- below, second try applied. Checked after: old tables / columns gone, gift rule live, 9 orders, 7 gifts.
 -- Dependency work_order_r7_decisions.sql: applied live (migration work_order_r7_decisions; checked 2026-11-18:
 -- work_order_kind_check and oeuvre_order_exists include 'entrusted').
 -- Before running, both must return nothing:
@@ -179,6 +181,13 @@ $$;
 alter table public.payments drop constraint if exists payments_one_order;
 alter table public.payments drop column if exists order_id;
 alter table public.payments alter column work_order_id set not null;
+
+-- The delivery trigger listed sale_order_id in its UPDATE OF columns (found at apply, 2026-11-18):
+-- it now fires on work_order_id, the column its function reads.
+drop trigger if exists trg_shipment_return_window on public.shipment;
+create trigger trg_shipment_return_window
+  after insert or update of status, delivered_at, work_order_id on public.shipment
+  for each row execute function public.sync_sale_order_return_window_from_shipment();
 
 alter table public.shipment drop column if exists sale_order_id;
 alter table public.shipment drop column if exists order_id;     -- uuid, no FK, never written by the app
