@@ -27,6 +27,21 @@ import { autoPeriodFor, nearestPlace, parseStepDate, placeFitsDate, placeLabel, 
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 
 type Row = { id: number; label: string }
+
+// « Brouillon » (Pem 2026-11-18): a new work's typed fields kept on this phone (localStorage, survives
+// closing the app), picked up the next time the screen opens in « Nouvelle œuvre ». Photos are not kept.
+const DRAFT_KEY = 'pem-record-draft-v1'
+const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+type RecordDraft = {
+  titre: string; techniqueId: string; supportId: string; formatId: string; h: string; w: string; d: string
+  placeId: string; note: string; sourceId: string; periodId: string; paintedOn: RecordWorkHit | null; savedAt: number
+}
+const clearRecordDraft = () => {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  // eslint-disable-next-line pem-i18n/no-silent-catch -- browser storage blocked or full: the draft is optional
+  } catch { /* storage blocked: nothing kept */ }
+}
 type Mode = 'new' | 'reprise'
 
 const H = 48
@@ -155,7 +170,7 @@ function WorkPicker({ value, onPick, label, testId }: { value: RecordWorkHit | n
 }
 
 export function WorkRecordPhone({ techniques, supports, formats, action, shareInboxPrefill = null, pemContactId, onAllFields, initialMode = 'new' }: WorkRecordPhoneProps) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const router = useRouter()
   const ps = usePeriodSource()
   const [pending, startTransition] = useTransition()
@@ -233,6 +248,55 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when places arrive
   }, [ps.places.length])
 
+  // Pick up a kept « Brouillon » once, for a new work that does not come from the share sheet.
+  useEffect(() => {
+    if (initialMode !== 'new' || shareInboxPrefill) return
+    let dr: RecordDraft | null = null
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      dr = raw ? (JSON.parse(raw) as RecordDraft) : null
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- browser storage blocked or full: the draft is optional
+    } catch {
+      clearRecordDraft()
+    }
+    if (!dr) return
+    if (Date.now() - (dr.savedAt ?? 0) > DRAFT_MAX_AGE_MS) return clearRecordDraft()
+    setTitre(dr.titre ?? ''); setTechniqueId(dr.techniqueId ?? ''); setSupportId(dr.supportId ?? ''); setFormatId(dr.formatId ?? '')
+    setH(dr.h ?? ''); setW(dr.w ?? ''); setD(dr.d ?? ''); setNote(dr.note ?? '')
+    setSourceId(dr.sourceId ?? ''); setPeriodId(dr.periodId ?? ''); setPaintedOn(dr.paintedOn ?? null)
+    if (dr.placeId) {
+      touchedPlace.current = true
+      setPlaceId(dr.placeId)
+      setPlaceAuto(false)
+    }
+    if (dr.sourceId || dr.periodId || dr.paintedOn) setMore(true)
+    const when = new Date(dr.savedAt).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'short' })
+    toast.info(t('wr_draft_restored').replace('{date}', when), {
+      ttlMs: 8000,
+      action: {
+        label: t('wr_draft_clear'),
+        onClick: () => {
+          clearRecordDraft()
+          setTitre(''); setTechniqueId(''); setSupportId(''); setFormatId(''); setH(''); setW(''); setD(''); setNote('')
+          setSourceId(''); setPeriodId(''); setPaintedOn(null)
+        },
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on open
+  }, [])
+
+  const keepDraft = () => {
+    const dr: RecordDraft = { titre, techniqueId, supportId, formatId, h, w, d, placeId, note, sourceId, periodId, paintedOn, savedAt: Date.now() }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(dr))
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- browser storage blocked or full: the draft is optional
+    } catch {
+      return void toast.error(t('wr_draft_kept'))
+    }
+    toast.success(t('wr_draft_kept'))
+    router.back()
+  }
+
   const dirty =
     files.length > 0 || !!titre.trim() || !!techniqueId || !!supportId || !!formatId || !!h || !!w || !!d || !!note.trim() || !!work || !!paintedOn || !!sourceId || !!periodId
 
@@ -296,6 +360,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }
 
   function finish(oid: number | null, withVoice: boolean) {
+    if (mode === 'new') clearRecordDraft()
     if (withVoice && oid) return void setVoiceFor(oid)
     router.push('/hub')
     router.refresh()
@@ -383,6 +448,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
 
   const close = () => {
     if (dirty && !window.confirm(t('wr_leave_confirm'))) return
+    if (mode === 'new') clearRecordDraft()
     router.back()
   }
 
@@ -541,6 +607,11 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
 
       <div style={{ flexShrink: 0, display: 'flex', gap: 8, alignItems: 'center', padding: '10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
         <button type="button" className="btn ghost" style={{ minHeight: H, padding: '0 16px' }} onClick={close}>{t('wr_cancel')}</button>
+        {mode === 'new' && dirty && !pending ? (
+          <button type="button" className="btn" data-testid="work-record-keep-draft" style={{ minHeight: H, padding: '0 14px' }} onClick={keepDraft}>
+            {t('wr_keep_draft')}
+          </button>
+        ) : null}
         <button type="button" className="btn primary" data-testid="work-record-save" disabled={pending || (mode === 'reprise' && !work)}
           style={{ flex: 1, minWidth: 0, minHeight: H, fontWeight: 700 }}
           onClick={() => (mode === 'new' ? submitNew() : submitReprise())}>

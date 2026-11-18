@@ -1720,21 +1720,8 @@ export function DrawerContent({
           <WorkCreationHistory oeuvreId={o.OeuvreID} when={when} />
         </Part>
         <Part label={t('wc_p_comments')} stacked={stacked} testId="work-card-comments">
-          {/* The old free-text field (Pem 2026-11-18: « remove it if it is empty »): shown only while the saved
-              value (or an unsaved draft) has text, labelled as the old comment so nothing is lost. The note
-              lines below are where notes go now. */}
-          {noteBaseline.c.trim() || commentaires.trim() ? (
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid="work-card-old-comment">
-              <span className="t-label" style={{ color: 'var(--tx3)' }}>{t('nl_old_comment')}</span>
-              <textarea
-                className="input"
-                value={commentaires}
-                onChange={(e) => setCommentaires(e.target.value)}
-                rows={3}
-                style={textareaSt}
-              />
-            </label>
-          ) : null}
+          {/* The old free-text « Commentaires » field is retired (Pem 2026-11-18): its text was already in note
+              lines, the leftovers were emptied (supabase/sql/old_comments_retire.sql). Notes go in lines. */}
           <WorkNoteLines
             oeuvreId={o.OeuvreID}
             isAdmin={isAdmin}

@@ -107,4 +107,12 @@ export const workRecordMessages = defineMessages({
     fr: 'l’artiste par défaut (archive) — modifiable ici',
     en: 'the artist by default (archive) — change it here',
   },
+  // « Brouillon » (Pem 2026-11-18, TODO 22): keep a new work's fields on this phone and leave.
+  wr_keep_draft: { fr: 'Brouillon', en: 'Draft' },
+  wr_draft_kept: {
+    fr: 'Brouillon gardé sur ce téléphone (sans les photos) — rouvrez « Enregistrer » pour le reprendre.',
+    en: 'Draft kept on this phone (without the photos) — open « Record » again to pick it up.',
+  },
+  wr_draft_restored: { fr: 'Brouillon du {date} repris.', en: 'Draft from {date} picked up.' },
+  wr_draft_clear: { fr: 'Effacer', en: 'Clear' },
 })
