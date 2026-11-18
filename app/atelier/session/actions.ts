@@ -1284,7 +1284,11 @@ export async function linkWorkSessionItemToOeuvre(
   return { ok: true }
 }
 
-export async function searchWorksForSession(query: string): Promise<WorkSessionWorkOption[]> {
+/**
+ * `emptyLimit`: with an empty query, return only that many works (in progress first, then newest) instead of
+ * the whole catalogue — the session screen passes 30 (Pem 2026-11-18: « Yes, 30 recent »). Typing searches all.
+ */
+export async function searchWorksForSession(query: string, emptyLimit?: number): Promise<WorkSessionWorkOption[]> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -1319,7 +1323,7 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
     if (!data || data.length < SESSION_WORK_FETCH_PAGE_SIZE) break
   }
 
-  return rows
+  const sorted = rows
     .filter(isSessionWorkCandidate)
     .sort((a, b) => {
       const aInProgress = isSessionWorkInProgress(a)
@@ -1327,6 +1331,7 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
       if (aInProgress !== bInProgress) return aInProgress ? -1 : 1
       return b.OeuvreID - a.OeuvreID
     })
+  return !q && emptyLimit ? sorted.slice(0, emptyLimit) : sorted
 }
 
 async function workMapsForIds(
