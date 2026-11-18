@@ -28,7 +28,7 @@ import {
 } from '@/lib/stock-item'
 import { uploadInvoiceFile } from '@/lib/supplies/upload-invoice'
 
-type ItemLite = { id: number; name: string; unit: string; quantity: number; supplier_id: number | null; category: string | null }
+type ItemLite = { id: number; name: string; unit: string; quantity: number; supplier_id: number | null; category: string | null; cost_unit: number | null }
 
 type FormLine = {
   key: string
@@ -107,7 +107,7 @@ export function SupplyOrderSheet({
   const dirty = serialize(form) !== baseline
 
   const loadItems = useCallback(async () => {
-    const { data, error } = await createClient().from('stock_item').select('id, name, unit, quantity, supplier_id, category').order('name')
+    const { data, error } = await createClient().from('stock_item').select('id, name, unit, quantity, supplier_id, category, cost_unit').order('name')
     if (error) { toast.error(`${t('error_prefix')} ${stringifyError(error)}`); return }
     setItems((data ?? []) as ItemLite[])
   }, [t])
@@ -252,7 +252,8 @@ export function SupplyOrderSheet({
       ...f,
       lines: [...f.lines, {
         key: nextKey(), id: null, stock_item_id: it.id, name: it.name, unit: it.unit, stock_qty: it.quantity,
-        qty_ordered: '1', qty_received: 0, unit_price_ht: '',
+        // Last price paid (receiving writes it to cost_unit), as « Réassort » pre-fills it (stress test 2026-11-18).
+        qty_ordered: '1', qty_received: 0, unit_price_ht: it.cost_unit == null ? '' : String(it.cost_unit),
       }],
     }))
     setItemQuery('')
@@ -264,7 +265,7 @@ export function SupplyOrderSheet({
     const res = await createStockItemInline({ name: newItem.name, unit: newItem.unit, category: newItem.category || null, supplier_id: form.supplierId })
     setBusy(false)
     if ('error' in res) { toast.error(errText(res.error)); return }
-    const it: ItemLite = { id: res.id, name: newItem.name.trim(), unit: newItem.unit.trim() || 'units', quantity: 0, supplier_id: form.supplierId, category: newItem.category || null }
+    const it: ItemLite = { id: res.id, name: newItem.name.trim(), unit: newItem.unit.trim() || 'units', quantity: 0, supplier_id: form.supplierId, category: newItem.category || null, cost_unit: null }
     setItems((p) => [...p, it])
     addLine(it)
     setNewItem(null)

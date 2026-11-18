@@ -16,6 +16,10 @@ import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { AccountActions } from '@/components/shared/AccountActions'
 import type { PhoneNavigate } from '@/components/shared/PhoneMenu'
 import { getPhoneMenuData, getPhoneMenuFilCount, searchMenuWorks, type MenuWork, type PhoneMenuData } from '@/app/hub/menu-actions'
+import { useWhatsNewDots } from '@/lib/whats-new-dots'
+
+/** Atelier tab key of a menu link (`/atelier/inventory` → `inventory`) — the key What's new dots use. */
+const tabKeyOf = (href: string) => (href.startsWith('/atelier/') ? href.slice('/atelier/'.length).split(/[?/]/)[0] : null)
 
 /** Counts survive closing and reopening the sheet on the same page for a minute. */
 let cache: { data: PhoneMenuData; fil: number | null; at: number } | null = null
@@ -162,11 +166,32 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
       ? [{ key: 'fil', icon: '🧵', label: 'pn_tile_fil' as DictKey, href: '/hub/fil', sub: (_d: PhoneMenuData | null, f: number | null) => ({ text: f == null ? '' : t('pn_sub_to_sort').replace('{n}', String(f)), n: f }) }]
       : []),
     { key: 'orders', icon: '📦', label: 'pn_tile_orders', href: '/atelier/sales', sub: (d) => ({ text: d ? t('pn_sub_under_way').replace('{n}', String(d.orders)) : '', n: n(d?.orders) }) },
-    { key: 'logistics', icon: '🚚', label: 'pn_tile_logistics', href: '/atelier/logistics', sub: (d) => ({ text: d ? t('pn_sub_shipments').replace('{n}', String(d.logistics)) : '', n: n(d?.logistics) }) },
+    // « n en route » = on the road (status shipped) · « m en cours » = every unfinished box, as the desktop badge (stress test 2026-11-18).
+    {
+      key: 'logistics', icon: '🚚', label: 'pn_tile_logistics', href: '/atelier/logistics',
+      sub: (d) => ({
+        text: !d ? '' : [d.inTransit > 0 ? t('pn_sub_shipments').replace('{n}', String(d.inTransit)) : '', d.logistics > d.inTransit || d.inTransit === 0 ? t('pn_sub_under_way').replace('{n}', String(d.logistics)) : ''].filter(Boolean).join(' · '),
+        n: n(d?.logistics),
+      }),
+    },
     { key: 'events', icon: '🏛️', label: 'pn_tile_events', href: '/atelier/exhibitions', sub: (d) => ({ text: d ? t('pn_sub_events').replace('{n}', String(d.events)) : '', n: n(d?.events) }) },
     { key: 'journal', icon: '📅', label: 'pn_tile_journal', href: '/atelier/journal', sub: () => ({ text: t('pn_sub_days'), n: null }) },
   ]
   const here = (href: string) => (href === '/hub' ? pathname === '/hub' || pathname === '/hub/today' : pathname.startsWith(href))
+
+  // The desktop sidebar's marks, on the same items (stress test 2026-11-18): unseen What's new dots (team
+  // only, seen state in this browser — `lib/whats-new-dots.ts`) and Kaizen « opérationnel » entries others added.
+  // Off until the counts say who is reading (admins see no What's new dots, as on the desktop).
+  const whatsNewDots = useWhatsNewDots(data?.isAdmin !== false)
+  const marked = (href: string) => {
+    const key = tabKeyOf(href)
+    return key != null && (whatsNewDots.has(key) || (key === 'kaizen-ops' && (data?.kaizenOps ?? 0) > 0))
+  }
+  const dot = (href: string) =>
+    marked(href) ? (
+      <span data-testid={`phone-menu-dot-${tabKeyOf(href)}`} aria-label={t('wn_spot_dot')} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ac)', flex: 'none' }} />
+    ) : null
+  const restMarked = REST.some((g) => g.items.some((i) => (!i.admin || isAdmin) && marked(i.href)))
 
   const onTouchStart = (e: TouchEvent) => {
     dragY.current = e.touches[0]?.clientY ?? null
@@ -272,6 +297,7 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
                 <span style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
                   <span aria-hidden="true" style={{ fontSize: 14 }}>{tile.icon}</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(tile.label)}</span>
+                  {dot(tile.href)}
                 </span>
                 <span style={{ fontSize: 12, color: s.n === 0 ? 'var(--tx3)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minHeight: 15 }}>{s.text}</span>
               </>,
@@ -297,7 +323,10 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
         </div>
 
         <details className="pem-fold" data-testid="phone-menu-rest" style={{ borderTop: '1px solid var(--bd)' }}>
-          <summary style={summary}>{t('pn_rest')}</summary>
+          <summary style={summary}>
+            {t('pn_rest')}
+            {restMarked ? <span data-testid="phone-menu-dot-rest" aria-label={t('wn_spot_dot')} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ac)', flex: 'none' }} /> : null}
+          </summary>
           <div style={{ padding: '0 16px 8px', display: 'grid', gap: 8 }}>
             {REST.map((g) => (
               <div key={g.label}>
@@ -307,7 +336,7 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
                     .filter((i) => !i.admin || isAdmin)
                     .map((i) => (
                       <span key={i.href} style={{ minWidth: 0 }}>
-                        {link(i.href, <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(i.label)}</span>, { ...row, fontSize: 14, color: here(i.href) ? 'var(--ac)' : 'var(--tx)' })}
+                        {link(i.href, <><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(i.label)}</span>{dot(i.href)}</>, { ...row, gap: 6, fontSize: 14, color: here(i.href) ? 'var(--ac)' : 'var(--tx)' })}
                       </span>
                     ))}
                 </div>

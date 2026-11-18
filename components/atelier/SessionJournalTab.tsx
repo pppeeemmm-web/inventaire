@@ -120,8 +120,15 @@ function JournalInventoryIdLink({
 
 type SummaryT = ReturnType<typeof useI18n>['t']
 
+/** Distinct works of the day: two items (or two sessions) on the same work count once, as on the phone day
+ *  (`worksOfDay` in app/hub/today/page.tsx); an item with no work yet counts on its own here — the phone skips it (stress test 2026-11-18). */
+function distinctWorkCount(row: WorkSessionJournalRow): number {
+  if (!row.items?.length) return row.item_count
+  return new Set(row.items.map((item) => (item.oeuvre_id != null ? `w${item.oeuvre_id}` : `i${item.id}`))).size
+}
+
 function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSourceDay, isAdmin = false): string {
-  const works = row.item_count
+  const works = distinctWorkCount(row)
   const photos = row.staged_shot_count + row.applied_shot_count
   const parts: string[] = []
   if (src?.entries) parts.push(src.entries === 1 ? t('je_sum_entry_one') : t('je_sum_entries').replace('{n}', String(src.entries)))
@@ -523,7 +530,7 @@ function JournalDayPage({
   const captureSlot = (
     <section id="journal-day-capture" data-testid="journal-day-works">
       <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
-        {t('je_works_heading')} ({row.items.length})
+        {t('je_works_heading')} ({distinctWorkCount(row)})
       </h2>
       {isAdmin ? (
         captureOpen ? (

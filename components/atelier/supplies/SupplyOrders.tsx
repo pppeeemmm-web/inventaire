@@ -75,8 +75,11 @@ export function SupplyOrders({ contacts }: { contacts: StockContactLike[] }) {
 
   const chip = (o: SupplyOrderSummary) => {
     const key = supplyOrderStatusKey(o)
+    // « Reçue n / m » counts lines received in full; when every line is still short (each partly in),
+    // « 0 / 2 » read as nothing received (stress test 2026-11-18) → « Reçue en partie ».
+    const complete = o.lines - o.short_lines
     const label = key === 'so_status_partial'
-      ? t(key as DictKey).replace('{n}', String(o.lines - o.short_lines)).replace('{of}', String(o.lines))
+      ? (complete > 0 ? t(key as DictKey).replace('{n}', String(complete)).replace('{of}', String(o.lines)) : t('so_status_partial_some'))
       : t(key as DictKey)
     return (
       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 11, whiteSpace: 'nowrap', color: CHIP_COLOR[key], border: `1px solid color-mix(in srgb, ${CHIP_COLOR[key]} 50%, var(--bd))` }}>

@@ -175,6 +175,17 @@ export function DrawerContent({
     try { localStorage.setItem(WORK_CARD_VIEW_KEY, v) } catch { /* ignore */ }
   }, [])
   useEffect(() => { setStagedCount(0); setVoiceCount(0); setAiToJudge(false) }, [o.OeuvreID])
+  // Photos a team member added that wait for the admin (`pending_changes` image_add, approved in Audit ›
+  // Validation). RLS: the author sees their own, the admin sees all (stress test 2026-11-18: the card said nothing).
+  const [pendingPhotos, setPendingPhotos] = useState(0)
+  useEffect(() => {
+    let live = true
+    setPendingPhotos(0)
+    void createClient().from('pending_changes').select('id', { count: 'exact', head: true })
+      .eq('oeuvre_id', o.OeuvreID).eq('change_kind', 'image_add').eq('status', 'pending')
+      .then(({ count, error }) => { if (live && !error) setPendingPhotos(count ?? 0) })
+    return () => { live = false }
+  }, [o.OeuvreID])
   /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
   const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
@@ -383,6 +394,7 @@ export function DrawerContent({
           }
           if ('pending' in res) {
             toast.success(t('wf_image_pending_toast'))
+            setPendingPhotos((n) => n + 1)
             continue
           }
           setWorkImages((prev: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }[]) => {
@@ -1732,6 +1744,11 @@ export function DrawerContent({
                 onClick={() => setCreationOpen(true)}
               >
                 {t('wc_session_photos_fmt').replace('{n}', String(stagedCount))}
+              </Chip>
+            ) : null}
+            {pendingPhotos > 0 ? (
+              <Chip narrow={narrow} tone="warn" title={t('wc_pending_photos_tt')} testId="work-card-pending-photos">
+                {pendingPhotos === 1 ? t('wc_pending_photo_one') : t('wc_pending_photos_fmt').replace('{n}', String(pendingPhotos))}
               </Chip>
             ) : null}
             {o.fate ? (

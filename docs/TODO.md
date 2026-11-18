@@ -11,7 +11,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 - 🔎 §3 Website legal pages, part 1 (visitor ID 13 months, no Vercel Analytics, « don't count me », own fonts + QR) — built; lead reviewing (flow review running)
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
 - 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
-- 🔎 §3 Small slips (supply « Reçue 0 / 2 », phone ☰ dots, « en route » count, Rappels 0 / 40, « 2 peintures », waiting photo) — built; lead reviewing (flow review running)
 - 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
 - ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — starts when the contacts fix lands ([note](./design/2026-11-18/ContactsReview.notes.md))
 - ✅ committed, waiting for the push: Bureau IA + PC agent (`26c2e23`)
@@ -63,7 +62,7 @@ Public site
 
 Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
-- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
+- [ ] Overview « Commandes · n envois à faire » counts boxes already shipped (`overview-business-actions.ts` uses the sidebar's all-unfinished count; « à faire » = not shipped, delivered or cancelled). Phone and desktop Journal disagree on a day item with no work yet (phone skips it).
 
 Rethink leftovers
 - [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy.

@@ -37,7 +37,8 @@ export const overviewDashMessages = defineMessages({
   od_dl_next7: { fr: 'dans 7 jours · {n} actives', en: 'in 7 days · {n} active' },
   od_rem_overdue: { fr: 'en retard · {n} aujourd’hui', en: 'overdue · {n} today' },
   od_rem_today: { fr: 'aujourd’hui · 0 en retard', en: 'today · 0 overdue' },
-  od_rem_next7: { fr: 'dans 7 jours', en: 'in 7 days' },
+  // The big number = due within 7 days; {n} = every unread reminder, the « Rappels » panel's count (stress test 2026-11-18).
+  od_rem_next7: { fr: 'dans 7 jours · {n} en tout', en: 'in 7 days · {n} in all' },
   od_money_net: { fr: 'net BNC {year}', en: 'net BNC {year}' },
   od_jobs_detail: { fr: 'en attente · archive {d}', en: 'waiting · archive {d}' },
   od_jobs_days: { fr: '{n} j', en: '{n} d' },

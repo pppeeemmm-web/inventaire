@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Six small slips from the stress test (Pem « go », TODO §3)
+
+- Supply orders: « Reçue en partie » when something came in but no line is complete; a new line pre-fills « Prix HT » with the item's last price paid.
+- Phone ☰: What's new / Kaizen dots as on the computer; Logistique « n en route · m en cours ».
+- Overview reminders: « dans 7 jours · n en tout »; Journal day: distinct works in the summary and the « Œuvres du jour » heading.
+- Work card: « n photo(s) en attente de validation » while a team photo waits.
+- Flow review run; the Overview « envois à faire » count stays open in TODO §3.
+
 ## 2026-11-18 — Approvals no longer overwrite newer edits (TODO §0, Pem « fix all the bugs »)
 
 - Approving a team proposal writes only the fields it changed, on top of the work as it stands (`planPendingEdit`, `formDataForPendingEdit`); a field someone changed since the card was opened (base sent by the card, `__base_json`; older proposals: as saved) stops it: Audit shows « Appliquer quand même » / Rejeter; a Fil « Garder » on it says so and leaves it for Audit. Linked sets: price, stage, custody. Themes / groups not proposed are left alone (`__keep_*`, admin only).

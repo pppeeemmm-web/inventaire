@@ -9,11 +9,17 @@ import { createClient } from '@/lib/supabase/server'
 import { getSidebarCounts, type SidebarCounts } from '@/app/atelier/sidebar-counts-actions'
 import { countFil } from '@/app/atelier/fil/actions'
 import { getSessionUserDisplay } from '@/lib/session-user'
+import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
 
 export type PhoneMenuData = SidebarCounts & {
   works: number
   ideas: number
   ripe: number
+  /** Shipments on the road (status `shipped`) — the tile's « n en route ». `logistics` (from SidebarCounts)
+   *  is every shipment not delivered, boxes still being prepared included (stress test 2026-11-18). */
+  inTransit: number
+  /** Kaizen « opérationnel » entries others added since I last opened it — the desktop sidebar's count. */
+  kaizenOps: number
   isAdmin: boolean
   name: string
 }
@@ -22,21 +28,25 @@ export async function getPhoneMenuData(): Promise<PhoneMenuData | { error: strin
   const supabase = await createClient()
   const [{ data: isTeam }, { data: isAdmin }] = await Promise.all([supabase.rpc('is_team'), supabase.rpc('is_admin')])
   if (!isTeam) return { error: 'forbidden' }
-  const [under, works, ideas, ripe, who] = await Promise.all([
+  const [under, works, ideas, ripe, who, kaizen, transit] = await Promise.all([
     getSidebarCounts(),
     supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('concept').select('id', { count: 'exact', head: true }),
     supabase.from('concept').select('id', { count: 'exact', head: true }).eq('maturity', 'mure'),
     getSessionUserDisplay(),
+    kaizenUnseenCounts().catch(() => ({ error: 'kaizen' })),
+    supabase.from('shipment').select('id', { count: 'exact', head: true }).eq('status', 'shipped'),
   ])
   if ('error' in under) return under
-  const err = works.error ?? ideas.error ?? ripe.error
+  const err = works.error ?? ideas.error ?? ripe.error ?? transit.error
   if (err) return { error: err.message }
   return {
     ...under,
     works: works.count ?? 0,
     ideas: ideas.count ?? 0,
     ripe: ripe.count ?? 0,
+    inTransit: transit.count ?? 0,
+    kaizenOps: 'error' in kaizen ? 0 : kaizen.ops,
     isAdmin: isAdmin === true,
     name: who.fullName || who.displayName,
   }

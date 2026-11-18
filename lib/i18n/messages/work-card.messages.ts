@@ -63,6 +63,12 @@ export const workCardMessages = defineMessages({
     en: 'The work’s public state, set by the database (stage + ownership). Read only.',
   },
   wc_session_photos_fmt: { fr: '{n} photo(s) de session à valider', en: '{n} session photo(s) to review' },
+  wc_pending_photo_one: { fr: '1 photo en attente de validation', en: '1 photo waiting for approval' },
+  wc_pending_photos_fmt: { fr: '{n} photos en attente de validation', en: '{n} photos waiting for approval' },
+  wc_pending_photos_tt: {
+    fr: 'Ajoutée par l’équipe : elle rejoint les images de l’œuvre quand l’administrateur la valide dans Audit › Validation.',
+    en: 'Added by the team: it joins the work’s images once the administrator approves it in Audit › Review.',
+  },
   wc_session_photos_tt: {
     fr: 'Des photos prises en session de terrain attendent votre tri : les ajouter à l’œuvre ou les écarter. Voir Création › Sessions de terrain.',
     en: 'Field-session photos wait for your sorting: add them to the work or set them aside. See Création › Field sessions.',

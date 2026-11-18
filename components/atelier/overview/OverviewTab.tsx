@@ -253,7 +253,9 @@ export function OverviewTab({
       id: 'reminders', label: t('od_sig_reminders'),
       kind: remOverdue > 0 ? 'wrong' : remToday > 0 ? 'attention' : 'ok',
       value: num(remOverdue || remToday || remTomorrow + remNext7),
-      detail: remOverdue > 0 ? fmt('od_rem_overdue', { n: remToday }) : remToday > 0 ? t('od_rem_today') : t('od_rem_next7'),
+      // « Rappels 0 » beside the panel's « Rappels 40 » read as two counts (stress test 2026-11-18): the signal
+      // counts what is due within 7 days, so its line names the total the panel shows.
+      detail: remOverdue > 0 ? fmt('od_rem_overdue', { n: remToday }) : remToday > 0 ? t('od_rem_today') : fmt('od_rem_next7', { n: reminders.length }),
       go: () => onGoTab('notes'),
     })
     signals.push({

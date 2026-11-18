@@ -31,6 +31,7 @@ export const supplyOrdersMessages = defineMessages({
   so_status_draft: { fr: 'Brouillon', en: 'Draft' },
   so_status_ordered: { fr: 'Commandée', en: 'Ordered' },
   so_status_partial: { fr: 'Reçue {n} / {of}', en: 'Received {n} / {of}' },
+  so_status_partial_some: { fr: 'Reçue en partie', en: 'Partly received' },
   so_status_received: { fr: 'Reçue', en: 'Received' },
   so_status_closed_short: { fr: 'Close (manque)', en: 'Closed (short)' },
   so_status_cancelled: { fr: 'Annulée', en: 'Cancelled' },
