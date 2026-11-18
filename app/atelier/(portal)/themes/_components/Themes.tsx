@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, type MouseEvent } from 'react'
+import { Fragment, useState, useMemo, useEffect, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import {
@@ -11,6 +11,9 @@ import {
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { Oeuvre } from '@/lib/types/database'
+import { THEME_NOTES_SQL_LIVE } from '@/lib/theme-notes'
+import { loadThemeNotes } from '../theme-notes-actions'
+import { ThemeNotesPanel } from './ThemeNotesPanel'
 
 interface Theme  { id: number; name: string }
 interface Group  { id: string; name: string }
@@ -54,6 +57,9 @@ export function Themes({
   const [localThemeWorkCount, setLocalThemeWorkCount] = useState(themeWorkCount)
   const [localGroupPrivateWorks, setLocalGroupPrivateWorks] = useState(groupPrivateWorks)
   const [localGroupWorkCount, setLocalGroupWorkCount] = useState(groupWorkCount)
+  // Theme notes (TODO 23) — empty and never fetched while THEME_NOTES_SQL_LIVE is false.
+  const [themeNotes, setThemeNotes] = useState<Record<number, string>>({})
+  const [notesEditingId, setNotesEditingId] = useState<number | null>(null)
 
   // Interaction State
   const [hoverTheme, setHoverTheme] = useState<number | null>(null)
@@ -93,6 +99,17 @@ export function Themes({
   useEffect(() => {
     setLocalGroupWorkCount(groupWorkCount)
   }, [groupWorkCount])
+
+  useEffect(() => {
+    if (!THEME_NOTES_SQL_LIVE) return
+    let alive = true
+    void loadThemeNotes().then((res) => {
+      if (alive && 'notes' in res) setThemeNotes(res.notes)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500) }
 
@@ -399,6 +416,28 @@ export function Themes({
     return narrow ? Math.min(c, 3) : c
   }, [previewWorks.length, narrow])
 
+  // Desktop: under the mosaic. Phone: right under the tapped (or being-edited) theme row.
+  const notesPanel = THEME_NOTES_SQL_LIVE ? (
+    <ThemeNotesPanel
+      themes={themes}
+      selectedId={hoverTheme}
+      notesById={themeNotes}
+      narrow={narrow}
+      editingId={notesEditingId}
+      onEditingChange={setNotesEditingId}
+      onSaved={(id, notes) => {
+        setThemeNotes((prev) => {
+          const next = { ...prev }
+          if (notes) next[id] = notes
+          else delete next[id]
+          return next
+        })
+        flash(t('thn_saved'))
+      }}
+    />
+  ) : null
+  const notesAnchorId = notesEditingId ?? hoverTheme
+
   const padX = narrow
     ? 'max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right))'
     : '40px'
@@ -458,7 +497,8 @@ export function Themes({
               const isRel = relatedThemes.includes(t_.id)
               const isHov = hoverTheme === t_.id
               return (
-                <div key={t_.id} 
+                <Fragment key={t_.id}>
+                <div
                   className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                   onMouseEnter={() => { setHoverTheme(t_.id); setHoverGroup(null) }} 
                   onClick={() => {
@@ -486,6 +526,9 @@ export function Themes({
                     <>
                       <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{t_.name}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                        {themeNotes[t_.id] && (
+                          <span className="t-mono-sm" title={t('thn_has_notes')} aria-label={t('thn_has_notes')} style={{ fontSize: 11, color: 'var(--ac)' }}>¶</span>
+                        )}
                         <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{localThemeWorkCount[t_.id] ?? 0}</span>
                         <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
                           <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} className="themes-row-action-btn">✎</button>
@@ -495,6 +538,8 @@ export function Themes({
                     </>
                   )}
                 </div>
+                {narrow && notesAnchorId === t_.id && notesPanel}
+                </Fragment>
               )
             })}
           </div>
@@ -651,6 +696,7 @@ export function Themes({
               </div>
             )}
           </div>
+          {!narrow && notesPanel}
         </div>
 
         {/* ── RIGHT: GROUPS & ANALYTICS ── */}

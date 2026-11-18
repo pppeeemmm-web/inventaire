@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit collectionneur — mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+:root{
+  --bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;
+  --bd:#2d2d32;--bd2:#3f3f46;--bd3:#52525b;
+  --tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--mt:#4c4a44;
+  --ac:#d4b886;--ac2:#a68b55;
+  --rust:oklch(0.72 0.16 35);--sage:oklch(0.78 0.1 140);
+  --font-ui:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-serif:'Instrument Serif',Didot,Georgia,serif;
+  /* collector page: light gallery look */
+  --p-bg:#f6f4ef;--p-tx:#1a1816;--p-tx2:#5c5852;--p-tx3:#8a8680;--p-bd:#e0dcd3;--p-ac:#8a6d3b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050506;color:var(--tx);font-family:var(--font-ui);font-size:15px;line-height:1.35}
+.page{padding:24px;display:flex;flex-direction:column;gap:28px}
+.caption{max-width:1200px;color:var(--tx2);font-size:13px}
+.caption h1{font-family:var(--font-serif);font-weight:400;font-size:30px;color:var(--tx);margin:0 0 6px}
+.caption b{color:var(--tx)}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px}
+.col h2{font-family:var(--font-serif);font-weight:400;font-size:20px;margin:0}
+.col p{margin:0;color:var(--tx3);font-size:12px;max-width:375px}
+.sec{font-family:var(--font-serif);font-size:24px;color:var(--ac);margin:8px 0 0}
+
+/* phone frame */
+.phone{width:375px;height:740px;border:1px solid var(--bd2);border-radius:28px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone.dark{background:var(--bg1)}
+.phone.light{background:var(--p-bg);color:var(--p-tx)}
+.status{height:34px;flex:none}
+.scroll{flex:1;overflow:hidden;padding:0 16px}
+.sticky{flex:none;padding:12px 16px calc(12px + 34px);display:flex;gap:10px;border-top:1px solid var(--bd)}
+.light .sticky{border-color:var(--p-bd);background:var(--p-bg)}
+
+/* atelier bits */
+.lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);font-weight:600;margin:16px 0 6px}
+.field{border:1px solid var(--bd2);border-radius:4px;padding:10px 12px;font-size:15px;color:var(--tx);background:var(--bg0);min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.field .hint{color:var(--tx3);font-size:13px}
+.btn{min-height:44px;padding:0 14px;border:1px solid var(--bd2);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:14px;color:var(--tx);background:none;white-space:nowrap;flex:1}
+.btn.pri{border-color:var(--ac2);color:var(--ac)}
+.btn.sm{min-height:32px;font-size:12px;flex:none}
+.work{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.th{width:40px;height:40px;flex:none;border-radius:2px;background:linear-gradient(160deg,#cfccc4,#5d5b57)}
+.th.b{background:linear-gradient(160deg,oklch(0.55 0.12 250),#1d2230)}
+.th.c{background:linear-gradient(160deg,oklch(0.7 0.14 60),#3a2a1c)}
+.th.d{background:linear-gradient(160deg,oklch(0.6 0.08 150),#1c2a22)}
+.work .t{flex:1;min-width:0;font-size:14px}
+.work .t small{display:block;color:var(--tx3);font-size:12px}
+.chk{width:22px;height:22px;border:1px solid var(--ac2);border-radius:3px;display:grid;place-items:center;color:var(--ac);font-size:13px;flex:none}
+.chk.off{border-color:var(--bd3);color:transparent}
+.price{font-size:12px;color:var(--tx3);flex:none}
+.price.on{color:var(--ac)}
+.seg{display:flex;border:1px solid var(--bd2);border-radius:4px;overflow:hidden}
+.seg span{flex:1;text-align:center;padding:10px 0;font-size:13px;color:var(--tx3)}
+.seg span.on{background:var(--bg3);color:var(--tx)}
+.linkbox{border:1px dashed var(--ac2);border-radius:4px;padding:12px;font-size:13px;color:var(--ac);word-break:break-all;margin-top:8px}
+.note{font-size:12px;color:var(--tx3);margin-top:8px}
+
+/* collector page */
+.light .hdr{padding:18px 0 14px;border-bottom:1px solid var(--p-bd)}
+.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--p-tx3);font-weight:600}
+.light h3{font-family:var(--font-serif);font-weight:400;font-size:30px;margin:6px 0 4px;color:var(--p-tx)}
+.msg{font-family:var(--font-serif);font-size:17px;color:var(--p-tx2);font-style:italic;margin:10px 0 0}
+.valid{font-size:12px;color:var(--p-tx3);margin-top:8px}
+.lang{position:absolute;top:44px;right:16px;font-size:12px;color:var(--p-tx3)}
+.lang b{color:var(--p-tx)}
+.art{margin:18px 0 0}
+.img{width:100%;aspect-ratio:4/5;border-radius:2px;background:linear-gradient(160deg,oklch(0.55 0.12 250),#1d2230);box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.img.c{background:linear-gradient(160deg,oklch(0.7 0.14 60),#3a2a1c)}
+.art h4{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:14px 0 2px}
+.meta{font-size:13px;color:var(--p-tx2)}
+.avail{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:oklch(0.5 0.1 140);margin-top:8px;font-weight:600}
+.avail.res{color:var(--p-ac)}
+.pr{font-size:15px;margin-top:6px}
+.pr.req{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--p-tx3)}
+.pbtn{min-height:44px;padding:0 14px;border:1px solid var(--p-tx);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--p-tx);background:none;flex:1}
+.pbtn.fill{background:var(--p-tx);color:var(--p-bg)}
+.pbtn.ghost{border-color:var(--p-bd);flex:none;padding:0 18px}
+.inline{margin-top:12px;width:100%}
+.foot{font-size:11px;color:var(--p-tx3);padding:16px 0;border-top:1px solid var(--p-bd);margin-top:18px}
+
+/* sheet */
+.dim{position:absolute;inset:0;background:rgba(20,18,16,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--p-bg);border-radius:16px 16px 0 0;padding:16px 16px calc(16px + 34px);box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--p-bd);margin:0 auto 12px}
+.sheet h5{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0 0 10px}
+.ta{border:1px solid var(--p-bd);border-radius:4px;padding:10px;font-size:16px;color:var(--p-tx);min-height:96px;background:#fff}
+.pick{display:flex;align-items:center;gap:8px;font-size:14px;padding:8px 0}
+.pick .chk{border-color:var(--p-tx);color:var(--p-tx)}
+.inp{border:1px solid var(--p-bd);border-radius:4px;padding:10px;font-size:16px;color:var(--p-tx3);min-height:44px;background:#fff;margin-top:6px}
+.small{font-size:12px;color:var(--p-tx3);margin-top:8px}
+
+/* desktop pieces */
+.panel{width:560px;background:var(--bg1);border:1px solid var(--bd2);border-radius:8px;padding:16px}
+.krow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--bd)}
+.krow:last-child{border-bottom:none}
+.krow .n{font-size:14px}
+.krow .s{font-size:12px;color:var(--tx3)}
+.krow .s b{color:var(--tx2);font-weight:500}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border:1px solid var(--ac2);color:var(--ac);border-radius:10px}
+.chip.warn{border-color:var(--rust);color:var(--rust)}
+.chip.mute{border-color:var(--bd3);color:var(--tx3)}
+.card{width:375px;background:var(--bg1);border:1px solid var(--bd2);border-radius:10px;padding:16px}
+.card .who{font-size:15px}
+.card .txt{font-size:14px;color:var(--tx2);margin:8px 0}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="caption">
+    <h1>Kit collectionneur — mockup</h1>
+    Draft 2026-11-18, no code. Notes: <b>Collector_ShareKit.notes.md</b>. A = what the atelier does, B = what the collector sees on the phone, C = where the enquiry lands. All names, titles and prices are placeholders.
+  </div>
+
+  <div class="sec">A — Atelier</div>
+  <div class="row">
+    <div class="col">
+      <h2>A1 · « Partager à un collectionneur… »</h2>
+      <p>From a working group (Thèmes / Groupes row, or an Inventory selection). One sheet; the works list is frozen into the kit.</p>
+      <div class="phone dark">
+        <div class="status"></div>
+        <div class="scroll">
+          <div style="font-family:var(--font-serif);font-size:24px;margin:4px 0 2px">Nouveau kit</div>
+          <div style="font-size:12px;color:var(--tx3)">depuis le groupe « Bleus d'hiver » · 4 œuvres</div>
+          <div class="lbl">Collectionneur</div>
+          <div class="field">Marie Dupont <span class="hint">Contact ›</span></div>
+          <div class="lbl">Œuvres · prix montré ?</div>
+          <div class="work"><div class="chk">✓</div><div class="th b"></div><div class="t">Nocturne bleu<small>#1182 · 2025 · 80 × 60</small></div><div class="price on">2 400 €</div></div>
+          <div class="work"><div class="chk">✓</div><div class="th c"></div><div class="t">Seuil<small>#1190 · 2026 · 100 × 81</small></div><div class="price">sur demande</div></div>
+          <div class="work"><div class="chk">✓</div><div class="th d"></div><div class="t">Jardin, matin<small>#1201 · 2026 · 46 × 38 · privée</small></div><div class="price">sur demande</div></div>
+          <div class="work"><div class="chk off">✓</div><div class="th"></div><div class="t" style="color:var(--tx3)">Étude 4<small>#1203 · retirée du kit</small></div></div>
+          <div class="lbl">Langue</div>
+          <div class="seg"><span class="on">Français</span><span>English</span></div>
+          <div class="lbl">Valable jusqu'au</div>
+          <div class="field">18 déc. 2026 <span class="hint">30 jours</span></div>
+        </div>
+        <div class="sticky"><span class="btn">Annuler</span><span class="btn pri">Créer le lien</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h2>A2 · Link made, PDF made</h2>
+      <p>The app sends nothing: Copier / Partager hands the link to WhatsApp, Mail or Messages.</p>
+      <div class="phone dark">
+        <div class="status"></div>
+        <div class="scroll">
+          <div style="font-family:var(--font-serif);font-size:24px;margin:4px 0 2px">Kit prêt</div>
+          <div style="font-size:12px;color:var(--tx3)">Marie Dupont · 3 œuvres · FR · jusqu'au 18 déc.</div>
+          <div class="linkbox">thepemworkshop.com/c/V1StGXR8_Z5jdHi6B-myT2</div>
+          <div style="display:flex;gap:10px;margin-top:10px"><span class="btn">Copier</span><span class="btn pri">Partager…</span></div>
+          <div class="lbl">PDF</div>
+          <div class="field">Kit_Dupont_2026-11-18.pdf <span class="hint">8 pages</span></div>
+          <div class="note">Le PDF passe par le lien : retirer le lien bloque aussi le PDF. Un PDF déjà téléchargé reste chez la personne.</div>
+          <div class="lbl">Message (facultatif, sur la page)</div>
+          <div class="field" style="align-items:flex-start;min-height:80px;color:var(--tx2)">Voici les trois toiles dont nous avons parlé à l'atelier.</div>
+        </div>
+        <div class="sticky"><span class="btn">Fermer</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h2>A3 · Kits on the contact card (desktop)</h2>
+      <p>What is tracked, and nothing more: opens, PDF, enquiries. Prolonger / Retirer on each row.</p>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-family:var(--font-serif);font-size:20px">Kits envoyés · Marie Dupont</div>
+          <span class="btn sm pri">+ Nouveau kit</span>
+        </div>
+        <div class="krow">
+          <div class="n">Bleus d'hiver · 3 œuvres <span class="chip">1 demande</span></div>
+          <div style="display:flex;gap:6px"><span class="btn sm">Prolonger</span><span class="btn sm">Retirer</span></div>
+          <div class="s">Ouvert <b>3 fois</b> · dernier <b>12 nov.</b> · PDF <b>téléchargé</b> · jusqu'au 18 déc.</div><div></div>
+        </div>
+        <div class="krow">
+          <div class="n">Papiers 2025 · 6 œuvres <span class="chip warn">expire dans 3 j</span></div>
+          <div style="display:flex;gap:6px"><span class="btn sm">Prolonger</span><span class="btn sm">Retirer</span></div>
+          <div class="s"><b>Pas encore ouvert</b> · créé le 22 oct.</div><div></div>
+        </div>
+        <div class="krow">
+          <div class="n" style="color:var(--tx3)">Grands formats · 4 œuvres <span class="chip mute">retiré</span></div>
+          <div></div>
+          <div class="s">Ouvert 1 fois · retiré le 2 oct.</div><div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">B — The collector, on the phone</div>
+  <div class="row">
+    <div class="col">
+      <h2>B1 · Opening the link</h2>
+      <p>No atelier chrome. Name as Pem chooses (question 4). One work per screen below.</p>
+      <div class="phone light">
+        <div class="status"></div>
+        <div class="lang"><b>FR</b> · EN</div>
+        <div class="scroll">
+          <div class="hdr">
+            <div class="eyebrow">Sélection privée · the pem workshop</div>
+            <h3>Pour Marie</h3>
+            <div class="msg">« Voici les trois toiles dont nous avons parlé à l'atelier. »</div>
+            <div class="valid">3 œuvres · valable jusqu'au 18 décembre 2026</div>
+          </div>
+          <div class="art">
+            <div class="img" style="aspect-ratio:5/4"></div>
+            <h4>Nocturne bleu</h4>
+            <div class="meta">2025 · huile sur toile · 80 × 60 cm</div>
+            <div class="pr">2 400 € TTC</div>
+            <div class="avail">Disponible</div>
+          </div>
+        </div>
+        <div class="sticky"><span class="pbtn ghost">PDF</span><span class="pbtn fill">Écrire à l'atelier</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h2>B2 · A work further down</h2>
+      <p>« Cette œuvre m'intéresse » on each work. Price or « sur demande ». Footer = the privacy line.</p>
+      <div class="phone light">
+        <div class="status"></div>
+        <div class="scroll">
+          <div class="art" style="margin-top:0">
+            <div class="img c" style="aspect-ratio:1/1"></div>
+            <h4>Seuil</h4>
+            <div class="meta">2026 · acrylique sur toile · 100 × 81 cm</div>
+            <div class="pr req">Prix sur demande</div>
+            <div class="avail res">Réservée</div>
+            <div class="pbtn inline">Cette œuvre m'intéresse</div>
+          </div>
+          <div class="foot">
+            Lien personnel — merci de ne pas le transférer. L'atelier voit quand ce lien est ouvert ; il garde votre nom et vos messages pour donner suite à votre intérêt, puis les efface (sauf achat). Pour toute question : l'atelier. Reproduction interdite.
+          </div>
+        </div>
+        <div class="sticky"><span class="pbtn ghost">PDF</span><span class="pbtn fill">Écrire à l'atelier</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h2>B3 · Enquire sheet</h2>
+      <p>Saved by a server action after the token check; never shows the collector's email.</p>
+      <div class="phone light">
+        <div class="status"></div>
+        <div class="scroll" style="opacity:.5">
+          <div class="art" style="margin-top:0"><div class="img c" style="aspect-ratio:1/1"></div><h4>Seuil</h4></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h5>Écrire à l'atelier</h5>
+          <div class="pick"><div class="chk">✓</div>Seuil · #1190</div>
+          <div class="pick"><div class="chk off">✓</div>Nocturne bleu · #1182</div>
+          <div class="ta">Je souhaite en savoir plus sur « Seuil » (#1190).</div>
+          <div class="small">Comment vous répondre ? (facultatif — sinon comme d'habitude)</div>
+          <div class="inp">e-mail ou téléphone</div>
+          <div style="display:flex;gap:10px;margin-top:12px"><span class="pbtn ghost">Annuler</span><span class="pbtn fill">Envoyer</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h2>B4 · Expired or withdrawn</h2>
+      <p>Same calm page for both; no name, no works, a way back to the atelier.</p>
+      <div class="phone light">
+        <div class="status"></div>
+        <div class="scroll" style="display:flex;flex-direction:column;justify-content:center;text-align:center;gap:14px">
+          <div class="eyebrow">the pem workshop</div>
+          <h3 style="font-size:26px">Ce lien n'est plus actif</h3>
+          <div class="meta">La sélection a pris fin. Écrivez à l'atelier pour en recevoir une nouvelle.</div>
+          <div><span class="pbtn" style="display:inline-flex;flex:none;padding:0 22px">Écrire à l'atelier</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">C — Where the enquiry lands</div>
+  <div class="row">
+    <div class="col">
+      <h2>C1 · Triage deck card</h2>
+      <p>A normal open enquiry (category « buy »), with a chip that opens the kit. Later: « Créer une commande » (R7) with contact + works filled in.</p>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="who">Marie Dupont</div><span class="chip">Kit · Bleus d'hiver</span>
+        </div>
+        <div style="font-size:12px;color:var(--tx3);margin-top:2px">Demande · Acquérir une œuvre · il y a 2 h</div>
+        <div class="txt">Je souhaite en savoir plus sur « Seuil » (#1190).</div>
+        <div style="display:flex;gap:8px;align-items:center"><div class="th c" style="width:32px;height:32px"></div><span style="font-size:13px;color:var(--tx2)">Seuil · #1190 · Réservée</span></div>
+        <div style="display:flex;gap:10px;margin-top:14px"><span class="btn">✕ Archiver</span><span class="btn pri">✓ Répondre</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

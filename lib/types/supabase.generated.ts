@@ -1223,6 +1223,194 @@ export type Database = {
           },
         ]
       }
+      insurance_claim: {
+        Row: {
+          amount_claimed: number | null
+          amount_paid: number | null
+          claim_ref: string | null
+          condition_report_id: number | null
+          created_at: string
+          created_by: string | null
+          filed_on: string | null
+          id: string
+          insurer: string
+          notes: string | null
+          oeuvre_id: number
+          paid_on: string | null
+          police_report_ref: string | null
+          shipment_id: string | null
+          status: string
+          work_order_id: string | null
+        }
+        Insert: {
+          amount_claimed?: number | null
+          amount_paid?: number | null
+          claim_ref?: string | null
+          condition_report_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          filed_on?: string | null
+          id?: string
+          insurer: string
+          notes?: string | null
+          oeuvre_id: number
+          paid_on?: string | null
+          police_report_ref?: string | null
+          shipment_id?: string | null
+          status?: string
+          work_order_id?: string | null
+        }
+        Update: {
+          amount_claimed?: number | null
+          amount_paid?: number | null
+          claim_ref?: string | null
+          condition_report_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          filed_on?: string | null
+          id?: string
+          insurer?: string
+          notes?: string | null
+          oeuvre_id?: number
+          paid_on?: string | null
+          police_report_ref?: string | null
+          shipment_id?: string | null
+          status?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_claim_condition_report_id_fkey"
+            columns: ["condition_report_id"]
+            isOneToOne: false
+            referencedRelation: "condition_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claim_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "insurance_claim_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claim_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credits_invoice_id: string | null
+          currency: string
+          id: string
+          issued_on: string
+          kind: string
+          lines: Json
+          notes: string | null
+          number: string | null
+          paper_path: string | null
+          party_id: number
+          series_seq: number | null
+          series_year: number | null
+          total: number
+          vat_mention: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credits_invoice_id?: string | null
+          currency?: string
+          id?: string
+          issued_on?: string
+          kind?: string
+          lines?: Json
+          notes?: string | null
+          number?: string | null
+          paper_path?: string | null
+          party_id: number
+          series_seq?: number | null
+          series_year?: number | null
+          total: number
+          vat_mention?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credits_invoice_id?: string | null
+          currency?: string
+          id?: string
+          issued_on?: string
+          kind?: string
+          lines?: Json
+          notes?: string | null
+          number?: string | null
+          paper_path?: string | null
+          party_id?: number
+          series_seq?: number | null
+          series_year?: number | null
+          total?: number
+          vat_mention?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_credits_invoice_id_fkey"
+            columns: ["credits_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+        ]
+      }
+      invoice_order: {
+        Row: {
+          invoice_id: string
+          order_id: string
+        }
+        Insert: {
+          invoice_id: string
+          order_id: string
+        }
+        Update: {
+          invoice_id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_order_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_order_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entry: {
         Row: {
           ai_links_at: string | null
@@ -2246,42 +2434,123 @@ export type Database = {
       }
       shipment: {
         Row: {
+          address_id: number | null
+          cancelled_at: string | null
+          carrier: string | null
+          charged_to: string | null
+          cost: number | null
           created_at: string | null
+          created_by: string | null
           delivered_at: string | null
+          handed_to: string | null
           id: string
+          insured_at: string | null
+          insured_value: number | null
+          insurer: string | null
           kind: string | null
+          labelled_at: string | null
           note: string | null
+          packed_at: string | null
+          packed_dims: string | null
+          packed_weight_kg: number | null
+          packing_note: string | null
+          photos_at: string | null
+          picked_at: string | null
+          pickup_process_id: string | null
+          policy_ref: string | null
           scheduled_for: string | null
           shipped_at: string | null
           status: string | null
           to_contact_id: number | null
-          work_order_id: string | null
+          tracking_no: string | null
+          tracking_url: string | null
         }
         Insert: {
+          address_id?: number | null
+          cancelled_at?: string | null
+          carrier?: string | null
+          charged_to?: string | null
+          cost?: number | null
           created_at?: string | null
+          created_by?: string | null
           delivered_at?: string | null
+          handed_to?: string | null
           id?: string
+          insured_at?: string | null
+          insured_value?: number | null
+          insurer?: string | null
           kind?: string | null
+          labelled_at?: string | null
           note?: string | null
+          packed_at?: string | null
+          packed_dims?: string | null
+          packed_weight_kg?: number | null
+          packing_note?: string | null
+          photos_at?: string | null
+          picked_at?: string | null
+          pickup_process_id?: string | null
+          policy_ref?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
           status?: string | null
           to_contact_id?: number | null
-          work_order_id?: string | null
+          tracking_no?: string | null
+          tracking_url?: string | null
         }
         Update: {
+          address_id?: number | null
+          cancelled_at?: string | null
+          carrier?: string | null
+          charged_to?: string | null
+          cost?: number | null
           created_at?: string | null
+          created_by?: string | null
           delivered_at?: string | null
+          handed_to?: string | null
           id?: string
+          insured_at?: string | null
+          insured_value?: number | null
+          insurer?: string | null
           kind?: string | null
+          labelled_at?: string | null
           note?: string | null
+          packed_at?: string | null
+          packed_dims?: string | null
+          packed_weight_kg?: number | null
+          packing_note?: string | null
+          photos_at?: string | null
+          picked_at?: string | null
+          pickup_process_id?: string | null
+          policy_ref?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
           status?: string | null
           to_contact_id?: number | null
-          work_order_id?: string | null
+          tracking_no?: string | null
+          tracking_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shipment_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "contact_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_pickup_process_id_fkey"
+            columns: ["pickup_process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_pickup_process_id_fkey"
+            columns: ["pickup_process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shipment_to_contact_id_fkey"
             columns: ["to_contact_id"]
@@ -2289,30 +2558,26 @@ export type Database = {
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
           },
-          {
-            foreignKeyName: "shipment_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "work_order"
-            referencedColumns: ["id"]
-          },
         ]
       }
       shipment_work: {
         Row: {
           id: string
-          oeuvre_id: number | null
-          shipment_id: string | null
+          oeuvre_id: number
+          order_line_id: string | null
+          shipment_id: string
         }
         Insert: {
           id?: string
-          oeuvre_id?: number | null
-          shipment_id?: string | null
+          oeuvre_id: number
+          order_line_id?: string | null
+          shipment_id: string
         }
         Update: {
           id?: string
-          oeuvre_id?: number | null
-          shipment_id?: string | null
+          oeuvre_id?: number
+          order_line_id?: string | null
+          shipment_id?: string
         }
         Relationships: [
           {
@@ -2321,6 +2586,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "shipment_work_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "work_order_work"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "shipment_work_shipment_id_fkey"
@@ -3027,14 +3299,17 @@ export type Database = {
         Row: {
           id: number
           name: string
+          notes: string | null
         }
         Insert: {
           id?: number
           name: string
+          notes?: string | null
         }
         Update: {
           id?: number
           name?: string
+          notes?: string | null
         }
         Relationships: []
       }
@@ -3365,6 +3640,7 @@ export type Database = {
           created_by: string | null
           currency: string
           delivered_at: string | null
+          delivery_mode: string | null
           deposit_due: string | null
           deposit_pct: number | null
           discount_pct: number | null
@@ -3388,6 +3664,7 @@ export type Database = {
           return_window_skipped: boolean
           return_window_starts_at: string | null
           returned_at: string | null
+          shipping_charge: number | null
           shipping_method: string | null
           signed_at: string | null
           start_date: string | null
@@ -3404,6 +3681,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           delivered_at?: string | null
+          delivery_mode?: string | null
           deposit_due?: string | null
           deposit_pct?: number | null
           discount_pct?: number | null
@@ -3427,6 +3705,7 @@ export type Database = {
           return_window_skipped?: boolean
           return_window_starts_at?: string | null
           returned_at?: string | null
+          shipping_charge?: number | null
           shipping_method?: string | null
           signed_at?: string | null
           start_date?: string | null
@@ -3443,6 +3722,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           delivered_at?: string | null
+          delivery_mode?: string | null
           deposit_due?: string | null
           deposit_pct?: number | null
           discount_pct?: number | null
@@ -3466,6 +3746,7 @@ export type Database = {
           return_window_skipped?: boolean
           return_window_starts_at?: string | null
           returned_at?: string | null
+          shipping_charge?: number | null
           shipping_method?: string | null
           signed_at?: string | null
           start_date?: string | null
@@ -3510,10 +3791,62 @@ export type Database = {
           },
         ]
       }
+      work_order_demand: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          done_at: string | null
+          entrusted_order_id: string | null
+          id: string
+          kind: string
+          line_id: string
+          note: string | null
+          price: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          done_at?: string | null
+          entrusted_order_id?: string | null
+          id?: string
+          kind: string
+          line_id: string
+          note?: string | null
+          price?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          done_at?: string | null
+          entrusted_order_id?: string | null
+          id?: string
+          kind?: string
+          line_id?: string
+          note?: string | null
+          price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_demand_entrusted_order_id_fkey"
+            columns: ["entrusted_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_demand_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "work_order_work"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_order_work: {
         Row: {
           closed_at: string | null
           closed_by_order_id: string | null
+          coa_document_id: string | null
           id: string
           insurance_value: number | null
           line_status: string
@@ -3526,6 +3859,7 @@ export type Database = {
         Insert: {
           closed_at?: string | null
           closed_by_order_id?: string | null
+          coa_document_id?: string | null
           id?: string
           insurance_value?: number | null
           line_status?: string
@@ -3538,6 +3872,7 @@ export type Database = {
         Update: {
           closed_at?: string | null
           closed_by_order_id?: string | null
+          coa_document_id?: string | null
           id?: string
           insurance_value?: number | null
           line_status?: string
@@ -3553,6 +3888,13 @@ export type Database = {
             columns: ["closed_by_order_id"]
             isOneToOne: false
             referencedRelation: "work_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_work_coa_document_id_fkey"
+            columns: ["coa_document_id"]
+            isOneToOne: false
+            referencedRelation: "document"
             referencedColumns: ["id"]
           },
           {
