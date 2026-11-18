@@ -11,7 +11,6 @@ _None open._
 ## 1. Waiting on you, Pem
 
 Decisions (a form or one word):
-- [ ] **#2381:** first step or catalogued? (Audit → Règles)
 - [ ] **Docket scan (11e):** GO to read dockets by OCR on the PC, and which scan path.
 
 Things only you can do:
