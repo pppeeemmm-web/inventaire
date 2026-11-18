@@ -28,9 +28,11 @@ import { toast } from '@/lib/ui/toast'
 import {
   createJournalEntry,
   decideJournalLink,
+  fetchConceptPreview,
   getJournalDayExtras,
   setJournalEntryHidden,
   setJournalEntryVerified,
+  type ConceptPreview,
   type JournalDayExtras as Extras,
 } from '@/app/atelier/(portal)/journal/entry-actions'
 
@@ -579,13 +581,8 @@ export function JournalDayExtras({
                           // R4: thumbnail + title, hold / hover = the picture with its caption.
                           <WorkChip id={p.workId} href={workHref(p.workId)} title={p.title} sub={t('je_ai_proposals')} style={{ flex: '1 1 160px' }} />
                         ) : (
-                          <Link
-                            href="/atelier/concepts"
-                            className="t-mono-sm"
-                            style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
-                          >
-                            ✦ {t('je_concept_prefix')} {p.title ?? ''}
-                          </Link>
+                          // A concept: unfold its text here (Pem 2026-11-18: « preview rather than leave the journal »).
+                          <ConceptPreviewToggle conceptId={p.conceptId} title={p.title} />
                         )}
                         {data?.isAdmin ? (
                           <span style={{ display: 'flex', gap: 6 }}>
@@ -819,6 +816,56 @@ export function JournalDayExtras({
             ))}
           </ul>
         </details>
+      ) : null}
+    </div>
+  )
+}
+
+/** ✦ concept suggestion: click unfolds the concept (title, text, notes) in place; « Ouvrir dans Idées » stays available. */
+function ConceptPreviewToggle({ conceptId, title }: { conceptId: string | null; title: string | null }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<ConceptPreview | null>(null)
+  const [failed, setFailed] = useState(false)
+  const toggle = async () => {
+    const next = !open
+    setOpen(next)
+    if (!next || data || !conceptId) return
+    setFailed(false)
+    const res = await fetchConceptPreview(conceptId)
+    if ('error' in res) setFailed(true)
+    else setData(res)
+  }
+  return (
+    <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        aria-expanded={open}
+        className="t-mono-sm"
+        style={{ background: 'none', border: 0, padding: '6px 0', minHeight: 44, cursor: 'pointer', color: 'var(--tx2)', textAlign: 'left', textDecoration: 'underline', textUnderlineOffset: 2, overflowWrap: 'anywhere' }}
+      >
+        {open ? '▾' : '▸'} ✦ {t('je_concept_prefix')} {data?.titre ?? title ?? ''}
+      </button>
+      {open ? (
+        <div style={{ margin: '2px 0 6px', padding: '10px 12px', border: '1px solid var(--bd)', background: 'var(--bg1)', fontSize: 14, lineHeight: 1.5 }}>
+          {failed ? (
+            <span style={{ color: 'var(--rust)' }}>{t('je_concept_preview_error')}</span>
+          ) : !data ? (
+            <span style={{ color: 'var(--tx3)' }}>…</span>
+          ) : (
+            <>
+              <div style={{ color: 'var(--tx)', fontWeight: 600 }}>{data.titre}</div>
+              {data.medium ? <div style={{ color: 'var(--tx3)', fontSize: 12 }}>{data.medium}</div> : null}
+              {data.description ? <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: 'var(--tx2)' }}>{data.description}</p> : null}
+              {data.notes ? <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: 'var(--tx3)', fontSize: 13 }}>{data.notes.length > 600 ? `${data.notes.slice(0, 600)}…` : data.notes}</p> : null}
+              {!data.description && !data.notes ? <div style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>{t('je_concept_preview_empty')}</div> : null}
+              <Link href="/atelier/concepts" className="t-mono-sm" style={{ display: 'inline-block', marginTop: 8, color: 'var(--ac)' }}>
+                {t('je_concept_open_ideas')}
+              </Link>
+            </>
+          )}
+        </div>
       ) : null}
     </div>
   )

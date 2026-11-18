@@ -513,6 +513,28 @@ export async function createJournalEntry(input: {
 }
 
 /** Admin only (RLS: link update = admin). Validate = the proposal becomes a link; reject = kept, marked rejected. */
+/** A concept shown in place in the Journal (✦ suggestion preview, Pem 2026-11-18: « preview rather than leave the journal »). */
+export type ConceptPreview = { id: string; titre: string; description: string | null; notes: string | null; medium: string | null; statut: string; maturity: string }
+
+export async function fetchConceptPreview(id: string): Promise<ConceptPreview | Err> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data, error } = await supabase
+    .from('concept')
+    .select('id, titre, description, notes, medium, statut, maturity')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) {
+    await logError('journal: concept preview', error)
+    return { error: error.message }
+  }
+  if (!data) return { error: 'not_found' }
+  return data as ConceptPreview
+}
+
 export async function decideJournalLink(linkId: number, accept: boolean): Promise<{ ok: true } | Err> {
   const supabase = await createClient()
   const {

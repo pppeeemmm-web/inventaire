@@ -1038,7 +1038,21 @@ export function SessionJournalTab() {
                 type="button"
                 className="btn ghost sm"
                 data-testid="journal-proposals-bar"
-                onClick={() => setOpenDay(proposalsOpen.oldest)}
+                onClick={() => {
+                  setOpenDay(proposalsOpen.oldest)
+                  // Same day already open → nothing seemed to happen (Pem 2026-11-18): also bring the first ✦ suggestion
+                  // into view and flash it, once the day's entries have loaded (they load after the day opens).
+                  let tries = 0
+                  const id = window.setInterval(() => {
+                    const el = document.querySelector<HTMLElement>('[data-testid^="journal-entry-proposals-"]')
+                    if (el || ++tries > 30) window.clearInterval(id)
+                    if (!el) return
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    el.style.transition = 'background-color 0.6s'
+                    el.style.backgroundColor = 'color-mix(in srgb, var(--ac) 18%, transparent)'
+                    window.setTimeout(() => { el.style.backgroundColor = '' }, 1600)
+                  }, 150)
+                }}
                 style={{ minHeight: 44, width: '100%', marginTop: 8, borderColor: 'var(--ac)', color: 'var(--ac)', justifyContent: 'center', whiteSpace: 'normal', textAlign: 'center' }}
               >
                 {proposalsOpen.total === 1 ? t('je_proposals_bar_one') : t('je_proposals_bar').replace('{n}', String(proposalsOpen.total))}

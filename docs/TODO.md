@@ -8,8 +8,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — contacts fix landed (`0ab05d2`); starts on Pem's word ([note](./design/2026-11-18/ContactsReview.notes.md))
-- ✅ committed, waiting for Pem's « Push » (`26c2e23`…`ddfc696`): Bureau IA + PC agent, rejection reason + works bin, approvals fix, six slips, legal part 1, contact delete fix, What's new 3.1.73 — details in DONE
+- 🔧 §3 Contacts review phases 1 + 2 (Pem « Go contacts »): family-name sort, `DUPONT Marie` in lists / `Marie DUPONT` in papers, « Privé » chip + filter (admin), address list refreshed after edit / merge / delete — agent building in its own copy; lead reviews, then asks Pem to push ([note](./design/2026-11-18/ContactsReview.notes.md))
 
 ## 0. Bugs — fix now
 
