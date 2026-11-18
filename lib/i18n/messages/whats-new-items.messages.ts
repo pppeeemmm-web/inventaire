@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.66 (2026-11-18) — Aide batch 2, QR link.
+  wn_aide_works_production_t: { fr: 'Aide : Œuvres et Production', en: 'Help: Works and Production' },
+  wn_aide_works_production_d: {
+    fr: 'Deux chapitres de fiches pratiques dans Kaizen → Aide : trouver une œuvre, lire et modifier la fiche, enregistrer une nouvelle œuvre ou une reprise au téléphone, ajouter des photos (iPhone et Android), faire un constat, l’étiquette QR ; et le tableau Production, étape par étape.',
+    en: 'Two chapters of how-to cards in Kaizen → Help: finding a work, reading and editing the card, recording a new work or a rework on the phone, adding photos (iPhone and Android), condition reports, the QR label; and the Production board, step by step.',
+  },
+  wn_qr_link_opens_work_t: { fr: 'L’étiquette QR ouvre l’œuvre', en: 'The QR label opens the work' },
+  wn_qr_link_opens_work_d: {
+    fr: 'Scanner une étiquette QR ou suivre « Copier le lien » ouvrait la Vue d’ensemble sans l’œuvre. La fiche s’ouvre à nouveau.',
+    en: 'Scanning a QR label or following « Copy link » opened the Overview without the work. The card opens again.',
+  },
   // 3.1.65 (2026-11-18) — in-app Aide.
   wn_aide_guides_t: { fr: 'Aide : le guide dans l’application', en: 'Help: the guide in the app' },
   wn_aide_guides_d: {

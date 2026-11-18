@@ -8,6 +8,11 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - SITE_MAP, ARCHITECTURE (triggers + callable functions re-read from the live DB: 9 undocumented, 2 gone), SYSTEM_LEDGER (its screen has no route since the Kaizen merge), README stamps, CLAUDE.md (5 checks, land flow, shorter phone-nav rule, stale names) brought up to date. Memory: 2 outdated files deleted (Pem « Yes, delete »), 5 updated.
 - Left: the two order-guard trigger functions keep PUBLIC execute (harmless — trigger functions can't be called through the API; house style would revoke).
 
+## 2026-11-18 — In-app Aide, batch 2 + QR link (Pem « GO batch 2 », « Yes, fix and land »)
+
+- `515bb19`: chapters « Œuvres » (7 how-to cards) and « Production » in `lib/aide/team.{fr,en}.ts`, every label read on the live screens FR + EN; batch 1 corrected — iPhone Share does not list the app (the « Réception partage » page says so; CLAUDE.md's iOS share-target line disagrees), and a team member's new works, card edits and photos all wait for approval (`saveWork`). Seen in Chrome on localhost (desktop, 390 px).
+- QR label / « Copier le lien »: `/atelier/works/<id>` → `/atelier?work=` → `/atelier/overview` dropped `?work=`, so the card never opened; `app/atelier/page.tsx` now keeps the query. Seen in Chrome: `/atelier/works/2407` opens #2407; bare `/atelier` → Overview unchanged. What's new 3.1.66.
+
 ## 2026-11-18 — In-app Aide, batch 1 (Pem « GO batch 1 »)
 
 - `/atelier/aide` (`58ab04e`): Kaizen → Aide; phone ☰ → Tout le reste → Kaizen → Aide; Vault « Aide et guides » replaces the Studio Bible download. Team guide FR + EN in `lib/aide/` — chapters « Le projet et son périmètre » + « Premiers pas », verified 2026-11-18 against live code; small markdown reader (`AideMarkdown.tsx`, no HTML). Admin guide switch built, hidden until it has chapters. Seen in Chrome on localhost (desktop FR + EN, 390 px: contents → chapter → back, no horizontal scroll), as a non-admin account. What's new 3.1.65.
