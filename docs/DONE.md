@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Layout: full titles at 1280, phone bars above the bottom bar (Pem « go », TODO §3)
+
+- Inventory (panel open): title ≥ 160 px; secondary columns drop in order (Diffusion → Période → Médium → Prix → Contact), « +n » names them. Production: empty columns fold to a 44 px strip, the title gets its own line.
+- Phone: one shared bottom-chrome height (`useBottomChromeHeight`, `--pem-bottom-chrome-h`); the selection is a slim bar with an Actions tray; toasts sit above both. Design + before / after shots: [`LayoutFixes.notes.md`](./design/2026-11-18/LayoutFixes.notes.md).
+
 ## 2026-11-18 — Stress test round 2: Sales, Contacts, phone Journal (side session, Docker copy)
 
 - Phone contact « Ajout rapide » crashed after saving (form kept its text, second tap = duplicate) — fixed.

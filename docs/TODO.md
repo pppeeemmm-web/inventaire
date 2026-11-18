@@ -8,8 +8,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
-- 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
 - ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — contacts fix landed (`0ab05d2`); starts on Pem's word ([note](./design/2026-11-18/ContactsReview.notes.md))
 - ✅ committed, waiting for Pem's « Push » (`26c2e23`…`ddfc696`): Bureau IA + PC agent, rejection reason + works bin, approvals fix, six slips, legal part 1, contact delete fix, What's new 3.1.73 — details in DONE
 
@@ -58,7 +56,6 @@ Public site
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
-- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
 - [ ] Overview « Commandes · n envois à faire » counts boxes already shipped (`overview-business-actions.ts` uses the sidebar's all-unfinished count; « à faire » = not shipped, delivered or cancelled). Phone and desktop Journal disagree on a day item with no work yet (phone skips it).
 - [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table (Contacts review phase 1).

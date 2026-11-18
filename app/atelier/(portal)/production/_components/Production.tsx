@@ -235,6 +235,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const othersCount     = localOeuvres.length - (productionCount + availableCount + archivePemCount + soldCount)
 
   const narrow = useMediaQuery('(max-width: 767px)')
+  /** Columns whose « + » search is open: an empty column widens back while it is used. */
+  const [addOpenCols, setAddOpenCols] = useState<Set<number>>(() => new Set())
 
   if (loading) {
     return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>{t('loading')}</div>
@@ -372,34 +374,50 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
           width: narrow ? 'max-content' : undefined,
           minWidth: narrow ? '100%' : undefined,
         }}>
-          {actionTypes.map((at) => {
-            const ids   = actionMap.get(at.id) ?? new Set<number>()
-            // Cascade (owner 2026-11-12): Cataloguer → Photographier → Disponible. A work sits in
-            // ONE of these two stages: not catalogued = Catalogue only, whatever its photo flag
-            // or task; Photography once catalogued. Handling columns (frame, mount, ship…) can
-            // stack — that work is past production stages.
-            const isPhotoColumn = at.id === 6 // 'Photographier'
-            const isCatalogueColumn = at.id === 9 // 'Cataloguer'
-            const works = active.filter((o) => {
-              if (isCatalogueColumn) return ids.has(o.OeuvreID) || !o.Catalogué
-              if (isPhotoColumn) return !!o.Catalogué && (ids.has(o.OeuvreID) || !!o.NeedsPhotograph)
-              return ids.has(o.OeuvreID)
+          {(() => {
+            const columns = actionTypes.map((at) => {
+              const ids   = actionMap.get(at.id) ?? new Set<number>()
+              // Cascade (owner 2026-11-12): Cataloguer → Photographier → Disponible. A work sits in
+              // ONE of these two stages: not catalogued = Catalogue only, whatever its photo flag
+              // or task; Photography once catalogued. Handling columns (frame, mount, ship…) can
+              // stack — that work is past production stages.
+              const isPhotoColumn = at.id === 6 // 'Photographier'
+              const isCatalogueColumn = at.id === 9 // 'Cataloguer'
+              const works = active.filter((o) => {
+                if (isCatalogueColumn) return ids.has(o.OeuvreID) || !o.Catalogué
+                if (isPhotoColumn) return !!o.Catalogué && (ids.has(o.OeuvreID) || !!o.NeedsPhotograph)
+                return ids.has(o.OeuvreID)
+              })
+              return { at, works }
             })
+            // Desktop (LayoutFixes.notes.md 2026-11-18): an empty column folds to a 44 px strip (still a drop
+            // target, « + » still there) and the columns holding works share the room — equal columns left
+            // 36 px for a card title at 1280.
+            const anyWorks = columns.some((c) => c.works.length > 0)
+            return columns.map(({ at, works }) => {
+            const folded = !narrow && anyWorks && works.length === 0 && !addOpenCols.has(at.id)
             return (
               <div
                 key={at.id}
                 style={{
-                  flex: narrow ? '0 0 auto' : 1,
+                  flex: narrow || folded ? '0 0 auto' : '1 1 0',
                   display: 'flex',
                   flexDirection: 'column',
-                  minWidth: narrow ? 'min(72vw, 240px)' : 120,
-                  width: narrow ? 'min(72vw, 240px)' : undefined,
+                  minWidth: narrow ? 'min(72vw, 240px)' : folded ? 44 : 140,
+                  width: narrow ? 'min(72vw, 240px)' : folded ? 44 : undefined,
                   height: '100%',
                 }}
               >
                 <ActionColumn
                   actionType={at}
                   works={works}
+                  folded={folded}
+                  onAddToggle={(open) => setAddOpenCols((prev) => {
+                    const next = new Set(prev)
+                    if (open) next.add(at.id)
+                    else next.delete(at.id)
+                    return next
+                  })}
                   active={active}
                   tM={tM}
                   oeuvresById={oeuvresById}
@@ -418,7 +436,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
                 />
               </div>
             )
-          })}
+            })
+          })()}
         </div>
       </div>
     </div>
@@ -430,9 +449,13 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 function ActionColumn({
   actionType, works, active, tM, entrustedById, onMarkDone, onAddAction, onOpen,
   dragEnabled = false, dragging = null, onDragStartWork, onDragEndWork, onDropWork,
+  folded = false, onAddToggle,
 }: {
   actionType:  ActionType
   works:       Oeuvre[]
+  /** Empty column on the desktop board: a 44 px strip (label written upwards, count, « + »). */
+  folded?:     boolean
+  onAddToggle?: (open: boolean) => void
   active:      Oeuvre[]
   tM:          Record<number, string>
   oeuvresById: Map<number, Oeuvre>
@@ -447,7 +470,8 @@ function ActionColumn({
   onDropWork?: () => void
 }) {
   const { t } = useI18n()
-  const [showAdd, setShowAdd] = useState(false)
+  const [showAdd, setShowAddState] = useState(false)
+  const setShowAdd = (open: boolean) => { setShowAddState(open); onAddToggle?.(open) }
   const [over, setOver] = useState(false)
   const isTarget = !!dragging && dragging.from !== actionType.id
   const [addQ,    setAddQ]    = useState('')
@@ -498,6 +522,25 @@ function ActionColumn({
       onDragLeave={dragEnabled ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false) } : undefined}
       onDrop={dragEnabled && isTarget ? (e) => { e.preventDefault(); setOver(false); onDropWork?.() } : undefined}
     >
+      {folded ? (
+        <div
+          title={`${columnTitle} · ${works.length}`}
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: 'var(--bg2)', borderTop: `3px solid ${actionType.color}`, paddingTop: 2, minHeight: 0 }}
+        >
+          <button
+            type="button"
+            onClick={() => { setShowAdd(true); setAddQ('') }}
+            title={t('prod_tab_add_work_title')}
+            aria-label={t('prod_tab_add_work_title')}
+            style={{ width: 44, height: 44, fontSize: 14, color: 'var(--tx3)', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+          >+</button>
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
+          <span
+            className="t-eyebrow"
+            style={{ color: actionType.color, fontSize: 12, fontWeight: 700, writingMode: 'vertical-rl', whiteSpace: 'nowrap', overflow: 'hidden', minHeight: 0 }}
+          >{columnTitle}</span>
+        </div>
+      ) : (<>
       {/* Header */}
       <div style={{
         padding: '12px 10px 10px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
@@ -518,7 +561,7 @@ function ActionColumn({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
           <button
-            onClick={() => { setShowAdd((v) => !v); setAddQ('') }}
+            onClick={() => { setShowAdd(!showAdd); setAddQ('') }}
             style={{ fontSize: 14, color: 'var(--tx3)', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
             title={t('prod_tab_add_work_title')}
           >+</button>
@@ -560,8 +603,8 @@ function ActionColumn({
         </div>
       )}
 
-      {/* Cards */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 7px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Cards — a wide column lays them side by side (176 px minimum each) instead of stretching them. */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 7px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', alignContent: 'start', gap: 6 }}>
         {sortedWorks.map((o) => (
           <WorkCard
             key={o.OeuvreID}
@@ -579,6 +622,7 @@ function ActionColumn({
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', padding: '12px 4px', textAlign: 'center' }}>—</div>
         )}
       </div>
+      </>)}
     </div>
   )
 }
@@ -636,19 +680,12 @@ function WorkCard({ o, tM, entrusted, onMarkDone, onOpen, draggable = false, onD
             : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
         </div>
 
-        {/* Text */}
+        {/* Meta beside the picture; the title gets the card's full width below (LayoutFixes.notes.md). */}
         <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onOpen(o)}>
-          <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 2 }}>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             #{o.OeuvreID}{year ? ` · ${year}` : ''}
           </div>
-          <div style={{
-            fontSize: 13, color: 'var(--tx)', lineHeight: 1.4,
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-          }}>
-            {o.Titre?.trim() || <span style={{ color: 'var(--tx3)' }}>{untitledLine({ year: year ? String(year) : null, technique: techLabel ?? null }, t('wr_untitled'))}</span>}
-          </div>
-          {techLabel && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{techLabel}</div>}
+          {techLabel && <div title={techLabel} style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{techLabel}</div>}
         </div>
 
         {/* Actions */}
@@ -681,9 +718,23 @@ function WorkCard({ o, tM, entrusted, onMarkDone, onOpen, draggable = false, onD
         </div>
       </div>
 
+      {/* Title: two lines, then the full text on hover. */}
+      <div
+        onClick={() => onOpen(o)}
+        title={o.Titre?.trim() || undefined}
+        data-testid="production-card-title"
+        style={{
+          fontSize: 13, color: 'var(--tx)', lineHeight: 1.35, cursor: 'pointer',
+          overflow: 'hidden', textOverflow: 'ellipsis', overflowWrap: 'break-word',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+        }}
+      >
+        {o.Titre?.trim() || <span style={{ color: 'var(--tx3)' }}>{untitledLine({ year: year ? String(year) : null, technique: techLabel ?? null }, t('wr_untitled'))}</span>}
+      </div>
+
       {/* Badges */}
       {(isFramed || isCommission || entrusted) && (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 47 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {isFramed && (
             <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '2px 6px' }}>
               {t('prod_tab_badge_framed')}

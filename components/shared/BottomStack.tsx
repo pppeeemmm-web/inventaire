@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, ReactNode } from 'react'
+import { useLayoutEffect, type CSSProperties, type ReactNode, type RefObject } from 'react'
 
 /**
  * Atelier fixed bottom / overlay z-index ladder.
@@ -15,6 +15,30 @@ export const PEM_Z_INDEX = {
   modal: 152,
   voiceNoteSheet: 155,
 } as const
+
+/**
+ * Phone bottom chrome heights as CSS variables on `<html>` (docs/design/2026-11-18/LayoutFixes.notes.md):
+ * `--pem-phone-bar-h` = the input bar (`PhoneInputBar`, safe-area padding included), `--pem-selection-bar-h` =
+ * the phone selection bar (`CurationDock`). `--pem-bottom-chrome-h` (globals.css) = their sum: toasts and the
+ * page's bottom padding sit above it. 0px while the element is not mounted.
+ */
+export type BottomChromeVar = '--pem-phone-bar-h' | '--pem-selection-bar-h'
+
+export function useBottomChromeHeight(ref: RefObject<HTMLElement | null>, cssVar: BottomChromeVar, active = true) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || !active) return
+    const root = document.documentElement
+    const set = () => root.style.setProperty(cssVar, `${el.offsetHeight}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      root.style.removeProperty(cssVar)
+    }
+  }, [ref, cssVar, active])
+}
 
 export type BottomStackLayerId = 'mobileActionBar' | 'curationDock' | 'voiceNote'
 

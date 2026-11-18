@@ -1417,8 +1417,9 @@ export function TeamPortalClient({
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
+            // Above the input bar + a live selection bar (--pem-bottom-chrome-h, measured in BottomStack.tsx).
             paddingBottom: showMobileActionBar
-              ? 'max(12px, calc(68px + env(safe-area-inset-bottom, 0px)))'
+              ? 'calc(12px + var(--pem-bottom-chrome-h))'
               : undefined,
           }}
         >

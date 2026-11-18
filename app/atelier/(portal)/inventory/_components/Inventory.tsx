@@ -286,6 +286,30 @@ type View = 'list' | 'grid' | 'graph' | 'pivot'
 
 const INV_LIST_ROW_H = 44
 const INV_TABLE_COLS = 14
+
+/**
+ * Narrow list (side panel open, small window — LayoutFixes.notes.md 2026-11-18): the title keeps
+ * INV_TITLE_MIN and these columns drop, in this order, until the rest fits the pane (they were
+ * crushing the title to 22 px). Always shown: tick, ID, picture, title, dimensions / year, state.
+ */
+const INV_DROP_ORDER = ['broadcast', 'period', 'medium', 'price', 'contact'] as const
+type InvDropCol = typeof INV_DROP_ORDER[number]
+/** Width of each droppable column in the narrow list (medium: its fixed width when shown). */
+const INV_DROP_W: Record<InvDropCol, number> = { broadcast: 104, period: 74, medium: 100, price: 68, contact: 124 }
+/** Tick 30 + ID 44 + picture 44 + dimensions / year 70 + state 116. */
+const INV_TIGHT_FIXED_W = 30 + 44 + 44 + 70 + 116
+const INV_TITLE_MIN = 160
+
+function invHiddenColumns(paneW: number): Set<InvDropCol> {
+  const hidden = new Set<InvDropCol>()
+  let need = INV_TIGHT_FIXED_W + INV_TITLE_MIN + INV_DROP_ORDER.reduce((sum, c) => sum + INV_DROP_W[c], 0)
+  for (const c of INV_DROP_ORDER) {
+    if (need <= paneW) break
+    hidden.add(c)
+    need -= INV_DROP_W[c]
+  }
+  return hidden
+}
 /** Table cell text: two lines, then cut (full text in the cell's hover title). */
 const INV_CLAMP2: React.CSSProperties = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.2, overflowWrap: 'break-word' }
 const INV_GRID_GAP = 12
@@ -1842,6 +1866,21 @@ function InvList({
     return () => ro.disconnect()
   }, [])
   const tight = tableW > 0 && tableW < 1100
+  const hidden = tight ? invHiddenColumns(tableW) : new Set<InvDropCol>()
+  const show = (c: InvDropCol) => !hidden.has(c)
+  /** Columns in the table (status spans 2) — the virtual-scroll spacer rows span them all. */
+  const colCount = tight ? INV_TABLE_COLS - 2 - hidden.size : INV_TABLE_COLS
+  const tightMinW = INV_TIGHT_FIXED_W + INV_TITLE_MIN + INV_DROP_ORDER.reduce((sum, c) => sum + (hidden.has(c) ? 0 : INV_DROP_W[c]), 0)
+  const hiddenLabels: Record<InvDropCol, string> = {
+    broadcast: t('inv_col_broadcast'),
+    period: t('ps_col_period'),
+    medium: t('concept_field_medium'),
+    price: t('price'),
+    contact: `Contact / ${t('inv_col_location')}`,
+  }
+  const hiddenTitle = hidden.size
+    ? interpolateMessage(t('inv_cols_hidden_title'), { cols: INV_DROP_ORDER.filter((c) => hidden.has(c)).map((c) => hiddenLabels[c]).join(', ') })
+    : undefined
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -1981,7 +2020,7 @@ function InvList({
     >
       <table style={{ 
         width: '100%',
-        minWidth: tight ? 720 : 980,
+        minWidth: tight ? tightMinW : 980,
         tableLayout: 'fixed', 
         borderCollapse: 'collapse', 
         borderSpacing: 0,
@@ -2017,10 +2056,18 @@ function InvList({
             <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: tight ? undefined : '18%', cursor: 'pointer' }}>
               <div style={sortThRow}>
                 <span style={sortThLabel}>{t('title')}</span>
+                {/* Nothing dropped silently: « +n » names the hidden columns. */}
+                {hidden.size ? (
+                  <span data-testid="inv-cols-hidden" title={hiddenTitle} style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, color: 'var(--tx3)', border: '1px solid var(--bd2)', padding: '0 4px', lineHeight: '14px' }}>
+                    +{hidden.size}
+                  </span>
+                ) : null}
                 <span style={{ flexShrink: 0 }}><SortInd k="Titre" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
-            <th style={{ ...headerBase, width: tight ? undefined : '22%' }} title={t('concept_field_medium')}>{t('concept_field_medium')}</th>
+            {show('medium') ? (
+              <th style={{ ...headerBase, width: tight ? INV_DROP_W.medium : '22%' }} title={t('concept_field_medium')}>{t('concept_field_medium')}</th>
+            ) : null}
             {tight ? (
               <th style={{ ...headerBase, width: 70 }} title={`${t('dimensions')} / ${t('year')}`}>
                 <div style={sortThLabel}>{t('dimensions')}</div>
@@ -2040,20 +2087,24 @@ function InvList({
                 </th>
               </>
             )}
-            <th onClick={() => toggleSort('Period')} style={{ ...headerBase, width: tight ? 74 : 90, cursor: 'pointer' }} title={t('ps_col_period')}>
-              <div style={sortThRow}>
-                <span style={sortThLabel}>{t('ps_col_period')}</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Period" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
-            <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: tight ? 68 : 80, cursor: 'pointer' }}>
-              <div style={sortThRow}>
-                <span style={sortThLabel}>{t('price')}</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
-            {tight ? (
-              <th style={{ ...headerBase, width: 124 }}>
+            {show('period') ? (
+              <th onClick={() => toggleSort('Period')} style={{ ...headerBase, width: tight ? INV_DROP_W.period : 90, cursor: 'pointer' }} title={t('ps_col_period')}>
+                <div style={sortThRow}>
+                  <span style={sortThLabel}>{t('ps_col_period')}</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Period" current={sortKey} dir={sortDir} /></span>
+                </div>
+              </th>
+            ) : null}
+            {show('price') ? (
+              <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: tight ? INV_DROP_W.price : 80, cursor: 'pointer' }}>
+                <div style={sortThRow}>
+                  <span style={sortThLabel}>{t('price')}</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
+                </div>
+              </th>
+            ) : null}
+            {!show('contact') ? null : tight ? (
+              <th style={{ ...headerBase, width: INV_DROP_W.contact }}>
                 <div onClick={() => toggleSort('Contact')} style={{ ...sortThRow, cursor: 'pointer' }}>
                   <span style={sortThLabel}>Contact</span>
                   <span style={{ flexShrink: 0 }}><SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
@@ -2090,22 +2141,24 @@ function InvList({
                 <span style={{ flexShrink: 0 }}><SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} /></span>
               </div>
             </th>
-            <th
-              onClick={() => toggleSort('Comm')}
-              style={{ ...headerBase, width: 104, cursor: 'pointer', borderRight: 'none' }}
-              title={t('inv_title_broadcast_col')}
-            >
-              <div style={sortThRow}>
-                <span style={sortThLabel}>{t('inv_col_broadcast')}</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
+            {show('broadcast') ? (
+              <th
+                onClick={() => toggleSort('Comm')}
+                style={{ ...headerBase, width: INV_DROP_W.broadcast, cursor: 'pointer', borderRight: 'none' }}
+                title={t('inv_title_broadcast_col')}
+              >
+                <div style={sortThRow}>
+                  <span style={sortThLabel}>{t('inv_col_broadcast')}</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
+                </div>
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
           {padTop > 0 && (
             <tr>
-              <td colSpan={tight ? INV_TABLE_COLS - 2 : INV_TABLE_COLS} style={{ height: padTop, padding: 0, border: 'none', lineHeight: 0 }} />
+              <td colSpan={colCount} style={{ height: padTop, padding: 0, border: 'none', lineHeight: 0 }} />
             </tr>
           )}
           {vItems.map((vi) => {
@@ -2183,15 +2236,21 @@ function InvList({
                     </div>
                   </td>
                   {/* Owner 2026-11-13: nothing cut silently — two lines, then the full text on hover. */}
-                  <td title={o.Titre || undefined} style={{ color: 'var(--tx)', padding: '0 4px', ...cellDivider, verticalAlign: 'middle' }}>
-                    <div style={INV_CLAMP2}>{o.Titre || '—'}</div>
-                  </td>
                   {(() => {
                     const medium = [o.Technique != null ? (tM[o.Technique] ?? '') : '', o.Support != null ? (sM[o.Support] ?? '') : ''].filter(Boolean).join(' · ')
+                    // Medium column dropped (narrow list): the medium joins the title's hover text.
+                    const titleTip = [o.Titre, show('medium') ? '' : medium].filter(Boolean).join(' — ')
                     return (
-                      <td title={medium || undefined} style={{ padding: '0 4px', opacity: 0.8, fontSize: 13, ...cellDivider, verticalAlign: 'middle' }}>
-                        <div style={INV_CLAMP2}>{medium}</div>
-                      </td>
+                      <>
+                        <td title={titleTip || undefined} style={{ color: 'var(--tx)', padding: '0 4px', ...cellDivider, verticalAlign: 'middle' }}>
+                          <div style={INV_CLAMP2}>{o.Titre || '—'}</div>
+                        </td>
+                        {show('medium') ? (
+                          <td title={medium || undefined} style={{ padding: '0 4px', opacity: 0.8, fontSize: 13, ...cellDivider, verticalAlign: 'middle' }}>
+                            <div style={INV_CLAMP2}>{medium}</div>
+                          </td>
+                        ) : null}
+                      </>
                     )
                   })()}
                   {tight ? (
@@ -2207,7 +2266,7 @@ function InvList({
                       </td>
                     </>
                   )}
-                  {(() => {
+                  {show('period') && (() => {
                     const pn = periodName?.(o) || ''
                     const ep = placeOf?.(o)
                     const pl = ep?.route.length ? ep.route.map(placeLabel).join(' → ') : ''
@@ -2222,8 +2281,8 @@ function InvList({
                       </td>
                     )
                   })()}
-                  <td title={o.Prix ? formatPriceFull(Number(o.Prix), lang) : undefined} style={{ padding: '0 6px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? formatPriceCompact(Number(o.Prix), lang) : '—'}</td>
-                  {(() => {
+                  {show('price') ? <td title={o.Prix ? formatPriceFull(Number(o.Prix), lang) : undefined} style={{ padding: '0 6px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? formatPriceCompact(Number(o.Prix), lang) : '—'}</td> : null}
+                  {show('contact') && (() => {
                     const level = o.anonymity_level ?? 0
                     const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                     const contactEl = publicMode && level >= 1
@@ -2258,7 +2317,7 @@ function InvList({
                   <td style={{ padding: '0 6px', overflow: 'hidden', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>
                     <WorkStateChip o={o} statusLabelMap={statusLabelMap} compact />
                   </td>
-                  <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
+                  {show('broadcast') ? <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                       <EmbeddingStatusBadge
                         oeuvreId={o.OeuvreID}
@@ -2283,13 +2342,13 @@ function InvList({
                         )
                       })()}
                     </div>
-                  </td>
+                  </td> : null}
                 </tr>
             )
           })}
           {padBot > 0 && (
             <tr>
-              <td colSpan={tight ? INV_TABLE_COLS - 2 : INV_TABLE_COLS} style={{ height: padBot, padding: 0, border: 'none', lineHeight: 0 }} />
+              <td colSpan={colCount} style={{ height: padBot, padding: 0, border: 'none', lineHeight: 0 }} />
             </tr>
           )}
         </tbody>

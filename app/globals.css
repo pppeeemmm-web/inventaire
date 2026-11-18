@@ -349,10 +349,18 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .pem-skeleton { background: color-mix(in srgb, var(--tx) 7%, transparent); border: 1px solid color-mix(in srgb, var(--tx) 6%, transparent); }
 
 /* ── Toasts (uniform across app) ──────────────────────────── */
+/* Phone bottom chrome (LayoutFixes.notes.md 2026-11-18): set on <html> by `useBottomChromeHeight`
+   (components/shared/BottomStack.tsx) while the input bar / selection bar are on screen; 0px otherwise. */
+:root {
+  --pem-phone-bar-h: 0px;
+  --pem-selection-bar-h: 0px;
+  --pem-bottom-chrome-h: calc(var(--pem-phone-bar-h) + var(--pem-selection-bar-h));
+}
+
 .pem-toastHost {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: calc(24px + var(--pem-bottom-chrome-h));
   z-index: 1200;
   display: flex;
   flex-direction: column;
@@ -374,6 +382,14 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 }
 .pem-toast--interactive {
   pointer-events: auto;
+}
+/* Phone: full width above the bottom bar (and the selection bar), never over it. */
+@media (max-width: 767px) {
+  .pem-toastHost {
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(8px + max(var(--pem-bottom-chrome-h), env(safe-area-inset-bottom, 0px)));
+  }
 }
 .pem-toastBody {
   display: flex;

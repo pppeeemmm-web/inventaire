@@ -7,6 +7,11 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.72 (2026-11-18) — Pem's evening pass + the Aide finished.
+  wn_layout_titles_phone_bar_t: { fr: 'Titres entiers, barres à leur place', en: 'Full titles, bars in their place' },
+  wn_layout_titles_phone_bar_d: {
+    fr: 'L’Inventaire garde le titre lisible quand la fiche est ouverte (les colonnes secondaires se replient, « +n » dit lesquelles) ; la Production replie les colonnes vides et donne au titre sa propre ligne. Au téléphone, la sélection est une barre fine au-dessus de la barre du bas, et les messages ne la cachent plus. Un contact ajouté vite au téléphone s’ouvre bien, et un texte trop long au Journal est arrêté avant d’être coupé.',
+    en: 'Inventory keeps the title readable with the card open (secondary columns fold, « +n » says which); Production folds empty columns and gives the title its own line. On the phone, the selection is a slim bar above the bottom bar, and messages no longer hide it. A contact quick-added on the phone opens properly, and a Journal text that is too long is stopped instead of cut.',
+  },
   wn_proposals_reasons_t: { fr: 'Vos propositions et leur suite', en: 'Your proposals and what came of them' },
   wn_proposals_reasons_d: {
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',

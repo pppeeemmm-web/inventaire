@@ -1,6 +1,13 @@
 import { defineMessages } from '../message-core'
 
 export const inventoryUiMessages = defineMessages({
+  // Layout fixes 2026-11-18 (docs/design/2026-11-18/LayoutFixes.notes.md)
+  inv_cols_hidden_title: {
+    fr: 'Colonnes masquées faute de place : {cols}. Fermez le panneau ou élargissez la fenêtre pour les revoir.',
+    en: 'Columns hidden for lack of room: {cols}. Close the panel or widen the window to see them again.',
+  },
+  cur_dock_actions: { fr: 'Actions', en: 'Actions' },
+  cur_dock_actions_title: { fr: 'Actions sur la sélection', en: 'Actions on the selection' },
   inv_phone_tools: { fr: 'Filtres & vues', en: 'Filters & views' },
   inv_col_location: {
     fr: 'Emplacement',

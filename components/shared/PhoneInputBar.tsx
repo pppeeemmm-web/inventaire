@@ -7,10 +7,10 @@
 // `?write=1` (empty) or `?write=#1234` (a mention) on the URL, or the PHONE_WRITE_EVENT, open it too.
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { PEM_Z_INDEX, useBottomChromeHeight } from '@/components/shared/BottomStack'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
@@ -88,6 +88,9 @@ export function PhoneInputBar({ onVoice, workHref, writeDay }: { onVoice: () => 
   const [workOpen, setWorkOpen] = useState(false)
   /** Écrire sheet: null = closed, else the text it starts with. */
   const [writing, setWriting] = useState<string | null>(null)
+  // Its height (safe area included) → `--pem-phone-bar-h`: toasts, the selection bar and page padding sit above it.
+  const barRef = useRef<HTMLElement>(null)
+  useBottomChromeHeight(barRef, '--pem-phone-bar-h')
 
   useEffect(() => {
     const onWrite = (ev: Event) => setWriting(String((ev as CustomEvent<string>).detail ?? ''))
@@ -120,6 +123,7 @@ export function PhoneInputBar({ onVoice, workHref, writeDay }: { onVoice: () => 
   return (
     <>
       <nav
+        ref={barRef}
         role="toolbar"
         aria-label={t('today_bar_aria')}
         data-testid="phone-input-bar"
