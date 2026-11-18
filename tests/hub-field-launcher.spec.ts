@@ -128,21 +128,21 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await openHub(page)
     await openBureau(page)
     await page.getByTestId('hub-field-verb-pipeline').click()
-    await expect(page).toHaveURL(/\/atelier\/pipeline/)
+    await expect(page).toHaveURL(/\/atelier\/pipeline/, { timeout: 45_000 })
   })
 
   test('Bureau › sale opens mobile sale flow', async ({ page }) => {
     await openHub(page)
     await openBureau(page)
     await page.getByTestId('hub-field-verb-sale').click()
-    await expect(page).toHaveURL(/\/atelier\/sale\/new/)
+    await expect(page).toHaveURL(/\/atelier\/sale\/new/, { timeout: 45_000 })
   })
 
   test('Bureau › triage opens field triage deck', async ({ page }) => {
     await openHub(page)
     await openBureau(page)
     await page.getByTestId('hub-field-verb-triage').click()
-    await expect(page).toHaveURL(/\/atelier\/triage/)
+    await expect(page).toHaveURL(/\/atelier\/triage/, { timeout: 45_000 })
   })
 
   test('Bureau › issue opens studio issue form', async ({ page }) => {

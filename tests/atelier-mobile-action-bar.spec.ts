@@ -24,6 +24,7 @@ test.describe('Atelier mobile action bar', () => {
     const hub = page.getByTestId('phone-home-chip')
     await expect(hub).toBeVisible({ timeout: 45_000 })
     await hub.click()
-    await expect(page).toHaveURL(/\/hub/)
+    // Right after first paint the shell's own reads run first in Next's router queue (3–5 s in dev).
+    await expect(page).toHaveURL(/\/hub/, { timeout: 45_000 })
   })
 })

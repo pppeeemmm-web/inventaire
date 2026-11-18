@@ -24,7 +24,7 @@ test.describe('Hub mobile + atelier narrow', () => {
     await page.getByTestId('phone-menu-open').click()
     await page.getByTestId('phone-menu-actions').locator('summary').click({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-pipeline').click()
-    await expect(page).toHaveURL(/\/atelier\/pipeline/)
+    await expect(page).toHaveURL(/\/atelier\/pipeline/, { timeout: 45_000 })
   })
 
   test('concepts tab fits viewport width without horizontal overflow', async ({ page }) => {

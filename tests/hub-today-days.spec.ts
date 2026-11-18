@@ -46,7 +46,8 @@ test.describe('Aujourd’hui — days, folds, phone menu (R2)', () => {
     // « À revoir » and the pulse line are today's only.
     await expect(page.getByTestId('hub-field-pulse')).toHaveCount(0)
     await expect(page.getByTestId('hub-today-see-again')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: /Ouvrir la journée complète|Open the full day/ })).toHaveAttribute('href', `/atelier/journal?day=${shift(today, -1)}`)
+    // The day screen is the full day (PhoneNav 2026-11-18): no « Ouvrir la journée complète » any more.
+    await expect(page.getByRole('link', { name: /Ouvrir la journée complète|Open the full day/ })).toHaveCount(0)
 
     await page.getByTestId('hub-today-next').click()
     await expect(date).toHaveAttribute('data-day', today)
