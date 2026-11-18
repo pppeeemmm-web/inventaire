@@ -673,6 +673,7 @@ export type Database = {
           contact_id: number | null
           created_at: string
           doc_date: string | null
+          expense_id: number | null
           external_url: string | null
           file_size: number | null
           folder: string | null
@@ -687,6 +688,7 @@ export type Database = {
           process_id: string | null
           source: string
           storage_path: string | null
+          supply_order_id: number | null
           work_order_id: string | null
         }
         Insert: {
@@ -696,6 +698,7 @@ export type Database = {
           contact_id?: number | null
           created_at?: string
           doc_date?: string | null
+          expense_id?: number | null
           external_url?: string | null
           file_size?: number | null
           folder?: string | null
@@ -710,6 +713,7 @@ export type Database = {
           process_id?: string | null
           source?: string
           storage_path?: string | null
+          supply_order_id?: number | null
           work_order_id?: string | null
         }
         Update: {
@@ -719,6 +723,7 @@ export type Database = {
           contact_id?: number | null
           created_at?: string
           doc_date?: string | null
+          expense_id?: number | null
           external_url?: string | null
           file_size?: number | null
           folder?: string | null
@@ -733,6 +738,7 @@ export type Database = {
           process_id?: string | null
           source?: string
           storage_path?: string | null
+          supply_order_id?: number | null
           work_order_id?: string | null
         }
         Relationships: [
@@ -749,6 +755,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "document_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expense"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "document_oeuvre_id_fkey"
@@ -769,6 +782,13 @@ export type Database = {
             columns: ["process_id"]
             isOneToOne: false
             referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_supply_order_id_fkey"
+            columns: ["supply_order_id"]
+            isOneToOne: false
+            referencedRelation: "supply_order"
             referencedColumns: ["id"]
           },
           {
@@ -3062,6 +3082,117 @@ export type Database = {
           },
         ]
       }
+      supply_order: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          expense_id: number | null
+          id: number
+          notes: string | null
+          ordered_at: string | null
+          received_at: string | null
+          ref: string | null
+          ref_seq: number
+          ref_year: number
+          status: string
+          supplier_id: number
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id?: number | null
+          id?: never
+          notes?: string | null
+          ordered_at?: string | null
+          received_at?: string | null
+          ref?: string | null
+          ref_seq: number
+          ref_year: number
+          status?: string
+          supplier_id: number
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id?: number | null
+          id?: never
+          notes?: string | null
+          ordered_at?: string | null
+          received_at?: string | null
+          ref?: string | null
+          ref_seq?: number
+          ref_year?: number
+          status?: string
+          supplier_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_order_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expense"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_order_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+        ]
+      }
+      supply_order_line: {
+        Row: {
+          id: number
+          order_id: number
+          position: number
+          qty_ordered: number
+          qty_received: number
+          stock_item_id: number
+          unit_price_ht: number | null
+        }
+        Insert: {
+          id?: never
+          order_id: number
+          position?: number
+          qty_ordered: number
+          qty_received?: number
+          stock_item_id: number
+          unit_price_ht?: number | null
+        }
+        Update: {
+          id?: never
+          order_id?: number
+          position?: number
+          qty_ordered?: number
+          qty_received?: number
+          stock_item_id?: number
+          unit_price_ht?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_order_line_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "supply_order"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_order_line_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_item"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Support: {
         Row: {
           Support: string | null
@@ -4394,6 +4525,10 @@ export type Database = {
       oeuvre_stage_key: {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string
+      }
+      receive_supply_order: {
+        Args: { p_lines: Json; p_order_id: number }
+        Returns: undefined
       }
       replace_oeuvre_themes: {
         Args: { p_oeuvre_id: number; p_theme_ids: number[] }

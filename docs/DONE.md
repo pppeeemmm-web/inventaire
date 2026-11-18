@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Supply orders (TODO 11 + 11d)
+
+- 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** — design + build in session supplies-stock (with 11d).
+- 11d. **Supplier invoice → stock + supplier** (Pem 2026-11-15 asked how it works: **it does not today**). An expense (Income & Expenses: bill / ticket) is typed by hand and touches neither stock quantities nor the supplier list; stock moves only by Count. Design with 11; reading the invoice by itself = OCR → needs GO → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** (no OCR) — session supplies-stock.
+- Built + live 2026-11-18 (`5ebb7cd`, side session supplies-stock; [design + Pem's 7 answers](./design/2026-11-18/Supplies_Orders.notes.md)): `supply_orders.sql` applied (supply_order, supply_order_line, `receive_supply_order()`, `document.expense_id` / `supply_order_id`; RLS team, no anon); Studio → Fournitures → Commandes, invoice file on every expense. Seen in Chrome (empty list, no console error); not clicked on data. Same day: order / invoice numbers keep all digits past 999 / 9999, an expense with no year takes its date's year (`refs_no_cut_and_expense_year.sql`, Pem « Fix now » / « Yes, fix »).
+
 ## 2026-11-18 — Theme notes (TODO 23)
 
 - 23. **Theme notes** (Pem 2026-11-17): `theme` has only `id, name`, so the text goes in the title (4 names over 40 characters, longest 166) → add a notes field so titles stay short. SQL GO → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — building in session theme-notes-kit (SQL to Pem before apply).

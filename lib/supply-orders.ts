@@ -8,7 +8,7 @@
  * button are hidden, the expense form shows no file section, and every action returns `sql_waiting`.
  * Flip to true once the SQL is live, then `npm run gen:types`.
  */
-export const SUPPLY_ORDERS_SQL_LIVE = false
+export const SUPPLY_ORDERS_SQL_LIVE = true
 
 export type SupplyOrderStatus = 'draft' | 'ordered' | 'received' | 'cancelled'
 

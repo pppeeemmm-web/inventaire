@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.58 (2026-11-18) — supply orders.
+  wn_supply_orders_t: { fr: 'Fournitures : commandes et achats', en: 'Supplies: orders and purchases' },
+  wn_supply_orders_d: {
+    fr: 'Studio → Fournitures → Commandes : une commande à un fournisseur (ou un achat en magasin, déjà reçu). « Recevoir » ajoute les quantités au stock, met à jour le coût et le fournisseur ; une livraison partielle reste ouverte, « Clore » accepte un manque. La dépense se crée depuis la commande, et chaque dépense peut garder sa facture ou son ticket.',
+    en: 'Studio → Supplies → Orders: an order to a supplier (or a shop purchase, already received). « Receive » adds the quantities to stock and updates cost and supplier; a partial delivery stays open, « Close » accepts a shortfall. The expense is made from the order, and every expense can keep its invoice or ticket.',
+  },
   // 3.1.57 (2026-11-18) — order dates in the calendar.
   wn_order_calendar_t: { fr: 'Les dates des commandes dans votre agenda', en: 'Order dates in your calendar' },
   wn_order_calendar_d: {

@@ -1,6 +1,6 @@
 -- Supplies: orders, receiving into stock, invoice files on every expense (TODO 11 + 11d).
 -- Design + Pem's answers: docs/design/2026-11-18/Supplies_Orders.notes.md.
--- NOT APPLIED by the side session: the lead applies it on Pem's OK, then flips
+-- APPLIED 2026-11-18 by the lead (Pem « Yes, apply and land »), migration supply_orders; checked: 8 policies, team-only grants. Then flipped
 -- SUPPLY_ORDERS_SQL_LIVE in lib/supply-orders.ts and runs `npm run gen:types`.
 --
 -- New: supply_order, supply_order_line, receive_supply_order().

@@ -44,8 +44,6 @@ Transmission (safety of what is kept)
 Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)
 - [ ] 10. Money: `is_paid` from payments; clean `sales-client.ts` extras → [notes](./TODO_NOTES.md#money)
-- [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** — design + build in session supplies-stock (with 11d).
-- [ ] 11d. **Supplier invoice → stock + supplier** (Pem 2026-11-15 asked how it works: **it does not today**). An expense (Income & Expenses: bill / ticket) is typed by hand and touches neither stock quantities nor the supplier list; stock moves only by Count. Design with 11; reading the invoice by itself = OCR → needs GO → [notes](./TODO_NOTES.md#supplies) **GO 2026-11-18** (no OCR) — session supplies-stock.
 - [ ] 11e. **Batch scan of expenses and dockets** (Pem 2026-11-15): scan many dockets in one go on the iPhone → a folder the PC sees → a PC batch (like `scripts/transcribe/`) reads each one and proposes an expense (date, supplier, amount, VAT, `receipt_ref`) to confirm, the scan kept in the Vault « Factures ». Needs the OCR GO (§1); with 11d (lines → stock) → [notes](./TODO_NOTES.md#docket-scan)
 - [ ] 11b. Collector share kit (F5): a private link for one collector with a selection, a PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md) **Drafted 2026-11-18** → [`Collector_ShareKit.notes.md`](./design/2026-11-18/Collector_ShareKit.notes.md) + mockup; Pem's 8 answers recorded in the notes (2026-11-18); build waits for a GO.
 
