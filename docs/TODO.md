@@ -44,7 +44,7 @@ Public site
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
 
 Guides — in-app Aide (`/atelier/aide`, batch 1 done 2026-11-18; design: one how-to card per task — When · Steps · What happens next · Pitfalls)
-- [ ] Batches 3–4 (Œuvres + Production done 2026-11-18): how-to cards by menu tile (Idées, Commandes, Logistique, Événements, Journal, Contacts, Fournitures, Rapports, Site & Portfolio); then « What the app does by itself » and a FR / EN glossary.
+- [ ] Batch 4 (Œuvres, Production, Journal, Idées, Commandes, Logistique, Événements done 2026-11-18): how-to cards for Contacts, Fournitures, Rapports, Site & Portfolio; then « What the app does by itself » and a FR / EN glossary.
 - [ ] Batch 5: admin guide (approvals, Audit, version restore, Fil, Diffusion, hard delete, contacts merge / private, backups, Opérations & Stratégie).
 - [ ] Batch 6: retire the old copies — `ADMIN_GUIDE.md` + `TEAM_MEMBER_GUIDE.md` → `docs/archive/`, ⌘K « Download Studio Bible » + the Kaizen → Système regenerate button; delete the two Vault uploads (« Admin guide html », « Team member Guide html ») and the Studio Bible PDF only with Pem's OK.
 

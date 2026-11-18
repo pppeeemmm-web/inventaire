@@ -8,6 +8,10 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - SITE_MAP, ARCHITECTURE (triggers + callable functions re-read from the live DB: 9 undocumented, 2 gone), SYSTEM_LEDGER (its screen has no route since the Kaizen merge), README stamps, CLAUDE.md (5 checks, land flow, shorter phone-nav rule, stale names) brought up to date. Memory: 2 outdated files deleted (Pem « Yes, delete »), 5 updated.
 - Left: the two order-guard trigger functions keep PUBLIC execute (harmless — trigger functions can't be called through the API; house style would revoke).
 
+## 2026-11-18 — In-app Aide, batch 3 (Pem « GO batch 3 »)
+
+- `544a158`: chapters « La journée et le Journal », « Idées », « Commandes » (five kinds incl. Confié, steps, money + 14-day return, papers), « Logistique », « Expositions et événements » in `lib/aide/team.{fr,en}.ts`; labels read on the live screens (phone 390 px: Aujourd'hui, Écrire, Vocal, Journal, Idées, Commandes, Expositions; desktop: Logistique, Expositions) and in the message modules. Seen rendered in Chrome on localhost (desktop FR, 390 px EN). What's new 3.1.67.
+
 ## 2026-11-18 — In-app Aide, batch 2 + QR link (Pem « GO batch 2 », « Yes, fix and land »)
 
 - `515bb19`: chapters « Œuvres » (7 how-to cards) and « Production » in `lib/aide/team.{fr,en}.ts`, every label read on the live screens FR + EN; batch 1 corrected — iPhone Share does not list the app (the « Réception partage » page says so; CLAUDE.md's iOS share-target line disagrees), and a team member's new works, card edits and photos all wait for approval (`saveWork`). Seen in Chrome on localhost (desktop, 390 px).

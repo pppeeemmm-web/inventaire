@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.67 (2026-11-18) — Aide batch 3.
+  wn_aide_day_orders_events_t: { fr: 'Aide : la journée, les idées, les commandes', en: 'Help: the day, ideas, orders' },
+  wn_aide_day_orders_events_d: {
+    fr: 'Cinq chapitres de plus dans Kaizen → Aide : la journée et le Journal (Écrire, Vocal), les Idées, les Commandes (étapes de chaque genre, argent, retour de 14 jours, papiers), la Logistique et les Expositions et événements.',
+    en: 'Five more chapters in Kaizen → Help: the day and the Journal (Write, Voice), Ideas, Orders (each kind’s steps, money, 14-day return, papers), Logistics, and Exhibitions and events.',
+  },
   // 3.1.66 (2026-11-18) — Aide batch 2, QR link.
   wn_aide_works_production_t: { fr: 'Aide : Œuvres et Production', en: 'Help: Works and Production' },
   wn_aide_works_production_d: {
