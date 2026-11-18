@@ -1081,7 +1081,10 @@ function FolderTree({
         const isDragging = draggedFolderPath === fullPathStr
 
         return (
-          <div key={child.name} style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}>
+          // The row is one flex line; an open folder's sub-folders go BELOW it (they were drawn inside the row, beside
+          // the parent's buttons — Commandes → Confiés out of line, Pem 2026-11-18).
+          <div key={child.name}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}>
             <button
               type="button"
               draggable
@@ -1170,6 +1173,7 @@ function FolderTree({
                 onDeleteFolder(fullPathStr)
               }}
             >✕</button>
+          </div>
             {isExpanded && Object.keys(child.children).length > 0 && (
               <FolderTree
                 tree={child as { name: string; children: Record<string, { name: string; children: Record<string, unknown> }> } }
