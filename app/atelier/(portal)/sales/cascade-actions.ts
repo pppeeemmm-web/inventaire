@@ -23,6 +23,7 @@ import {
   DEMAND_KINDS, INVOICE_FROM_STATUS, INVOICE_VAT_MENTION, SHIP_DONE, SHIP_OPEN, SHIP_STEPS, STUDIO_SIRET, nextShipStep,
   type DemandKind, type ShipmentKind, type ShipmentStatus,
 } from '@/lib/orders/cascade'
+import { inChunks } from '@/lib/supabase/in-chunks'
 
 type Supa = Awaited<ReturnType<typeof createClient>>
 type Err = { error: string }
@@ -92,24 +93,33 @@ const SHIP_COLS = 'id, kind, status, created_at, to_contact_id, address_id, pick
 
 type ShipRow = Omit<CascadeShipment, 'works' | 'orders' | 'open_demands' | 'claims' | 'party_name'>
 
-async function expandShipments(supabase: Supa, rows: ShipRow[]): Promise<CascadeShipment[]> {
+/** An order in one of these steps has nothing left to send or bring back (cancelled, returned, closed). */
+const ORDER_DEAD = ['cancelled', 'closed']
+/** Before « Expédié »: the box can still change. */
+const notGone = (s: string) => !['shipped', 'delivered', 'cancelled'].includes(s)
+
+/**
+ * `liveOnly`: a box not yet gone leaves out the works of cancelled / closed orders (stress test B4 — data
+ * left from before the fix); `hideEmptied`: such a box with nothing else in it is not listed at all.
+ * Id lists are read in chunks (« URI too long » past ~200 ids, B5).
+ */
+async function expandShipments(supabase: Supa, rows: ShipRow[], opts: { liveOnly?: boolean; hideEmptied?: boolean } = {}): Promise<CascadeShipment[]> {
   if (rows.length === 0) return []
   const ids = rows.map((r) => r.id)
-  const { data: sw } = await supabase.from('shipment_work').select('shipment_id, oeuvre_id, order_line_id').in('shipment_id', ids)
-  const links = sw ?? []
+  const { data: links } = await inChunks(ids, (c) => supabase.from('shipment_work').select('shipment_id, oeuvre_id, order_line_id').in('shipment_id', c))
   const lineIds = [...new Set(links.map((l) => l.order_line_id).filter((x): x is string => !!x))]
   const oeuvreIds = [...new Set(links.map((l) => l.oeuvre_id))]
   const contactIds = [...new Set(rows.map((r) => r.to_contact_id).filter((x): x is number => x != null))]
   const [linesRes, worksRes, contactsRes, claimsRes] = await Promise.all([
-    lineIds.length ? supabase.from('work_order_work').select('id, order_id').in('id', lineIds) : Promise.resolve({ data: [] as { id: string; order_id: string }[] }),
-    oeuvreIds.length ? supabase.from('Oeuvres').select('OeuvreID, Titre').in('OeuvreID', oeuvreIds) : Promise.resolve({ data: [] as { OeuvreID: number; Titre: string | null }[] }),
-    contactIds.length ? supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', contactIds) : Promise.resolve({ data: [] as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[] }),
-    supabase.from('insurance_claim').select('id, shipment_id, oeuvre_id, insurer, claim_ref, police_report_ref, amount_claimed, amount_paid, status, filed_on').in('shipment_id', ids),
+    inChunks(lineIds, (c) => supabase.from('work_order_work').select('id, order_id').in('id', c)),
+    inChunks(oeuvreIds, (c) => supabase.from('Oeuvres').select('OeuvreID, Titre').in('OeuvreID', c)),
+    inChunks(contactIds, (c) => supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', c)),
+    inChunks(ids, (c) => supabase.from('insurance_claim').select('id, shipment_id, oeuvre_id, insurer, claim_ref, police_report_ref, amount_claimed, amount_paid, status, filed_on').in('shipment_id', c)),
   ])
   const orderIds = [...new Set((linesRes.data ?? []).map((l) => l.order_id))]
   const [ordersRes, demandsRes] = await Promise.all([
-    orderIds.length ? supabase.from('work_order').select('id, ref').in('id', orderIds) : Promise.resolve({ data: [] as { id: string; ref: string | null }[] }),
-    lineIds.length ? supabase.from('work_order_demand').select('line_id').in('line_id', lineIds).is('done_at', null) : Promise.resolve({ data: [] as { line_id: string }[] }),
+    inChunks(orderIds, (c) => supabase.from('work_order').select('id, ref, status').in('id', c)),
+    inChunks(lineIds, (c) => supabase.from('work_order_demand').select('line_id').in('line_id', c).is('done_at', null)),
   ])
   const orderOfLine = new Map((linesRes.data ?? []).map((l) => [l.id, l.order_id]))
   const refOf = new Map((ordersRes.data ?? []).map((o) => [o.id, o.ref]))
@@ -117,22 +127,29 @@ async function expandShipments(supabase: Supa, rows: ShipRow[]): Promise<Cascade
   const nameOf = new Map((contactsRes.data ?? []).map((c) => [c.ContactID, c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()]))
   const openByLine = new Map<string, number>()
   for (const d of demandsRes.data ?? []) openByLine.set(d.line_id, (openByLine.get(d.line_id) ?? 0) + 1)
+  const deadOrder = new Set((ordersRes.data ?? []).filter((o) => ORDER_DEAD.includes(o.status)).map((o) => o.id))
+  const isDead = (l: { order_line_id: string | null }) => {
+    const oid = l.order_line_id ? orderOfLine.get(l.order_line_id) : undefined
+    return oid != null && deadOrder.has(oid)
+  }
 
-  return rows.map((r) => {
-    const mine = links.filter((l) => l.shipment_id === r.id)
+  return rows.flatMap((r) => {
+    const all = links.filter((l) => l.shipment_id === r.id)
+    const mine = opts.liveOnly && notGone(r.status) ? all.filter((l) => !isDead(l)) : all
+    if (opts.hideEmptied && notGone(r.status) && all.length > 0 && mine.length === 0) return []
     const works = mine.map((l) => {
       const oid = l.order_line_id ? orderOfLine.get(l.order_line_id) ?? null : null
       return { oeuvre_id: l.oeuvre_id, title: titleOf.get(l.oeuvre_id) ?? null, order_id: oid, order_ref: oid ? refOf.get(oid) ?? null : null }
     })
     const orders = [...new Map(works.filter((w) => w.order_id).map((w) => [w.order_id!, { id: w.order_id!, ref: w.order_ref }])).values()]
-    return {
+    return [{
       ...r,
       party_name: r.to_contact_id != null ? nameOf.get(r.to_contact_id) ?? `#${r.to_contact_id}` : '',
       works,
       orders,
       open_demands: mine.reduce((n, l) => n + (l.order_line_id ? openByLine.get(l.order_line_id) ?? 0 : 0), 0),
       claims: ((claimsRes.data ?? []) as (CascadeClaim & { shipment_id: string | null })[]).filter((c) => c.shipment_id === r.id),
-    }
+    }]
   })
 }
 
@@ -228,7 +245,7 @@ export async function fetchShipments(includeDone: boolean): Promise<{ ok: true; 
   if (!includeDone) q = q.not('status', 'in', `(${SHIP_DONE.join(',')})`)
   const { data, error } = await q
   if (error) return { error: error.message }
-  return { ok: true, shipments: await expandShipments(g.supabase, (data ?? []) as ShipRow[]) }
+  return { ok: true, shipments: await expandShipments(g.supabase, (data ?? []) as ShipRow[], { liveOnly: true, hideEmptied: true }) }
 }
 
 // ── Delivery choice + prep demands ───────────────────────────────────────────────────────────────
@@ -310,8 +327,12 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
   let q = supabase.from('shipment').select('id').eq('kind', kind).eq('to_contact_id', o.party_id).in('status', [...SHIP_OPEN])
   q = o.address_id ? q.eq('address_id', o.address_id) : q.is('address_id', null)
   if (kind === 'pickup') q = pickupProcessId ? q.eq('pickup_process_id', pickupProcessId) : q.is('pickup_process_id', null)
-  const { data: existing } = await q.order('created_at').limit(1)
-  let shipmentId = existing?.[0]?.id ?? null
+  // Never a box whose orders were all cancelled / returned / closed (B4): it would carry their works too.
+  const { data: candidates } = await q.order('created_at').limit(10)
+  let shipmentId: string | null = null
+  for (const c of candidates ?? []) {
+    if (await boxHasLiveOrder(supabase, c.id)) { shipmentId = c.id; break }
+  }
 
   if (!shipmentId) {
     const { data: s, error: insErr } = await supabase.from('shipment').insert({
@@ -322,6 +343,7 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
     if (insErr || !s) return { error: insErr?.message ?? 'insert' }
     shipmentId = s.id
   }
+  if (!shipmentId) return { error: 'insert' }
   const { error: swErr } = await supabase.from('shipment_work').upsert(
     todo.map((l) => ({ shipment_id: shipmentId!, oeuvre_id: l.oeuvre_id, order_line_id: l.id })),
     { onConflict: 'shipment_id,oeuvre_id' },
@@ -330,6 +352,17 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'shipment', rowId: shipmentId, newValue: 'open', metadata: { order: o.ref, kind, works: todo.map((l) => l.oeuvre_id) } })
   done()
   return { ok: true, id: shipmentId }
+}
+
+/** An empty box, a work with no order, or at least one order still going: the box may take more works. */
+async function boxHasLiveOrder(supabase: Supa, shipmentId: string): Promise<boolean> {
+  const { data: sw } = await supabase.from('shipment_work').select('order_line_id').eq('shipment_id', shipmentId)
+  const rows = sw ?? []
+  const lineIds = [...new Set(rows.map((r) => r.order_line_id).filter((x): x is string => !!x))]
+  if (rows.length === 0 || rows.some((r) => !r.order_line_id)) return true
+  const { data: ls } = await inChunks(lineIds, (c) => supabase.from('work_order_work').select('order_id').in('id', c))
+  const { data: os } = await inChunks([...new Set(ls.map((l) => l.order_id))], (c) => supabase.from('work_order').select('status').in('id', c))
+  return os.some((o) => !ORDER_DEAD.includes(o.status))
 }
 
 const SHIP_FIELDS = ['carrier', 'tracking_no', 'tracking_url', 'packed_dims', 'packed_weight_kg', 'packing_note', 'insured_value', 'insurer', 'policy_ref', 'cost', 'handed_to', 'pickup_process_id'] as const
@@ -361,7 +394,7 @@ export async function advanceShipment(id: string, to: ShipmentStatus): Promise<A
   const kind = s.kind as ShipmentKind
   if (nextShipStep(kind, s.status as ShipmentStatus) !== to) return { error: 'cas_err_step' }
 
-  const [view] = await expandShipments(supabase, [{ ...(s as unknown as ShipRow) }])
+  const [view] = await expandShipments(supabase, [{ ...(s as unknown as ShipRow) }], { liveOnly: true })
   const stepIdx = SHIP_STEPS[kind].indexOf(to)
   if (kind !== 'return' && stepIdx >= SHIP_STEPS[kind].indexOf('packed') && view.open_demands > 0) {
     return { error: `cas_err_open_demands:${view.open_demands}` }

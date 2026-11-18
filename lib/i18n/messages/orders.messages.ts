@@ -98,6 +98,7 @@ export const ordersMessages = defineMessages({
   ord_err_party: { fr: 'Choisissez avec qui (pas Pem).', en: 'Choose who it is with (not Pem).' },
   ord_err_address: { fr: 'Cette adresse n’est pas celle de ce contact.', en: 'This address is not this contact’s.' },
   ord_err_busy: { fr: 'Déjà sur une autre commande ouverte :', en: 'Already on another open order:' },
+  ord_err_overpaid: { fr: 'Ce montant dépasse le reste à payer (déjà encaissé ?). Rechargez la commande.', en: 'This amount is more than what is left to pay (already recorded?). Reload the order.' },
   ord_err_dates: { fr: 'Un dépôt ou un prêt a besoin de ses dates de sortie et de retour.', en: 'A consignment or loan needs its out and back dates.' },
   ord_err_dates_order: { fr: 'La date de retour vient avant la sortie.', en: 'The back date is before the out date.' },
   ord_err_step: { fr: 'Cette étape n’est pas possible depuis l’étape actuelle.', en: 'This step is not possible from the current one.' },

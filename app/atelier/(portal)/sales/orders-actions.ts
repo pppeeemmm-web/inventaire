@@ -19,6 +19,8 @@ import { ENTRUSTED_LIVE, ORDER_FINISHED, REFUNDED_AT_LIVE } from '@/lib/orders/k
 import { saleMoneyState } from '@/lib/sales/sale-money'
 import type { WorkSaleMoney } from '@/lib/sales/work-paid'
 import { makeOrderCoas, openShipmentForOrder, syncOrderCalendarQuietly } from '@/app/atelier/(portal)/sales/cascade-actions'
+import { inChunks } from '@/lib/supabase/in-chunks'
+import { SHIP_OPEN, type ShipmentStatus } from '@/lib/orders/cascade'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
 export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
@@ -113,12 +115,13 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const orderIds = orders.map((o) => o.id)
   const partyIds = [...new Set(orders.map((o) => o.party_id))]
 
+  // Id lists in chunks: one URL with every order id fails past ~200 orders (« URI too long », stress test B5).
   const [linesRes, partiesRes, papersRes, paymentsRes, addrRes] = await Promise.all([
-    supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position, price, insurance_value').in('order_id', orderIds),
-    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', partyIds),
-    supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', orderIds),
-    supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', orderIds).order('payment_date', { ascending: false }),
-    supabase.from('contact_addresses').select('id, contact_id, label, ville').in('contact_id', partyIds),
+    inChunks(orderIds, (c) => supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position, price, insurance_value').in('order_id', c)),
+    inChunks(partyIds, (c) => supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', c)),
+    inChunks(orderIds, (c) => supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', c)),
+    inChunks(orderIds, (c) => supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', c).order('payment_date', { ascending: false })),
+    inChunks(partyIds, (c) => supabase.from('contact_addresses').select('id, contact_id, label, ville').in('contact_id', c)),
   ])
   if (linesRes.error) return { error: linesRes.error.message }
   if (partiesRes.error) return { error: partiesRes.error.message }
@@ -128,9 +131,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const lines = linesRes.data ?? []
   const refunded = await refundedByOrder(supabase, orderIds)
   const oeuvreIds = [...new Set(lines.map((l) => l.oeuvre_id))]
-  const worksRes = oeuvreIds.length
-    ? await supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink, tva_rate').in('OeuvreID', oeuvreIds)
-    : { data: [], error: null }
+  const worksRes = await inChunks(oeuvreIds, (c) => supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink, tva_rate').in('OeuvreID', c))
   if (worksRes.error) return { error: worksRes.error.message }
 
   const workById = new Map((worksRes.data ?? []).map((w) => [w.OeuvreID, w]))
@@ -184,7 +185,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 async function refundedByOrder(supabase: Awaited<ReturnType<typeof createClient>>, orderIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>()
   if (!REFUNDED_AT_LIVE || orderIds.length === 0) return out
-  const { data } = await supabase.from('payments').select('work_order_id, refunded_at').in('work_order_id', orderIds)
+  const { data } = await inChunks(orderIds, (c) => supabase.from('payments').select('work_order_id, refunded_at').in('work_order_id', c))
   const rows = data ?? []
   for (const id of orderIds) {
     const mine = rows.filter((r) => r.work_order_id === id)
@@ -307,6 +308,39 @@ async function closeDateReminders(supabase: Supa, ref: string | null, which: 'ou
   const { error } = await supabase.from('suivi_reminder').update({ lu: true }).like('message', `${prefix.replace(/[%_]/g, '')}%`).eq('lu', false)
   if (error) await logError('Order date reminders not closed', error.message, { source: 'orders.closeDateReminders', metadata: { ref, which } })
   else revalidateTag('reminders')
+}
+
+/** Shipment steps a box can still be changed on: before it leaves (« Expédié »). */
+const SHIP_NOT_GONE: readonly ShipmentStatus[] = [...SHIP_OPEN, 'packed', 'insured', 'labelled']
+
+/**
+ * An order cancelled, returned or closed by hand takes its works off the shipments that have not left
+ * yet; a shipment left with no work is cancelled (stress test 2026-11-18, B4: the cancelled work stayed in
+ * the box, and a later order to the same place joined it). A shipment already on the road is left as it is.
+ */
+async function releaseOrderShipments(supabase: Supa, orderId: string): Promise<void> {
+  const { data: lines } = await supabase.from('work_order_work').select('id').eq('order_id', orderId)
+  const lineIds = (lines ?? []).map((l) => l.id)
+  if (lineIds.length === 0) return
+  const { data: sw } = await supabase.from('shipment_work')
+    .select('id, shipment_id, shipment:shipment!shipment_work_shipment_id_fkey(status)').in('order_line_id', lineIds)
+  const drop = (sw ?? []).filter((r) => {
+    const st = (r.shipment as unknown as { status: ShipmentStatus } | null)?.status
+    return st != null && SHIP_NOT_GONE.includes(st)
+  })
+  if (drop.length === 0) return
+  const { error } = await supabase.from('shipment_work').delete().in('id', drop.map((r) => r.id))
+  if (error) {
+    await logError('Order works not taken off their shipment', error.message, { source: 'orders.releaseOrderShipments', metadata: { orderId } })
+    return
+  }
+  for (const shipId of new Set(drop.map((r) => r.shipment_id))) {
+    const { count } = await supabase.from('shipment_work').select('id', { count: 'exact', head: true }).eq('shipment_id', shipId)
+    if (count === 0) {
+      await supabase.from('shipment').update({ status: 'cancelled' }).eq('id', shipId).in('status', [...SHIP_NOT_GONE])
+    }
+  }
+  revalidatePath('/atelier/logistics')
 }
 
 export async function createWorkOrder(formData: FormData): Promise<OrderWriteResult> {
@@ -506,12 +540,12 @@ export async function fetchEntrustedOut(): Promise<EntrustedOutWork[]> {
     .select('id, ref, party_id, delivered_at, start_date').eq('kind', 'entrusted').eq('status', 'out')
   if (!orders?.length) return []
   const [linesRes, partiesRes] = await Promise.all([
-    supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', orders.map((o) => o.id)).eq('line_status', 'active'),
-    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', [...new Set(orders.map((o) => o.party_id))]),
+    inChunks(orders.map((o) => o.id), (c) => supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', c).eq('line_status', 'active')),
+    inChunks([...new Set(orders.map((o) => o.party_id))], (c) => supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', c)),
   ])
   const lines = linesRes.data ?? []
   if (!lines.length) return []
-  const { data: works } = await supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', [...new Set(lines.map((l) => l.oeuvre_id))])
+  const { data: works } = await inChunks([...new Set(lines.map((l) => l.oeuvre_id))], (c) => supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', c))
   const workById = new Map((works ?? []).map((w) => [w.OeuvreID, w]))
   const partyById = new Map((partiesRes.data ?? []).map((c) => [c.ContactID, c]))
   const orderById = new Map(orders.map((o) => [o.id, o]))
@@ -596,8 +630,12 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   }
   if (order.kind === 'sale' && to === 'delivered') extra.return_window_starts_at = today
 
-  const { error: stepErr } = await supabase.from('work_order').update({ status: to, ...extra }).eq('id', order.id)
+  // Only from the step read above: two clicks at once (two tabs, two people) — the second finds the
+  // order moved and is refused, so works, COAs and the shipment are not done twice (stress test B1/B2).
+  const { data: moved, error: stepErr } = await supabase.from('work_order').update({ status: to, ...extra })
+    .eq('id', order.id).eq('status', order.status).select('id')
   if (stepErr) return { error: stepErr.message }
+  if (!moved?.length) return { error: 'ord_err_step' }
 
   let moveErr: string | null = null
   if (order.kind === 'sale' && to === 'signed') {
@@ -650,6 +688,8 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   }
 
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: to, metadata: { ref: order.ref, kind: order.kind, works: ids } })
+  // Closed (by hand, or by its delivered return shipment): nothing of it waits in a box being prepared.
+  if (to === 'closed') await releaseOrderShipments(supabase, order.id)
   // Delivered: a reminder on the day the cooling-off window ends (Field reminders, Today).
   if (order.kind === 'sale' && to === 'delivered') {
     const { data: win } = await supabase.from('work_order').select('return_window_days, return_window_skipped, process_id').eq('id', order.id).single()
@@ -719,6 +759,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   const { error } = await supabase.from('work_order').update({ status: 'cancelled' }).eq('id', order.id)
   if (error) return { error: error.message }
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: 'cancelled', metadata: { ref: order.ref, kind: order.kind } })
+  await releaseOrderShipments(supabase, order.id)
   await closeDateReminders(supabase, order.ref, 'all')
   await syncOrderCalendarQuietly(order.id)
   revalidatePath('/atelier/sales')
@@ -744,7 +785,7 @@ export async function recordOrderPayment(formData: FormData): Promise<PaymentRes
   const date = strOrNull(formData.get('payment_date')) ?? new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: 'ord_err_amount' }
 
-  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, price_final, ref, shipping_method').eq('id', orderId).single()
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, price_final, shipping_charge, ref, shipping_method').eq('id', orderId).single()
   if (error || !o) return { error: error?.message ?? 'Order not found' }
   if (o.kind !== 'sale' || !['signed', 'deposit_paid'].includes(o.status)) return { error: 'ord_err_step' }
   // « Emportée aujourd'hui » (Pem 2026-11-18): the choice made at payment wins over the one stored at creation.
@@ -758,6 +799,9 @@ export async function recordOrderPayment(formData: FormData): Promise<PaymentRes
   const { data: before, error: sumErr } = await supabase.from('payments').select('amount').eq('work_order_id', o.id)
   if (sumErr) return { error: sumErr.message }
   const paid = (before ?? []).reduce((sum, p) => sum + Number(p.amount), 0)
+  // Never more than what is left: the price plus shipping, invoiced on top (the database refuses it too,
+  // also for two payments at once).
+  if (paid + amount > Number(o.price_final) + Number(o.shipping_charge ?? 0) + 0.005) return { error: 'ord_err_overpaid' }
   const full = paid + amount >= Number(o.price_final) - 0.005
   const to = full ? 'paid' : o.status === 'signed' ? 'deposit_paid' : null
   if (to) {
@@ -774,7 +818,7 @@ export async function recordOrderPayment(formData: FormData): Promise<PaymentRes
   })
   if (payErr) {
     await logError('Order payment not written after its step', payErr.message, { source: 'orders.recordOrderPayment', metadata: { orderId: o.id, amount, to } })
-    return { error: `ord_err_payment:${payErr.message}` }
+    return { error: payErr.message === 'ord_err_overpaid' ? 'ord_err_overpaid' : `ord_err_payment:${payErr.message}` }
   }
   await logSystemEvent({ eventType: 'PAYMENT_GRAIN', tableName: 'work_order', rowId: o.id, metadata: { ref: o.ref, amount, method, date } })
   // Paid at the studio and taken away: handed over now, the 14 return days start today.
@@ -845,8 +889,8 @@ export async function fetchSaleOrdersForReport(): Promise<ReportSaleOrder[]> {
   if (!orders?.length) return []
   const ids = orders.map((o) => o.id)
   const [linesRes, payRes] = await Promise.all([
-    supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', ids),
-    supabase.from('payments').select('work_order_id, amount').in('work_order_id', ids),
+    inChunks(ids, (c) => supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', c)),
+    inChunks(ids, (c) => supabase.from('payments').select('work_order_id, amount').in('work_order_id', c)),
   ])
   return orders.map((o) => {
     const works = (linesRes.data ?? []).filter((l) => l.order_id === o.id).sort((a, b) => a.position - b.position).map((l) => l.oeuvre_id)
@@ -1047,6 +1091,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
     revalidateTag('reminders')
   }
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: o.id, oldValue: o.status, newValue: 'returned', metadata: { ref: o.ref, works: back, to_refund: paid } })
+  await releaseOrderShipments(supabase, o.id)
   revalidatePath('/atelier/sales')
   revalidatePath('/atelier/fiscal')
   return { ok: true }
