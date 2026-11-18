@@ -82,6 +82,8 @@ export function SupplyOrderSheet({
   const [form, setForm] = useState<Form>({ supplierId: null, notes: '', lines: [] })
   const [baseline, setBaseline] = useState(serialize({ supplierId: null, notes: '', lines: [] }))
   const [busy, setBusy] = useState(false)
+  /** Set at once, before `busy` re-renders the button: a double tap receives only once (stress test B3). */
+  const receivingNowRef = useRef(false)
   const [loading, setLoading] = useState(orderId != null)
 
   // Sub-panels
@@ -219,9 +221,11 @@ export function SupplyOrderSheet({
 
   async function confirmReceive() {
     if (id == null || !receiving) return
+    if (receivingNowRef.current) return
     const lines = Object.entries(receiving).map(([lid, q]) => ({ line_id: Number(lid), qty: parseNum(q) ?? 0 })).filter((l) => l.qty > 0)
+    receivingNowRef.current = true
     setBusy(true)
-    const res = await receiveSupplyOrder(id, lines)
+    const res = await receiveSupplyOrder(id, lines).finally(() => { receivingNowRef.current = false })
     setBusy(false)
     if ('error' in res) { toast.error(errText(res.error)); return }
     toast.success(t('so_received_toast'))
@@ -359,6 +363,16 @@ export function SupplyOrderSheet({
 
   /** « + Achat » → « Reçu aujourd'hui »: save, receive every line in full, ticket, expense. */
   async function receivePurchase() {
+    if (receivingNowRef.current) return
+    receivingNowRef.current = true
+    try {
+      await receivePurchaseOnce()
+    } finally {
+      receivingNowRef.current = false
+    }
+  }
+
+  async function receivePurchaseOnce() {
     const oid = await save()
     if (oid == null) return
     setBusy(true)

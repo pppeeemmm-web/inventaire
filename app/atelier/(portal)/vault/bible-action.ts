@@ -23,6 +23,9 @@ export async function vaultStudioBible() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  // Team only before writing to the vault bucket (stress test S2, 2026-11-18).
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
 
   // 1. Build PDF Buffer
   const pdfBuffer = await buildBiblePdf()

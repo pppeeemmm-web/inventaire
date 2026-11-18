@@ -234,59 +234,60 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
   // ── Editor approval gate (Phase B) ───────────────────────────────────
   // Non-admin: new works + edits → pending_changes; admin applies on Audit.
-  // `__skip_review` + optional `__pending_author_id` set when admin replays a queue row.
-  const skipReview = formData.get('__skip_review') === '1'
-  const pendingAuthorId = (formData.get('__pending_author_id') as string | null)?.trim() || null
-  if (!skipReview) {
-    const { data: isAdmin } = await supabase.rpc('is_admin')
-    if (!isAdmin) {
-      const payload = pendingPayloadFromFormData(formData)
-      payload.themes = (formData.getAll('themes') as string[])
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join(',')
-      payload.groups = (formData.getAll('groups') as string[])
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join(',')
+  // `__skip_review` + optional `__pending_author_id` are set when the admin replays a queue row.
+  // They are honoured only for an admin: a team member's form carrying them still goes to review
+  // (stress test S1, 2026-11-18), and every write below — service client included — is admin-only.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  const pendingAuthorId = isAdmin
+    ? (formData.get('__pending_author_id') as string | null)?.trim() || null
+    : null
+  if (!isAdmin) {
+    const payload = pendingPayloadFromFormData(formData)
+    payload.themes = (formData.getAll('themes') as string[])
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(',')
+    payload.groups = (formData.getAll('groups') as string[])
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(',')
 
-      const changeKind: PendingChangeKind = isNew ? 'create' : 'edit'
-      let baseline: Record<string, unknown> | null = null
-      let oeuvreIdForRow: number | null = null
+    const changeKind: PendingChangeKind = isNew ? 'create' : 'edit'
+    let baseline: Record<string, unknown> | null = null
+    let oeuvreIdForRow: number | null = null
 
-      if (!isNew) {
-        const oid = Number(oeuvreIdRaw)
-        if (!Number.isFinite(oid)) return { error: 'ID invalide' }
-        oeuvreIdForRow = oid
-        const { data: row } = await supabase
-          .from('Oeuvres')
-          .select('*')
-          .eq('OeuvreID', oid)
-          .maybeSingle()
-        const base = (row as Record<string, unknown> | null) ?? {}
-        const [{ data: themeLinks }, { data: groupLinks }] = await Promise.all([
-          supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
-          supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
-        ])
-        baseline = {
-          ...base,
-          themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
-          groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
-        }
+    if (!isNew) {
+      const oid = Number(oeuvreIdRaw)
+      if (!Number.isFinite(oid)) return { error: 'ID invalide' }
+      oeuvreIdForRow = oid
+      const { data: row } = await supabase
+        .from('Oeuvres')
+        .select('*')
+        .eq('OeuvreID', oid)
+        .maybeSingle()
+      const base = (row as Record<string, unknown> | null) ?? {}
+      const [{ data: themeLinks }, { data: groupLinks }] = await Promise.all([
+        supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
+        supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
+      ])
+      baseline = {
+        ...base,
+        themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
+        groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
       }
-
-      const { error: pErr } = await insertPendingChange(supabase, {
-        oeuvre_id: oeuvreIdForRow,
-        change_kind: changeKind,
-        payload,
-        baseline,
-        author_id: user.id,
-        author_email: user.email ?? null,
-      })
-      if (pErr) return { error: pendingInsertToSaveError(pErr) }
-      revalidatePath('/atelier/audit')
-      return { ok: true, pending: true }
     }
+
+    const { error: pErr } = await insertPendingChange(supabase, {
+      oeuvre_id: oeuvreIdForRow,
+      change_kind: changeKind,
+      payload,
+      baseline,
+      author_id: user.id,
+      author_email: user.email ?? null,
+    })
+    if (pErr) return { error: pendingInsertToSaveError(pErr) }
+    revalidatePath('/atelier/audit')
+    return { ok: true, pending: true }
   }
 
   const actorId = provenanceUserId(user.id, pendingAuthorId)
@@ -690,9 +691,12 @@ export async function revertWorkSnapshot(
   snapshot: WorkRevertSnapshot,
 ): Promise<SaveResult> {
   const supabase = await createClient()
-  const svc = createServiceClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  // Team only before the service client (stress test S2, 2026-11-18).
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
+  const svc = createServiceClient()
 
   const { error: uErr } = await supabase
     .from('Oeuvres')

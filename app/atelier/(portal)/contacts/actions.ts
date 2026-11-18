@@ -26,6 +26,9 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  // Team only before the service client (stress test S2, 2026-11-18).
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
 
   // Use service client for writes — RLS INSERT policy only allows is_private=false for team,
   // but imported contacts should be private. Service client bypasses RLS.
@@ -497,6 +500,9 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  // Team only before the service client (stress test S2, 2026-11-18).
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
 
   // 1. Parse Fields
   const nom        = (formData.get('nom') as string | null)?.trim()

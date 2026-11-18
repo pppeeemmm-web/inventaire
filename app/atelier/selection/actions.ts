@@ -425,9 +425,9 @@ export async function createWorkingGroupWithOeuvres(
   name: string,
   oeuvreIds: number[],
 ): Promise<{ error: string } | { ok: true; groupId: string }> {
-  const sessionClient = await createClient()
-  const { data: { user } } = await sessionClient.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
+  // Team only before the service client (stress test S2, 2026-11-18).
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
 
   const svc = createServiceClient()
   const trimmed = name.trim()
