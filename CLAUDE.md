@@ -19,6 +19,13 @@ Repo guide. Conflict → ask owner before edit. Area rules live next to their co
 - Parallel batch: side sessions edit in their worktree and **leave the work uncommitted**; never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new*.messages.ts`. The main checkout lands each with `& .\scripts\land.ps1 <name> -m '…'`, writes those docs, ships once. Remove a worktree only after landing: unlink its `node_modules` junction, then `git worktree remove`; never `--force` with uncommitted changes.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`. State unclear → `pwsh scripts/release-truth.ps1`.
 
+## Architect, delegation, data flow (owner GO 2026-11-18)
+- The main session (top model) is the architect: it plans, writes the Flow trace and every brief, reads every result and diff, lands and pushes. Never delegated: design, SQL / RLS / grants, security, the Flow trace, the final review.
+- Cheaper models through pinned agents (`.claude/agents/`): `scout` (Haiku, read only — locate code, list readers / writers, inventories); `builder` (Sonnet — 1–3 file mechanical edits from an exact brief, left uncommitted). Side sessions for read-only or mechanical pieces start on a cheaper `model`. A delegated result is a report, not proof: check it.
+- **Flow trace before code** for any feat / fix that touches data: input → writers → triggers (`docs/ARCHITECTURE.md` + live DB) → every reader (screens, drawers, phone `/hub`, reports / pivots, PDFs, exports, public site, cron, routes) → which of them change. Shown to Pem in the plan. The usual failure here is a fix where the symptom shows, with the other readers left alone.
+- Feat / fix commit messages carry a `Flow:` line naming the readers checked (`Flow: none — copy only` is fine). `ship.ps1` refuses a push without it.
+- Before landing or committing a feat / fix: run the `flow-reviewer` agent on the diff + trace; fix every reader it reports « NOT updated », or say why not. `land.ps1` prints the diff it lands — read it.
+
 ## Commands
 - Dev: `npm run dev` (refuses a taken port — reuse that server; `-- --force` only for your own stale one; honors `PORT`) or `pwsh scripts/dev.ps1` (prints the phone LAN URL). `/_next/static/*` 404 → restart from the real root, delete `.next`, hard reload.
 - E2E: `npm run test:e2e`; field / mobile: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).

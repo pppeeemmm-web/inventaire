@@ -10,6 +10,7 @@
   & .\scripts\ship.ps1 -m "fix(atelier): ..." -NoPush    # checks, commit only (push later with: & .\scripts\ship.ps1)
   & .\scripts\ship.ps1                                     # push the local commits already made
   & .\scripts\ship.ps1 -NoWhatsNew                         # push feat/fix commits that have no team-facing effect
+  feat/fix messages need a 'Flow:' line (readers checked) — refused otherwise.
 #>
 param(
   [string]$m = "",
@@ -40,6 +41,22 @@ if ($willPush -and -not $NoWhatsNew) {
     if (-not ($changed -contains 'lib/whats-new.ts')) {
       throw "Refusing: $($teamFacing.Count) feat/fix commit(s) in this push but no lib/whats-new.ts change. Add the What's new item (FR + EN), or pass -NoWhatsNew for an admin-only / internal change.`n  $($teamFacing -join "`n  ")"
     }
+  }
+}
+
+# Flow trace (owner GO 2026-11-18): every feat/fix commit message carries a `Flow:` line naming the readers
+# checked (`Flow: none — copy only` is fine). Commits authored before the rule landed are exempt.
+$flowSince = [DateTimeOffset]::Parse('2026-11-18T16:15:00+01:00')
+if ($dirty -and $m -match '^(feat|fix)(\(|:|!)' -and $m -notmatch '(?m)^Flow:\s*\S') {
+  throw "Refusing: feat/fix message without a 'Flow:' line (readers checked). Add e.g. 'Flow: actions.ts writer, Sales pivot, collector PDF updated' or 'Flow: none — copy only'."
+}
+if ($willPush) {
+  $noFlow = @(((G log --format='%aI%x1f%h %s%x1f%B%x1e' origin/main..HEAD) -split [char]0x1e) | Where-Object { $_.Trim() } | ForEach-Object {
+    $p = $_.Trim() -split [char]0x1f
+    if ($p.Count -ge 3 -and [DateTimeOffset]::Parse($p[0]) -ge $flowSince -and $p[1] -match '^\w+ (feat|fix)(\(|:|!)' -and $p[2] -notmatch '(?m)^Flow:\s*\S') { $p[1] }
+  })
+  if ($noFlow.Count) {
+    throw "Refusing: $($noFlow.Count) feat/fix commit(s) without a 'Flow:' line (readers checked). Amend the message (last commit: git commit --amend) before pushing:`n  $($noFlow -join "`n  ")"
   }
 }
 

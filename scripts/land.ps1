@@ -38,6 +38,9 @@ if (-not $branch -or $branch -eq "main") { throw "Refusing: worktree $wt is on '
 # 1. Commit what the side session left.
 if (G -C $wt status --porcelain) {
   if (-not $m) { throw "Worktree has uncommitted changes: pass -m 'message'." }
+  if ($m -match '^(feat|fix)(\(|:|!)' -and $m -notmatch '(?m)^Flow:\s*\S') {
+    throw "Refusing: feat/fix message without a 'Flow:' line (readers checked, after the flow-reviewer pass). Add e.g. 'Flow: writer X, readers Y and Z updated' or 'Flow: none — copy only'."
+  }
   G -C $wt add -A | Out-Null
   $staged = @((G -C $wt diff --cached --name-only) -split "`r?`n" | Where-Object { $_ })
   $bad = @($staged | Where-Object { $_ -match '(^|/)(\.next|node_modules|test-results|playwright-report)/' -or $_ -match 'tsbuildinfo$|\.log$' })
@@ -58,6 +61,15 @@ if ($LASTEXITCODE -ne 0) {
 # 3. Fast-forward main.
 $n = G rev-list --count "main..$branch"
 if ($n -eq "0") { Write-Host "Nothing new in $branch."; exit 0 }
+
+# The architect reads what it lands (owner GO 2026-11-18): the diff is printed, capped so a big one stays readable.
+$diff = @((G diff "main..$branch") -split "`r?`n")
+$cap = 400
+Write-Host "----- diff being landed ($($diff.Count) lines) -----"
+$diff | Select-Object -First $cap | Write-Host
+if ($diff.Count -gt $cap) { Write-Host "... $($diff.Count - $cap) more lines: git diff main..$branch" }
+Write-Host "----- end of diff -----"
+
 G merge -q --ff-only $branch | Out-Null
 $files = @((G diff --name-only "HEAD~$n" HEAD) -split "`r?`n" | Where-Object { $_ })
 Write-Host "Landed $n commit(s) from $branch ($($files.Count) file(s)); committed locally $(G rev-parse --short HEAD)"
