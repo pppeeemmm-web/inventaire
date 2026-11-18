@@ -28,6 +28,7 @@
 | [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; the old guides and the Studio Bible retired 2026-11-18 → `archive/`) | Team 1–15 + admin 1–8 verified 2026-11-18 |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill; image copy + readable archive (`npm run archive`) | 2026-11-13 |
+| [`AI_ENGINES.md`](./AI_ENGINES.md) | Which AI engines run where (public site: none; Atelier: Ollama on the PC, optional OpenAI, Make captions) | 2026-11-18 |
 | [`BROADCAST.md`](./BROADCAST.md) | Broadcast HTTP API + DB columns + key files | 2026-11-18 |
 | [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack (outside this repo) | 2026-11-18 |
 | [`CONSTELLATION.md`](./CONSTELLATION.md) | Constellation graph feature contract | 2026-11-18 |
