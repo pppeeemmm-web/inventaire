@@ -6,7 +6,7 @@
 // Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
 import { afterForeground, holdBackground } from '@/lib/atelier/foreground-gate'
-import { openReadOr, primeAtelierShellOpen } from '@/lib/atelier/open-reads'
+import { hasOpenRead, openReadOr, primeAtelierShellOpen } from '@/lib/atelier/open-reads'
 import { shellOpenKey } from '@/lib/atelier/open-read-keys'
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -65,6 +65,8 @@ import { useWhatsNewDots } from '@/lib/whats-new-dots'
 import { WhatsNewSpotNotice } from '@/components/atelier/WhatsNewSpotNotice'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
+/** Tab hop → menu badges refresh after this delay, so the new tab's own read is not queued behind them (TODO 19). */
+const BADGE_HOP_DELAY_MS = 1500
 
 /** This device's "last seen" cursor for a badge; starts now on first visit. */
 function readSeenAt(key: string): string {
@@ -284,8 +286,9 @@ export function TeamPortalClient({
     : routeTab
   // Opened on the Journal: its own read goes first, the shell's background loads wait for it
   // (`lib/atelier/foreground-gate.ts`, Pem 2026-11-14: "very long to load" on the phone).
+  // Audit and Logistics too (TODO 19: slow first open) — each signals after its first read.
   useState(() => {
-    if (effectiveRouteTab === 'journal') holdBackground()
+    if (effectiveRouteTab === 'journal' || effectiveRouteTab === 'audit' || effectiveRouteTab === 'logistics') holdBackground()
     return null
   })
   // One read for the frame's open-time loads (TODO 18): lookups, Journal + Kaizen badges, contact
@@ -758,18 +761,28 @@ export function TeamPortalClient({
       setTeamActivityCount(0)
     }
     // Opening a Kaizen entry marks it seen (Kaizen.tsx calls markKaizenSeen); the other one refreshes.
+    if (tab === 'kaizen') setKaizenUnseen((prev) => (prev.creation === 0 ? prev : { ...prev, creation: 0 }))
+    if (tab === 'kaizen-ops') setKaizenUnseen((prev) => (prev.ops === 0 ? prev : { ...prev, ops: 0 }))
     let cancelled = false
-    void afterForeground().then(() => openReadOr(shellOpenKey.kaizen, () => kaizenUnseenCounts())).then((r) => {
-      if (cancelled || 'error' in r) return
-      setKaizenUnseen({
-        creation: tab === 'kaizen' ? 0 : r.creation,
-        ops: tab === 'kaizen-ops' ? 0 : r.ops,
-      })
-    }).catch(() => { /* badges stay as they were */ })
-    void afterForeground().then(() => getSidebarCounts()).then((r) => {
-      if (!cancelled && !('error' in r)) setUnderway(r)
-    }).catch(() => { /* badges stay as they were */ })
-    return () => { cancelled = true }
+    const refresh = () => {
+      void afterForeground().then(() => openReadOr(shellOpenKey.kaizen, () => kaizenUnseenCounts())).then((r) => {
+        if (cancelled || 'error' in r) return
+        setKaizenUnseen({
+          creation: tab === 'kaizen' ? 0 : r.creation,
+          ops: tab === 'kaizen-ops' ? 0 : r.ops,
+        })
+      }).catch(() => { /* badges stay as they were */ })
+      void afterForeground().then(() => openReadOr(shellOpenKey.sidebar, () => getSidebarCounts())).then((r) => {
+        if (!cancelled && !('error' in r)) setUnderway(r)
+      }).catch(() => { /* badges stay as they were */ })
+    }
+    // Page open: both counts come with the frame's read. A tab hop (TODO 19): Server Actions run one
+    // at a time, so the badges wait a moment and the new tab's own read goes first; quick hops refresh once.
+    const timer = window.setTimeout(refresh, hasOpenRead(shellOpenKey.sidebar) ? 0 : BADGE_HOP_DELAY_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [tab])
 
   useLayoutEffect(() => {

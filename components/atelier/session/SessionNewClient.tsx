@@ -264,16 +264,27 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
     setWorkIdFallback(activeItem?.oeuvre_id ? String(activeItem.oeuvre_id) : '')
   }, [activeItem?.id, activeItem?.oeuvre_id])
 
+  // Keyed on the item's id / mode / link, not the item object: typing its notes or sizes made a new
+  // object and re-ran the search — the whole catalogue when the search box is empty (TODO 17).
+  const searchItemId = activeItem?.id ?? null
+  const searchItemMode = activeItem?.mode ?? null
+  const searchItemLinked = Boolean(activeItem?.oeuvre_id)
   useEffect(() => {
-    if (!activeItem || activeItem.mode !== 'existing' || activeItem.oeuvre_id) {
+    if (!searchItemId || searchItemMode !== 'existing' || searchItemLinked) {
       setWorkResults([])
       return
     }
+    let cancelled = false
     const timer = window.setTimeout(() => {
-      void searchWorksForSession(workSearch).then(setWorkResults)
+      void searchWorksForSession(workSearch).then((rows) => {
+        if (!cancelled) setWorkResults(rows)
+      })
     }, 180)
-    return () => window.clearTimeout(timer)
-  }, [activeItem, workSearch])
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchItemId, searchItemMode, searchItemLinked, workSearch])
 
   // Debounced so it does not fire per keystroke; only for a new work, since an existing
   // one is already the record it would be duplicating.

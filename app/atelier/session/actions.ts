@@ -132,17 +132,16 @@ function absorbPayloadIntoKeeper(keeper: WorkSessionPayload, donor: WorkSessionP
 
 /**
  * Merge every work_session for a calendar day into one row (all paintings kept), delete duplicates.
- * Admin capture only.
+ * Admin capture only: both callers check `canCaptureWorkSession` first, so the capture check and the
+ * team-wide listing (team OR capture → always true here) are not asked again (TODO 17: two fewer
+ * round trips on the session-open path). Writes stay guarded by RLS.
  */
 async function consolidateSessionsForCalendarDay(
   supabase: Awaited<ReturnType<typeof createClient>>,
   calendarDay: string,
   userId: string,
 ): Promise<{ ok: true; keeperId: string | null } | { error: string }> {
-  if (!(await canCaptureWorkSession(supabase))) return { ok: true, keeperId: null }
-
-  const teamWide = await teamWideSessionListing(supabase)
-  const listed = await listWorkSessionsForCalendarDay(supabase, calendarDay, { userId, teamWide })
+  const listed = await listWorkSessionsForCalendarDay(supabase, calendarDay, { userId, teamWide: true })
   if ('error' in listed) return { error: listed.error }
   if (listed.length === 0) return { ok: true, keeperId: null }
 
@@ -771,13 +770,12 @@ async function listWorkSessionsForCalendarDay(
     .limit(48)
   if (!opts.teamWide) byDayKey = byDayKey.eq('user_id', opts.userId)
 
-  const { data: byStoredDay, error: keyErr } = await byDayKey
-  if (keyErr) return { error: keyErr.message }
-
   let scan = baseSelect().order('updated_at', { ascending: false }).limit(400)
   if (!opts.teamWide) scan = scan.eq('user_id', opts.userId)
 
-  const { data: rows, error: listErr } = await scan
+  // Independent reads: one round trip instead of two (TODO 17).
+  const [{ data: byStoredDay, error: keyErr }, { data: rows, error: listErr }] = await Promise.all([byDayKey, scan])
+  if (keyErr) return { error: keyErr.message }
   if (listErr) return { error: listErr.message }
 
   // Union keyed + scanned rows: an empty draft with session_day set must not hide

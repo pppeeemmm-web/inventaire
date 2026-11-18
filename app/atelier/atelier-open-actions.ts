@@ -13,6 +13,7 @@ import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
 import { listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
 import { getOverviewCatalogueCounts } from '@/app/atelier/overview-stats-actions'
+import { getSidebarCounts } from '@/app/atelier/sidebar-counts-actions'
 import {
   OVERVIEW_REMINDER_LIMIT,
   overviewOpenKey,
@@ -34,6 +35,7 @@ export async function loadAtelierShellOpen(opts: { since: string; overview: bool
     [shellOpenKey.teamActivity(opts.since), () => countTeamActivitySince(opts.since)],
     [shellOpenKey.kaizen, () => kaizenUnseenCounts()],
     [shellOpenKey.conflicts, () => fetchContactConflicts()],
+    [shellOpenKey.sidebar, () => getSidebarCounts()],
   ]
   if (opts.overview) jobs.push(...overviewJobs())
   return runOpenReads(jobs)

@@ -39,6 +39,8 @@ export const shellOpenKey = {
   teamActivity: (since: string) => `shell.teamActivity:${since}`,
   kaizen: 'shell.kaizen',
   conflicts: 'shell.conflicts',
+  /** Menu counts of work under way (TODO 19): with the frame's read, not a separate action ahead of the tab's. */
+  sidebar: 'shell.sidebar',
 } as const
 
 /** Overview tab — carried by the frame's read when the page opens on Overview. */
@@ -52,7 +54,7 @@ export const overviewOpenKey = {
 export const OVERVIEW_REMINDER_LIMIT = 200
 
 export function shellOpenKeys(since: string, overview: boolean): string[] {
-  const keys: string[] = [shellOpenKey.postPaint, shellOpenKey.teamActivity(since), shellOpenKey.kaizen, shellOpenKey.conflicts]
+  const keys: string[] = [shellOpenKey.postPaint, shellOpenKey.teamActivity(since), shellOpenKey.kaizen, shellOpenKey.conflicts, shellOpenKey.sidebar]
   if (overview) keys.push(overviewOpenKey.seeAgain, overviewOpenKey.reminders, overviewOpenKey.counts)
   return keys
 }

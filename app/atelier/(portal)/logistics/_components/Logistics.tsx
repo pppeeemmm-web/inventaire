@@ -9,6 +9,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { fetchShipments, type CascadeShipment } from '@/app/atelier/(portal)/sales/cascade-actions'
 import { ShipmentCard } from '@/components/atelier/orders/ShipmentCard'
+import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 
 interface Props {
   /** Contact names (kept for the tab's props; names now come with each shipment). */
@@ -23,7 +24,8 @@ export function Logistics(_props: Props) {
   const [showDone, setShowDone] = useState(false)
 
   const load = useCallback(async () => {
-    const r = await fetchShipments(showDone)
+    // Opened on Logistics: the Atelier shell's background loads wait for this first read (TODO 19).
+    const r = await fetchShipments(showDone).finally(() => foregroundSettled())
     if ('error' in r) { setError(r.error); return }
     setError(null)
     setRows(r.shipments)

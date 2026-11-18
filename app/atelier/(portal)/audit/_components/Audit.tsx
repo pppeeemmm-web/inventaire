@@ -14,6 +14,7 @@ import { FilLog } from '@/components/atelier/FilLog'
 import { WorkRulesPanel } from '@/components/atelier/WorkRulesPanel'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { toast } from '@/lib/ui/toast'
+import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 
 type AuditView = 'ledger' | 'pending' | 'fil' | 'rules'
 
@@ -62,10 +63,15 @@ export function Audit() {
 
   const reloadLedger = useCallback(async () => {
     setBusy(true)
-    const [data, admin] = await Promise.all([fetchSystemLogs(200), fetchAuditAdmin()])
-    setLogs(data)
-    setIsAdmin(admin)
-    setBusy(false)
+    try {
+      const [data, admin] = await Promise.all([fetchSystemLogs(200), fetchAuditAdmin()])
+      setLogs(data)
+      setIsAdmin(admin)
+      setBusy(false)
+    } finally {
+      // Opened on Audit: the Atelier shell's background loads waited for this read (TODO 19).
+      foregroundSettled()
+    }
   }, [])
 
   useEffect(() => {
