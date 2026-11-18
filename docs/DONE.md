@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Phone photos shrunk before sending (TODO §0)
+
+- Document scan: each page shrunk to 1600 px on the phone; too many pages for one send says so (no blank error 413). Field issue: the photo shrunk to 2100 px before sending.
+
 ## 2026-11-18 — Layout: full titles at 1280, phone bars above the bottom bar (Pem « go », TODO §3)
 
 - Inventory (panel open): title ≥ 160 px; secondary columns drop in order (Diffusion → Période → Médium → Prix → Contact), « +n » names them. Production: empty columns fold to a 44 px strip, the title gets its own line.

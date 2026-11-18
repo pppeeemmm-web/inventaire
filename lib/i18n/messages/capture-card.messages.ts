@@ -7,6 +7,10 @@ import { defineMessages } from '../message-core'
  * (Vault « Business »). Older labels stay in the legacy dict (`capture_card_*`).
  */
 export const captureCardMessages = defineMessages({
+  capture_doc_err_too_big: {
+    fr: 'Trop de pages pour un seul envoi : enlevez-en quelques-unes et envoyez le reste en un second scan.',
+    en: 'Too many pages for one send: remove a few and send the rest as a second scan.',
+  },
   cc_intro: {
     fr: 'Live Text : touchez la case de texte, touchez-la encore, choisissez « Scanner le texte », visez la carte, « Insérer ». Puis « Analyser » : le contact se remplit tout de suite, sans IA.',
     en: 'Live Text: tap the text box, tap it again, choose « Scan Text », aim at the card, « Insert ». Then « Analyse »: the contact fills at once, no AI.',

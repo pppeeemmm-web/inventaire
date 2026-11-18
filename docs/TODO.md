@@ -13,7 +13,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## 0. Bugs — fix now
 
-- [ ] Phone photos not shrunk before sending: document scan (`CaptureDocClient.tsx`, up to 24 photos in one request) and field issue (`IssueNewForm.tsx`, raw photo, stored without AVIF) — 2 iPhone photos already pass Vercel's 4.5 MB limit (error 413). The business-card photo is sent twice (AI read + save).
+- [ ] The business-card photo is sent twice (once for the AI read, once on save) — send it once.
 - [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
 - [ ] **Local AI only (Pem 2026-11-18):** if `OPENAI_API_KEY` is set on Vercel, delete it — until then the live site can still send card photos to OpenAI. Bureau IA (`/atelier/ai`) shows « Clé OpenAI sur ce serveur : oui / non ».
 

@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { submitDocScanCapture } from '@/app/atelier/capture/actions'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 
 type Shot = { id: string; file: File; preview: string }
 
@@ -44,7 +45,18 @@ export function CaptureDocClient() {
     startBusy(async () => {
       const fd = new FormData()
       fd.set('title', title)
-      for (const s of shots) fd.append('files', s.file)
+      // Shrink each page on the phone (1600 px is enough to read a document), then stay under Vercel's 4.5 MB
+      // request limit: too many pages at once → say so instead of a blank error 413 (TODO §0, 2026-11-18).
+      let total = 0
+      for (const s of shots) {
+        const small = await downscaleImageFileForMobileIfNeeded(s.file, true, 1600).catch(() => s.file)
+        total += small.size
+        fd.append('files', small)
+      }
+      if (total > 4_200_000) {
+        toast.error(t('capture_doc_err_too_big'))
+        return
+      }
       const res = await submitDocScanCapture(fd)
       if ('error' in res) {
         toast.error(`${t('error_prefix')} ${res.error}`)

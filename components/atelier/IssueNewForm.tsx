@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react'
 import { createFieldIssueReport } from '@/app/atelier/field/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 
@@ -38,6 +39,11 @@ export function IssueNewForm({ workOptions, actionTypeOptions }: IssueNewFormPro
       if (pending) return
       setPending(true)
       const fd = new FormData(e.currentTarget)
+      // Shrink the photo on the phone first (TODO §0, 2026-11-18): a raw iPhone photo can pass Vercel's 4.5 MB request limit.
+      const photo = fd.get('photo')
+      if (photo instanceof File && photo.size > 0 && photo.type.startsWith('image/')) {
+        fd.set('photo', await downscaleImageFileForMobileIfNeeded(photo, true, 2100).catch(() => photo))
+      }
       const res = await createFieldIssueReport(fd)
       setPending(false)
       if (!res.ok) {
