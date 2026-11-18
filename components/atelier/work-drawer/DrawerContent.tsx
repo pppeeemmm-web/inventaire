@@ -1351,9 +1351,12 @@ export function DrawerContent({
   const activeImageCacheKey = activeImage ? imageCacheKeys[activeImage.ImageID] : undefined
   const thumbPreviewSrc = activeImgPath ? withCacheKey(thumbUrl(activeImgPath) ?? '', activeImageCacheKey) : ''
   const fullPreviewSrc = activeImgPath ? withCacheKey(imageUrl(activeImgPath) ?? '', activeImageCacheKey) : ''
-  const showFullPreviewLayer = Boolean(activeImgPath && imgZoom > 1)
-  /** Overlay rail is narrow: cap hero image so pipeline + fields stay reachable without huge scroll. */
-  const previewMaxHeight = wide && !narrow ? 'min(62vh, 520px)' : isPanel ? 'min(46vh, 360px)' : narrow ? '56vh' : 'min(44vh, 400px)'
+  // Thumbs are 400 px: at the taller hero size (below) they would be blown up, so off the phone the full image
+  // fades in over the thumb at once, not only on zoom.
+  const showFullPreviewLayer = Boolean(activeImgPath && (imgZoom > 1 || !narrow))
+  /** Hero image height. Pem 2026-11-18 (« more vertical room for the image PLEASE »): the old caps
+   *  (panel 360 px, wide 520 px) left a tall screen mostly empty; the fields below scroll anyway. */
+  const previewMaxHeight = wide && !narrow ? 'min(78vh, 960px)' : isPanel ? 'min(72vh, 860px)' : narrow ? '62vh' : 'min(64vh, 720px)'
 
   useEffect(() => {
     setFullPreviewReady(false)
