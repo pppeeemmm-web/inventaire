@@ -7,6 +7,21 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.72 (2026-11-18) — Pem's evening pass + the Aide finished.
+  wn_admin_ai_desk_t: { fr: 'Bureau IA (admin)', en: 'AI desk (admin)' },
+  wn_admin_ai_desk_d: {
+    fr: 'Kaizen → Bureau IA dit en une phrase si l’assistant IA de votre PC est allumé, et ce qu’il fait pour vous : transcrire les notes vocales, mettre la recherche à jour, décrire les images — avec « Faire maintenant ». Tout reste sur votre PC, aucune IA extérieure.',
+    en: 'Kaizen → AI desk says in one sentence whether your PC’s AI assistant is on, and what it does for you: transcribe voice notes, update the search, describe images — with « Do it now ». Everything stays on your PC, no outside AI.',
+  },
+  wn_admin_works_bin_t: { fr: 'La corbeille des œuvres (admin)', en: 'The works bin (admin)' },
+  wn_admin_works_bin_d: {
+    fr: 'Audit → Corbeille liste les œuvres mises à la corbeille : « Restaurer » les remet dans les listes, « Supprimer définitivement » est refusé tant que l’œuvre figure sur une commande, un envoi, un lien du Journal ou un sinistre.',
+    en: 'Audit → Bin lists the binned works: « Restore » puts them back in the lists; « Delete for good » is refused while the work is on an order, a shipment, a Journal link or a claim.',
+  },
+  wn_admin_approval_conflicts_t: { fr: 'Valider une proposition n’écrase plus vos changements (admin)', en: 'Approving no longer overwrites your changes (admin)' },
+  wn_admin_approval_conflicts_d: {
+    fr: 'En validant, seuls les champs que la personne a changés sont écrits. Si vous avez modifié l’un d’eux depuis, Audit le dit et propose « Appliquer quand même » ou « Rejeter ». L’auteur voit votre raison de refus dans sa Vue d’ensemble.',
+    en: 'On approval only the fields the person changed are written. If you edited one of them since, Audit says so and offers « Apply anyway » or « Reject ». The author sees your rejection reason in their Overview.',
+  },
   wn_layout_titles_phone_bar_t: { fr: 'Titres entiers, barres à leur place', en: 'Full titles, bars in their place' },
   wn_layout_titles_phone_bar_d: {
     fr: 'L’Inventaire garde le titre lisible quand la fiche est ouverte (les colonnes secondaires se replient, « +n » dit lesquelles) ; la Production replie les colonnes vides et donne au titre sa propre ligne. Au téléphone, la sélection est une barre fine au-dessus de la barre du bas, et les messages ne la cachent plus. Un contact ajouté vite au téléphone s’ouvre bien, et un texte trop long au Journal est arrêté avant d’être coupé.',

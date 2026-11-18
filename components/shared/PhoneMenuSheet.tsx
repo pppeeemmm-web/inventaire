@@ -181,8 +181,8 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
 
   // The desktop sidebar's marks, on the same items (stress test 2026-11-18): unseen What's new dots (team
   // only, seen state in this browser — `lib/whats-new-dots.ts`) and Kaizen « opérationnel » entries others added.
-  // Off until the counts say who is reading (admins see no What's new dots, as on the desktop).
-  const whatsNewDots = useWhatsNewDots(data?.isAdmin !== false)
+  // Off until the counts say who is reading; admins also get the admin-only items, as on the desktop.
+  const whatsNewDots = useWhatsNewDots(data ? (data.isAdmin ? 'admin' : 'team') : null)
   const marked = (href: string) => {
     const key = tabKeyOf(href)
     return key != null && (whatsNewDots.has(key) || (key === 'kaizen-ops' && (data?.kaizenOps ?? 0) > 0))

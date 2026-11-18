@@ -9,8 +9,8 @@ export const aiDeskMessages = defineMessages({
   },
   ai_plain_off: { fr: 'L’assistant IA de votre PC est éteint.', en: 'Your PC’s AI assistant is off.' },
   ai_plain_off_sub: {
-    fr: 'Il se rallume tout seul quand vous ouvrez votre session Windows sur le PC du studio (la petite fenêtre noire « PEM AI agent » doit rester ouverte). En attendant, rien n’est perdu : le travail attend ici.',
-    en: 'It starts again by itself when you sign in to Windows on the studio PC (the small black « PEM AI agent » window must stay open). Meanwhile nothing is lost: the work waits here.',
+    fr: 'Il se rallume tout seul quand vous ouvrez votre session Windows sur le PC du studio. En attendant, rien n’est perdu : le travail attend ici.',
+    en: 'It starts again by itself when you sign in to Windows on the studio PC. Meanwhile nothing is lost: the work waits here.',
   },
   ai_plain_tasks: { fr: 'Ce qu’il fait pour vous', en: 'What it does for you' },
   ai_plain_voice: { fr: 'Transcrire vos notes vocales', en: 'Transcribe your voice notes' },

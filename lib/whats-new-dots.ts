@@ -4,7 +4,7 @@
 // browser (localStorage): no SQL. A change fires an event so the menu dot and the tab's notice stay in step.
 
 import { useEffect, useState } from 'react'
-import { WHATS_NEW_DOT_DAYS, WHATS_NEW_ITEMS, type WhatsNewItem } from '@/lib/whats-new'
+import { WHATS_NEW_DOT_DAYS, whatsNewItemsFor, type WhatsNewItem } from '@/lib/whats-new'
 
 const SEEN_KEY = 'pem_wn_dots_seen'
 const EVENT = 'pem-wn-dots'
@@ -36,11 +36,14 @@ function recent(item: WhatsNewItem, now: number): boolean {
   return now - new Date(`${item.day}T12:00:00`).getTime() <= WHATS_NEW_DOT_DAYS * 86_400_000
 }
 
-/** Unseen recent items per tab key; empty when `off` (admins: they made the change). */
-export function useWhatsNewDots(off: boolean): Map<string, WhatsNewItem[]> {
+/**
+ * Unseen recent items per tab key, for this viewer: admins get the admin-only items too (Pem 2026-11-18: « nothing for
+ * the admin » — Claude makes the changes, Pem needs to see them). `null` = viewer not known yet: no dots.
+ */
+export function useWhatsNewDots(viewer: 'admin' | 'team' | null): Map<string, WhatsNewItem[]> {
   const [map, setMap] = useState<Map<string, WhatsNewItem[]>>(new Map())
   useEffect(() => {
-    if (off) {
+    if (viewer === null) {
       setMap(new Map())
       return
     }
@@ -48,7 +51,7 @@ export function useWhatsNewDots(off: boolean): Map<string, WhatsNewItem[]> {
       const seen = readSeen()
       const now = Date.now()
       const next = new Map<string, WhatsNewItem[]>()
-      for (const i of WHATS_NEW_ITEMS) {
+      for (const i of whatsNewItemsFor(viewer === 'admin')) {
         if (!i.spot || seen.has(i.id) || !recent(i, now)) continue
         next.set(i.spot, [...(next.get(i.spot) ?? []), i])
       }
@@ -57,6 +60,6 @@ export function useWhatsNewDots(off: boolean): Map<string, WhatsNewItem[]> {
     compute()
     window.addEventListener(EVENT, compute)
     return () => window.removeEventListener(EVENT, compute)
-  }, [off])
+  }, [viewer])
   return map
 }

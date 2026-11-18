@@ -74,7 +74,7 @@
 // '3.1.66' (2026-11-18): Aide — Œuvres + Production how-to cards; QR label link opens the work again.
 // '3.1.67' (2026-11-18): Aide — day & Journal, Ideas, Orders, Logistics, Events chapters.
 // '3.1.68' (2026-11-18): Aide — Contacts, Supplies, Reports, Public, the rules, glossary: team guide complete.
-export const WHATS_NEW_RELEASE = '3.1.74'
+export const WHATS_NEW_RELEASE = '3.1.75'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -87,13 +87,22 @@ export const WHATS_NEW_SEEN_SESSION_KEY = 'pem_whats_new_seen_session'
  * (not an admin) sees a dot on that menu entry and, on opening the tab, one line « Nouveau : <title> » until
  * « Compris ». Only items with a spot, newer than WHATS_NEW_DOT_DAYS. Seen = per browser (`lib/whats-new-dots.ts`).
  */
-export type WhatsNewItem = { id: string; day: string; spot?: string }
+/** `admin`: shown to admins only (admin screens: Bureau IA, Audit…); everything else is for everyone. */
+export type WhatsNewItem = { id: string; day: string; spot?: string; admin?: boolean }
+
+/** The items this viewer sees: admins see every item, the team only the team-facing ones. */
+export function whatsNewItemsFor(isAdmin: boolean): readonly WhatsNewItem[] {
+  return isAdmin ? WHATS_NEW_ITEMS : WHATS_NEW_ITEMS.filter((i) => !i.admin)
+}
 
 /** A dot shows only for items this recent. */
 export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'admin_ai_desk', day: '2026-11-18', spot: 'ai', admin: true },
+  { id: 'admin_works_bin', day: '2026-11-18', spot: 'audit', admin: true },
+  { id: 'admin_approval_conflicts', day: '2026-11-18', spot: 'audit', admin: true },
   { id: 'layout_titles_phone_bar', day: '2026-11-18', spot: 'inventory' },
   { id: 'proposals_reasons', day: '2026-11-18', spot: 'overview' },
   { id: 'contact_delete_safe', day: '2026-11-18', spot: 'contacts' },

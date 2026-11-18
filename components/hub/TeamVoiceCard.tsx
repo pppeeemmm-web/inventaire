@@ -44,7 +44,7 @@ export default function TeamVoiceCard() {
   }, [])
 
   if (!card) return null
-  const highlights = WHATS_NEW_ITEMS.filter((i) => i.spot).slice(0, 3)
+  const highlights = WHATS_NEW_ITEMS.filter((i) => i.spot && !i.admin).slice(0, 3)
   const title = (id: string) => {
     const m = copy?.[`wn_${id}_t`]
     return m ? (lang === 'en' ? m.en ?? m.fr : m.fr) : ''

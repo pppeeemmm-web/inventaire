@@ -252,7 +252,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
         {showWhatsNew ? (
           <div data-testid="kaizen-whats-new" style={{ maxWidth: 760, margin: '0 0 16px', padding: '14px 16px', border: '1px solid var(--ac)', background: 'var(--bg1)' }}>
             <div className="serif" style={{ fontSize: 18, color: 'var(--ac)', marginBottom: 10 }}>{t('wn_title').replace('{v}', WHATS_NEW_RELEASE)}</div>
-            <WhatsNewList />
+            <WhatsNewList isAdmin={isAdmin} />
           </div>
         ) : null}
       </div>

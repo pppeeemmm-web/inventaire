@@ -932,7 +932,7 @@ export function TeamPortalClient({
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(initialIsAdmin)
   // What's new where it happened (TODO 24): a dot on the tab that changed, for the team (admins made the change).
-  const whatsNewDots = useWhatsNewDots(isAdmin)
+  const whatsNewDots = useWhatsNewDots(isAdmin ? 'admin' : 'team')
 
   // Keep the "To review" count fresh while the Atelier stays open on a desktop: on focus and
   // every 5 min (admin only; the count is computed once at load otherwise).
@@ -1224,7 +1224,7 @@ export function TeamPortalClient({
     <>
       {drawerLeaveDialog}
       {/* "www.thepemworkshop.com 3.0" (owner 2026-11-03); Kaizen shows the same list in place. */}
-      <WhatsNewDialog suppressed={activeTab === 'kaizen' || activeTab === 'kaizen-ops'} />
+      <WhatsNewDialog isAdmin={isAdmin} suppressed={activeTab === 'kaizen' || activeTab === 'kaizen-ops'} />
       {helpOpen ? <HelpPanel pathname={pathname ?? ''} isAdmin={isAdmin} onClose={() => setHelpOpen(false)} onNavigate={phoneNavigate} /> : null}
       <CommandPalette
         open={paletteOpen}

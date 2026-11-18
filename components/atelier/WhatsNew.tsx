@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import {
   WHATS_NEW_DISMISSED_KEY,
-  WHATS_NEW_ITEMS,
+  whatsNewItemsFor,
   WHATS_NEW_POPUP,
   WHATS_NEW_RELEASE,
   WHATS_NEW_SEEN_SESSION_KEY,
@@ -18,10 +18,11 @@ import {
 
 type ItemCopy = Record<string, { fr: string; en?: string } | undefined>
 
-export function WhatsNewList() {
+export function WhatsNewList({ isAdmin = false }: { isAdmin?: boolean }) {
   const { lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
-  const days = [...new Set(WHATS_NEW_ITEMS.map((i) => i.day))]
+  const items = whatsNewItemsFor(isAdmin)
+  const days = [...new Set(items.map((i) => i.day))]
   // The items' copy is loaded on open, never in the page's i18n catalog (whats-new-items.messages.ts).
   const [copy, setCopy] = useState<ItemCopy | null>(null)
   useEffect(() => {
@@ -46,7 +47,7 @@ export function WhatsNewList() {
             {new Date(`${day}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
           <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {WHATS_NEW_ITEMS.filter((i) => i.day === day).map((i) => (
+            {items.filter((i) => i.day === day).map((i) => (
               <li key={i.id} style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--tx2)' }}>
                 <strong style={{ color: 'var(--tx)', fontWeight: 600 }}>{text(`wn_${i.id}_t`)}</strong>
                 {' — '}
@@ -79,7 +80,7 @@ function writeStorage(store: 'local' | 'session', key: string, value: string): v
 }
 
 /** Popup on Atelier open. Hidden on Kaizen, which shows the same list in place. */
-export function WhatsNewDialog({ suppressed = false }: { suppressed?: boolean }) {
+export function WhatsNewDialog({ suppressed = false, isAdmin = false }: { suppressed?: boolean; isAdmin?: boolean }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [dontShow, setDontShow] = useState(false)
@@ -133,7 +134,7 @@ export function WhatsNewDialog({ suppressed = false }: { suppressed?: boolean })
           <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '4px 0 0' }}>{t('wn_intro')}</p>
         </div>
         <div style={{ padding: '14px 22px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          <WhatsNewList />
+          <WhatsNewList isAdmin={isAdmin} />
         </div>
         <div
           style={{
