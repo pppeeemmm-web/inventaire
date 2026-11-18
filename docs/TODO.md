@@ -8,6 +8,8 @@ _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md).
 
 From Pem's pass, 2026-11-18 evening — map, contacts badge, card photo, Vault tree fixed (→ DONE); phone labels moved to the Contacts review (§3).
 - [ ] Contacts: deleting a contact that owns or holds a work deletes its addresses first, then the contact delete fails (`Oeuvres.ContactID` / `LocalisationID` have no ON DELETE rule) — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message, before touching anything. Found by the flow review, 2026-11-18; not reproduced.
+- [ ] **Privacy:** a contact marked « Privé » (« admin-only visibility ») is still shown to the team — Contacts, lists, pickers (Contact RLS = admin or team; nothing filters `is_private`). Found writing the admin guide + flow review, 2026-11-18.
+- [ ] **Approvals overwrite newer edits:** approving a team proposal saves the whole card as it was when they saved; if Pem changed the same work since, his values on those fields are replaced (versions can restore). Fix: apply only the fields the proposal changed, or warn when the work changed since.
 - [ ] Card capture « Améliorer avec l'IA »: the photo is read only by OpenAI (key on Vercel?), the text tidy-up only by Ollama when the app itself runs on Pem's PC — on the live site neither may run. Pem: check `OPENAI_API_KEY` on Vercel; the Aide + `AI_ENGINES.md` follow the answer.
 
 ## 1. Waiting on you, Pem
@@ -29,6 +31,8 @@ Things only you can do:
 R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archived ([`archive/RETHINK_2026-11-14.md`](./archive/RETHINK_2026-11-14.md), 2026-11-18). Its two leftovers are in §3; R8 is parked (§5).
 
 ## 3. To build — needs a GO
+
+Found while writing the admin guide (2026-11-18): a rejection reason is stored but never shown to the proposal's author; the works bin has no screen (restoring a trashed work after the few-second « Undo » needs a development session).
 
 Contacts and Vault (Pem 2026-11-18 evening)
 - [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is never updated by the Contacts tab (edit / merge / delete — Inventory, work overlay, Curation dock, Compare read it stale until reload); one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed); phone / email labels are imported data in English and worse (« Mobile » 38, « Other », « Móvil », « * Other », « INTERNET », a person's name) → a fixed label list shown FR / EN + a data clean-up (SQL, Pem's OK).
