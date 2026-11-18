@@ -55,30 +55,20 @@ Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms
 
 ## 4. To check once, when it happens (no build)
 
-New today
-- [ ] Order guards (applied 2026-11-18): a real double « Encaisser » or a sale from two tabs is refused with its message.
-- [ ] Collector share kit: the first real kit — made with its PDF, opened on a phone, an enquiry from it (Triage chip with the collector's name), the PDF download, « Prolonger » / « Retirer » (not tried: it would write real rows).
-- [ ] Phone navigation as admin: the Fil tile and its count, « Actions » rows; saving a real entry from the « Écrire » sheet (seen as a non-admin at 375 / 360 px only).
+Run on the Docker copy 2026-11-18 (report [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md) « TODO §4 on the copy »; passed items → [DONE](./DONE.md)). Left for Pem's eye or the live site:
 - [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (works were re-marked; search now reads note lines).
-- [ ] First real order through the chain (signed → shipment, paid → certificate, invoice paper), its calendar dates, its first payment — not clicked on data (it would use real numbers).
-- [ ] First real supply order: « Recevoir » adds to stock, cost + supplier; an expense with its invoice file.
-- [ ] « Partager » an order paper on the phone (share sheet) and on the computer (download); edit a line's value on a draft.
-- [ ] Your first « #équipe » voice note: the card on a team member's Aujourd'hui; the What's new dots on their menu.
 - [ ] Speed on the live site as admin after the push: Inventory full catalogue (was 22–27 s), 3 work cards + Overview (was 5.5–10 s), Audit / Logistics first open, a day on the phone.
-- [ ] First real sale through « Soldée »: « Payé » ticks itself; a « Retour » of a paid sale out of a deposit puts the work back « Consigné » at the gallery; « Choisir l'adresse » on an order missing one.
-- [ ] Security rules enforced: an image upload and the contact address lookup on the live site.
-- [ ] « Rappels sans projet » on Idées as admin: « En faire une idée » on « Demain ».
+- [ ] « Partager » an order paper on the iPhone (share sheet) — the computer download passed on the copy.
+- [ ] Your first real « #équipe » voice note recorded with the microphone — the card on the team's Aujourd'hui and the dots passed on the copy.
+- [ ] Constellation: the arrow on the first real « painted on / derived from / answers » link, and undoing a real link delete (canvas — not checkable on the copy; Shift+drag and the arrow tool passed).
+- [ ] Slideshow: full screen + swipe on an iPhone.
+- [ ] Physical printing: one real labels sheet (L7163 image + QR, L7651 QR) with a QR scanned, and a 300 dpi print.
+- [ ] Live site: an old service worker (`sw.js`) can never block pages (a stale one on localhost made every request fail in the stress run).
 
-Older, still unseen live
-- [ ] Export labels: print one real sheet (L7163 image + QR, L7651 QR), scan one QR.
-- [ ] Waiting photos + production dates: a real waiting photo on the Journal day and the card; an admin save of start / end; a « Nouvelle » work starts production today.
-- [ ] « Historique de création »: a real line saved, edited, deleted.
-- [ ] Small GIFs: a real 40 × 40 and a round one, on the phone.
-- [ ] Journal ✦ suggestions: hover a « ✦ #1316 » row → preview + loupe — when a day has open suggestions again (none open on 2026-11-18).
-- [ ] Constellation: undo a real link delete (note comes back); Shift+drag; arrow tool; the arrow on the first real « painted on / derived from / answers » link.
-- [ ] Slideshow: a GIF of 20+ works; full screen + swipe on an iPhone; « Renommer »; a full loop.
-- [ ] From the 13–14 Nov batches: batch modify; a real export; a real print (300 dpi, labels); Local jobs; one Production drag-back; saving a contact from the pop-up.
-- [ ] Next real field capture: technique / support written; removing an applied photo → [notes](./TODO_NOTES.md#session-write-paths)
+Stress-test look / copy leftovers (2026-11-18, not fixed — triage):
+- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
+- [ ] Your call: the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées (hide them there, or their own fold?); a new sale ticks « Emportée aujourd'hui » by default.
+- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
 
 ## 5. Parked — no GO
 

@@ -6,6 +6,22 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.69 (2026-11-18) — stress-test fixes.
+  wn_sign_out_this_device_t: { fr: '« Se déconnecter » ne déconnecte que cet appareil', en: '« Sign out » signs out this device only' },
+  wn_sign_out_this_device_d: {
+    fr: 'Avant, se déconnecter sur l’ordinateur vous déconnectait aussi du téléphone. Maintenant vos autres appareils restent connectés.',
+    en: 'Signing out on the computer used to sign you out on your phone too. Now your other devices stay signed in.',
+  },
+  wn_scroll_keeps_numbers_t: { fr: 'La molette ne change plus un montant', en: 'Scrolling no longer changes an amount' },
+  wn_scroll_keeps_numbers_d: {
+    fr: 'Faire défiler avec la souris au-dessus d’un champ chiffré (un paiement, un prix, une quantité) changeait sa valeur (300 € devenait 299 €). Le champ garde maintenant ce que vous avez tapé et la page défile.',
+    en: 'Scrolling with the mouse over a number field (a payment, a price, a quantity) changed its value (300 € became 299 €). The field now keeps what you typed and the page scrolls.',
+  },
+  wn_light_controls_contact_popup_t: { fr: 'Cases à cocher lisibles, fiche contact en grand', en: 'Readable checkboxes, full-size contact card' },
+  wn_light_controls_contact_popup_d: {
+    fr: 'En mode Jour, les cases à cocher, lecteurs audio et champs de date ne s’affichent plus en sombre. La fiche contact ouverte depuis une œuvre prend toute la fenêtre et se ferme sur « Contact enregistré ». Quelques boutons coupés passent à la ligne.',
+    en: 'In Day mode, checkboxes, audio players and date fields no longer draw dark. The contact card opened from a work fills the window and closes with « Contact saved ». A few cut-off buttons now wrap.',
+  },
   // 3.1.68 (2026-11-18) — Aide batch 4: team guide complete.
   wn_aide_team_complete_t: { fr: 'Aide : le guide d’équipe est complet', en: 'Help: the team guide is complete' },
   wn_aide_team_complete_d: {
