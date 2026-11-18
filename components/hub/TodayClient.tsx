@@ -392,46 +392,7 @@ export function TodayFolds({ day, showChanges }: { day: string; showChanges: boo
           ) : null}
         </details>
       ) : null}
-      <details className="pem-fold" data-testid="hub-today-fold-creation" style={section} onToggle={onToggle}>
-        <summary style={summary}>
-          {t('je_creation_heading')} {count(ready?.creation.length)}
-        </summary>
-        {status}
-        {ready ? (
-          ready.creation.length ? (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
-              {ready.creation.map((k) => (
-                <li key={k.id} style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                  <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
-                    {time(k.created_at)}
-                    {' · '}
-                    {k.author}
-                    {k.done ? <>{' · '}{t('je_creation_done')}</> : null}
-                  </span>
-                  <br />
-                  {k.title ? <b>{k.title}</b> : null}
-                  {k.title && k.body ? ' — ' : null}
-                  {k.body.length > 220 ? `${k.body.slice(0, 220)}…` : k.body}
-                  {k.works.length ? (
-                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      {k.works.map((id) => (
-                        <WorkPreviewChip key={id} id={id} href={workHref(id)} size="chip" style={{ minHeight: 44 }} />
-                      ))}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p style={muted}>{t('je_creation_empty')}</p>
-          )
-        ) : null}
-        {ready ? (
-          <Link href="/atelier/kaizen" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 13, color: 'var(--ac)' }}>
-            {t('je_creation_open')}
-          </Link>
-        ) : null}
-      </details>
+      {/* « Création (Kaizen) » fold removed: Création moved to Idées (R1, Pem 2026-11-18). */}
     </>
   )
 }

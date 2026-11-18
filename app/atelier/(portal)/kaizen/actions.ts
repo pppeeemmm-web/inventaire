@@ -72,7 +72,8 @@ export async function createKaizen(input: {
   const title = input.title.trim().slice(0, MAX_TITLE)
   if (!title) return { error: 'empty' }
   const body = input.body.trim().slice(0, MAX_BODY) || null
-  const section = parseSection(input.section) ?? 'creation'
+  // « Création » moved to Idées (Pem 2026-11-18): a new entry without a section is Business.
+  const section = parseSection(input.section) ?? 'business'
   const work_ids = await worksMentioned(supabase, `${title} ${body ?? ''}`)
 
   const { data, error } = await supabase

@@ -1057,7 +1057,6 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
-      ['kaizen',        t('kaizen_section_creation'), kaizenUnseen.creation > 0 ? kaizenUnseen.creation : undefined],
       ['kaizen-ops',    t('kaizen_group_ops'), kaizenUnseen.ops > 0 ? kaizenUnseen.ops : undefined],
       ['system',        t('tab_system')],
       [
@@ -1112,7 +1111,8 @@ export function TeamPortalClient({
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   // Kaizen: top of the sidebar on desktop, right after Terrain on phone. Audit (admin only) heads
   // it — reviews are improvement work too (owner 2026-11-12); the Admin group is gone.
-  const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen', 'kaizen-ops'] : ['kaizen', 'kaizen-ops']) as Tab[] }
+  // « Création » left Kaizen for Idées (R1, Pem 2026-11-18): Kaizen = Audit + Opérations & Stratégie.
+  const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen-ops'] : ['kaizen-ops']) as Tab[] }
   // Phone: « Idées » (concepts) sits in the top block, so Studio drops it there.
   const studioGroup = {
     label: t('nav_group_studio'),

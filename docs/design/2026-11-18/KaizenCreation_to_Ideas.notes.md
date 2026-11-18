@@ -44,3 +44,9 @@ Count: 6 → Idées (3 Recherche, 3 Petite), 10 → work lines (`note_line`, tit
 
 1. The table above — change any line (« this one is a Petite », « keep this in Kaizen »…), or « OK as is ».
 2. Then one OK for the data writes (insert ideas / lines, mark the 20 Kaizen rows moved — no delete). The code change follows in the same batch.
+
+## Done 2026-11-18 (Pem: « OK as written »)
+
+- **Data** — [`kaizen_creation_to_ideas.sql`](../../../supabase/sql/kaizen_creation_to_ideas.sql) applied live (migration `kaizen_creation_to_ideas`) after a rolled-back dry run: 6 ideas in `concept` (weight as in the table; the author, the date and the works in its notes; dated as the entry), 18 work lines in `note_line` (#6 → 7 works, #18 → 2, #25 → 2; the 4 title-idea lines flagged for Pem; « (Kaizen Création #id) » at the end), #27 and #32 → Business (open), every Création row kept and marked done. Checked after: 0 Création entries open.
+- **App** (worktree `pem-kaizen-1118`): « Création » out of the Kaizen menu group (desktop + phone) and its badge; `/atelier/kaizen` redirects to Idées (`?whatsnew=1` / `?view=…` → Opérations & Stratégie); the What's new popup link goes to `/atelier/kaizen-ops?whatsnew=1`; no « Création » choice for new Kaizen entries (default Business); the « Création (Kaizen) » fold left Aujourd'hui (always empty now); a past Journal day still shows its old Création entries, its link opens Idées; the System ledger link opens Système.
+- **Not done**: `CLAUDE.md` « Narrow Atelier sidebar » still describes the Kaizen group with Création (lead's file); the Fil lists the 18 new work lines (the 4 flagged first), to sort like any line.

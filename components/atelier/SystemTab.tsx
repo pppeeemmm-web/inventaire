@@ -477,7 +477,7 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
             </p>
             <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
               {t('system_ledger_moved_to_kaizen')}{' '}
-              <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
+              <Link href="/atelier/kaizen-ops?view=website" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
             </p>
           </div>
           {tools}

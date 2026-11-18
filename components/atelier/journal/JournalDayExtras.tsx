@@ -787,7 +787,7 @@ export function JournalDayExtras({
                   <WorkChip key={id} id={id} href={workHref(id)} size="chip" />
                 ))}
                 <Link
-                  href="/atelier/kaizen"
+                  href="/atelier/concepts"
                   className="t-mono-sm"
                   style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
                 >

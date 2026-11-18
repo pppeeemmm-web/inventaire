@@ -75,7 +75,8 @@ export const journalEntryMessages = defineMessages({
   je_changes_empty: { fr: 'Aucune fiche modifiée ce jour.', en: 'No works changed this day.' },
   je_creation_heading: { fr: 'Création (Kaizen)', en: 'Création (Kaizen)' },
   je_creation_empty: { fr: 'Rien ajouté en Création ce jour.', en: 'Nothing added in Création this day.' },
-  je_creation_open: { fr: 'Ouvrir dans Kaizen', en: 'Open in Kaizen' },
+  // Création moved to Idées (R1, Pem 2026-11-18): old Création entries of a day open the Idées.
+  je_creation_open: { fr: 'Ouvrir les Idées', en: 'Open Ideas' },
   je_creation_done: { fr: 'Fait', en: 'Done' },
   je_dictate: { fr: '🎙 Dicter', en: '🎙 Dictate' },
   je_dictate_stop: { fr: '■ Arrêter', en: '■ Stop' },

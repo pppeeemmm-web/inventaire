@@ -151,7 +151,7 @@ export function WhatsNewDialog({ suppressed = false }: { suppressed?: boolean })
             />
             {t('wn_dont_show')}
           </label>
-          <Link href="/atelier/kaizen?whatsnew=1" onClick={close} className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>
+          <Link href="/atelier/kaizen-ops?whatsnew=1" onClick={close} className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>
             {t('wn_open_kaizen')}
           </Link>
           <button

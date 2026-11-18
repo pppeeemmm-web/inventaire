@@ -104,7 +104,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
   // Old links (`/atelier/kaizen?view=website|business|system|review`) → the Opérations & Stratégie entry.
   useEffect(() => {
     if (scope === 'creation' && raw && raw !== 'creation') router.replace(`/atelier/kaizen-ops?view=${raw}`)
-    if (scope === 'ops' && raw === 'creation') router.replace('/atelier/kaizen')
+    if (scope === 'ops' && raw === 'creation') router.replace('/atelier/concepts')
   }, [scope, raw, router])
   const setView = (v: View) => {
     const p = new URLSearchParams(searchParams.toString())
@@ -224,7 +224,8 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
 
   const sectionSelect = (value: KaizenSection, onChange: (s: KaizenSection) => void, label: string) => (
     <select className="input" style={{ fontSize: 12 }} value={value} aria-label={label} onChange={(e) => onChange(e.target.value as KaizenSection)}>
-      {KAIZEN_SECTIONS.map((s) => (
+      {/* « Création » is no longer offered (it moved to Idées, Pem 2026-11-18); an old entry still shows it. */}
+      {KAIZEN_SECTIONS.filter((s) => s !== 'creation' || s === value).map((s) => (
         <option key={s} value={s}>{t(SECTION_KEY[s])}</option>
       ))}
     </select>
