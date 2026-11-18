@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
+import { RULE_RUNS_LIVE } from '@/lib/overview/signal-strip'
 import {
   PEM_CONTACT,
   RULES_LIVE_SINCE,
@@ -129,9 +130,25 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
       statusEvents,
       historiqueById,
     })
+    await recordRuleRun(supabase, { works: works.length, breaks: breaks.length, byRule: countByRule(breaks), error: null })
     return { ok: true, breaks, works: works.length, ranAt: new Date().toISOString() }
   } catch (e) {
     await logError('Work rule checks failed', e, { source: 'runWorkRuleChecks' })
+    await recordRuleRun(supabase, { works: null, breaks: 0, byRule: {}, error: e instanceof Error ? e.message : String(e) })
     return { error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+function countByRule(breaks: RuleBreak[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const b of breaks) out[String(b.rule)] = (out[String(b.rule)] ?? 0) + 1
+  return out
+}
+
+/** Keep the run for the Overview's « Système » signal (work_rule_runs.sql). Never blocks the check. */
+async function recordRuleRun(supabase: Client, r: { works: number | null; breaks: number; byRule: Record<string, number>; error: string | null }) {
+  if (!RULE_RUNS_LIVE) return
+  const { error } = await (supabase as unknown as { from: (t: string) => { insert: (row: object) => Promise<{ error: { message: string } | null }> } })
+    .from('work_rule_run').insert({ source: 'manual', works: r.works, breaks: r.breaks, by_rule: r.byRule, error: r.error })
+  if (error) await logError('Work rule run not recorded', error.message, { source: 'runWorkRuleChecks' })
 }

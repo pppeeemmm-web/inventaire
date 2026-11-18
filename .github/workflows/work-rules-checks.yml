@@ -2,7 +2,8 @@ name: Nightly work rule checks
 
 # docs/WORK_RULES.md §6 (Pem's GO 2026-11-17): run supabase/sql/work_rules_checks.sql read only every
 # night, after the 03:17 UTC backup. The job fails (GitHub emails) when a rule returns rows, and its log
-# lists the breaking works. Same DB secret as backup.yml. Nothing is written.
+# lists the breaking works. Same DB secret as backup.yml. The only write: one summary row in
+# work_rule_run for the Overview « Système » signal (Pem 2026-11-18).
 on:
   schedule:
     - cron: '47 3 * * *'

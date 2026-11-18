@@ -17,6 +17,7 @@ import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { saleMoneyState } from '@/lib/sales/sale-money'
+import { makeOrderCoas, openShipmentForOrder } from '@/app/atelier/(portal)/sales/cascade-actions'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
 export type WorkOrderKind = 'sale' | 'consignment' | 'loan' | 'gift' | 'entrusted'
@@ -530,6 +531,21 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   if (to === 'signed' || (order.kind === 'gift' && to === 'handed_over') || (order.kind === 'entrusted' && to === 'out')) {
     const paper = await makeOrderPaper(order.id)
     if ('error' in paper) await logError('Order paper failed at signature', paper.error, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
+  }
+  // R7b cascade (Pem 2026-11-18): a signed sale / deposit / loan opens its shipment (or pick-up), joining
+  // one being prepared for the same place; a paid sale gets one COA per work. Neither undoes the step.
+  if (to === 'signed' && ['sale', 'consignment', 'loan'].includes(order.kind)) {
+    const { data: tm } = await supabase.from('work_order').select('shipping_method').eq('id', order.id).single()
+    if (tm?.shipping_method !== TAKEAWAY) {
+      const ship = await openShipmentForOrder(order.id)
+      if ('error' in ship && ship.error !== 'cas_err_nothing_to_ship') {
+        await logError('Shipment not opened at signature', ship.error, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
+      }
+    }
+  }
+  if (order.kind === 'sale' && to === 'paid') {
+    const coa = await makeOrderCoas(order.id)
+    if ('error' in coa) await logError('COA at payment failed', coa.error, { source: 'orders.advanceWorkOrder', metadata: { orderId: order.id } })
   }
   revalidatePath('/atelier/sales')
   return { ok: true }

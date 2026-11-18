@@ -45,6 +45,7 @@ import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { custodyMessages } from './custody.messages'
 import { ordersMessages } from './orders.messages'
+import { cascadeMessages } from './cascade.messages'
 import { eventsMessages } from './events.messages'
 import { workPeriodsMessages } from './work-periods.messages'
 import { workCreationMessages } from './work-creation.messages'
@@ -110,6 +111,7 @@ export const featureMessages = {
   ...conditionMessages,
   ...custodyMessages,
   ...ordersMessages,
+  ...cascadeMessages,
   ...eventsMessages,
   ...workPeriodsMessages,
   ...workCreationMessages,

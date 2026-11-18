@@ -70,7 +70,7 @@ To build now, with the accountant's answers (LEGAL_POLICY §4, questions 1–3, 
 - Proposal: a small `insurance_claim` table hanging off the constat (`condition_report`) and optionally a shipment / order. Built with the shipment, own SQL OK.
 - Who pays the transit insurance: see [`POLICY_NOTES.md`](../../POLICY_NOTES.md) — on a sale it can be a line paid by the buyer (« Expédition et assurance »), shown before the order is signed.
 
-## Data (sketch — SQL written and shown before any apply, own OK)
+## Data (sketch — superseded by the applied SQL, see « Built » below)
 
 - `shipment`: add `kind` values `ship` / `pickup` / `return`, `address_id`, `carrier`, `tracking_no`, `tracking_url`, `packed_dims`, `packed_weight_kg`, `insured_value`, `insurer`, `policy_ref`, `cost`, `charged_to` (`buyer` / `studio` / `other_party`), one dated column per step (`photos_at`, `picked_at`, `packed_at`, `insured_at`, `labelled_at`, `shipped_at`, `delivered_at`).
 - `shipment_work`: add `order_line_id` (→ `work_order_work`).
@@ -87,3 +87,19 @@ To build now, with the accountant's answers (LEGAL_POLICY §4, questions 1–3, 
 4. Pick-up: only at the Marseille studio, or other places (an exhibition)?
 5. Carriers you use or want to use (art shipper, parcel carrier) — for the quote step later (« keep it mindful »).
 6. Build order: (a) shipment chain + pick-up, (b) COA auto, (c) invoice once the accountant answers the VAT mention — or all three in one batch with the invoice mention left as a setting?
+
+## Pem's answers (2026-11-18)
+
+1. Prep a sale can ask for: **framing, mounting, dedication / signature** (not varnish).
+2. Shipping and transit insurance: **paid by the buyer, as a line** on the order and the invoice.
+3. COA: **at « Paid »**, put in the crate.
+4. Pick-up: **at the studio or at an event**.
+5. Carriers: later (« keep it mindful »).
+6. Build: « ok » — SQL applied, screens built.
+
+## Built 2026-11-18 (worktree `pem-next-1118`, not landed yet)
+
+- **SQL** `supabase/sql/r7b_order_cascade.sql` **applied live** (Pem « ok »), migration `r7b_order_cascade`: shipment reshaped (0 rows before), step dates stamped by the DB, `shipment_work.order_line_id`, `work_order_demand`, `work_order.shipping_charge` / `delivery_mode`, `work_order_work.coa_document_id`, `invoice` + `invoice_order` (gap-free F- / AV- numbers, frozen once issued, one live invoice per order, same buyer only), `insurance_claim`; RLS + grants checked, security advisor: nothing new. The old shipment → order trigger is gone: it set a sale « delivered » without moving the works. Types regenerated.
+- **Code**: `lib/orders/cascade.ts` (steps, demand kinds, invoice settings: VAT mention and SIRET **null until the accountant / Pem give them** — the PDF says « à compléter »), `app/atelier/(portal)/sales/cascade-actions.ts`, `lib/orders/invoice-paper.ts`, `components/atelier/orders/OrderCascadePanel.tsx` (in the order view: delivery choice + shipping line, prep per work, shipment cards, COA, invoice), `components/atelier/orders/ShipmentCard.tsx` (checklist, fields per step, works + their orders, claims), Logistics tab = shipment cards. Hooks in `advanceWorkOrder`: a signed sale / deposit / loan opens its shipment (joins one being prepared for the same party + address + kind — that is how orders travel together); a paid sale makes one COA per work. « Delivered » on a shipment moves each order whose works have all arrived (sale paid → delivered and the 14 days start; deposit / loan → out; gift → handed over; Confié → out; a return → closed); otherwise the order is listed as « to do by hand ».
+- **Not tested on data**: a test invoice would burn F-2026-0001 for good and test orders burn order numbers (same database as production). Typecheck, lint (no new warnings), i18n:check pass.
+- **Known gaps**: a sale switched to « taken away » at payment after its shipment was opened at signature leaves that shipment open (cancel it by hand); `logistics/actions.ts` `markShipmentDelivered` is unused (delete on Pem's OK); edition copy numbers on COAs wait for the products engine ([Products_Engine.notes.md](./Products_Engine.notes.md)); claims are on shipments only (not yet on a constat outside a shipment).

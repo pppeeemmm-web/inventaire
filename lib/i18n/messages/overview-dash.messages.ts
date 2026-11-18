@@ -43,6 +43,16 @@ export const overviewDashMessages = defineMessages({
   od_jobs_days: { fr: '{n} j', en: '{n} d' },
   od_jobs_never: { fr: 'jamais', en: 'never' },
   od_coll_detail: { fr: 'œuvres · {n} disponibles', en: 'works · {n} available' },
+  // Business + system signals (Pem 2026-11-18: the Overview must see orders, events, shipments, rules, errors)
+  od_sig_orders: { fr: 'Commandes', en: 'Orders' },
+  od_orders_detail: { fr: 'en cours · {n} envoi(s) à faire', en: 'under way · {n} shipment(s) to do' },
+  od_sig_events: { fr: 'Événements', en: 'Events' },
+  od_events_detail: { fr: 'prévus ou en cours', en: 'planned or running' },
+  od_sig_system: { fr: 'Système', en: 'System' },
+  od_system_detail: { fr: 'erreurs sur 7 j · règles : {rules}', en: 'errors in 7 d · rules: {rules}' },
+  od_rules_ok: { fr: 'OK', en: 'OK' },
+  od_rules_breaks: { fr: '{n} écart(s)', en: '{n} break(s)' },
+  od_rules_unknown: { fr: 'à vérifier (Audit)', en: 'to check (Audit)' },
 
   // Panels
   od_inventory_link: { fr: 'Inventaire →', en: 'Inventory →' },

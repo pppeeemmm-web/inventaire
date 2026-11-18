@@ -42,6 +42,7 @@ import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById,
 import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
+import { getSidebarCounts, type SidebarCounts } from '@/app/atelier/sidebar-counts-actions'
 import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
@@ -734,6 +735,8 @@ export function TeamPortalClient({
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
   const [teamActivityCount, setTeamActivityCount] = useState(0)
   const [kaizenUnseen, setKaizenUnseen] = useState({ creation: 0, ops: 0 })
+  // Work under way (Pem 2026-11-18): orders, production, pipeline, events, shipments — refreshed on tab change.
+  const [underway, setUnderway] = useState<SidebarCounts>({ orders: 0, production: 0, pipeline: 0, events: 0, logistics: 0 })
 
   // Journal badge: team activity by OTHER users since this device's last Journal
   // visit (per-device cursor in localStorage). Kaizen badges: entries others added
@@ -761,6 +764,9 @@ export function TeamPortalClient({
         creation: tab === 'kaizen' ? 0 : r.creation,
         ops: tab === 'kaizen-ops' ? 0 : r.ops,
       })
+    }).catch(() => { /* badges stay as they were */ })
+    void afterForeground().then(() => getSidebarCounts()).then((r) => {
+      if (!cancelled && !('error' in r)) setUnderway(r)
     }).catch(() => { /* badges stay as they were */ })
     return () => { cancelled = true }
   }, [tab])
@@ -1032,13 +1038,13 @@ export function TeamPortalClient({
       ['reports',       t('tab_reports')],
       ['constellation', t('constellation')],
       ['chronologie',   t('chrono_tab')],
-      ['production',    t('production')],
-      ['logistics',     t('logistics')],
-      ['sales',         t('nav_tab_orders')],
-      ['exhibitions',   t('exhibitions')],
+      ['production',    t('production'), underway.production > 0 ? underway.production : undefined],
+      ['logistics',     t('logistics'), underway.logistics > 0 ? underway.logistics : undefined],
+      ['sales',         t('nav_tab_orders'), underway.orders > 0 ? underway.orders : undefined],
+      ['exhibitions',   t('exhibitions'), underway.events > 0 ? underway.events : undefined],
       ['vault',         t('vault')],
       ['contacts',      t('contacts'), contacts.length],
-      ['pipeline',      t('pipeline')],
+      ['pipeline',      t('pipeline'), underway.pipeline > 0 ? underway.pipeline : undefined],
       ['map',           t('map')],
       ['fiscal',        t('fiscal')],
       ['concepts',      t('concepts')],
@@ -1060,7 +1066,7 @@ export function TeamPortalClient({
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen],
+    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen, underway],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''

@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { Chip, EmptyValue, TapEdit, chipH } from './WorkCardParts'
 import { FIS } from './drawer-widgets'
+import { stepLabel, type ShipmentKind, type ShipmentStatus } from '@/lib/orders/cascade'
 
 export type WorkShipment = {
   id: string
@@ -24,7 +25,7 @@ export type WorkShipment = {
   to_name: string
 }
 
-/** Same labels as the Logistique tab. */
+/** Labels of shipments made before the R7b checklist (none live on 2026-11-18). */
 const STATUS_LABEL_KEY: Record<string, DictKey> = {
   packed: 'logistics_status_packed',
   ready: 'logistics_status_ready',
@@ -33,7 +34,7 @@ const STATUS_LABEL_KEY: Record<string, DictKey> = {
   delivered: 'logistics_status_delivered',
 }
 
-export const isShipmentOpen = (s: WorkShipment) => !s.delivered_at && s.status !== 'delivered'
+export const isShipmentOpen = (s: WorkShipment) => !s.delivered_at && s.status !== 'delivered' && s.status !== 'cancelled'
 
 /** The work's shipments, open ones first (earliest date first). Read-only; null while loading. */
 export function useWorkShipments(oeuvreId: number): WorkShipment[] | null {
@@ -83,6 +84,8 @@ function useShipmentText() {
   const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
   const day = (iso: string | null) => (iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString(loc, { day: 'numeric', month: 'short' }) : '')
   const status = (s: WorkShipment) => {
+    // R7b checklist steps (ship / pickup / return) read like the Logistique cards.
+    if (s.status && (s.kind === 'ship' || s.kind === 'pickup' || s.kind === 'return')) return t(stepLabel(s.kind as ShipmentKind, s.status as ShipmentStatus))
     const k = s.status ? STATUS_LABEL_KEY[s.status] : undefined
     return k ? t(k) : s.status || '—'
   }

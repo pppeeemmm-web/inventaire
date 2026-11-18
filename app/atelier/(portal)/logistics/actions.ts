@@ -14,8 +14,9 @@ async function guardTeam() {
 export type ShipmentSimpleResult = { error: string } | { ok: true }
 
 /**
- * Mark a shipment delivered. When the shipment points to an order (`shipment.work_order_id`,
- * R7), the DB delivery trigger updates that order (supabase/sql/work_order.sql).
+ * Mark a shipment delivered — NOT USED since R7b (2026-11-18): the Logistique cards go step by step
+ * through `advanceShipment` (app/atelier/(portal)/sales/cascade-actions.ts), which also moves the
+ * orders on. The old delivery trigger is gone (r7b_order_cascade.sql). Delete on Pem's OK.
  */
 export async function markShipmentDelivered(shipmentId: string): Promise<ShipmentSimpleResult> {
   const { error: authErr, supabase } = await guardTeam()

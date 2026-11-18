@@ -18,6 +18,7 @@ import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { NewOrderForm, orderErrorText, type NewOrderInitial, type OrderContact } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
+import { OrderCascadePanel } from '@/components/atelier/orders/OrderCascadePanel'
 
 const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
 const KIND_LETTER: Record<WorkOrderKind, string> = { sale: 'V', consignment: 'D', loan: 'P', gift: 'G', entrusted: 'C' }
@@ -509,6 +510,8 @@ export function Orders({ openWork, contacts }: Props) {
           )}
           {stepErr && <div role="alert" style={{ fontSize: 13, color: 'var(--rust)', marginTop: 8 }}>{stepErr}</div>}
         </Section>
+
+        {!o.reconstituted && <OrderCascadePanel key={`${o.id}-${o.status}`} orderId={o.id} narrow={narrow} onOrderChanged={() => { void load() }} />}
 
         <Section label={t('ord_papers')}>
           {o.papers.length === 0 && !o.paper_path && <div style={{ fontSize: 13, color: 'var(--tx3)' }}>{t('ord_no_paper')}</div>}

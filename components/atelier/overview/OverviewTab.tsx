@@ -14,6 +14,7 @@ import { openReadOr, primeOverviewOpen } from '@/lib/atelier/open-reads'
 import { OVERVIEW_REMINDER_LIMIT, overviewOpenKey } from '@/lib/atelier/open-read-keys'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
 import { getOverviewCatalogueCounts } from '@/app/atelier/overview-stats-actions'
+import { getOverviewBusiness, type OverviewBusiness } from '@/app/atelier/overview-business-actions'
 import { computeOverviewCounts, type OverviewCounts } from '@/lib/atelier/overview-counts'
 import Link from 'next/link'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -93,6 +94,13 @@ export function OverviewTab({
     void openReadOr(overviewOpenKey.counts, () => getOverviewCatalogueCounts()).then((c) => {
       if (!cancelled) setServerCounts(c)
     })
+    return () => { cancelled = true }
+  }, [])
+  // Orders, shipments, events, system (Pem 2026-11-18) — one small server read.
+  const [biz, setBiz] = useState<OverviewBusiness | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void getOverviewBusiness().then((b) => { if (!cancelled) setBiz(b) }).catch(() => { /* the three signals show « … » */ })
     return () => { cancelled = true }
   }, [])
   const loadedCounts = useMemo(() => computeOverviewCounts(oeuvres, thisYear), [oeuvres, thisYear])
@@ -266,6 +274,34 @@ export function OverviewTab({
         value: jobs.voice == null ? '…' : num(jobsBacklog),
         detail: fmt('od_jobs_detail', { d: d === undefined ? '…' : d === null ? t('od_jobs_never') : fmt('od_jobs_days', { n: d }) }),
         go: () => flash('jobs'),
+      })
+    }
+    signals.push({
+      id: 'orders', label: t('od_sig_orders'),
+      kind: !biz ? 'info' : biz.shipments > 0 ? 'attention' : 'ok',
+      value: biz ? num(biz.orders) : '…',
+      detail: fmt('od_orders_detail', { n: biz ? biz.shipments : '…' }),
+      go: () => onGoTab(biz && biz.shipments > 0 ? 'logistics' : 'sales'),
+    })
+    signals.push({
+      id: 'events', label: t('od_sig_events'),
+      kind: 'info',
+      value: biz ? num(biz.events) : '…',
+      detail: t('od_events_detail'),
+      go: () => onGoTab('exhibitions'),
+    })
+    if (isAdmin) {
+      const run = biz?.lastRuleRun ?? null
+      const ruleBreaks = run ? (run.error ? 1 : run.breaks) : 0
+      const errs = biz?.errors7d ?? 0
+      signals.push({
+        id: 'system', label: t('od_sig_system'),
+        kind: !biz ? 'info' : ruleBreaks > 0 ? 'wrong' : errs > 0 ? 'attention' : 'ok',
+        value: biz ? num(errs) : '…',
+        detail: fmt('od_system_detail', {
+          rules: !run ? t('od_rules_unknown') : ruleBreaks > 0 ? fmt('od_rules_breaks', { n: ruleBreaks }) : t('od_rules_ok'),
+        }),
+        go: () => onGoTab('audit'),
       })
     }
     signals.push({
