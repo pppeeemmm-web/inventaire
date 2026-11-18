@@ -7,6 +7,11 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.54 (2026-11-18) — image room, « Volée », voice notes, sale paper.
+  wn_inputs_review_t: { fr: 'Notes vocales, photo d’inspiration, demandes du site', en: 'Voice notes, inspiration photo, site enquiries' },
+  wn_inputs_review_d: {
+    fr: 'Une note vocale peut être supprimée depuis le Journal, et un « #1234 » dit dans la note montre l’œuvre (vignette + titre). Photo · doc → Inspiration : une photo prise au téléphone rejoint le Journal du jour et peut être reliée à une œuvre ou une idée. Le formulaire du site enregistre le motif (acquérir, commande, exposition, presse). Le mode Création de la carte s’affiche dès l’ouverture. L’ancien champ Commentaires n’apparaît plus quand il est vide.',
+    en: 'A voice note can be deleted from the Journal, and a « #1234 » said in the note shows the work (thumbnail + title). Photo · doc → Inspiration: a phone photo joins the day in the Journal and can be linked to a work or an idea. The site form saves the reason (buy, commission, exhibition, press). The map’s Création mode shows as soon as it opens. The old Commentaires field no longer shows when empty.',
+  },
   wn_image_room_stolen_t: { fr: 'Image plus grande, « Volée », notes vocales', en: 'Bigger image, « Stolen », voice notes' },
   wn_image_room_stolen_d: {
     fr: 'Sur ordinateur, l’image de la fiche œuvre prend presque toute la hauteur de l’écran, en pleine définition. Nouveau sort d’une œuvre : « Volée » (et « Retrouvée »), comme Détruite / Perdue, avec sa ligne d’historique. Une note vocale courte ou sans parole ne reste plus « transcription à venir » : le texte dicté sur le téléphone sert à défaut. Le bon de vente précise les 48 h pour signaler un dommage à la livraison. Le titre des nouveautés montre la version en cours.',

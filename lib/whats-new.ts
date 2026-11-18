@@ -80,6 +80,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'inputs_review', day: '2026-11-18' },
   { id: 'image_room_stolen', day: '2026-11-18' },
   { id: 'orders_review', day: '2026-11-18' },
   { id: 'events_tab', day: '2026-11-18' },
