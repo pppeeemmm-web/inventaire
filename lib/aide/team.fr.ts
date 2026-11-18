@@ -769,6 +769,133 @@ Quatre cases, indépendantes du statut : **Montée**, **Encadrée** (aussi coch�
 `,
   },
   {
+    id: 'faq',
+    title: 'Questions fréquentes et dépannage',
+    verified: '2026-11-18',
+    md: `
+Les questions qui reviennent, et les messages de l'application mot pour mot, avec quoi faire.
+
+## Œuvres et fiches
+
+### J'ai enregistré, mais la fiche n'a pas changé
+
+« Envoyé pour validation par l'administrateur » : votre modification attend que Pem la valide. La fiche change quand il l'accepte. Voir Premiers pas → Ce qui attend la validation de Pem.
+
+### Mes photos n'apparaissent pas
+
+- « Photos en attente de validation » : elles apparaissent une fois validées.
+- « Envoyé pour validation par l'administrateur. Les images sélectionnées n'ont pas été envoyées — ajoutez-les une fois la modification approuvée. » : c'était une nouvelle œuvre ; elle n'a pas encore de numéro. Ajoutez les photos quand elle est validée.
+
+### Je ne trouve pas une œuvre
+
+1. ⌘K (Ctrl+K) à l'ordinateur, ou la recherche du menu ☰ au téléphone : tapez #numéro ou un morceau du titre.
+2. Dans l'Inventaire, regardez la case « Rechercher… » et les filtres : un filtre resté actif cache des œuvres.
+3. « Catalogue partiel · … » : l'Atelier n'a chargé qu'une partie du catalogue ; « Charger la tranche suivante » élargit les listes.
+4. Une œuvre mise à la corbeille n'apparaît plus nulle part : demandez à Pem.
+
+### La fiche refuse un statut
+
+- « Vendu / don : choisir l'acquéreur (pas Pem). Consigné / prêt : choisir le dépositaire (pas Pem). »
+- « Une œuvre ne quitte l'atelier que par une commande (dépôt, prêt, vente) ; en production, disponible ou archivée, Pem en est propriétaire et dépositaire. » : passez par Commandes.
+- « Œuvre hors circulation (vendue, donnée, archivée, détruite, perdue ou déjà en dépôt) : impossible de la réserver, vendre ou déposer. »
+- « Archive : cataloguez d'abord l'œuvre (une fiche partielle suffit). »
+- « Sortie d'archive vers Disponible : la photo doit être faite. Sinon, repassez l'œuvre en production. »
+- Une œuvre sans photo ne peut pas être cataloguée : ajoutez une photo d'abord.
+
+### Je ne peux pas modifier plusieurs œuvres d'un coup
+
+« Modifier statut, contact, prix… sur plusieurs œuvres est réservé aux admins. Les thèmes et groupes restent modifiables ; pour le reste, passez par la fiche (validation). »
+
+### Je ne peux pas mettre une œuvre à la corbeille
+
+« Seul un admin peut mettre à la corbeille une œuvre vendue ou donnée. »
+
+### « Modifications non enregistrées »
+
+Vous fermez une fiche modifiée : **Enregistrer** garde vos changements, **Quitter sans enregistrer** les jette, **Annuler** vous laisse sur la fiche.
+
+### Un lieu est refusé dans l'historique de création
+
+« Ce lieu n'existait pas à cette date — choisir un autre lieu ou corriger la date. »
+
+### Un constat ne se modifie pas
+
+- « Seul l'auteur ou l'administrateur peut modifier ce constat. »
+- « Seul un admin peut enregistrer une destruction, une perte ou un vol. » : faites un constat d'Examen, et prévenez Pem.
+- « Photo trop lourde (12 Mo max). »
+
+## Commandes et envois
+
+### La commande ne se crée pas
+
+- « Choisissez avec qui (pas Pem). »
+- « Ajoutez au moins une œuvre. »
+- « Une vente a besoin de son prix final. »
+- « Un dépôt ou un prêt a besoin de ses dates de sortie et de retour. »
+- « Déjà sur une autre commande ouverte : » suivi du numéro : ouvrez cette commande, finissez-la ou annulez-la d'abord.
+
+### Une étape ou un paiement est refusé
+
+- « Cette étape n'est pas possible depuis l'étape actuelle. » : rechargez la commande ; quelqu'un l'a peut-être déjà fait avancer.
+- « Ce montant dépasse le reste à payer (déjà encaissé ?). Rechargez la commande. »
+- « Cette commande ne se modifie plus (payée, sortie, remise ou close). »
+- « Le délai de retour de 14 jours est passé : la vente est définitive. »
+
+### L'envoi ne se prépare pas, ou n'avance pas
+
+- « Toutes les œuvres de cette commande sont déjà sur un envoi. » : il est déjà dans Logistique.
+- « Préparation pas finie : … demande(s) ouverte(s). » : cochez « Fait » sur chaque demande de la vente.
+
+### La copie signée est refusée
+
+« Fichier trop lourd (4 Mo au plus). » ou un format autre que PDF, JPEG, PNG, WebP ou HEIC. Au téléphone, une photo du papier signé suffit.
+
+### Où est la facture ?
+
+La facture s'émet une fois la vente payée, par Pem. Les certificats d'authenticité se font tout seuls au paiement. Voir Commandes → Référence.
+
+## Téléphone et réseau
+
+### Le micro ne marche pas
+
+- « Micro non disponible » : autorisez le micro pour le site dans les réglages du navigateur, puis « Réessayer » ; ou « Écrire une note ».
+- « Pas enregistrée » : « Réessayer l'envoi » avant de fermer ; l'audio est encore là.
+
+### Pas de réseau
+
+- Sur une fiche : « Hors ligne : enregistrement mis en file. Synchronisation à la reconnexion. » L'enregistrement part tout seul au retour du réseau (« File hors ligne synchronisée. »).
+- « Hors ligne » puis « Cette page n'est pas en cache. Reconnectez-vous pour continuer, ou ouvrez le Hub si vous l'avez déjà visité. » : les pages déjà ouvertes restent lisibles ; les autres attendent le réseau.
+- Pour une note : « Écrire une note » garde un brouillon sur le téléphone.
+
+### Le menu Partager ne propose pas l'application
+
+Sur iPhone, c'est normal : utilisez la case **+** de la fiche, ou « Importer depuis cet appareil » dans Réception partage. Sur Android, installez d'abord l'application sur l'écran d'accueil.
+
+### « Améliorer avec l'IA » ne répond pas
+
+Normal hors de l'ordinateur de Pem : « Analyser » suffit. Le contact reste tel qu'il a été lu.
+
+### L'étiquette QR ouvre la page de connexion
+
+Il faut être connecté : connectez-vous, l'étiquette ouvre ensuite la fiche.
+
+## Compte
+
+### J'ai perdu mon mot de passe
+
+« Mot de passe oublié ? » sur la page de connexion envoie un lien par e-mail. Un compte Google seul se connecte avec le bouton Google.
+
+### Je n'ai plus accès à l'Atelier
+
+L'accès est donné par Pem, sur votre fiche de contact. Demandez-lui de vérifier « Accès atelier ».
+
+## Signaler un problème
+
+- **Un problème sur une œuvre ou à l'atelier** (un châssis desserré, une tache…) : au téléphone, ☰ → Actions → **Signalement** (« Signaler un problème ») : un titre court, des détails, une photo si vous voulez, puis « Envoyer le signalement ». Avec une œuvre et une étape choisies, il apparaît dans Production.
+- **Un problème de l'application, ou un écran qui ne correspond pas à ce guide** : Kaizen → Opérations & Stratégie → **+ Nouvelle entrée**. Dites ce que vous faisiez, ce qui s'est passé, et l'heure.
+`,
+  },
+  {
     id: 'glossary',
     title: 'Glossaire',
     verified: '2026-11-18',

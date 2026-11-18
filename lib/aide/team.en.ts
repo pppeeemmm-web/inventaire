@@ -768,6 +768,133 @@ Four boxes, independent of the status: **Mounted**, **Framed** (also ticked by t
 `,
   },
   {
+    id: 'faq',
+    title: 'FAQ and troubleshooting',
+    verified: '2026-11-18',
+    md: `
+The questions that come back, and the app's messages word for word, with what to do.
+
+## Works and cards
+
+### I saved, but the card did not change
+
+"Submitted for admin review": your change is waiting for Pem's approval. The card changes when he accepts it. See Getting started → What waits for Pem's approval.
+
+### My photos do not show
+
+- "Pictures awaiting approval": they show once approved.
+- "Submitted for admin review. The images you picked were not uploaded — add them once the change is approved.": it was a new work; it has no number yet. Add the photos once it is approved.
+
+### I cannot find a work
+
+1. ⌘K (Ctrl+K) on the computer, or the search in the ☰ menu on the phone: type #number or part of the title.
+2. In the Inventory, check the "Search…" box and the filters: a filter left on hides works.
+3. "Partial catalogue · …": the Atelier has loaded only part of the catalogue; "Load next batch" widens the lists.
+4. A work moved to the trash no longer shows anywhere: ask Pem.
+
+### The card refuses a status
+
+- "Sold / gift: pick the acquirer (not Pem). Consigned / loan: pick the custodian (not Pem)."
+- "A work leaves Pem only through an order (consignment, loan, sale); in production, available or archived, Pem owns and holds it.": go through Orders.
+- "Work out of circulation (sold, given, archived, destroyed, lost or already consigned): it cannot be reserved, sold or consigned."
+- "Archive: catalogue the work first (a partial record is enough)."
+- "Out of the archive straight to Available: the photo must be done. Otherwise, send the work back into production."
+- A work with no photo cannot be catalogued: add a photo first.
+
+### I cannot change several works at once
+
+"Changing status, contact, price… on several works is admin only. Themes and groups stay editable; for the rest, use the work drawer (approval)."
+
+### I cannot move a work to the trash
+
+"Only an admin can move a sold or given work to the bin."
+
+### "Unsaved changes"
+
+You are closing a changed card: **Save** keeps your changes, **Close without saving** throws them away, **Cancel** leaves you on the card.
+
+### A place is refused in the creation history
+
+"This place did not exist at that date — pick another place or fix the date."
+
+### A condition report cannot be changed
+
+- "Only the author or the admin can change this report."
+- "Only an admin can record a destruction, a loss or a theft.": make an Examination report, and tell Pem.
+- "Photo too large (12 MB max)."
+
+## Orders and shipments
+
+### The order is not created
+
+- "Choose who it is with (not Pem)."
+- "Add at least one work."
+- "A sale needs its final price."
+- "A consignment or loan needs its out and back dates."
+- "Already on another open order:" followed by its number: open that order, finish or cancel it first.
+
+### A step or a payment is refused
+
+- "This step is not possible from the current one.": reload the order; someone may already have moved it on.
+- "This amount is more than what is left to pay (already recorded?). Reload the order."
+- "This order can no longer be changed (paid, out, handed over or closed)."
+- "The 14-day return period is over: the sale is definitive."
+
+### The shipment cannot be prepared, or does not move on
+
+- "Every work of this order is already on a shipment.": it is already in Logistics.
+- "Preparation not finished: … open demand(s).": tick "Done" on each of the sale's demands.
+
+### The signed copy is refused
+
+"File too large (4 MB at most)." or a format other than PDF, JPEG, PNG, WebP or HEIC. On the phone, a photo of the signed paper is enough.
+
+### Where is the invoice?
+
+The invoice is issued once the sale is paid, by Pem. The certificates of authenticity are made by themselves at payment. See Orders → Reference.
+
+## Phone and network
+
+### The microphone does not work
+
+- "Microphone not available": allow the microphone for the site in the browser's settings, then "Retry"; or "Write a note".
+- "Not saved": "Retry saving" before closing; the audio is still there.
+
+### No network
+
+- On a card: "Offline: save queued. It will sync when you are back online." The save goes out by itself when the network returns ("Offline queue synced.").
+- "Offline" then "This page is not cached. Reconnect to continue, or open the Hub if you have visited it before.": pages already opened stay readable; the others wait for the network.
+- For a note: "Write a note" keeps a draft on the phone.
+
+### The Share menu does not list the app
+
+On iPhone, that is normal: use the card's **+** box, or "Import from this device" in the Share inbox. On Android, install the app on the home screen first.
+
+### "Improve with AI" does not answer
+
+Normal away from Pem's computer: "Analyse" is enough. The contact stays as it was read.
+
+### The QR label opens the sign-in page
+
+You need to be signed in: sign in, and the label then opens the card.
+
+## Account
+
+### I lost my password
+
+"Forgot password?" on the sign-in page sends a link by email. A Google-only account signs in with the Google button.
+
+### I no longer have access to the Atelier
+
+Access is given by Pem, on your contact card. Ask him to check "Studio access".
+
+## Reporting a problem
+
+- **A problem with a work or at the studio** (a loose stretcher, a stain…): on the phone, ☰ → Actions → **Issue** ("Report an issue"): a short title, details, a photo if you like, then "Submit report". With a work and a step chosen, it shows in Production.
+- **A problem with the app, or a screen that does not match this guide**: Kaizen → Operations & Strategy → **+ New entry**. Say what you were doing, what happened, and the time.
+`,
+  },
+  {
     id: 'glossary',
     title: 'Glossary',
     verified: '2026-11-18',
