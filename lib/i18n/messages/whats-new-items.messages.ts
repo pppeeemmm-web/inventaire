@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.53 (2026-11-18) — R7, Pem's review.
+  wn_orders_review_t: { fr: 'Commandes : ce que votre relecture a demandé', en: 'Orders: what your review asked for' },
+  wn_orders_review_d: {
+    fr: 'Nouveau contact directement depuis le formulaire de commande ; prix final calculé à la saisie (prix − remise) avec une ligne TVA « à définir » ; « Remis » visible sur les dons ; « Créer la commande » depuis Pipeline ; une vente « emportée aujourd’hui » à l’atelier passe « Livrée » dès le paiement (sauf commandes à faire et œuvres gardées) ; « Marquer remboursé » sur une vente retournée ; une œuvre donnée ne revient plus dans les étapes ni en « Disponible ». Les anciennes tables de ventes (vides) sont supprimées.',
+    en: 'New contact straight from the order form; final price worked out as you type (price − discount) with a VAT line « to be set »; « Handed over » shown on gifts; « Create the order » from Pipeline; a studio sale « taken away today » becomes « Delivered » as soon as it is paid (except commissions and held works); « Mark refunded » on a returned sale; a given work no longer goes back into the stages or « Available ». The old (empty) sales tables are gone.',
+  },
   // 3.1.52 (2026-11-18) — R6.
   wn_events_tab_t: { fr: 'Expositions & événements : un seul onglet, sur les commandes', en: 'Exhibitions & events: one tab, on the orders' },
   wn_events_tab_d: {
