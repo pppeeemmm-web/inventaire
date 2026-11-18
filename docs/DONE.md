@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Rethink leftovers picked by Pem (form)
+
+- R7: line value editable after creation, « Partager » sends the paper file (no link), Confié works on the Production board (`351c6ba`, side session r7-leftovers; no SQL; new team-only route `/api/export/order-paper`, reason in its header). Seen loading in Chrome; a real save / the phone share sheet not tried (no draft or signed order exists).
+- Ideas visible: « Rappels sans projet » on Idées (admin) + Overview « Idées » panel shows the latest ideas (`380c38e`).
+- Phone navigation designed, Pem's 6 answers (`748e908`); build waits for a GO.
+
 ## 2026-11-18 — Ideas in one place (R1 leftover)
 
 - Kaizen « Création » folded into Idées (`f4d59a2`, session « Order process and operations review », Pem « OK as written »; data by migration `kaizen_creation_to_ideas`: 6 ideas, 18 work lines, 2 to Business, Création rows kept + done). CLAUDE.md menu line updated (Pem « Yes, update it »).

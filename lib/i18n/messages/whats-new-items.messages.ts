@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.60 (2026-11-18) — order leftovers, ideas visible.
+  wn_order_leftovers_t: { fr: 'Commandes : valeur modifiable, papier à partager, « Confié » visible', en: 'Orders: editable value, paper to share, « Entrusted » visible' },
+  wn_order_leftovers_d: {
+    fr: 'La valeur d’une ligne se modifie après coup (brouillon ; signée, avec un rappel de refaire le papier ; plus après paiement ou remise). « Partager » envoie le papier lui-même, sans lien : sur le téléphone par la feuille de partage, sur l’ordinateur en téléchargement. Une œuvre confiée (encadreur…) apparaît sur le tableau de Production : « chez … depuis … ».',
+    en: 'A line’s value can be changed afterwards (draft; signed, with a reminder to remake the paper; not once paid or handed over). « Share » sends the paper itself, no link: the share sheet on the phone, a download on a computer. An entrusted work (framer…) shows on the Production board: « at … since … ».',
+  },
+  wn_ideas_visible_t: { fr: 'Idées : les rappels sans projet, et l’Aperçu', en: 'Ideas: reminders with no project, and the Overview' },
+  wn_ideas_visible_d: {
+    fr: 'En haut d’Idées, les rappels datés qui ne sont liés à aucun projet : « En faire une idée » la garde à sa date, « Vu » la range. Le panneau Idées de l’Aperçu montre les dernières idées, les mûres d’abord.',
+    en: 'At the top of Ideas, dated reminders tied to no project: « Make it an idea » keeps it at its date, « Seen » puts it away. The Overview Ideas panel shows the latest ideas, ripe ones first.',
+  },
   // 3.1.59 (2026-11-18) — ideas in one place.
   wn_expense_year_t: { fr: 'Dépenses : la bonne année', en: 'Expenses: the right year' },
   wn_expense_year_d: {
