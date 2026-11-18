@@ -1166,6 +1166,7 @@ export type Database = {
           message: string
           name: string
           oeuvre_id: number | null
+          private_link_token: string | null
           status: string
           work_order_id: string | null
         }
@@ -1177,6 +1178,7 @@ export type Database = {
           message: string
           name: string
           oeuvre_id?: number | null
+          private_link_token?: string | null
           status?: string
           work_order_id?: string | null
         }
@@ -1188,6 +1190,7 @@ export type Database = {
           message?: string
           name?: string
           oeuvre_id?: number | null
+          private_link_token?: string | null
           status?: string
           work_order_id?: string | null
         }
@@ -1198,6 +1201,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "inquiry_private_link_token_fkey"
+            columns: ["private_link_token"]
+            isOneToOne: false
+            referencedRelation: "private_link"
+            referencedColumns: ["token"]
           },
           {
             foreignKeyName: "inquiry_work_order_id_fkey"
@@ -2294,45 +2304,115 @@ export type Database = {
       }
       private_link: {
         Row: {
+          contact_id: number | null
           created_at: string
           created_by: string | null
           expires_at: string | null
+          first_opened_at: string | null
           group_id: string | null
-          recipient_email: string | null
+          lang: string
+          last_opened_at: string | null
+          message: string | null
+          pdf_downloads: number
+          pdf_key: string | null
+          pdf_last_downloaded_at: string | null
+          pdf_made_at: string | null
           recipient_name: string | null
+          revoked_at: string | null
           token: string
           view_count: number
-          viewed_at: string | null
         }
         Insert: {
+          contact_id?: number | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          first_opened_at?: string | null
           group_id?: string | null
-          recipient_email?: string | null
+          lang?: string
+          last_opened_at?: string | null
+          message?: string | null
+          pdf_downloads?: number
+          pdf_key?: string | null
+          pdf_last_downloaded_at?: string | null
+          pdf_made_at?: string | null
           recipient_name?: string | null
+          revoked_at?: string | null
           token: string
           view_count?: number
-          viewed_at?: string | null
         }
         Update: {
+          contact_id?: number | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          first_opened_at?: string | null
           group_id?: string | null
-          recipient_email?: string | null
+          lang?: string
+          last_opened_at?: string | null
+          message?: string | null
+          pdf_downloads?: number
+          pdf_key?: string | null
+          pdf_last_downloaded_at?: string | null
+          pdf_made_at?: string | null
           recipient_name?: string | null
+          revoked_at?: string | null
           token?: string
           view_count?: number
-          viewed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "private_link_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
           {
             foreignKeyName: "private_link_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "working_group"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      private_link_work: {
+        Row: {
+          oeuvre_id: number
+          position: number
+          price: number | null
+          show_price: boolean
+          token: string
+        }
+        Insert: {
+          oeuvre_id: number
+          position: number
+          price?: number | null
+          show_price?: boolean
+          token: string
+        }
+        Update: {
+          oeuvre_id?: number
+          position?: number
+          price?: number | null
+          show_price?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_link_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "private_link_work_token_fkey"
+            columns: ["token"]
+            isOneToOne: false
+            referencedRelation: "private_link"
+            referencedColumns: ["token"]
           },
         ]
       }
@@ -4526,6 +4606,8 @@ export type Database = {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string
       }
+      private_link_count_open: { Args: { p_token: string }; Returns: undefined }
+      private_link_count_pdf: { Args: { p_token: string }; Returns: undefined }
       receive_supply_order: {
         Args: { p_lines: Json; p_order_id: number }
         Returns: undefined
