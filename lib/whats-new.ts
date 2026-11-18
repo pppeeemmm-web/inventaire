@@ -70,7 +70,8 @@
 // '3.1.52' (2026-11-18): R6 — one « Expositions & événements » tab on the orders; What's new copy loads on open (lighter phone pages).
 // '3.1.63' (2026-11-18): business-card capture works outdoors (Live Text first, AI optional with a limit, photo kept).
 // '3.1.64' (2026-11-18): stress-test fixes — no double sale / payment, shipments follow orders, Sales past 200 orders.
-export const WHATS_NEW_RELEASE = '3.1.64'
+// '3.1.65' (2026-11-18): in-app Aide — team guide FR + EN, chapters 1–2 (scope, getting started).
+export const WHATS_NEW_RELEASE = '3.1.65'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -90,6 +91,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'aide_guides', day: '2026-11-18', spot: 'aide' },
   { id: 'orders_double_click', day: '2026-11-18', spot: 'sales' },
   { id: 'shipments_follow_orders', day: '2026-11-18', spot: 'logistics' },
   { id: 'card_live_text', day: '2026-11-18', spot: 'contacts' },

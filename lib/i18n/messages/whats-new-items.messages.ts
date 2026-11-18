@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.65 (2026-11-18) — in-app Aide.
+  wn_aide_guides_t: { fr: 'Aide : le guide dans l’application', en: 'Help: the guide in the app' },
+  wn_aide_guides_d: {
+    fr: 'Kaizen → Aide (au téléphone : ☰ → Tout le reste → Aide), en français et en anglais. Pour commencer : le projet et son périmètre, et les premiers pas ; d’autres fiches pratiques suivront. Chaque chapitre dit quand il a été vérifié. Le bouton « Aide et guides » du Coffre y mène aussi.',
+    en: 'Kaizen → Help (on the phone: ☰ → Everything else → Help), in French and English. To start: the project and its scope, and getting started; more how-to cards will follow. Each chapter says when it was checked. The Vault’s « Help and guides » button leads there too.',
+  },
   // 3.1.62 (2026-11-18) — paid from payments, order address + return to the gallery, ⌘K by number, faster tabs.
   wn_paid_from_payments_t: { fr: '« Payé » suit les paiements', en: '« Paid » follows the payments' },
   wn_paid_from_payments_d: {

@@ -18,6 +18,7 @@ Things only you can do:
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Phone check:** the cached copy — open Aujourd'hui once on Wi-Fi, then airplane mode and reopen.
+- [ ] **Aide wording:** read chapter 1 « Le projet et son périmètre » (`lib/aide/team.fr.ts`) — the French of your quote is a translation.
 
 ## 2. Rethink leftovers → [RETHINK](./RETHINK_2026-11-14.md)
 
@@ -41,6 +42,11 @@ Public site
 - [ ] 13. Upload the panorama + video for the map / motion layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`)
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
 - [ ] 15. S6 leftovers → [notes](./TODO_NOTES.md#s6)
+
+Guides — in-app Aide (`/atelier/aide`, batch 1 done 2026-11-18; design: one how-to card per task — When · Steps · What happens next · Pitfalls)
+- [ ] Batches 2–4: how-to cards by menu tile (Œuvres, Production, Idées, Commandes, Logistique, Événements, Journal, Contacts, Fournitures, Rapports, Site & Portfolio); then « What the app does by itself » and a FR / EN glossary.
+- [ ] Batch 5: admin guide (approvals, Audit, version restore, Fil, Diffusion, hard delete, contacts merge / private, backups, Opérations & Stratégie).
+- [ ] Batch 6: retire the old copies — `ADMIN_GUIDE.md` + `TEAM_MEMBER_GUIDE.md` → `docs/archive/`, ⌘K « Download Studio Bible » + the Kaizen → Système regenerate button; delete the two Vault uploads (« Admin guide html », « Team member Guide html ») and the Studio Bible PDF only with Pem's OK.
 
 Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
 - [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).

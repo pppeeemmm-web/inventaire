@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — In-app Aide, batch 1 (Pem « GO batch 1 »)
+
+- `/atelier/aide` (`58ab04e`): Kaizen → Aide; phone ☰ → Tout le reste → Kaizen → Aide; Vault « Aide et guides » replaces the Studio Bible download. Team guide FR + EN in `lib/aide/` — chapters « Le projet et son périmètre » + « Premiers pas », verified 2026-11-18 against live code; small markdown reader (`AideMarkdown.tsx`, no HTML). Admin guide switch built, hidden until it has chapters. Seen in Chrome on localhost (desktop FR + EN, 390 px: contents → chapter → back, no horizontal scroll), as a non-admin account. What's new 3.1.65.
+
 ## 2026-11-18 — Stress-test fixes (Pem's GOs in session speed-measure)
 
 - Stress test on a throwaway local copy (fake records, prod read only): report [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md), scripts in `scripts/stress/` (refuse anything not local; `dump/` gitignored — login tokens).
