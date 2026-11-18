@@ -15,12 +15,29 @@ import {
   WHATS_NEW_SEEN_SESSION_KEY,
 } from '@/lib/whats-new'
 
-type MsgKey = Parameters<ReturnType<typeof useI18n>['t']>[0]
+
+type ItemCopy = Record<string, { fr: string; en?: string } | undefined>
 
 export function WhatsNewList() {
-  const { t, lang } = useI18n()
+  const { lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const days = [...new Set(WHATS_NEW_ITEMS.map((i) => i.day))]
+  // The items' copy is loaded on open, never in the page's i18n catalog (whats-new-items.messages.ts).
+  const [copy, setCopy] = useState<ItemCopy | null>(null)
+  useEffect(() => {
+    let alive = true
+    void import('@/lib/i18n/messages/whats-new-items.messages').then((m) => {
+      if (alive) setCopy(m.whatsNewItemMessages as unknown as ItemCopy)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const text = (key: string) => {
+    const m = copy?.[key]
+    return m ? (lang === 'en' ? m.en ?? m.fr : m.fr) : ''
+  }
+  if (!copy) return <div data-testid="whats-new-list" style={{ minHeight: 40 }} />
   return (
     <div data-testid="whats-new-list" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {days.map((day) => (
@@ -31,9 +48,9 @@ export function WhatsNewList() {
           <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {WHATS_NEW_ITEMS.filter((i) => i.day === day).map((i) => (
               <li key={i.id} style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--tx2)' }}>
-                <strong style={{ color: 'var(--tx)', fontWeight: 600 }}>{t(`wn_${i.id}_t` as MsgKey)}</strong>
+                <strong style={{ color: 'var(--tx)', fontWeight: 600 }}>{text(`wn_${i.id}_t`)}</strong>
                 {' — '}
-                {t(`wn_${i.id}_d` as MsgKey)}
+                {text(`wn_${i.id}_d`)}
               </li>
             ))}
           </ul>
