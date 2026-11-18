@@ -40,7 +40,8 @@ function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const SESSION_WORK_FETCH_PAGE_SIZE = 1000
 /** Rows the session work search returns while its box is empty (TODO 17). */
-const SESSION_WORK_EMPTY_SEARCH_LIMIT = 40
+/** Empty search in a work session: this many works (in progress first, then newest) — Pem 2026-11-18 « Yes, 30 recent ». */
+const SESSION_WORK_EMPTY_SEARCH_LIMIT = 30
 
 function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
@@ -1363,7 +1364,8 @@ export async function linkWorkSessionItemToOeuvre(
   return { ok: true }
 }
 
-export async function searchWorksForSession(query: string): Promise<WorkSessionWorkOption[]> {
+/** `capEmpty`: the work session's picker shows only the first works while the box is empty; the site landing picker keeps the full list. */
+export async function searchWorksForSession(query: string, capEmpty = false): Promise<WorkSessionWorkOption[]> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -1408,7 +1410,7 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
     })
   // Empty box: the newest works, in progress first — not all ~960 rows with a thumbnail each on the
   // phone (TODO 17, Pem « do what's best »). Typing searches the whole catalogue as before.
-  return q ? sorted : sorted.slice(0, SESSION_WORK_EMPTY_SEARCH_LIMIT)
+  return q || !capEmpty ? sorted : sorted.slice(0, SESSION_WORK_EMPTY_SEARCH_LIMIT)
 }
 
 async function workMapsForIds(
