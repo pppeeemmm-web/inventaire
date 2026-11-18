@@ -88,6 +88,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'theme_notes', day: '2026-11-18', spot: 'themes' },
   { id: 'news_where_it_happened', day: '2026-11-18' },
   { id: 'inputs_review', day: '2026-11-18', spot: 'journal' },
   { id: 'image_room_stolen', day: '2026-11-18', spot: 'inventory' },

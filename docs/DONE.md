@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Theme notes (TODO 23)
+
+- 23. **Theme notes** (Pem 2026-11-17): `theme` has only `id, name`, so the text goes in the title (4 names over 40 characters, longest 166) → add a notes field so titles stay short. SQL GO → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — building in session theme-notes-kit (SQL to Pem before apply).
+- Built + live 2026-11-18 (`b71c3cf`, `d8e0a57`, side session theme-notes-kit): `theme_notes.sql` applied on Pem's OK (notes column; anon SELECT only `id, name`, so notes stay off the public site; ids 31, 35, 37, 38 shortened, text moved to notes, md5-guarded); Thèmes shows and edits notes (`ThemeNotesPanel.tsx`). Checked live by the lead: 4 names, notes, anon column grants.
+
 ## 2026-11-18 — A more human « What's new » (TODO 24, Pem « dots + voice card »)
 
 - 24. **A more human « What's new »** (Pem 2026-11-17): the team doesn't read it — too many updates, too complex, impersonal. Ideas: a « new » dot on the changed button with one plain sentence on first tap, or a short voice note from Pem per batch; the list stays as the archive → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — lead drafts the design first.

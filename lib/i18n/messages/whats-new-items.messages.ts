@@ -7,6 +7,11 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.55 (2026-11-18) — news where it happened (TODO 24).
+  wn_theme_notes_t: { fr: 'Thèmes : des notes, des noms courts', en: 'Themes: notes, short names' },
+  wn_theme_notes_d: {
+    fr: 'Chaque thème a maintenant un champ de notes (sens, source, texte de travail) : le nom reste court. Les quatre noms les plus longs ont été raccourcis, leur texte est passé dans les notes. Les notes restent internes : le site public ne montre que le nom.',
+    en: 'Each theme now has a notes field (meaning, source, working text), so the name stays short. The four longest names were shortened and their text moved into the notes. Notes stay internal: the public site shows only the name.',
+  },
   wn_news_where_it_happened_t: { fr: 'Les nouveautés, là où elles sont', en: 'What’s new, where it happened' },
   wn_news_where_it_happened_d: {
     fr: 'Un point sur l’onglet du menu qui a changé ; en l’ouvrant, une ligne « Nouveau ici : … » et « Compris ». Et sur Aujourd’hui, un mot de Pem : une note vocale avec « #équipe » dans son sujet s’affiche pour toute l’équipe pendant 3 semaines, avec les dernières nouveautés en dessous.',
