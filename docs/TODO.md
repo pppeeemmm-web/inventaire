@@ -10,8 +10,8 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
 - 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
 - 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
-- ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — starts when the contacts fix lands ([note](./design/2026-11-18/ContactsReview.notes.md))
-- ✅ committed, waiting for the push: Bureau IA + PC agent (`26c2e23`)
+- ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — contacts fix landed (`0ab05d2`); starts on Pem's word ([note](./design/2026-11-18/ContactsReview.notes.md))
+- ✅ committed, waiting for Pem's « Push » (`26c2e23`…`ddfc696`): Bureau IA + PC agent, rejection reason + works bin, approvals fix, six slips, legal part 1, contact delete fix, What's new 3.1.73 — details in DONE
 
 ## 0. Bugs — fix now
 
