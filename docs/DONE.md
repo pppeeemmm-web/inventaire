@@ -8,6 +8,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - 9. Custody re-checked against R7: address on orders mostly fine — orders from an exhibition send or the phone sale now show and let you pick the address (`setOrderAddress`); cancelled-before-payment was fine; a « Retour » of a paid, not-delivered work sold out of a deposit / loan now puts it back « Consigné » / « Prêt » at the gallery and reopens the deposit (Pem « do the retour fix too »). Not run on data (no such sale).
 - 17–19 first round (`6a1144b`, side session speed-measure): measured — queries < 7 ms; Audit first open 9 actions in line (3.5 → 11.5 s dev), Logistics tab switch 4.5 s (3.5 s badges), Overview 12 actions 10.8 s, Inventory 15 actions ~18 s dev. Built: menu counts in the opening read, badges 1.5 s after a tab switch, Audit / Logistics first, session search not re-run on notes, session open ~3 fewer round trips. Proposals kept in TODO §3. Not measured live after the change.
 - Landed main seen on localhost: Logistics and a work card open, no console error.
+- Session work picker: 30 works while the search box is empty (in progress first, then newest), typing searches all (`a809649`, Pem « Yes, 30 recent »). Not tried in a browser: opening a session writes a row.
 
 ## 2026-11-18 — « Older » checks (Pem « Yes, check and tidy ») and ⌘K by number
 

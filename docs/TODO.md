@@ -46,7 +46,6 @@ Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms
 - [ ] 17. Session flow, next: move the day merge off the session-open path; apply photos from a session (~10 round trips per photo, re-encodes an AVIF shot) → per-item calls.
 - [ ] 18. The catalogue still loads on every Atelier tab (⌘K reads it): load it only when a whole-catalogue tab or the palette opens — first check which tabs read it · Reports on keyset totals · one status-label layer.
 - [ ] 19. Fewer silent catches (~258, lint warns) · one combined badge action on tab switch · `is_admin()` STABLE. Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
-- [ ] Your call: the empty work search on a session returns almost every work with a thumbnail — cap it?
 
 ## 4. To check once, when it happens (no build)
 
