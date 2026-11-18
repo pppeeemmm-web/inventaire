@@ -1,6 +1,6 @@
 # Design — the work drawer (TODO R3)
 
-Pem 2026-11-14: "so much information that needs to be visually organized … a quicker glance at everything, in a more organized way. That's going to be a big one." Part of the [rethink](./RETHINK_2026-11-14.md). **Design only — nothing built. Step 1 = this inventory + a grouping (answered by Pem 2026-11-15, end of this doc); step 2 = whole-screen mockups (desktop + phone); then build.** Measured on the live catalogue 2026-11-15 (1 182 works), read from live code 2026-11-15 (`components/atelier/work-drawer/DrawerContent.tsx` and its sections).
+Pem 2026-11-14: "so much information that needs to be visually organized … a quicker glance at everything, in a more organized way. That's going to be a big one." Part of the [rethink](./archive/RETHINK_2026-11-14.md). **Design only — nothing built. Step 1 = this inventory + a grouping (answered by Pem 2026-11-15, end of this doc); step 2 = whole-screen mockups (desktop + phone); then build.** Measured on the live catalogue 2026-11-15 (1 182 works), read from live code 2026-11-15 (`components/atelier/work-drawer/DrawerContent.tsx` and its sections).
 
 ## What the drawer shows today, top to bottom (desktop, « Tous les champs » on the phone)
 

@@ -1,5 +1,7 @@
 # Constellation Canvas
 
+_Re-checked 2026-11-18: every code name below still exists; the actions file moved under `(portal)/`._
+
 **Canonical URL:** `/atelier/constellation` (cloud map deep link: `/atelier/constellation?map=<uuid>`; bare `/atelier?map=` redirects to the segment route).
 
 This document defines the product intent and technical contract for the Atelier constellation surface before further feature work.
@@ -49,7 +51,7 @@ Cloud payload schema is versioned by `CONSTELLATION_MAP_VERSION` and represented
 
 ### Write side-effects
 
-- Edge edits mutate relationship records **via server actions** `insertConstellationRelation` and `deleteConstellationRelation` in [`app/atelier/constellation/actions.ts`](../atelier/constellation/actions.ts) (team-gated; no browser `createClient()` on `tblrelations`).
+- Edge edits mutate relationship records **via server actions** `insertConstellationRelation` and `deleteConstellationRelation` in [`app/atelier/(portal)/constellation/actions.ts`](../app/atelier/(portal)/constellation/actions.ts) (team-gated; no browser `createClient()` on `tblrelations`).
 - Optional membership edits can remove works from theme/group via server actions.
 - Saving cloud maps writes only map state, not domain metadata.
 

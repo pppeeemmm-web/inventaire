@@ -3,7 +3,7 @@
 **Truth order:** live code → [`CLAUDE.md`](../CLAUDE.md) → [`SITE_MAP.md`](../SITE_MAP.md) → files below.
 **DB schema:** always live (Supabase MCP / `lib/types/supabase.generated.ts`) — never from guides.
 
-**Read order for a cold session:** CLAUDE.md (auto-loaded) → this table → `TODO.md` (live checklist; §0 = current bugs) → `RETHINK_2026-11-14.md` + `DESIGN_DRAWER.md` (design in progress) → `STRATEGY.md` (owner intent). **No open handoff** since 2026-11-15: a new batch gets a `HANDOFF_<date>.md` here, listed in this table; a closed one moves to `archive/` the same day.
+**Read order for a cold session:** CLAUDE.md (auto-loaded) → this table → `TODO.md` (live checklist; §0 = current bugs) → `DESIGN_DRAWER.md` (design in progress) → `STRATEGY.md` (owner intent). **No open handoff** since 2026-11-15: a new batch gets a `HANDOFF_<date>.md` here, listed in this table; a closed one moves to `archive/` the same day.
 
 | Doc | Use when | Verified |
 |-----|----------|----------|
@@ -15,7 +15,6 @@
 | [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
 | [`ENVIRONMENTAL_POLICY.md`](./ENVIRONMENTAL_POLICY.md) | Materials, packing, sending, digital, yearly measures — first draft, `[[…]]` = Pem's facts | 2026-11-18 (draft) |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
-| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal (R2), work drawer (R3), timeline / map / previews (R4), slideshow (R5), events (R6), orders (R7), public site (R8). R1–R7 built; leftovers in TODO §2 | 2026-11-18 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |
 | [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-16 |
 | [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink leftovers / to build / to check once / parked | 2026-11-18 (after `747df2b`) |
@@ -29,9 +28,9 @@
 | [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; the old guides and the Studio Bible retired 2026-11-18 → `archive/`) | Team 1–15 + admin 1–8 verified 2026-11-18 |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill; image copy + readable archive (`npm run archive`) | 2026-11-13 |
-| [`BROADCAST.md`](./BROADCAST.md) | Broadcast HTTP API + DB columns + key files | 2026-05-23 |
-| [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack (outside this repo) | 2026-05-23 |
-| [`CONSTELLATION.md`](./CONSTELLATION.md) | Constellation graph feature contract | 2026-05-25 |
+| [`BROADCAST.md`](./BROADCAST.md) | Broadcast HTTP API + DB columns + key files | 2026-11-18 |
+| [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack (outside this repo) | 2026-11-18 |
+| [`CONSTELLATION.md`](./CONSTELLATION.md) | Constellation graph feature contract | 2026-11-18 |
 
 **Maintenance rule:** touching a feature → update its doc **and** the `Verified` date in this table, same change.
 

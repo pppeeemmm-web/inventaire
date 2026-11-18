@@ -2,7 +2,7 @@
 
 _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md). Board → [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html)._
 
-**Refreshed 2026-11-18, late** — everything built is on `origin/main` (What's new 3.1.61). Item numbers are kept (other docs point to them); a closed item moves to [DONE](./DONE.md) the same day.
+**Refreshed 2026-11-18, evening.** What has shipped is in What's new (`lib/whats-new.ts`, 3.1.70 at this writing); `git log origin/main..` shows anything committed but not pushed. Item numbers are kept (other docs point to them); a closed item moves to [DONE](./DONE.md) the same day.
 
 ## 0. Bugs — fix now
 
@@ -18,17 +18,23 @@ Things only you can do:
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Phone check:** the cached copy — open Aujourd'hui once on Wi-Fi, then airplane mode and reopen.
+- [ ] **Your call (stress test):** the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées (hide them there, or their own fold?); a new sale ticks « Emportée aujourd'hui » by default.
 - [ ] **Vault:** delete the two old guides « Admin guide html » and « Team member Guide html » (type Studio Bible, 2026-05-24) with the Vault's own delete — replaced by the Aide (no Studio Bible PDF exists).
 - [ ] **Aide wording:** read chapter 1 « Le projet et son périmètre » (`lib/aide/team.fr.ts`) — the French of your quote is a translation.
 
-## 2. Rethink leftovers → [RETHINK](./RETHINK_2026-11-14.md)
+## 2. Rethink — closed
 
-R1–R7 built and pushed (history → [DONE](./DONE.md)); R6 events live, only editions part 2 left. R8 parked (§5).
-
-- [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy (Pem « if necessary, go »).
-- [ ] R6: editions part 2 — at the first real edition.
+R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archived ([`archive/RETHINK_2026-11-14.md`](./archive/RETHINK_2026-11-14.md), 2026-11-18). Its two leftovers are in §3; R8 is parked (§5).
 
 ## 3. To build — needs a GO
+
+Stress-test look leftovers (2026-11-18, [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
+- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
+- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
+
+Rethink leftovers
+- [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy (Pem « if necessary, go »).
+- [ ] R6: editions part 2 — at the first real edition.
 
 Trace
 - [ ] 1. Handwriting batch (after the test) → [notes](./TODO_NOTES.md#journal-phase-2)
@@ -49,8 +55,7 @@ Guides — in-app Aide (`/atelier/aide`): team guide complete 2026-11-18 (15 cha
 Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms, the cost is Next.js running a page's server actions one at a time; notes `speed-measure-17-19.md` in the side-session notes)
 - [ ] 17. Session flow, left: a « photo 3 of 12 » counter while applying session photos (round 2 did the day-merge skip and the faster photo apply).
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker still lists only the loaded works (round 2: the catalogue loads only on tabs that use it).
-- [ ] 19. Fewer silent catches (~258, lint warns) · one combined badge action on tab switch · `is_admin()` STABLE. Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
-- [ ] Live data checks: rules 9 and 10 can't run (`npm run checks:live` → « permission denied for function oeuvre_order_exists » for the read-only role); needs a GRANT EXECUTE for that role — SQL, your OK first.
+- [ ] 19. Fewer silent catches (277, lint warns, counted 2026-11-18) · one combined badge action on tab switch · `is_admin()` STABLE (still VOLATILE live, 2026-11-18). Phone JS budget in place (`npm run perf:budget`: /hub 268.6 / 280 kB).
 
 ## 4. To check once, when it happens (no build)
 
@@ -63,11 +68,6 @@ Run on the Docker copy 2026-11-18 (report [`StressTest.notes.md`](./design/2026-
 - [ ] Slideshow: full screen + swipe on an iPhone.
 - [ ] Physical printing: one real labels sheet (L7163 image + QR, L7651 QR) with a QR scanned, and a 300 dpi print.
 - [ ] Live site: an old service worker (`sw.js`) can never block pages (a stale one on localhost made every request fail in the stress run).
-
-Stress-test look / copy leftovers (2026-11-18, not fixed — triage):
-- [ ] Needs a layout design: Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280; phone selection bar + « Écrit enregistré » toast over the bottom bar.
-- [ ] Your call: the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées (hide them there, or their own fold?); a new sale ticks « Emportée aujourd'hui » by default.
-- [ ] Small slips: supply orders « Reçue 0 / 2 » for a partly received order, new line « Prix HT » not pre-filled; no What's new dots in the phone ☰ menu; « Logistique 34 en route » counts boxes not yet on the road; team Overview « Rappels 0 » next to « Rappels 40 »; Journal day counts « 2 peintures » for one work; the work card says nothing of a waiting photo.
 
 ## 5. Parked — no GO
 

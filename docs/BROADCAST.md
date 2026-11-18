@@ -1,8 +1,10 @@
 # Broadcast — in-repo contract
 
+_Re-checked against live code + DB 2026-11-18 (tables, columns, routes, tabs)._
+
 Inventory → social middleware: Atelier UI + Bearer JSON API. Orchestration (AI, Buffer, Slack) lives in Make — see [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
 
-**Implementations:** `app/api/inventory/broadcast/*`, [`app/atelier/broadcast/_components/Broadcast.tsx`](../app/atelier/broadcast/_components/Broadcast.tsx), [`app/atelier/broadcast/actions.ts`](../app/atelier/broadcast/actions.ts).
+**Implementations:** `app/api/inventory/broadcast/*`, [`Broadcast.tsx`](../app/atelier/(portal)/broadcast/_components/Broadcast.tsx), [`actions.ts`](../app/atelier/(portal)/broadcast/actions.ts).
 
 ---
 
@@ -36,7 +38,7 @@ Bearer `INVENTORY_BROADCAST_SECRET` (or `x-inventory-broadcast-secret` — see [
 
 **Tab:** `/atelier/broadcast` (admin). Subtabs: Queue, Publiés, Activité.
 
-**Inventory:** [`app/atelier/inventory/_components/Inventory.tsx`](../app/atelier/inventory/_components/Inventory.tsx) — `◉` chip toggles `broadcast_ready`.
+**Inventory:** [`Inventory.tsx`](../app/atelier/(portal)/inventory/_components/Inventory.tsx) — the « Diffusion » column checkbox toggles `broadcast_ready` (through `batchEdit`).
 
 **Work drawer:** `broadcast_ready` + `broadcast_caption_seed` persist via `performSave` (deps must include `broadcastCaptionSeed`).
 

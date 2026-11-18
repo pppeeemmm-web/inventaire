@@ -2,6 +2,9 @@
 
 This doc is the **Make.com** build guide for middleware and Slack. Your app’s HTTP contract is in [BROADCAST.md](./BROADCAST.md); handlers under `app/api/inventory/broadcast/`. (Other tools: same HTTP calls; this file does not walk them.)
 
+
+_Re-checked 2026-11-18: app side (routes, fields) matches; the Make / Buffer / Slack side lives outside the repo and is not checked._
+
 ---
 
 ## 0 — Prerequisites (gather in Make)
@@ -106,7 +109,7 @@ Useful hooks:
 - After successful **confirm** (§4).
 - **Error handler** on any **HTTP** to your app: include status code + `oeuvreId` if mapped — **never** the secret.
 
-**Atelier Activité mirror:** same place, add **HTTP POST** `{BASE_URL}/api/inventory/broadcast/event` (`eventType`, `priority`, `summary`, …) — fields in [BROADCAST_PHASE3_OPERATIONS.md](./BROADCAST_PHASE3_OPERATIONS.md) §3 Step E.
+**Atelier Activité mirror:** same place, add **HTTP POST** `{BASE_URL}/api/inventory/broadcast/event` (`eventType`, `priority`, `summary`, …) — fields read by [`event/route.ts`](../app/api/inventory/broadcast/event/route.ts) (`oeuvreId`, `platform`, `eventType`, `priority` `vip` / `normal`, `summary`).
 
 ---
 
@@ -122,7 +125,7 @@ Useful hooks:
 
 ## 7 — Build order (Make)
 
-1. **curl** feed + queue + confirm on prod ([BROADCAST_PHASE3_OPERATIONS.md](./BROADCAST_PHASE3_OPERATIONS.md) §4).  
+1. **curl** feed + queue + confirm on prod (paths and bodies in [BROADCAST.md](./BROADCAST.md) « HTTP API »).  
 2. **Scenario A** through Buffer draft only (Schedule off or long interval first).  
 3. **Slack** webhook on API errors + optional “queued” ping.  
 4. **Scenario B** — B1 webhook → `confirm`.  
