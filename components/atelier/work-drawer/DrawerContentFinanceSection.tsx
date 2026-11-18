@@ -3,6 +3,8 @@
 import type { OwnStageId } from '@/lib/work-editor-model'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
 import type React from 'react'
+import Link from 'next/link'
+import { salePaidFromPayments, type WorkSaleMoney } from '@/lib/sales/work-paid'
 import { FIS, WfSwitch } from './drawer-widgets'
 
 export function DrawerContentFinanceSection({
@@ -19,6 +21,7 @@ export function DrawerContentFinanceSection({
   paymentDone,
   setPaymentDone,
   ownStage,
+  saleMoney = null,
 }: {
   narrow: boolean
   lang: Lang
@@ -33,6 +36,8 @@ export function DrawerContentFinanceSection({
   paymentDone: boolean
   setPaymentDone: (v: boolean) => void
   ownStage: OwnStageId
+  /** The work's sale order and the money received on it: says where « Paiement reçu » comes from. */
+  saleMoney?: WorkSaleMoney | null
 }) {
   const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
   // R3 Objet › Valeur: one compact row (Prix · Remise · TVA · Final HT · Paiement); the part label
@@ -63,6 +68,28 @@ export function DrawerContentFinanceSection({
       <div style={{ flex: '1 1 150px', minWidth: 0 }}>
         <WfSwitch label={t('wf_payment_rcvd')} checked={paymentDone} onChange={setPaymentDone} disabled={gift} />
       </div>
+      {!gift ? <PaidSource t={t} loc={loc} paymentDone={paymentDone} sale={saleMoney} /> : null}
+    </div>
+  )
+}
+
+/** One line under the switch (TODO 10): « Paiement reçu » follows the sale's payments, or was set by hand. */
+function PaidSource({ t, loc, paymentDone, sale }: { t: (k: DictKey) => string; loc: string; paymentDone: boolean; sale: WorkSaleMoney | null }) {
+  const line = { flex: '1 1 100%', minWidth: 0, fontSize: 11, lineHeight: 1.4 }
+  if (!sale) {
+    return paymentDone ? <div data-testid="paid-source" style={{ ...line, color: 'var(--tx3)' }}>{t('paid_src_hand_no_order')}</div> : null
+  }
+  const byHand = paymentDone !== salePaidFromPayments(sale)
+  const amounts = t('paid_src_amounts')
+    .replace('{received}', sale.received.toLocaleString(loc))
+    .replace('{price}', (sale.price ?? 0).toLocaleString(loc))
+  return (
+    <div data-testid="paid-source" style={{ ...line, color: byHand ? 'var(--rust)' : 'var(--tx3)' }}>
+      {t(byHand ? 'paid_src_hand_vs_order' : 'paid_src_follows')}{' '}
+      <Link href={`/atelier/sales?order=${sale.id}`} title={t('paid_src_order_title')} style={{ color: 'inherit', textDecoration: 'underline' }}>
+        {sale.ref ?? '—'}
+      </Link>
+      {' · '}{amounts}
     </div>
   )
 }

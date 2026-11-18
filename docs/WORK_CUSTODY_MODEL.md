@@ -59,5 +59,16 @@ Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6
 | 11 | Studio health | Counted missing custodian only (always 0) | — | Adds "no address" |
 | 12 | Bulk edit | Any status / owner / location; address picker saved nothing | Orders move works | Status 1 / 2 / 3 only; owner / location fields removed; Pem address saved |
 
-Not changed (noted): orders do not yet store the custodian's address (picked in the drawer when the
-custodian has several); a cancelled sale of a consigned work returns it to Pem rather than to the gallery.
+Re-checked against the R7 order code 2026-11-18 (TODO 9):
+- **Custodian address on an order** — done. `work_order.address_id` is picked in the new-order form
+  (a party with one address gets it), and each step that moves the works gives them that address.
+  Orders made from an exhibition send or the phone sale have none when the party has several: the
+  order now shows its address and lets one be picked while it runs (`setOrderAddress`; works already
+  with that party and no address take it).
+- **Cancelled sale of a consigned work** — done for a cancel before payment: `cancelWorkOrder` puts a
+  reserved work still at the gallery back to « Consigné » (the deposit line was never closed).
+  « Retour » after payment, before delivery, of a work sold out of a deposit / loan and still at that
+  gallery (`returnSaleOrder`, Pem « do the retour fix too » 2026-11-18): the deposit line the payment
+  closed « sold » is reopened, the deposit too if it closed with it (« Sortie » again), and the work
+  goes back to « Consigné » / « Prêt » at the gallery (owner Pem, not paid). Delivered works, or works
+  no longer at the gallery, still come back to Pem « Disponible ».

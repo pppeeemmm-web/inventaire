@@ -68,6 +68,7 @@ import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
 import { useConfirmStep } from '@/hooks/useConfirmStep'
 import { findOrderForWork, type ProcessOrderLink, type WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
+import type { WorkSaleMoney } from '@/lib/sales/work-paid'
 
 const WORK_CARD_VIEW_KEY = 'pem.workCard.view'
 
@@ -221,7 +222,7 @@ export function DrawerContent({
 
   // ── Order modal (« Don… », « Dépôt… », « Prêt… », « Vendu… » → a draft order, R7) ──
   const [orderModalKind, setOrderModalKind] = useState<WorkOrderKind | null>(null)
-  const [orderLink, setOrderLink] = useState<(ProcessOrderLink & { party: string }) | null>(null)
+  const [orderLink, setOrderLink] = useState<(ProcessOrderLink & { party: string; sale: WorkSaleMoney | null }) | null>(null)
   useEffect(() => {
     let live = true
     setOrderLink(null)
@@ -1869,6 +1870,7 @@ export function DrawerContent({
             paymentDone={paymentDone}
             setPaymentDone={setPaymentDone}
             ownStage={ownStage}
+            saleMoney={orderLink?.sale ?? null}
           />
           {isAdmin ? (
             <details style={{ marginTop: 4 }}>

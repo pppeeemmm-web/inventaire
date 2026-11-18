@@ -46,7 +46,7 @@ interface Props {
 
 // Tri-state for boolean fields: null = unchanged, true/false = set
 type Tri = null | boolean
-type Flag = { key: string; label: string; value: Tri; set: (v: Tri) => void; testId?: string; adminOnly: boolean }
+type Flag = { key: string; label: string; value: Tri; set: (v: Tri) => void; testId?: string; adminOnly: boolean; help?: string }
 
 const GOLD_TINT = 'color-mix(in srgb, var(--ac) 7%, transparent)'
 
@@ -190,7 +190,7 @@ export function BatchEditModal({
   const flags: Flag[] = [
     { key: 'framed',     label: t('framed'),     value: encadree,     set: setEncadree,     adminOnly: true },
     { key: 'montee',     label: t('montee'),     value: montee,       set: setMontee,       adminOnly: true },
-    { key: 'paid',       label: t('paid'),       value: isPaid,       set: setIsPaid,       adminOnly: true },
+    { key: 'paid',       label: t('paid'),       value: isPaid,       set: setIsPaid,       adminOnly: true, help: t('batch_paid_help') },
     { key: 'commission', label: t('commission'), value: isCommission, set: setIsCommission, adminOnly: true },
     { key: 'catalogued', label: t('catalogued'), value: catalogued,   set: setCatalogued,   adminOnly: true },
     { key: 'exposable',  label: t('exposable'),  value: exposable,    set: setExposable,    adminOnly: true },
@@ -409,6 +409,10 @@ export function BatchEditModal({
             <button type="button" role="radio" aria-checked={f.value === null} aria-label="—" onClick={() => f.set(null)} style={seg(f.value === null, true)}>—</button>
             <button type="button" role="radio" aria-checked={f.value === true} onClick={() => f.set(true)} style={seg(f.value === true, false)}>{t('yes')}</button>
             <button type="button" role="radio" aria-checked={f.value === false} onClick={() => f.set(false)} style={seg(f.value === false, false)}>{t('no')}</button>
+            {/* Shown once the flag is set: what setting it by hand means (« Payé » follows the sale's payments). */}
+            {changed && f.help ? (
+              <span style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--tx3)', padding: '0 0 6px' }}>{f.help}</span>
+            ) : null}
           </div>
         )
       })}

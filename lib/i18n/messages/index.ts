@@ -44,6 +44,8 @@ import { kaizenMessages } from './kaizen.messages'
 import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { custodyMessages } from './custody.messages'
+import { workPaidMessages } from './work-paid.messages'
+import { orderAddressMessages } from './order-address.messages'
 import { ordersMessages } from './orders.messages'
 import { cascadeMessages } from './cascade.messages'
 import { eventsMessages } from './events.messages'
@@ -111,6 +113,8 @@ export const featureMessages = {
   ...reportsUiMessages,
   ...conditionMessages,
   ...custodyMessages,
+  ...workPaidMessages,
+  ...orderAddressMessages,
   ...ordersMessages,
   ...cascadeMessages,
   ...eventsMessages,

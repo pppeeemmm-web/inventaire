@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation'
 import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 import { WorkLoupeThumb, WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
-import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, markSaleRefunded, recordOrderPayment, returnSaleOrder, updateOrderLineValue, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, listPartyAddresses, makeOrderPaper, markSaleRefunded, recordOrderPayment, returnSaleOrder, setOrderAddress, updateOrderLineValue, type PartyAddress, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
 import { sharePaperFile } from '@/lib/orders/share-paper-client'
 import { returnDaysLeft, returnLastDay, saleMoneyState } from '@/lib/sales/sale-money'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
@@ -446,6 +446,7 @@ export function Orders({ openWork, contacts }: Props) {
           </div>
           <div style={{ fontSize: 14, color: 'var(--tx2)', marginTop: 6, overflowWrap: 'anywhere' }}>{o.party_name}</div>
           {o.party_place && <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{o.party_place}</div>}
+          <OrderAddressLine key={o.id} o={o} narrow={narrow} onSaved={load} />
           {o.reconstituted && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_reconstituted_hint')}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
             {o.works.map((w) => {
@@ -877,6 +878,52 @@ export function Orders({ openWork, contacts }: Props) {
 
 /** Drop `?new=…` once the form is done, so a reload does not open it again. Not at mount: the
  *  router reacts to the URL change and aborts the server actions still in flight. */
+/**
+ * The address the works go to (TODO 9). Set: its label · city. Not set on a running order whose party
+ * has addresses (an exhibition send, a phone sale): pick one here — `setOrderAddress`.
+ */
+function OrderAddressLine({ o, narrow, onSaved }: { o: WorkOrderView; narrow: boolean; onSaved: () => Promise<void> }) {
+  const { t } = useI18n()
+  const [list, setList] = useState<PartyAddress[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const canPick = !o.address_label && !o.reconstituted && o.address_count > 0 && !FINISHED.has(o.status)
+  useEffect(() => {
+    if (!canPick) return
+    let live = true
+    void listPartyAddresses(o.party_id).then((l) => { if (live) setList(l) })
+    return () => { live = false }
+  }, [canPick, o.party_id])
+  if (o.address_label) {
+    return <div data-testid="order-address" style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('ord_addr_line').replace('{label}', o.address_label)}</div>
+  }
+  if (!canPick) return null
+  async function pick(raw: string) {
+    const id = Number(raw)
+    if (!Number.isInteger(id) || id <= 0) return
+    setBusy(true); setErr(null)
+    try {
+      const res = await setOrderAddress(o.id, id)
+      if ('error' in res) { setErr(orderErrorText(res.error, t)); return }
+      await onSaved()
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div data-testid="order-address-pick" style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, maxWidth: 360 }}>
+      <select className="input" value="" disabled={busy || !list} onChange={(e) => void pick(e.target.value)}
+        aria-label={t('custody_address')} style={{ minHeight: narrow ? 44 : 30, fontSize: 12 }}>
+        <option value="">{t('ord_addr_pick')}</option>
+        {(list ?? []).map((a) => (
+          <option key={a.id} value={a.id}>{[a.label, a.ville].filter(Boolean).join(' · ') || `#${a.id}`}</option>
+        ))}
+      </select>
+      <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{err ?? t('ord_addr_pick_hint')}</span>
+    </div>
+  )
+}
+
 function clearUrlIntent() {
   if (new URLSearchParams(window.location.search).has('new')) window.history.replaceState(null, '', window.location.pathname)
 }

@@ -15,8 +15,9 @@ import { ORDER_KEY_PREFIX, VAULT_ORDER_FOLDERS } from '@/lib/vault/folder-routin
 import { buildOrderPaper, PAPER_SLUG, PAPER_TITLE, type PaperParty } from '@/lib/orders/order-paper'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
-import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
+import { ENTRUSTED_LIVE, ORDER_FINISHED, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { saleMoneyState } from '@/lib/sales/sale-money'
+import type { WorkSaleMoney } from '@/lib/sales/work-paid'
 import { makeOrderCoas, openShipmentForOrder, syncOrderCalendarQuietly } from '@/app/atelier/(portal)/sales/cascade-actions'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
@@ -78,6 +79,11 @@ export interface WorkOrderView {
   return_window_skipped: boolean
   /** Sale: `'emportee'` = paid and taken away at the studio, « Livrée » follows the full payment (Pem 2026-11-18). */
   shipping_method: string | null
+  /** The custodian's / buyer's address the works go to (`contact_addresses`), and its label · city. */
+  address_id: number | null
+  address_label: string | null
+  /** How many addresses the party has: with several and none set, the order lets one be picked. */
+  address_count: number
   works: WorkOrderLineView[]
   papers: WorkOrderPaperView[]
   /** Money received (sale), newest first; counted in Revenue & expenses. */
@@ -99,7 +105,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const { data: orders, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped, shipping_method')
+    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped, shipping_method, address_id')
     .order('created_at', { ascending: false })
   if (error) return { error: error.message }
   if (!orders || orders.length === 0) return { ok: true, orders: [] }
@@ -107,11 +113,12 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const orderIds = orders.map((o) => o.id)
   const partyIds = [...new Set(orders.map((o) => o.party_id))]
 
-  const [linesRes, partiesRes, papersRes, paymentsRes] = await Promise.all([
+  const [linesRes, partiesRes, papersRes, paymentsRes, addrRes] = await Promise.all([
     supabase.from('work_order_work').select('order_id, oeuvre_id, line_status, position, price, insurance_value').in('order_id', orderIds),
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', partyIds),
     supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', orderIds),
     supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', orderIds).order('payment_date', { ascending: false }),
+    supabase.from('contact_addresses').select('id, contact_id, label, ville').in('contact_id', partyIds),
   ])
   if (linesRes.error) return { error: linesRes.error.message }
   if (partiesRes.error) return { error: partiesRes.error.message }
@@ -127,6 +134,12 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   if (worksRes.error) return { error: worksRes.error.message }
 
   const workById = new Map((worksRes.data ?? []).map((w) => [w.OeuvreID, w]))
+  // Addresses are a nicety: without them the order just shows no address line.
+  const addrs = addrRes.data ?? []
+  const addrLabel = (id: number | null) => {
+    const a = id == null ? null : addrs.find((x) => x.id === id)
+    return a ? [a.label, a.ville].filter(Boolean).join(' · ') || null : null
+  }
   const partyById = new Map((partiesRes.data ?? []).map((c) => [c.ContactID, c]))
 
   const view: WorkOrderView[] = orders.map((o) => {
@@ -158,6 +171,8 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       papers,
       payments,
       paid_total: payments.reduce((sum, p) => sum + p.amount, 0),
+      address_label: addrLabel(o.address_id),
+      address_count: addrs.filter((a) => a.contact_id === o.party_id).length,
       refunded_at: refunded.get(o.id) ?? null,
     }
   })
@@ -444,6 +459,42 @@ export async function updateOrderLineValue(orderId: string, oeuvreId: number, ra
   return { ok: true, paperRedone }
 }
 
+/**
+ * The custodian's address on an order (TODO 9, docs/WORK_CUSTODY_MODEL.md). Orders made from an
+ * exhibition or the phone sale carry no address when the party has several; this sets it while the
+ * order runs. Works already held by the party with no address get it too (address only — status,
+ * owner and custodian are left as they are). A draft's paper is made again with it.
+ */
+export async function setOrderAddress(orderId: string, addressId: number): Promise<SimpleOrderResult> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { supabase } = g
+  if (!UUID_RE.test(orderId) || !Number.isInteger(addressId)) return { error: 'ord_err_address' }
+
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, party_id, address_id, ref').eq('id', orderId).single()
+  if (error || !o) return { error: error?.message ?? 'Order not found' }
+  if ((ORDER_FINISHED as readonly string[]).includes(o.status)) return { error: 'ord_err_step' }
+  const { data: addr } = await supabase.from('contact_addresses').select('contact_id').eq('id', addressId).maybeSingle()
+  if (!addr || addr.contact_id !== o.party_id) return { error: 'ord_err_address' }
+
+  const { error: upErr } = await supabase.from('work_order').update({ address_id: addressId }).eq('id', o.id)
+  if (upErr) return { error: upErr.message }
+  const { data: lines } = await supabase.from('work_order_work').select('oeuvre_id').eq('order_id', o.id).eq('line_status', 'active')
+  const ids = (lines ?? []).map((l) => l.oeuvre_id)
+  if (ids.length) {
+    const { error: wErr } = await supabase.from('Oeuvres').update({ localisation_address_id: addressId })
+      .in('OeuvreID', ids).eq('LocalisationID', o.party_id).is('localisation_address_id', null)
+    if (wErr) await logError('Order address not copied to its works', wErr.message, { source: 'orders.setOrderAddress', metadata: { orderId: o.id } })
+  }
+  await logSystemEvent({ eventType: 'LOCATION_MOVE', tableName: 'work_order', rowId: o.id, oldValue: o.address_id, newValue: addressId, metadata: { ref: o.ref, kind: o.kind } })
+  if (o.status === 'draft') {
+    const paper = await makeOrderPaper(o.id)
+    if ('error' in paper) await logError('Draft paper not remade after an address change', paper.error, { source: 'orders.setOrderAddress', metadata: { orderId: o.id, ref: o.ref } })
+  }
+  revalidatePath('/atelier/sales')
+  return { ok: true }
+}
+
 /** A work « Confié » (entrusted) and out at the craftsperson's — for the Production board (read only). */
 export type EntrustedOutWork = { oeuvre_id: number; title: string | null; image: string | null; order_id: string; ref: string | null; party: string; since: string | null }
 
@@ -552,7 +603,8 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   if (order.kind === 'sale' && to === 'signed') {
     moveErr = await moveWorks(supabase, ids, { statusId: 4, AcheteurID: party })
   } else if (order.kind === 'sale' && to === 'paid') {
-    moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party })
+    // « Payé » follows the payments (TODO 10): all of the price received → paid; the card can still override.
+    moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party, is_paid: true })
   } else if (order.kind === 'sale' && to === 'delivered') {
     moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id })
   } else if (order.kind === 'gift' && to === 'handed_over') {
@@ -659,7 +711,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
     for (const w of reserved ?? []) {
       // Back to « Disponible » at Pem's, or « Consigné » if it is still at a gallery that holds it.
       const atGallery = w.LocalisationID != null && w.LocalisationID !== PEM
-      const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null })
+      const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null, is_paid: false })
       if (err) return { error: err }
     }
   }
@@ -819,32 +871,112 @@ export async function fetchSaleOrdersForReport(): Promise<ReportSaleOrder[]> {
 }
 
 /** The order a work is on (the open one first, else the latest finished one) — the work card's
- *  stage chips link to it. Cancelled orders and lines that left the order are skipped. */
-export async function findOrderForWork(oeuvreId: number): Promise<(ProcessOrderLink & { party: string }) | null> {
+ *  stage chips link to it. Cancelled orders and lines that left the order are skipped.
+ *  `sale`: the work's sale order (not draft) and the money received on it — the card says whether
+ *  « Paiement reçu » follows those payments or was set by hand (TODO 10, lib/sales/work-paid.ts). */
+export async function findOrderForWork(oeuvreId: number): Promise<(ProcessOrderLink & { party: string; sale: WorkSaleMoney | null }) | null> {
   const g = await guardTeam()
   if ('error' in g || !Number.isInteger(oeuvreId)) return null
+  type Row = { id: string; ref: string | null; kind: string; status: string; created_at: string; party_id: number; price_final: number | null }
   const { data } = await g.supabase
     .from('work_order_work')
-    .select('line_status, work_order!work_order_work_order_id_fkey(id, ref, kind, status, created_at, party_id)')
+    .select('line_status, work_order!work_order_work_order_id_fkey(id, ref, kind, status, created_at, party_id, price_final)')
     .eq('oeuvre_id', oeuvreId)
   const orders = (data ?? [])
     .filter((l) => l.line_status === 'active' || l.line_status === 'sold' || l.line_status === 'given')
-    .map((l) => l.work_order as unknown as { id: string; ref: string | null; kind: string; status: string; created_at: string; party_id: number } | null)
-    .filter((o): o is { id: string; ref: string | null; kind: string; status: string; created_at: string; party_id: number } => !!o && o.status !== 'cancelled')
+    .map((l) => l.work_order as unknown as Row | null)
+    .filter((o): o is Row => !!o && o.status !== 'cancelled')
     .sort((a, b) => Number(FINISHED_STATUSES.includes(a.status)) - Number(FINISHED_STATUSES.includes(b.status)) || b.created_at.localeCompare(a.created_at))
   const o = orders[0]
   if (!o) return null
-  const { data: c } = await g.supabase.from('Contact').select('*').eq('ContactID', o.party_id).maybeSingle()
+  const saleRow = orders.find((r) => r.kind === 'sale' && r.status !== 'draft') ?? null
+  const [{ data: c }, payRes] = await Promise.all([
+    g.supabase.from('Contact').select('*').eq('ContactID', o.party_id).maybeSingle(),
+    saleRow
+      ? g.supabase.from('payments').select('amount, refunded_at').eq('work_order_id', saleRow.id)
+      : Promise.resolve({ data: [] as { amount: number; refunded_at: string | null }[] }),
+  ])
   const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
   const party = contact ? (contact.NomInstitution || [contact.Prénom, contact.Nom].filter(Boolean).join(' ').trim()) : `#${o.party_id}`
-  return { id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status, party }
+  const sale: WorkSaleMoney | null = saleRow
+    ? {
+        id: saleRow.id,
+        ref: saleRow.ref,
+        status: saleRow.status,
+        price: saleRow.price_final == null ? null : Number(saleRow.price_final),
+        received: (payRes.data ?? []).filter((p) => !p.refunded_at).reduce((sum, p) => sum + Number(p.amount), 0),
+      }
+    : null
+  return { id: o.id, ref: o.ref, kind: o.kind as WorkOrderKind, status: o.status, party, sale }
 }
 const FINISHED_STATUSES = ['closed', 'delivered', 'handed_over']
+
+type ReopenedDeposits = {
+  /** Work id → kind of the deposit / loan it went back to. */
+  works: Map<number, string>
+  /** Deposit / loan orders touched (for their calendar dates). */
+  orders: Set<string>
+  undo: () => Promise<void>
+}
+
+/**
+ * A returned sale's works that came out of a deposit / loan and are still at that gallery (not
+ * delivered): reopen the line the payment closed « sold » and the deposit if it closed with it.
+ */
+async function reopenDepositsForReturn(supabase: Supa, saleId: string, ids: number[]): Promise<ReopenedDeposits | { error: string }> {
+  const none: ReopenedDeposits = { works: new Map(), orders: new Set(), undo: async () => {} }
+  if (ids.length === 0) return none
+  type Dep = { id: string; kind: string; status: string; party_id: number; returned_at: string | null }
+  const { data: lines, error } = await supabase
+    .from('work_order_work')
+    .select('id, oeuvre_id, closed_at, work_order!work_order_work_order_id_fkey(id, kind, status, party_id, returned_at)')
+    .eq('closed_by_order_id', saleId).eq('line_status', 'sold').in('oeuvre_id', ids)
+  if (error) return { error: error.message }
+  const deps = (lines ?? [])
+    .map((l) => ({ line: l, dep: l.work_order as unknown as Dep | null }))
+    .filter((x): x is { line: typeof x.line; dep: Dep } => !!x.dep && (x.dep.kind === 'consignment' || x.dep.kind === 'loan'))
+  if (deps.length === 0) return none
+  const { data: held } = await supabase.from('Oeuvres').select('OeuvreID, LocalisationID').in('OeuvreID', deps.map((x) => x.line.oeuvre_id))
+  const holder = new Map((held ?? []).map((w) => [w.OeuvreID, w.LocalisationID]))
+  const atGallery = deps.filter((x) => holder.get(x.line.oeuvre_id) === x.dep.party_id)
+  if (atGallery.length === 0) return none
+
+  const lineIds = atGallery.map((x) => x.line.id)
+  const closedDeps = [...new Map(atGallery.filter((x) => x.dep.status === 'closed').map((x) => [x.dep.id, x.dep])).values()]
+  // Put lines and deposits back exactly as the payment left them (dates included).
+  const closeAgain = async (depIds: string[]) => {
+    for (const x of atGallery) {
+      await supabase.from('work_order_work').update({ line_status: 'sold', closed_at: x.line.closed_at, closed_by_order_id: saleId }).eq('id', x.line.id)
+    }
+    for (const id of depIds) {
+      const d = closedDeps.find((c) => c.id === id)
+      await supabase.from('work_order').update({ status: 'closed', returned_at: d?.returned_at ?? null }).eq('id', id)
+    }
+  }
+  const { error: lineErr } = await supabase.from('work_order_work')
+    .update({ line_status: 'active', closed_at: null, closed_by_order_id: null }).in('id', lineIds)
+  if (lineErr) return { error: lineErr.message }
+  const reopenedIds: string[] = []
+  for (const d of closedDeps) {
+    const { error: depErr } = await supabase.from('work_order').update({ status: 'out', returned_at: null }).eq('id', d.id)
+    if (depErr) {
+      await closeAgain(reopenedIds)
+      return { error: depErr.message }
+    }
+    reopenedIds.push(d.id)
+  }
+  return {
+    works: new Map(atGallery.map((x) => [x.line.oeuvre_id, x.dep.kind])),
+    orders: new Set(atGallery.map((x) => x.dep.id)),
+    undo: () => closeAgain(reopenedIds),
+  }
+}
 
 // ── Return within the 14-day period (house rule, LEGAL_POLICY decision 6) ─────────────────────
 // « Retour » on a paid sale (before delivery) or a delivered one still inside its period: the sale
 // is cancelled (returned_at stamped, so it reads « Retournée »), the works go back to Pem
 // (« Disponible », owner and holder Pem, history lines) and what was paid shows « à rembourser ».
+// A work sold out of a deposit and still at the gallery goes back to that deposit instead (« Consigné »).
 // The app moves no money.
 
 export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResult> {
@@ -875,12 +1007,36 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).in('statusId', [4, 6]).eq('ContactID', o.party_id)
   const { data: reserved } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('statusId', 4).eq('AcheteurID', o.party_id)
   const back = [...new Set([...(still ?? []), ...(reserved ?? [])].map((w) => w.OeuvreID))]
-  const moveErr = await moveWorks(supabase, back,
-    { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null })
-  if (moveErr) {
+
+  // Sold out of a deposit / loan and not delivered: the gallery still holds it (TODO 9, Pem 2026-11-18).
+  // At payment the database closed its deposit line « sold » (work_order_after_step) and maybe the
+  // deposit itself; both reopen and the work goes back to « Consigné » / « Prêt » at the gallery.
+  const reopened = await reopenDepositsForReturn(supabase, o.id, back)
+  if ('error' in reopened) {
     await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
+    return { error: reopened.error }
+  }
+  const toPem = back.filter((id) => !reopened.works.has(id))
+  const moved: number[] = []
+  let moveErr: string | null = null
+  for (const statusId of [7, 8] as const) {
+    const group = [...reopened.works].filter(([, kind]) => (kind === 'loan' ? 8 : 7) === statusId).map(([id]) => id)
+    moveErr = await moveWorks(supabase, group, { statusId, ContactID: PEM, AcheteurID: null, is_paid: false })
+    if (moveErr) break
+    moved.push(...group)
+  }
+  if (!moveErr) {
+    moveErr = await moveWorks(supabase, toPem,
+      { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null, is_paid: false })
+  }
+  if (moveErr) {
+    // Undo in the order the database checks allow: the sale is paid again, its works sold again, then the deposit closes.
+    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
+    await moveWorks(supabase, moved, { statusId: 6, ContactID: o.party_id, AcheteurID: o.party_id, is_paid: true })
+    await reopened.undo()
     return { error: moveErr }
   }
+  for (const depId of reopened.orders) await syncOrderCalendarQuietly(depId)
   if (ids.length) {
     await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
       .eq('order_id', o.id).eq('line_status', 'active')
