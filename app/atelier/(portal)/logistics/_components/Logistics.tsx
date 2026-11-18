@@ -31,7 +31,7 @@ export function Logistics(_props: Props) {
   useEffect(() => { void load() }, [load])
 
   return (
-    <div style={{ padding: narrow ? '12px 12px 80px' : '20px 24px', maxWidth: 980 }}>
+    <div data-testid="atelier-logistics-root" style={{ padding: narrow ? '12px 12px 80px' : '20px 24px', maxWidth: 980 }}>
       <div className="t-label">{t('logistics')}</div>
       <div style={{ fontSize: 13, color: 'var(--tx3)', margin: '4px 0 14px' }}>{t('cas_logistics_intro')}</div>
       {rows == null && !error && <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('loading')}</div>}

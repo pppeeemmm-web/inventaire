@@ -16,7 +16,8 @@ test.describe('Atelier Logistics tab', () => {
     await expect(root).toBeVisible({ timeout: 45_000 })
     await expect(root.getByText('Logistique', { exact: true })).toBeVisible()
     await expect(
-      root.getByText(/mouvements à venir|Aucun mouvement enregistré/),
+      // R7b (2026-11-18): shipment cards; the intro line is always there.
+      root.getByText(/Chaque envoi part d’une ou plusieurs commandes/),
     ).toBeVisible()
   })
 })
