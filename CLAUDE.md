@@ -29,6 +29,7 @@ Repo guide. Conflict → ask owner before edit. Area rules live next to their co
 ## Commands
 - Dev: `npm run dev` (refuses a taken port — reuse that server; `-- --force` only for your own stale one; honors `PORT`) or `pwsh scripts/dev.ps1` (prints the phone LAN URL). `/_next/static/*` 404 → restart from the real root, delete `.next`, hard reload.
 - E2E: `npm run test:e2e`; field / mobile: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
+- Live data checks: `npm run checks:live` (read only; also before every push in `ship.ps1`, warn only). Scripted chains on the throwaway Docker copy: on demand, `scripts/stress/README.md`.
 - Verify by tier: docs-only → diff + status; UI/copy → `i18n:check` + `lint` (+ field e2e for phone chrome); types / data → `typecheck` + `lint` (+ focused Playwright); SQL → see `supabase/CLAUDE.md`. Hooks don't replace looking at the result.
 
 ## Architecture

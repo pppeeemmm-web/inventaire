@@ -9,7 +9,7 @@
 |-----|----------|----------|
 | [`../SITE_MAP.md`](../SITE_MAP.md) | Every route and tab, the API route handlers — enforced by `npm run docs:routes:check` | 2026-11-18 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-18 (triggers, §7 re-read live; orders, share kit) |
-| [`WORK_RULES.md`](./WORK_RULES.md) | **Work rulebook** — Pem's rules on a work's state, where each is enforced, who writes it, live breaks, what is next (batch 1 applied) | 2026-11-17 |
+| [`WORK_RULES.md`](./WORK_RULES.md) | **Work rulebook** — Pem's rules on a work's state, where each is enforced, who writes it, live breaks, what is next (batch 1 applied) | 2026-11-18 (push check via `checks:live`) |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`POLICY_NOTES.md`](./POLICY_NOTES.md) | Running list of small policy points to settle (delivery, returns, insurance, fate, COA, files) — each says where it will be written and who confirms | 2026-11-18 |
 | [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
