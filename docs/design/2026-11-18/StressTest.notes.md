@@ -170,6 +170,71 @@ select s.id, s.status, s.to_contact_id from shipment s
 ```
 The app now ignores them; cancelling them in the data would be an SQL write — Pem's separate OK.
 
+## TODO §4 on the copy (2026-11-18 evening, Pem « test whatever is in the todo.md … »)
+
+Copy brought to main `6f43117`; its schema re-diffed read-only against production (tables / columns / functions / triggers /
+policies): identical after copying production's two guard functions and `system_log_team_only.sql`. Production build of the
+worktree on the copy, built-in browser pane (hidden → viewport emulated 1280 × 800 / 375 × 812, page `requestAnimationFrame`
+shimmed, `confirm()` auto-yes), fake admin and fake team accounts. Where the pane can't act (microphone, file picker, HTML
+drag-and-drop, Shift on its own drags) the same server action or DOM event was used and it says so. Running notes:
+`scripts/stress/dump/todo4-notes.md`; screenshots `docs/design/2026-11-18/todo4-shots/`. Nothing fixed.
+
+| Item | Result |
+|---|---|
+| Order guards (double « Encaisser », two tabs) | passed earlier today (races-plus 14/14) |
+| Collector share kit: make + PDF, phone, enquiry → Triage chip, PDF download, Prolonger / Retirer | **passed** (1 look issue) |
+| Phone navigation as admin: Fil tile + count, « Actions » rows, « Écrire » | **passed** (copy slips) |
+| First order through the chain: signed → shipment, paid → certificate, invoice, first payment | **passed** (1 bug, 1 look issue) |
+| First supply order: Recevoir → stock / cost / supplier; expense + invoice file | **passed** |
+| « Partager » an order paper on the computer; line value on a draft | **passed** (download) — phone share sheet skipped (iPhone) |
+| « #équipe » voice note on the team's Aujourd'hui + What's new dots | **passed** — recording skipped (no microphone; note made through `createVoiceNote`) |
+| First sale through « Soldée »: « Payé » ticks itself; « Retour » out of a deposit → « Consigné »; « Choisir l'adresse » | **passed** (Retour via the action) |
+| Security rules: image upload + contact address lookup | **passed** (no CSP violation) |
+| « Rappels sans projet » → « En faire une idée » | **passed** (1 confusing point) |
+| Export labels L7163 + L7651, QR | sheets **passed**; QR content **passed**; **QR target FAILED** (opens Vue d'ensemble); real print skipped |
+| Waiting photo + production dates | **passed** (work card shows no waiting photo; « 2 peintures » for one work) |
+| « Historique de création » saved / edited / deleted | **passed** |
+| Small GIFs 40 × 40 + round, at 375 | **passed** |
+| Journal ✦ suggestions: hover preview + loupe | **passed** (seeded 1 suggestion; « ✦ ✦ » slip) |
+| Constellation: undo a link delete, Shift+drag, arrow tool, arrow on a typed link | Shift+drag + arrow tool **passed**; typed link saved; its arrow + undo of a link delete **not checked** (canvas, needs Pem's eye) |
+| Slideshow: GIF of 20+ works, « Renommer », full loop | **passed** — full screen + swipe skipped (iPhone) |
+| Batch modify, export, print 300 dpi, Local jobs, Production drag-back, contact from the pop-up | **passed** (pop-up look issue); physical print skipped; « Lancer sur ce PC » not clicked (worker reads the real keys) |
+| Field capture: technique / support written, remove an applied photo | **passed** (actions; no camera) |
+| Search after « Commentaires » (embed worker), speed on the live site | not in this list (PC worker / live site) |
+
+**Bugs (proposed fix — Pem decides)**
+1. **A label QR / « Copier le lien » does not open the work.** `/atelier/works/<id>` → `/atelier?work=<id>` → `app/atelier/page.tsx`
+   ends with `redirect('/atelier/overview')` and drops `?work=`; seen: Vue d'ensemble, no work. `/atelier/overview?work=<id>` opens
+   it. Fix: keep the query on that last redirect, as the two branches above it do.
+2. **« Se déconnecter » signs the user out everywhere.** `components/shared/AccountActions.tsx` calls `signOut()` (Supabase default
+   scope `global`); seen: signing the admin out in one tab ended the admin's other sessions. Fix: `signOut({ scope: 'local' })`, or
+   say « partout » on the button if that is wanted.
+3. **A desktop scroll changes a payment amount.** With the amount focused, scrolling the order panel turned 300 € into 299 €
+   (`input type=number` + wheel) — shot 01. Fix: blur number inputs on wheel (or `type=text inputmode=decimal`), at least for money.
+4. **Kit enquiry checkboxes unreadable in dark mode** (`color-scheme: dark` on a light page: unticked = solid dark square) — shot 03;
+   same for the slideshow panel and the audio player. Fix: `color-scheme: light` on the kit page / light panels.
+5. **Contact pop-up after « Enregistrer »:** stays open, no toast; at 1280 × 800 the form is a short strip with the buttons
+   mid-height — shot 07.
+
+**Look / copy / confusing (smaller)**
+- Order panel clips « Émettre une facture pour 4 commandes… » and « Retrait (atelier ou événement) » at 1280 — shot 02.
+- Inventory title column (panel open) and Production cards cut titles to 2–3 letters at 1280 — shot 04.
+- Phone: a live selection keeps its floating bar over every page and over the bottom bar — shot 06; the « Écrit enregistré » toast
+  covers the bottom bar.
+- « 1 entrées · 1 notes », « 1 suggestions à revoir » (singular), Journal « ✦ ✦ Suggestions IA », its left button overflows — shot 08.
+- New sale form ticks « Emportée aujourd'hui » by default.
+- « Rappels sans projet » is filled with the automatic « Fin du délai de retour — vente … » reminders (one per delivered sale),
+  each offering « En faire une idée »; the row says « 19 nov. », not « Demain ».
+- Supply orders list « Reçue 0 / 2 » for a partly received order; a new line's « Prix HT » is not pre-filled.
+- Phone ☰ menu has no What's new dots (desktop sidebar has 10); « Logistique 34 en route » counts boxes not yet on the road;
+  team Overview shows « Rappels 0 » next to « Rappels 40 ».
+- The Journal day counts « 2 peintures » when a session and its item are the same work; the work card says nothing of a waiting photo.
+- Every labels file is `etiquettes_<date>`: two sheets the same day overwrite each other in Downloads.
+
+**Harness notes:** a stale service worker on `localhost:3077` (from an earlier build) made every request of a page fail until
+unregistered — worth checking that an old `sw.js` on the live domain can never block pages. The fake image server now listens on
+IPv6 too; the test scripts' Flight parser reads large text chunks (labels / PDFs).
+
 ## Proposals, ranked
 
 1. **Guard the money in the database (B1, B2, B3).** A unique partial index or trigger: at most one live sale line (signed → delivered) per work; `recordOrderPayment` and `receive_supply_order` as one SQL function each that locks the order row (`for update`), checks the remaining amount / quantity and writes step + payment together; disable the button while the call runs.

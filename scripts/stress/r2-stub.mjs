@@ -77,5 +77,5 @@ http.createServer((req, res) => {
   if (req.url === '/__stats') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(stats)); }
   let file; try { file = fileOf(`/paintings${req.url}`); } catch { res.writeHead(400); return res.end(); }
   serveGet(req, res, file);
-}).listen(9444, '127.0.0.1');
+}).listen({ port: 9444, host: '::', ipv6Only: false }); // localhost may resolve to ::1 in the browser
 console.log(`[r2-stub] https://localhost:9443 (S3)  http://localhost:9444 (public)  → ${root}`);

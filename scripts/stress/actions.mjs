@@ -81,17 +81,39 @@ function encode(args) {
 }
 
 function parseFlight(text) {
-  // Lines "<hex id>:<json>"; the root (0) says which chunk holds the action's return value ("a":"$@1").
+  // Rows "<hex id>:<json>" + newline, or "<hex id>:T<hex byte length>,<raw text>" (large strings). The root (0)
+  // says which chunk holds the action's return value ("a":"$@1"); "$<id>" inside values points at another chunk.
+  const buf = Buffer.from(text, 'utf8');
   const chunks = new Map();
-  for (const line of text.split('\n')) {
-    const m = /^([0-9a-f]+):(.*)$/.exec(line);
-    if (!m) continue;
-    try { chunks.set(m[1], JSON.parse(m[2])); } catch { chunks.set(m[1], m[2]); }
+  let i = 0;
+  while (i < buf.length) {
+    const colon = buf.indexOf(0x3a, i);
+    if (colon < 0) break;
+    const id = buf.subarray(i, colon).toString('latin1');
+    if (!/^[0-9a-f]+$/.test(id)) { const nl = buf.indexOf(0x0a, i); if (nl < 0) break; i = nl + 1; continue; }
+    if (buf[colon + 1] === 0x54) { // 'T'
+      const comma = buf.indexOf(0x2c, colon);
+      const len = parseInt(buf.subarray(colon + 2, comma).toString('latin1'), 16);
+      chunks.set(id, buf.subarray(comma + 1, comma + 1 + len).toString('utf8'));
+      i = comma + 1 + len;
+    } else {
+      const nl = buf.indexOf(0x0a, colon);
+      const raw = buf.subarray(colon + 1, nl < 0 ? buf.length : nl).toString('utf8');
+      try { chunks.set(id, JSON.parse(raw)); } catch { chunks.set(id, raw); }
+      i = nl < 0 ? buf.length : nl + 1;
+    }
   }
+  const resolve = (v, depth = 0) => {
+    if (depth > 20) return v;
+    if (typeof v === 'string' && /^\$[0-9a-f]+$/.test(v) && chunks.has(v.slice(1))) return resolve(chunks.get(v.slice(1)), depth + 1);
+    if (Array.isArray(v)) return v.map((x) => resolve(x, depth + 1));
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, resolve(x, depth + 1)]));
+    return v;
+  };
   const r = chunks.get('0');
   const ref = r && typeof r.a === 'string' && r.a.startsWith('$@') ? r.a.slice(2) : null;
   const v = ref ? chunks.get(ref) : r?.a;
-  return v === '$undefined' ? undefined : v;
+  return v === '$undefined' ? undefined : resolve(v);
 }
 
 /** Run one action. Returns { ok, ms, status, result, raw } — never throws on an app error. */
