@@ -29,4 +29,21 @@ export const auditMessages = defineMessages({
     fr: 'Sélectionner l’entrée {id}',
     en: 'Select entry {id}',
   },
+  // Audit « Corbeille » — the works bin (Oeuvres.deleted_at), admin only.
+  bin_tab: { fr: 'Corbeille', en: 'Bin' },
+  bin_title: { fr: 'Corbeille des œuvres', en: 'Works bin' },
+  bin_intro: {
+    fr: 'Les œuvres mises à la corbeille, la plus récente en haut. « Restaurer » les remet dans les listes ; « Supprimer définitivement » efface la fiche.',
+    en: 'Works moved to the bin, newest first. « Restore » puts them back in the lists; « Delete permanently » erases the record.',
+  },
+  bin_empty: { fr: 'La corbeille est vide.', en: 'The bin is empty.' },
+  bin_loading: { fr: 'Chargement de la corbeille…', en: 'Loading the bin…' },
+  bin_load_error: { fr: 'La corbeille n’a pas pu se charger.', en: 'The bin could not load.' },
+  bin_admin_only: { fr: 'Réservé à l’administrateur.', en: 'Admin only.' },
+  bin_untitled: { fr: 'Sans titre', en: 'Untitled' },
+  bin_deleted_on: { fr: 'Mise à la corbeille le {date}', en: 'Moved to the bin on {date}' },
+  bin_restore: { fr: 'Restaurer', en: 'Restore' },
+  bin_restored: { fr: 'Œuvre #{id} restaurée : de retour dans les listes.', en: 'Work #{id} restored: back in the lists.' },
+  bin_purge: { fr: 'Supprimer définitivement', en: 'Delete permanently' },
+  bin_purge_title: { fr: 'Supprimer définitivement ?', en: 'Delete permanently?' },
 })

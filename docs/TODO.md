@@ -4,6 +4,19 @@ _Open work only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). 
 
 Item numbers stay fixed (other docs point to them). A closed item moves to [DONE](./DONE.md) the same day; `git log origin/main..` shows what is committed but not pushed.
 
+## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
+
+- 🔎 §0 Contacts: refuse deleting a contact still linked to works / orders (no address loss) + « Privé » code side — built; lead reviewing (flow review running)
+- ⏳ §0 « Privé » SQL (`supabase/sql/contact_private_rls.sql`, not applied): 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 of them own / hold / bought works; 1 is a team member) — Pem reviews that list first, then OK
+- 🔧 §0 Approvals apply only the fields the proposal changed, and warn when someone edited them since — review found one gap (a field changed between opening and saving the card); agent fixing it
+- 🔎 §3 Website legal pages, part 1 (visitor ID 13 months, no Vercel Analytics, « don't count me », own fonts + QR) — built; lead reviewing (flow review running)
+- ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
+- 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
+- 🔎 §3 Small slips (supply « Reçue 0 / 2 », phone ☰ dots, « en route » count, Rappels 0 / 40, « 2 peintures », waiting photo) — built; lead reviewing (flow review running)
+- 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
+- ⏳ §3 Contacts review phases 1 + 2 (Pem « yes, all recommended ») — starts when the contacts fix lands ([note](./design/2026-11-18/ContactsReview.notes.md))
+- ✅ committed, waiting for the push: Bureau IA + PC agent (`26c2e23`)
+
 ## 0. Bugs — fix now
 
 - [ ] Contacts: deleting a contact that owns or holds a work removes its addresses, then fails on the work link — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message before touching anything. Not reproduced.
@@ -31,8 +44,8 @@ Leftovers are in §3, R8 in §5.
 ## 3. To build — needs a GO
 
 Admin
-- [ ] A rejection reason is stored (`pending_changes.reject_reason`) but never shown to the proposal's author.
-- [ ] The works bin has no screen: a trashed work can only be restored by the few-second « Undo ».
+- [ ] Any team member can restore any work from the bin (`restoreSoftDeletedWorks`), even a sold or given one an admin binned: gate it like the delete.
+- [ ] Merging contacts fails half-way when the removed contact has an invoice or a supply order (`mergeContacts` never moves `invoice.party_id` / `supply_order.supplier_id`; no transaction); it also drops its event links.
 
 Contacts and Vault
 - [ ] Contacts tab review (design first): sort by family name everywhere; family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is not refreshed by Contacts edit / merge / delete (Inventory, work overlay, Curation dock, Compare stay stale until reload); one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).

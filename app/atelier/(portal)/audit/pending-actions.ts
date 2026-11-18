@@ -8,6 +8,7 @@ import {
   filterPendingImageAddPayload,
   formDataFromPendingPayload,
   resolvePendingChangeKind,
+  diffPendingPayload,
   PENDING_FORM_KEY_TO_COLUMN,
   PENDING_REF_KEYS,
   type PendingChangeKind,
@@ -176,6 +177,81 @@ export async function listPendingChanges(): Promise<PendingChange[]> {
       ref_labels,
     }
   })
+}
+
+/** A team member's own proposal and what Pem did with it (Overview « Pour vous »). */
+export type MyProposal = {
+  id: number
+  kind: PendingChangeKind
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string
+  reviewedAt: string | null
+  /** Rejected: the reason Pem wrote (null = none given; a Fil discard gives none). */
+  reason: string | null
+  work: { id: number; title: string | null } | null
+  /** New work: the title it was sent with. */
+  title: string | null
+  /** Edit: how many fields it changes. */
+  fields: number
+}
+
+/**
+ * The reader's own proposals, newest first — pending, approved and rejected (with the reason).
+ * RLS `pending_changes_select` lets an author read their own rows; the explicit `author_id` filter
+ * keeps an admin (who reads every row) to their own, as everywhere in « Pour vous ».
+ */
+export async function listMyProposals(limit = 60): Promise<{ proposals: MyProposal[] } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data, error } = await supabase
+    .from('pending_changes')
+    .select('id, oeuvre_id, change_kind, payload, baseline, status, created_at, reviewed_at, reject_reason')
+    .eq('author_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(Math.min(200, Math.max(1, limit)))
+  if (error) {
+    console.error('[pending] my proposals', error.message)
+    return { error: error.message }
+  }
+  const rows = data ?? []
+  const ids = [...new Set(rows.map((r) => r.oeuvre_id).filter((x): x is number => typeof x === 'number'))]
+  const { data: works } = ids.length
+    ? await supabase.from('Oeuvres').select('OeuvreID, Titre').in('OeuvreID', ids)
+    : { data: [] as Array<{ OeuvreID: number; Titre: string | null }> }
+  const titleOf = new Map((works ?? []).map((w) => [w.OeuvreID, w.Titre]))
+  // Per row: one odd old payload must not hide every proposal — it still shows, without its details.
+  return {
+    proposals: rows.map((r): MyProposal => {
+      const status = r.status === 'approved' || r.status === 'rejected' ? r.status : 'pending'
+      const base: MyProposal = {
+        id: r.id,
+        kind: r.oeuvre_id == null ? 'create' : 'edit',
+        status,
+        createdAt: r.created_at,
+        reviewedAt: r.reviewed_at,
+        reason: status === 'rejected' ? (r.reject_reason ?? '').trim() || null : null,
+        work: r.oeuvre_id != null ? { id: r.oeuvre_id, title: titleOf.get(r.oeuvre_id) ?? null } : null,
+        title: null,
+        fields: 0,
+      }
+      try {
+        const raw = r.payload
+        const payload = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, string>
+        const kind = resolvePendingChangeKind({ change_kind: r.change_kind as string | null, oeuvre_id: r.oeuvre_id, payload })
+        const titre = typeof payload.titre === 'string' ? payload.titre.trim() : ''
+        return {
+          ...base,
+          kind,
+          title: kind === 'create' ? titre || null : null,
+          fields: kind === 'edit' ? diffPendingPayload(r.baseline as Record<string, unknown> | null, payload).length : 0,
+        }
+      } catch (e) {
+        console.error('[pending] my proposal row', r.id, e instanceof Error ? e.message : e)
+        return base
+      }
+    }),
+  }
 }
 
 export async function approvePendingChange(id: number): Promise<PendingResult> {

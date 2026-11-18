@@ -49,6 +49,7 @@ import { WorkCardIdentity, emptyIdentityLabels } from './WorkCardIdentity'
 import { WorkCreationHistory } from './WorkCreationHistory'
 import { WorkVersionHistory } from '../WorkVersionHistory'
 import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
+import { emitWorksRestored } from '@/lib/atelier/works-restored-bus'
 import { NewContactModal, EMPTY_CONTACT_DRAFT } from './NewContactModal'
 import { UnsavedChangesModal } from './UnsavedChangesModal'
 import { GiftTransferModal } from './GiftTransferModal'
@@ -1319,6 +1320,7 @@ export function DrawerContent({
               toast.error(t('restoreWorkFailed'))
               throw new Error(r.error)
             }
+            emitWorksRestored([oid])
             router.refresh()
           },
         })

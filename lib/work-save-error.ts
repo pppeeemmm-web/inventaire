@@ -34,6 +34,25 @@ const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
   archive_exit_requires_photo: 'err_archive_exit_requires_photo',
 }
 
+/** `purgeWorkPermanently` refusal token `purge_blocked:<table>=<n>,…` → « … figure sur 1 commande, 2 liens du Journal. … » */
+const PURGE_HOLDER_KEYS: Record<string, AnyDictKey> = {
+  work_order_work: 'wc_purge_held_orders',
+  shipment_work: 'wc_purge_held_shipments',
+  journal_entry_link: 'wc_purge_held_journal',
+  insurance_claim: 'wc_purge_held_claims',
+}
+
+export function purgeBlockedMessage(error: string, t: (key: AnyDictKey) => string): string | null {
+  if (!error.startsWith('purge_blocked:')) return null
+  const parts = error
+    .slice('purge_blocked:'.length)
+    .split(',')
+    .map((p) => p.split('='))
+    .filter(([table, n]) => PURGE_HOLDER_KEYS[table] && Number(n) > 0)
+    .map(([table, n]) => t(PURGE_HOLDER_KEYS[table]).replace('{n}', n))
+  return t('wc_purge_blocked').replace('{what}', parts.join(', '))
+}
+
 export function gateErrorKey(error: string): AnyDictKey | null {
   for (const [code, key] of Object.entries(GATE_ERROR_KEYS)) if (error.includes(code)) return key
   return null
@@ -45,6 +64,8 @@ export function workSaveErrorToastMessage(
   t: (key: AnyDictKey) => string,
 ): string {
   if (isWorkSaveI18nError(error)) return t(error)
+  const purge = purgeBlockedMessage(error, t)
+  if (purge) return purge
   const gate = gateErrorKey(error)
   if (gate) return t(gate)
   return `${t('error_prefix')} ${error}`

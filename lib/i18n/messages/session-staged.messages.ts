@@ -15,4 +15,7 @@ export const sessionStagedMessages = defineMessages({
   /** Singular forms for the work card's session list (TODO 1f); plurals stay in the legacy dict. */
   st_shot_one: { fr: 'photo', en: 'photo' },
   st_item_one: { fr: 'entrée', en: 'entry' },
+  /** A rejected session shows Pem's reason (`payload.reject_reason`; « — » = none given). */
+  st_rejected_reason: { fr: 'Motif du refus : {reason}', en: 'Reason for rejection: {reason}' },
+  st_rejected_no_reason: { fr: 'Refusée sans motif.', en: 'Rejected, no reason given.' },
 })

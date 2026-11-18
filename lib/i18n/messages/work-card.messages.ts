@@ -112,6 +112,15 @@ export const workCardMessages = defineMessages({
     en: 'Permanently delete work #{id}? The record, its themes and links will be erased, the pictures go to the R2 recycle bin (90 days). This cannot be undone.',
   },
   wc_purge_done: { fr: 'Œuvre supprimée définitivement.', en: 'Work permanently deleted.' },
+  // purgeWorkPermanently refuses, erasing nothing, while a row still points at the work (lib/work-save-error.ts).
+  wc_purge_blocked: {
+    fr: 'Suppression définitive refusée : l’œuvre figure sur {what}. Rien n’a été effacé.',
+    en: 'Permanent deletion refused: the work is on {what}. Nothing was erased.',
+  },
+  wc_purge_held_orders: { fr: '{n} commande(s)', en: '{n} order(s)' },
+  wc_purge_held_shipments: { fr: '{n} envoi(s)', en: '{n} shipment(s)' },
+  wc_purge_held_journal: { fr: '{n} lien(s) du Journal', en: '{n} Journal link(s)' },
+  wc_purge_held_claims: { fr: '{n} déclaration(s) de sinistre', en: '{n} insurance claim(s)' },
   wc_data_history: { fr: 'Historique des données', en: 'Data history' },
   wc_add_theme: { fr: 'thème', en: 'theme' },
   wc_add_group: { fr: 'groupe', en: 'group' },

@@ -40,8 +40,8 @@ export const noteLinesMessages = defineMessages({
     en: 'Your lines and proposals, and what Pem did with them.',
   },
   my_empty: {
-    fr: 'Rien encore. Vos lignes sur les œuvres et les idées s’afficheront ici.',
-    en: 'Nothing yet. Your lines on works and ideas will show here.',
+    fr: 'Rien encore. Vos lignes sur les œuvres et les idées, et vos propositions de fiche, s’afficheront ici.',
+    en: 'Nothing yet. Your lines on works and ideas, and your work card proposals, will show here.',
   },
   my_standing: { fr: 'Gardée', en: 'Standing' },
   my_discarded: { fr: 'Retirée par Pem le {date}', en: 'Taken out by Pem on {date}' },
@@ -50,4 +50,16 @@ export const noteLinesMessages = defineMessages({
   my_kind_proposal: { fr: 'Proposition', en: 'Proposal' },
   my_load_error: { fr: 'Vos lignes n’ont pas pu se charger.', en: 'Your lines could not load.' },
   my_discarded_count: { fr: '{n} retirée(s)', en: '{n} taken out' },
+  // Work card proposals (pending_changes) — what Pem did with each, the rejection reason included.
+  my_prop_edit: { fr: 'Fiche #{id}', en: 'Card #{id}' },
+  my_prop_create: { fr: 'Nouvelle œuvre', en: 'New work' },
+  my_prop_image: { fr: 'Photo · #{id}', en: 'Picture · #{id}' },
+  my_prop_fields: { fr: '{n} champ(s) modifié(s)', en: '{n} field(s) changed' },
+  my_prop_pending: { fr: 'En attente de Pem', en: 'Waiting for Pem' },
+  my_prop_approved: { fr: 'Validée le {date}', en: 'Approved on {date}' },
+  my_prop_rejected: { fr: 'Refusée le {date}', en: 'Rejected on {date}' },
+  my_prop_reason: { fr: 'Raison : {reason}', en: 'Reason: {reason}' },
+  my_prop_no_reason: { fr: 'Refusée sans raison.', en: 'Rejected, no reason given.' },
+  my_prop_rejected_count: { fr: '{n} refusée(s)', en: '{n} rejected' },
+  my_prop_load_error: { fr: 'Vos propositions n’ont pas pu se charger.', en: 'Your proposals could not load.' },
 })

@@ -125,14 +125,14 @@ What a team member records on a work does not apply at once: a new work, a chang
 
 **Next:** nothing changes on the work. A rejected image is thrown away.
 
-**Watch out:** the reason is kept with the proposal, but the app does not show it to its author yet: tell them.
+**Watch out:** the reason is kept with the proposal, and its author sees it in their Overview, "For you": "Rejected on …", then "Reason: …", or "Rejected, no reason given." if you wrote none. A rejection from the Feed (swipe left) never has a reason: if it matters, reject from Audit → Review.
 
 ## Session photos
 
 Further down in Review, **"Field sessions (photos)"**: the team's sessions with photos to attach. The photos stay in the session until you apply them.
 
 1. **Apply** attaches the photos to the work ("Attach session photos to this work?").
-2. **Reject** asks for a reason, stored on the session.
+2. **Reject** asks for a reason, kept with the session; it shows on the work's card, Field sessions part ("Reason for rejection: …", or "Rejected, no reason given.").
 
 ## Kaizen
 
@@ -168,7 +168,7 @@ A field session keeps the photos of a work session and attaches them to the work
     title: 'Audit, tab by tab',
     verified: '2026-11-18',
     md: `
-[Audit](/atelier/audit) (Kaizen → Audit Log; on the phone: ☰ → Everything else → Kaizen) has four tabs at the top: **Ledger**, **Review**, **Taken out of the feed**, **Rules**.
+[Audit](/atelier/audit) (Kaizen → Audit Log; on the phone: ☰ → Everything else → Kaizen) has five tabs at the top: **Ledger**, **Review**, **Taken out of the feed**, **Rules**, **Bin**.
 
 ## Ledger
 
@@ -203,6 +203,10 @@ A work's rules, checked across the whole database. Read only: nothing is changed
 3. One line per rule: OK, or the number of works concerned. Open the line: each work shows with its thumbnail and what is wrong; a click opens its card.
 
 **Next:** fix each work on its card, then check again. The rules in detail are in the chapter A work's rules and the checks.
+
+## Bin
+
+The works moved to the bin, newest first, with their thumbnail, number, title and date ("Moved to the bin on …"). "Restore" puts them back in the lists; "Delete permanently" erases the record (see Deleting: bins and permanent deletion).
 `,
   },
   {
@@ -248,7 +252,17 @@ The app has two bins: the **works** bin, in the database, and the **storage** bi
 
 **Next:** the work disappears from the lists, the site and Production; its steps are paused. Anyone in the team can move a work to the trash; a sold or given work, the admin only.
 
-**Watch out:** once those few seconds are over, no screen shows the works bin. The record stays in the database, hidden; bringing it back is technical work (a development session).
+**Watch out:** once those few seconds are over, the record stays in the database, hidden: only an admin brings it back, from the works bin.
+
+## The works bin
+
+1. [Audit](/atelier/audit) → **Bin**: the works moved to the bin, newest first (thumbnail, number, title, "Moved to the bin on …").
+2. **Restore**: "Work #… restored: back in the lists."
+3. Or **Delete permanently**, then confirm (the same message as from the card, below). A work on an order, a shipment, a Journal link or an insurance claim is refused and stays in the bin.
+
+**Next:** a restored work comes back in the lists, on the site if its status shows it there, and in Production; its steps resume (except for an archived, destroyed or lost work). It keeps its number, photos, themes and history.
+
+**Watch out:** the works bin has no time limit: a work stays there until you restore it or delete it permanently.
 
 ## Deleting a work permanently
 
@@ -257,7 +271,9 @@ The app has two bins: the **works** bin, in the database, and the **storage** bi
 
 **Next:** "Work permanently deleted." The record, its themes and its links with other works are erased. Its photos go to the storage bin.
 
-**Watch out:** this cannot be undone in the app, and the versions are no use any more (there is no record left to restore). Only a database backup would bring it back (see Backups). Prefer the trash, except for a duplicate or an entry mistake.
+**Watch out:**
+- This cannot be undone in the app, and the versions are no use any more (there is no record left to restore). Only a database backup would bring it back (see Backups). Prefer the trash, except for a duplicate or an entry mistake.
+- Permanent deletion is refused while the work is on an order, a shipment, a Journal link or an insurance claim: "Permanent deletion refused: the work is on … Nothing was erased." In that case, leave it in the bin.
 
 ## Deleting a photo
 

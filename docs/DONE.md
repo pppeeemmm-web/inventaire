@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Rejection reason shown to its author + works bin (Pem « go », TODO §3)
+
+- A team member sees their proposals in Overview « Pour vous » (`listMyProposals`): waiting, approved, or « Refusée le … » with the reason (« Refusée sans raison » when none — a Fil swipe never asks); a rejected field session shows its reason on the work card.
+- Audit → **Corbeille** (admin): binned works, newest first; « Restaurer » (back in the lists at once, `works-restored-bus`, also from the « Annuler » toasts); « Supprimer définitivement » now refused, with nothing erased, while the work is on an order, a shipment, a Journal link or an insurance claim (it used to erase photos and themes first, then fail).
+- Flow review run; its findings fixed (cold Audit restore, purge order, one odd payload hiding the list).
+
 ## 2026-11-18 — Bureau IA + the local PC agent (Pem « go for ai build », « local », « Yes, apply SQL »)
 
 - Kaizen → **Bureau IA** (`/atelier/ai`, admin): engines as the server sees them, the PC agent's last check-in and models, waiting queues (voice notes, search index, image descriptions, business cards with a photo), « Lancer » per queue, latest jobs. Phases 1 + 2 of [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md); local only, no OpenAI.

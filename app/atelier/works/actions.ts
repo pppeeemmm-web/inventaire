@@ -143,6 +143,19 @@ export async function purgeWorkPermanently(oid: number): Promise<DeleteResult> {
   const adminErr = await requireAdmin(supabase)
   if (adminErr) return { error: adminErr }
   const svc = createServiceClient()
+  // Rows whose foreign key blocks the `Oeuvres` delete (RESTRICT / NO ACTION): check them all FIRST, so
+  // a refused purge erases nothing (no stripped work with its themes, links and photos gone). Service
+  // client after the admin gate, so RLS cannot undercount. Token read by `purgeBlockedMessage`.
+  const holders = await Promise.all(
+    (['work_order_work', 'shipment_work', 'journal_entry_link', 'insurance_claim'] as const).map(async (table) => {
+      const { count, error } = await svc.from(table).select('oeuvre_id', { count: 'exact', head: true }).eq('oeuvre_id', oid)
+      return { table, count: count ?? 0, error }
+    }),
+  )
+  const holdErr = holders.find((h) => h.error)
+  if (holdErr?.error) return { error: holdErr.error.message }
+  const held = holders.filter((h) => h.count > 0)
+  if (held.length) return { error: `purge_blocked:${held.map((h) => `${h.table}=${h.count}`).join(',')}` }
   const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
   if (relErr) return { error: relErr.message }
   const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)

@@ -55,6 +55,7 @@ import {
   reconcileAtelierJunctionRefresh,
 } from '@/lib/atelier/atelier-junction-bootstrap'
 import { subscribeJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
+import { subscribeWorksRestored } from '@/lib/atelier/works-restored-bus'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
@@ -538,6 +539,26 @@ export function TeamPortalClient({
   }, [applyJunctionSaved])
 
   const onJunctionSaved = applyJunctionSaved
+
+  // Audit « Corbeille » → Restaurer: read the works back into the loaded catalogue (a restored work
+  // older than the first chunk would otherwise stay missing until a reload). Nothing loaded yet (the
+  // shell opened on Audit, catalogue deferred): leave it — inserting one work would stop the first-chunk
+  // hydrate and the background load, which bring the restored work back on their own.
+  useEffect(() => {
+    return subscribeWorksRestored((ids) => {
+      for (const id of ids) removedOeuvreIdsRef.current.delete(id)
+      void Promise.all(ids.map((id) => fetchOeuvreById(id))).then((rows) => {
+        const back = rows.filter((r): r is Oeuvre => r != null)
+        if (back.length === 0) return
+        setOeuvres((prev) => {
+          if (prev.length === 0) return prev
+          const byId = new Map(prev.map((o) => [o.OeuvreID, o]))
+          for (const o of back) byId.set(o.OeuvreID, o)
+          return [...byId.values()].sort((a, b) => b.OeuvreID - a.OeuvreID)
+        })
+      })
+    })
+  }, [])
 
   const loadMoreOeuvres = useCallback(async () => {
     if (oeuvresNextCursor == null || oeuvresPaging == null) return

@@ -95,7 +95,7 @@ Pem (the admin) records everything directly. For a team member, the app makes tw
 - a change to the card saved with **Save** (title, status, dimensions, owner, themes, groups…);
 - a photo added to a work, including a rework's or a shared one ("Pictures awaiting approval").
 
-Until Pem approves, nothing changes on the work. Pem can also reject it.
+Until Pem approves, nothing changes on the work. Pem can also reject it. Your proposals and what Pem did with them are in the Overview, "For you": "Waiting for Pem", "Approved on …", or "Rejected on …" with its reason ("Reason: …", or "Rejected, no reason given.").
 
 **Counts at once:**
 - lines in "Comments & notes", the Journal's writings and voice notes;

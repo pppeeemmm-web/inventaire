@@ -23,6 +23,7 @@ import { stringifyError } from '@/lib/error'
 import { gateErrorKey } from '@/lib/work-save-error'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
+import { emitWorksRestored } from '@/lib/atelier/works-restored-bus'
 import type { Oeuvre } from '@/lib/types/database'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
@@ -1356,6 +1357,7 @@ export function Inventory({
                       toast.error(t('restoreWorkFailed'))
                       throw new Error(r.error)
                     }
+                    emitWorksRestored(ids)
                     router.refresh()
                   },
                 })

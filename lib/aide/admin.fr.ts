@@ -125,14 +125,14 @@ Ce qu'un membre de l'équipe enregistre sur une œuvre ne s'applique pas tout de
 
 **Ensuite :** rien ne change sur l'œuvre. Une image rejetée est jetée.
 
-**Attention :** la raison est gardée avec la proposition, mais l'application ne la montre pas encore à son auteur : dites-le-lui.
+**Attention :** la raison est gardée avec la proposition, et son auteur la voit dans sa Vue d'ensemble, « Pour vous » : « Refusée le … », puis « Raison : … », ou « Refusée sans raison. » si vous n'en avez pas écrit. Un rejet depuis le Fil (glisser à gauche) n'a jamais de raison : si elle compte, rejetez depuis Audit → Validation.
 
 ## Les photos de séance
 
 Plus bas dans Validation, **« Sessions terrain (photos) »** : les séances de l'équipe avec des photos à rattacher. Les photos restent dans la séance jusqu'à ce que vous les appliquiez.
 
 1. **Appliquer** rattache les photos à l'œuvre (« Rattacher les photos de la session à cette œuvre ? »).
-2. **Rejeter** demande un motif, visible dans la séance.
+2. **Rejeter** demande un motif, gardé avec la séance ; il s'affiche sur la fiche de l'œuvre, partie Sessions de terrain (« Motif du refus : … », ou « Refusée sans motif. »).
 
 ## Le Kaizen
 
@@ -168,7 +168,7 @@ Une séance de terrain garde les photos d'une séance de travail et les rattache
     title: 'Audit, onglet par onglet',
     verified: '2026-11-18',
     md: `
-[Audit](/atelier/audit) (Kaizen → Audit Log ; au téléphone : ☰ → Tout le reste → Kaizen) a quatre onglets en haut : **Journal**, **Validation**, **Retirés du Fil**, **Règles**.
+[Audit](/atelier/audit) (Kaizen → Audit Log ; au téléphone : ☰ → Tout le reste → Kaizen) a cinq onglets en haut : **Journal**, **Validation**, **Retirés du Fil**, **Règles**, **Corbeille**.
 
 ## Journal
 
@@ -203,6 +203,10 @@ Les règles d'une œuvre, vérifiées sur toute la base. Lecture seule : rien n'
 3. Une ligne par règle : OK, ou le nombre d'œuvres en cause. Ouvrez la ligne : chaque œuvre s'affiche avec sa vignette et ce qui ne va pas ; un clic ouvre sa fiche.
 
 **Ensuite :** corrigez chaque œuvre sur sa fiche, puis vérifiez à nouveau. Le détail des règles est au chapitre Les règles et les vérifications.
+
+## Corbeille
+
+Les œuvres mises à la corbeille, la plus récente en haut, avec leur vignette, leur numéro, leur titre et la date (« Mise à la corbeille le … »). « Restaurer » les remet dans les listes ; « Supprimer définitivement » efface la fiche (voir Supprimer : corbeilles et suppression définitive).
 `,
   },
   {
@@ -248,7 +252,17 @@ L'application a deux corbeilles : celle des **œuvres**, dans la base, et celle 
 
 **Ensuite :** l'œuvre disparaît des listes, du site et de la Production ; ses étapes se mettent en pause. Toute l'équipe peut mettre une œuvre à la corbeille ; une œuvre vendue ou donnée, l'administrateur seulement.
 
-**Attention :** passé ces quelques secondes, aucun écran ne montre la corbeille des œuvres. La fiche reste dans la base, cachée ; la faire revenir est un travail technique (une session de développement).
+**Attention :** passé ces quelques secondes, la fiche reste dans la base, cachée : seul un administrateur la fait revenir, depuis la corbeille des œuvres.
+
+## La corbeille des œuvres
+
+1. [Audit](/atelier/audit) → **Corbeille** : les œuvres mises à la corbeille, la plus récente en haut (vignette, numéro, titre, « Mise à la corbeille le … »).
+2. **Restaurer** : « Œuvre #… restaurée : de retour dans les listes. »
+3. Ou **Supprimer définitivement**, puis confirmez (le même message que depuis la fiche, ci-dessous). Une œuvre sur une commande, un envoi, un lien du Journal ou une déclaration de sinistre est refusée et reste dans la corbeille.
+
+**Ensuite :** une œuvre restaurée revient dans les listes, sur le site si son statut l'y montre, et en Production ; ses étapes reprennent (sauf pour une œuvre en archive, détruite ou perdue). Elle garde son numéro, ses photos, ses thèmes et son historique.
+
+**Attention :** la corbeille des œuvres n'a pas de durée : une œuvre y reste jusqu'à ce que vous la restauriez ou la supprimiez définitivement.
 
 ## Supprimer définitivement une œuvre
 
@@ -257,7 +271,9 @@ L'application a deux corbeilles : celle des **œuvres**, dans la base, et celle 
 
 **Ensuite :** « Œuvre supprimée définitivement. » La fiche, ses thèmes et ses liens avec d'autres œuvres sont effacés. Ses photos partent dans la corbeille du stockage.
 
-**Attention :** impossible d'annuler dans l'application, et les versions ne servent plus à rien (il n'y a plus de fiche à restaurer). Seule une sauvegarde de la base la ferait revenir (voir Sauvegardes). Préférez la corbeille, sauf pour un doublon ou une erreur de saisie.
+**Attention :**
+- Impossible d'annuler dans l'application, et les versions ne servent plus à rien (il n'y a plus de fiche à restaurer). Seule une sauvegarde de la base la ferait revenir (voir Sauvegardes). Préférez la corbeille, sauf pour un doublon ou une erreur de saisie.
+- La suppression définitive est refusée tant que l'œuvre figure sur une commande, un envoi, un lien du Journal ou une déclaration de sinistre : « Suppression définitive refusée : l'œuvre figure sur … Rien n'a été effacé. » Dans ce cas, laissez-la à la corbeille.
 
 ## Supprimer une photo
 

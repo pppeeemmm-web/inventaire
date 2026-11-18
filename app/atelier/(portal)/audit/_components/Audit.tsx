@@ -12,13 +12,14 @@ import { PendingQueue } from '@/components/atelier/PendingQueue'
 import { PendingWorkSessions } from '@/components/atelier/PendingWorkSessions'
 import { FilLog } from '@/components/atelier/FilLog'
 import { WorkRulesPanel } from '@/components/atelier/WorkRulesPanel'
+import { WorksBin } from './WorksBin'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { toast } from '@/lib/ui/toast'
 import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 
-type AuditView = 'ledger' | 'pending' | 'fil' | 'rules'
+type AuditView = 'ledger' | 'pending' | 'fil' | 'rules' | 'bin'
 
-/** Ledger · Pending · Retirés du Fil (R1 step 6: Audit is the system ledger, discards included). */
+/** Ledger · Pending · Retirés du Fil (R1 step 6: Audit is the system ledger, discards included) · Rules · Bin. */
 function AuditSubtabs({ view, setView }: { view: AuditView; setView: (v: AuditView) => void }) {
   const { t } = useI18n()
   const tabs = [
@@ -27,9 +28,11 @@ function AuditSubtabs({ view, setView }: { view: AuditView; setView: (v: AuditVi
     { id: 'fil', label: t('fil_log_title') },
     // Work rule checks (WORK_RULES batch 2), read only, admin only (the action refuses others).
     { id: 'rules', label: t('wr_tab') },
+    // The works bin (Oeuvres.deleted_at): restore or delete permanently, admin only (the action refuses others).
+    { id: 'bin', label: t('bin_tab') },
   ] as const
   return (
-    <div style={{ display: 'flex', gap: 8 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -83,7 +86,7 @@ export function Audit() {
     setCheckedIds(new Set())
   }, [filter])
 
-  if (view === 'pending' || view === 'fil' || view === 'rules') {
+  if (view === 'pending' || view === 'fil' || view === 'rules' || view === 'bin') {
     return (
       <div data-testid="audit-tab-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)' }}>
@@ -94,6 +97,8 @@ export function Audit() {
             <FilLog />
           ) : view === 'rules' ? (
             <WorkRulesPanel />
+          ) : view === 'bin' ? (
+            <WorksBin />
           ) : (
             <>
               <PendingQueue />

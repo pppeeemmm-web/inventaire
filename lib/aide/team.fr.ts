@@ -95,7 +95,7 @@ Pem (l'administrateur) enregistre tout directement. Pour un membre de l'équipe,
 - une modification de la fiche enregistrée avec **Enregistrer** (titre, statut, dimensions, propriétaire, thèmes, groupes…) ;
 - une photo ajoutée à une œuvre, y compris celle d'une reprise ou d'un partage (« Photos en attente de validation »).
 
-Tant que Pem n'a pas validé, rien ne change sur l'œuvre. Pem peut aussi refuser.
+Tant que Pem n'a pas validé, rien ne change sur l'œuvre. Pem peut aussi refuser. Vos propositions et ce que Pem en a fait sont dans la Vue d'ensemble, « Pour vous » : « En attente de Pem », « Validée le … », ou « Refusée le … » avec sa raison (« Raison : … », ou « Refusée sans raison. »).
 
 **Compte tout de suite :**
 - les lignes de « Commentaires & notes », les écrits et les notes vocales du Journal ;

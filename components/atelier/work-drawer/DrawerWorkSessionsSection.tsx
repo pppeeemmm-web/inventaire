@@ -161,6 +161,13 @@ export function DrawerWorkSessionsSection({
               >
                 <span style={{ flex: '1 1 140px', minWidth: 0 }}>
                   {updated} · {t(statusKey(row.status))} · {itemCount} {t(itemCount === 1 ? 'st_item_one' : 'session_journal_items_count')} · {n} {t(n === 1 ? 'st_shot_one' : 'drawer_work_sessions_shots')}
+                  {row.status === 'rejected' ? (
+                    <span data-testid="drawer-work-session-reject-reason" style={{ display: 'block', marginTop: 4, color: 'var(--rust)', overflowWrap: 'anywhere' }}>
+                      {payload.reject_reason && payload.reject_reason.trim() !== '—'
+                        ? t('st_rejected_reason').replace('{reason}', payload.reject_reason.trim())
+                        : t('st_rejected_no_reason')}
+                    </span>
+                  ) : null}
                   {payload.notes ? (
                     <span style={{ display: 'block', marginTop: 4, color: 'var(--tx3)' }}>
                       {payload.notes}
