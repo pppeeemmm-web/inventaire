@@ -2,7 +2,7 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-18, night** (tidied: each R is one line of what is left; the build history moved to [DONE](./DONE.md) « 2026-11-18 — Rethink history »). Order: bugs first, then what waits on Pem, then the rethink leftovers, then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. Board: [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html).
+**Last refresh: 2026-11-18, after the big push** (`origin/main` `747df2b`, What's new 3.1.59; closed today → [DONE](./DONE.md): theme notes, human What's new, supply orders, CSP, order chain + calendar, ideas in one place, number / expense-year fixes). Order: bugs first, then what waits on Pem, then the rethink leftovers, then the rest. Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place. Board: [`Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html).
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
@@ -27,7 +27,7 @@ R1–R7 are built and pushed (history → [DONE](./DONE.md)). Only what is left:
 
 - [ ] R1 / R2: **reminders vs Idées** (Pem 2026-11-18: « it can go in reminders but needs to be visible in Idées »): a dated idea shows in Idées with its date; the Overview « Idées » panel shows only « mûre » ideas (0 of 22) — show the latest instead? · storing the ✦ match score (SQL; Pem « if necessary, go »); the cached-copy check on the phone (airplane mode after one Wi-Fi open).
 - [ ] R6: editions part 2, at the first real edition.
-- [ ] R7: line value editable after creation; « Confié » ↔ Production board tasks; a share button for papers. R7b order chain **built 2026-11-18** (`ac04469`, SQL live; not clicked on data — it would use real order / invoice numbers) → [`R7b_OrderCascade.notes.md`](./design/2026-11-18/R7b_OrderCascade.notes.md) « Built » for its gaps; order dates in the calendar live (`f18fb99`, SQL applied on Pem's « Apply both »); Kaizen Création → Idées proposal waits for Pem ([notes](./design/2026-11-18/KaizenCreation_to_Ideas.notes.md)).
+- [ ] R7: line value editable after creation; « Confié » ↔ Production board tasks; a share button for papers. R7b order chain **built 2026-11-18** (`ac04469`, SQL live; not clicked on data — it would use real order / invoice numbers) → [`R7b_OrderCascade.notes.md`](./design/2026-11-18/R7b_OrderCascade.notes.md) « Built » for its gaps; order dates in the calendar live (`f18fb99`, SQL applied on Pem's « Apply both »).
 - [ ] R8. **Public site** → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md): first batch and enquiry categories live; knobs saved; next after Pem's look decisions — one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram, needs SQL + a screen design + GO).
 
 ## 3. To build — outside the rethink (needs GO)
@@ -37,14 +37,10 @@ Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1c. Voice notes longer than one upload (~4 MB) or recorded offline → build only if Pem hits either ≥2× → [notes](./TODO_NOTES.md#voice-limits)
 
-Links
-
-Transmission (safety of what is kept)
-
 Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)
 - [ ] 10. Money: `is_paid` from payments; clean `sales-client.ts` extras → [notes](./TODO_NOTES.md#money)
-- [ ] 11e. **Batch scan of expenses and dockets** (Pem 2026-11-15): scan many dockets in one go on the iPhone → a folder the PC sees → a PC batch (like `scripts/transcribe/`) reads each one and proposes an expense (date, supplier, amount, VAT, `receipt_ref`) to confirm, the scan kept in the Vault « Factures ». Needs the OCR GO (§1); with 11d (lines → stock) → [notes](./TODO_NOTES.md#docket-scan)
+- [ ] 11e. **Batch scan of expenses and dockets** (Pem 2026-11-15): scan many dockets in one go on the iPhone → a folder the PC sees → a PC batch (like `scripts/transcribe/`) reads each one and proposes an expense (date, supplier, amount, VAT, `receipt_ref`) to confirm, the scan kept in the Vault « Factures ». Needs the OCR GO (§1); proposes a supply order / expense (supply orders live 2026-11-18) → [notes](./TODO_NOTES.md#docket-scan)
 - [ ] 11b. Collector share kit (F5): a private link for one collector with a selection, a PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md) **Drafted 2026-11-18** → [`Collector_ShareKit.notes.md`](./design/2026-11-18/Collector_ShareKit.notes.md) + mockup; Pem's 8 answers recorded in the notes (2026-11-18); build waits for a GO.
 
 Public site — next batch
@@ -62,6 +58,10 @@ Speed and code health — measure first, change after
 
 ## 4. To check once, when it happens (no build)
 
+- [ ] First real order through the R7b chain (signed → shipment, paid → certificate, invoice paper) and its calendar dates — not clicked on data (would use real numbers).
+- [ ] First real supply order: « Recevoir » adds to stock, unit cost + supplier; an expense with its invoice file.
+- [ ] Pem's first « #équipe » voice note: the card on a team member's Aujourd'hui; the What's new dots on a team member's menu.
+- [ ] Content security policy enforced (2026-11-18): an image upload and the contact address lookup on the live site — not seen yet under it.
 - [ ] Voice-note chip in the work card (Création › Commentaires & notes, R3): not yet seen live — no work with a linked voice note at hand; look when one exists.
 - [ ] Notes (bug batch 1, What's new 3.1.20), live as admin: « Couleur » shows its ✦ PC transcript; edit, switch note → Save / Discard / Cancel.
 - [ ] Export labels (`00f8085` QR, B7 image): print one real sheet — L7163 with image + QR, L7651 with QR — check the picture and the cut text by eye, scan one QR with the phone.

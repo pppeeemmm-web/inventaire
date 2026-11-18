@@ -14,11 +14,14 @@
 | [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
 | [`ENVIRONMENTAL_POLICY.md`](./ENVIRONMENTAL_POLICY.md) | Materials, packing, sending, digital, yearly measures — first draft, `[[…]]` = Pem's facts | 2026-11-18 (draft) |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
-| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal + his annotated phone mockups for Claude Design (R2), work drawer (R3), timeline / map / previews (R4); slideshow done. Design first, not a GO | 2026-11-15 |
+| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal (R2), work drawer (R3), timeline / map / previews (R4), slideshow (R5), events (R6), orders (R7), public site (R8). R1–R7 built; leftovers in TODO §2 | 2026-11-18 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |
 | [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-16 |
-| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink (design first) / to build / to check once / parked | 2026-11-16 |
-| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-16 |
+| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink leftovers / to build / to check once / parked | 2026-11-18 (after `747df2b`) |
+| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-18 |
+| [`design/2026-11-17/Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html) | **Rethink board** — every R step by step, what waits on Pem | 2026-11-18 |
+| [`design/2026-11-18/`](./design/2026-11-18/) | This week's designs: R7b order chain, supply orders, collector share kit (Pem's answers), human What's new, Kaizen Création → Idées, products engine | 2026-11-18 |
+| [`LEGAL_POLICY.md`](./LEGAL_POLICY.md) + [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md) | Legal policy (France / EU) and the site's legal pages — drafts for a lawyer / accountant | 2026-11-17 (draft) |
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-16 |
 | [`TODO_REFUSED.md`](./TODO_REFUSED.md) | Items dropped on purpose, with the reason | 2026-11-13 |
 | [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md) | Voice / handwriting / image-description scripts (`scripts/transcribe/`), local GPU | 2026-11-13 |
