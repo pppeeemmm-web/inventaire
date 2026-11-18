@@ -10,9 +10,6 @@ _None open._
 
 ## 1. Waiting on you, Pem
 
-Decisions (a form or one word):
-- [ ] **Docket scan (11e):** GO to read dockets by OCR on the PC, and which scan path.
-
 Things only you can do:
 - [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form. The site has no legal notice yet.
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
@@ -38,7 +35,6 @@ Trace
 Value
 - [ ] 9. Custody follow-ups (custodian address on an order; a cancelled sale of a consigned work goes back to the gallery) — written before R7, re-check against the new orders → [notes](./TODO_NOTES.md#custody) **GO 2026-11-18 — building in session paid-custody**
 - [ ] 10. « Paid » on a work derived from its payments (still hand-editable) → [notes](./TODO_NOTES.md#money) **GO 2026-11-18 — building in session paid-custody**
-- [ ] 11e. Batch scan of dockets: iPhone scans → a folder on the PC → a PC batch proposes each expense / supply purchase to confirm, scan kept in Vault « Factures » (needs the OCR GO, §1) → [notes](./TODO_NOTES.md#docket-scan)
 
 Public site
 - [ ] Phones: show the closing text (« outro ») of a works sequence on `/works` — own last slide, or below?
@@ -86,6 +82,7 @@ Older, still unseen live
 ## 5. Parked — no GO
 
 - R8 public site (Pem 2026-11-18: « skip r8 for now »): look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram; SQL + design + GO) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md).
+- 11e. Docket scan by OCR (iPhone scans → PC batch proposes each expense / supply purchase, scan in Vault « Factures ») — Pem 2026-11-18: « later » → [notes](./TODO_NOTES.md#docket-scan)
 - Place « from / to » dates (`supabase/sql/place_validity_dates.sql`, not applied) — Pem « not sure » 2026-11-18.
 - VAT per sale, from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library, another system, another time → [notes](./TODO_NOTES.md#phototheque)
