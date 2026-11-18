@@ -276,7 +276,7 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
     }
     let cancelled = false
     const timer = window.setTimeout(() => {
-      void searchWorksForSession(workSearch, 30).then((rows) => {
+      void searchWorksForSession(workSearch).then((rows) => {
         if (!cancelled) setWorkResults(rows)
       })
     }, 180)
