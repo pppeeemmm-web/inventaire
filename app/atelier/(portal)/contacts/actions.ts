@@ -30,8 +30,10 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' }
 
-  // Use service client for writes — RLS INSERT policy only allows is_private=false for team,
-  // but imported contacts should be private. Service client bypasses RLS.
+  // Imported contacts are « Privé » (admin-only) when an admin imports; a team member's import stays
+  // visible to the team, or they could not see what they just imported (private RLS,
+  // supabase/sql/contact_private_rls.sql). Service client for the writes and the duplicate check.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
   const svc = createServiceClient()
 
   if (!contacts.length) return { ok: true, imported: 0, skipped: 0, contactIds: [] }
@@ -83,7 +85,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
         IndicatifPays1:  (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
         Website:         primaryWebsite,
         Notes:           c.notes,
-        is_private:      true,
+        is_private:      !!isAdmin,
         Actif:           true,
       })
       .select('ContactID')
@@ -156,11 +158,69 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   return { ok: true, imported, skipped, contactIds }
 }
 
-export type ContactDeleteResult = { error: string } | { ok: true }
+/** Why a contact cannot be deleted: rows that point at it with no ON DELETE rule, or a login. */
+export type ContactDeleteBlocker = {
+  id: number
+  name: string
+  /** Linked to a sign-in (`auth_user_id`): never deleted here. */
+  login: boolean
+  /** Works it owns (`Oeuvres.ContactID`), bin included. */
+  owner: number
+  /** Works it holds (`Oeuvres.LocalisationID`), bin included. */
+  holder: number
+  shipments: number
+  orders: number
+  invoices: number
+  supplyOrders: number
+}
+
+/** `blocked`: nothing was deleted; the client words the reasons (`formatContactDeleteBlockers`). */
+export type ContactDeleteResult = { error: string } | { ok: true } | { blocked: ContactDeleteBlocker[] }
+
+type BlockerCountKey = 'owner' | 'holder' | 'shipments' | 'orders' | 'invoices' | 'supplyOrders'
+
+/** Live foreign keys to "Contact" with NO ACTION / RESTRICT (checked 2026-11-18): they make the delete fail. */
+const CONTACT_DELETE_BLOCKING_REFS: { table: string; col: string; key: BlockerCountKey }[] = [
+  { table: 'Oeuvres', col: 'ContactID', key: 'owner' },
+  { table: 'Oeuvres', col: 'LocalisationID', key: 'holder' },
+  { table: 'shipment', col: 'to_contact_id', key: 'shipments' },
+  { table: 'work_order', col: 'party_id', key: 'orders' },
+  { table: 'invoice', col: 'party_id', key: 'invoices' },
+  { table: 'supply_order', col: 'supplier_id', key: 'supplyOrders' },
+]
+
+/** Exact count of rows per id in `table.col` (head counts: no row cap). */
+async function countContactRefs(
+  svc: ReturnType<typeof createServiceClient>,
+  table: string,
+  col: string,
+  ids: number[],
+): Promise<Map<number, number>> {
+  const out = new Map<number, number>()
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
+    const { count, error } = await svc.from(table).select(col, { count: 'exact', head: true }).in(col, chunk)
+    if (error) throw new Error(`${table}.${col}: ${error.message}`)
+    if (!count) continue
+    if (chunk.length === 1) { out.set(chunk[0], count); continue }
+    const perId = await Promise.all(
+      chunk.map(async (id) => {
+        const r = await svc.from(table).select(col, { count: 'exact', head: true }).eq(col, id)
+        if (r.error) throw new Error(`${table}.${col}: ${r.error.message}`)
+        return [id, r.count ?? 0] as const
+      }),
+    )
+    for (const [id, n] of perId) if (n) out.set(id, n)
+  }
+  return out
+}
 
 /**
- * Delete one or more contacts and their associated addresses.
- * Note: Does NOT delete works associated with the contact (sets ContactID to null in Oeuvres).
+ * Delete one or more contacts. Their addresses, emails, phones, websites, socials and event links go
+ * with them (ON DELETE CASCADE); buyer, documents, expenses, stock suppliers, private links and page
+ * views are cleared (SET NULL).
+ * Refuses the whole batch, before touching anything, when a contact still owns or holds a work, is
+ * the party of a shipment, order, invoice or supply order, or is linked to a login.
  */
 export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult> {
   const supabase = await createClient()
@@ -174,21 +234,52 @@ export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult
 
   if (!ids.length) return { ok: true }
 
-  // 1. Delete addresses first
-  const { error: addrErr } = await supabase
-    .from('contact_addresses')
-    .delete()
-    .in('contact_id', ids)
-  
-  if (addrErr) return { error: addrErr.message }
+  // Only the contacts this user can see (RLS): a « Privé » contact is admin-only.
+  const { data: rows, error: rowsErr } = await supabase
+    .from('Contact')
+    .select('ContactID, NomInstitution, Nom, "Prénom", auth_user_id')
+    .in('ContactID', ids)
+  if (rowsErr) return { error: rowsErr.message }
+  const visible = (rows ?? []) as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; auth_user_id: string | null }[]
+  if (!visible.length) return { ok: true }
+  const visibleIds = visible.map((c) => c.ContactID)
 
-  // 2. Delete contacts
-  const { error: contactErr } = await supabase
+  // Count every blocking reference with the service role (the team must not miss rows RLS hides).
+  const svc = createServiceClient()
+  let counts: Map<number, number>[]
+  try {
+    counts = await Promise.all(
+      CONTACT_DELETE_BLOCKING_REFS.map(({ table, col }) => countContactRefs(svc, table, col, visibleIds)),
+    )
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+
+  const blocked: ContactDeleteBlocker[] = []
+  for (const c of visible) {
+    const b: ContactDeleteBlocker = {
+      id: c.ContactID,
+      name: c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`,
+      login: !!c.auth_user_id,
+      owner: 0, holder: 0, shipments: 0, orders: 0, invoices: 0, supplyOrders: 0,
+    }
+    CONTACT_DELETE_BLOCKING_REFS.forEach(({ key }, i) => { b[key] = counts[i].get(c.ContactID) ?? 0 })
+    if (b.login || CONTACT_DELETE_BLOCKING_REFS.some(({ key }) => b[key] > 0)) blocked.push(b)
+  }
+  if (blocked.length) return { blocked }
+
+  // One statement: the contact rows and their cascaded child rows go together, or nothing does.
+  const { data: deleted, error: contactErr } = await supabase
     .from('Contact')
     .delete()
-    .in('ContactID', ids)
+    .in('ContactID', visibleIds)
+    .select('ContactID')
 
   if (contactErr) return { error: contactErr.message }
+  if ((deleted ?? []).length !== visibleIds.length) {
+    revalidatePath('/atelier')
+    return { error: `Suppression incomplète : ${(deleted ?? []).length}/${visibleIds.length}` }
+  }
 
   revalidatePath('/atelier')
   return { ok: true }
@@ -253,6 +344,8 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
   const { data: keepRow, error: ke } = await svc.from('Contact').select('*').eq('ContactID', intoId).maybeSingle()
   const { data: loseRow, error: le } = await svc.from('Contact').select('*').eq('ContactID', fromId).maybeSingle()
   if (ke || le || !keepRow || !loseRow) return { error: 'Contact introuvable' }
+  // TODO(contact_private_rls.sql): once private contacts are hidden from the team by RLS, refuse merging a
+  // « Privé » contact for non-admins here (the service role reads them). Not before: today the team sees them.
 
   const keepAuth = (keepRow as { auth_user_id?: string | null }).auth_user_id ?? null
   const loseAuth = (loseRow as { auth_user_id?: string | null }).auth_user_id ?? null
@@ -509,7 +602,9 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   const prenom     = (formData.get('prenom') as string | null)?.trim()
   const email      = (formData.get('email') as string | null)?.trim()
   const inst       = (formData.get('institution') as string | null)?.trim()
-  const is_private = formData.get('is_private') === 'true'
+  // « Privé » = admin-only: only an admin may mark a new contact private.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  const is_private = !!isAdmin && formData.get('is_private') === 'true'
   const opt = (k: string) => (formData.get(k) as string | null)?.trim() || null
   const phone = opt('phone')
   const addr = { adresse: opt('adresse'), code_postal: opt('code_postal'), ville: opt('ville'), pays: opt('pays') }

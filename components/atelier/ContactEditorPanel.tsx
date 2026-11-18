@@ -388,7 +388,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           RoleResponsable: form.RoleResponsable || null,
           Notes: form.Notes || null,
           Actif: form.Actif,
-          is_private: isAdminUser ? form.is_private : false,
+          is_private: isAdminUser ? form.is_private : (contact?.is_private ?? false), // a team save keeps « Privé » as it is (only an admin changes it)
           ...(isAdminUser
             ? { is_team_member: teamMember, IsTeamMember: teamMember }
             : {}),
@@ -399,15 +399,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         payload.Role = normalizedRole
 
         if (isNew) {
-          const { data: maxRow } = await sb.from('Contact')
-            .select('ContactID')
-            .order('ContactID', { ascending: false })
-            .limit(1)
-            .single()
-          contactId = ((maxRow as { ContactID?: number })?.ContactID ?? 0) + 1
-          payload.ContactID = contactId
-          const { error } = await sb.from('Contact').insert(payload)
-          if (error) throw new Error((error as { message?: string }).message)
+          // The database assigns the id: « max + 1 » read through RLS misses « Privé » contacts (admin-only).
+          const { data: inserted, error } = await sb.from('Contact').insert(payload).select('ContactID').single()
+          if (error || !inserted) throw new Error((error as { message?: string } | null)?.message ?? 'Insert failed')
+          contactId = (inserted as { ContactID: number }).ContactID
         } else {
           contactId = contact!.ContactID
           const { error } = await sb.from('Contact').update(payload).eq('ContactID', contactId)

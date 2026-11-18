@@ -6,8 +6,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
-- 🔎 §0 Contacts: refuse deleting a contact still linked to works / orders (no address loss) + « Privé » code side — built; lead reviewing (flow review running)
-- ⏳ §0 « Privé » SQL (`supabase/sql/contact_private_rls.sql`, not applied): 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 of them own / hold / bought works; 1 is a team member) — Pem reviews that list first, then OK
+- ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
 - 🔧 §3 Layout: titles cut at 1280 (Inventory, Production) + phone bars over the bottom bar — agent, own worktree (design note first)
 - 🔧 Stress test, next sections — side session « Stress test on a throwaway copy »
@@ -16,7 +15,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## 0. Bugs — fix now
 
-- [ ] Contacts: deleting a contact that owns or holds a work removes its addresses, then fails on the work link — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message before touching anything. Not reproduced.
 - [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
 - [ ] **Local AI only (Pem 2026-11-18):** if `OPENAI_API_KEY` is set on Vercel, delete it — until then the live site can still send card photos to OpenAI. Bureau IA (`/atelier/ai`) shows « Clé OpenAI sur ce serveur : oui / non ».
 

@@ -69,6 +69,7 @@ import { themeNotesMessages } from './theme-notes.messages'
 import { collectorKitMessages, collectorKitPageMessages } from './collector-kit.messages'
 import { aideMessages } from './aide.messages'
 import { aiDeskMessages } from './ai-desk.messages'
+import { contactPrivacyMessages } from './contact-privacy.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -143,6 +144,7 @@ export const featureMessages = {
   ...collectorKitPageMessages,
   ...aideMessages,
   ...aiDeskMessages,
+  ...contactPrivacyMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

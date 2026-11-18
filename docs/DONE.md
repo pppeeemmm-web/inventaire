@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Deleting a contact no longer loses its addresses (TODO §0)
+
+- `deleteContacts` checks first (works owned / held, shipments, orders, invoices, supply orders, a login) and deletes nothing when one is linked, with a message naming what holds it; otherwise one delete, child rows by cascade.
+- « Privé », safe part: only an admin marks a contact private (editor, quick add, imports — the team's imports no longer arrive private; a team save keeps the flag as it is); new contacts take the database id. The hiding itself waits (TODO « Now »).
+
 ## 2026-11-18 — Website legal pages, A.2 part 1 (Pem « public website legal to start »)
 
 - Visitor ID renewed after 13 months; Vercel Analytics removed; « Ne pas être compté·e » on About and Practice (no page view is counted from that browser); fonts and the /card QR served by the site itself (no Google Fonts, no qrserver), CSP narrowed.

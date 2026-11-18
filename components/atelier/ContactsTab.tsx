@@ -23,6 +23,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
+import { formatContactDeleteBlockers } from '@/lib/contacts/delete-blockers'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -571,6 +572,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     setBusy(true)
     const ids = Array.from(selected)
     const res = await deleteContacts(ids)
+    if ('blocked' in res) { alert(formatContactDeleteBlockers(res.blocked, t)); setBusy(false); return }
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
     onContactsDeleted?.(ids)
@@ -602,6 +604,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     if (!confirm(t('contactDeleteOneConfirm'))) return
     setBusy(true)
     const res = await deleteContacts([id])
+    if ('blocked' in res) { alert(formatContactDeleteBlockers(res.blocked, t)); setBusy(false); return }
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => c.ContactID !== id))
     onContactsDeleted?.([id])
@@ -653,10 +656,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               <input name="nom" placeholder={t('contacts_quick_last')} style={{ ...FIS, minHeight: 44 }} />
             </div>
             <input name="email" type="email" placeholder={t('contacts_quick_email')} style={{ ...FIS, minHeight: 44 }} />
-            <label className="t-mono-sm" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--tx2)' }}>
-              <input type="checkbox" name="is_private" value="true" style={{ width: 18, height: 18 }} />
-              {t('contacts_quick_private')}
-            </label>
+            {isAdmin && (
+              <label className="t-mono-sm" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--tx2)' }}>
+                <input type="checkbox" name="is_private" value="true" style={{ width: 18, height: 18 }} />
+                {t('contacts_quick_private')}
+              </label>
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))' }}>
               <button type="submit" className="btn sm" disabled={quickBusy} style={{ minHeight: 44, flex: 1 }}>
                 {quickBusy ? t('contacts_quick_saving') : t('contacts_quick_save')}
