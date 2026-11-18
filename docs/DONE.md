@@ -2,6 +2,16 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Pem's evening pass: bugs (Pem « go »)
+
+- **Map blank on the live site** (`7b192d6`): the CSP (enforced today) lets the page load OSM tiles (img-src), but the service worker fetches cross-origin files itself (Serwist defaults: any .png, Google fonts, cross-origin catch-all) and inside the worker that is `connect-src`, which listed none of them — every tile failed in ~5 ms. Added the OSM tile hosts, unpkg, Google fonts and the QR host to `connect-src`. Dev has no service worker, so the map always worked locally; proven only once deployed.
+- **Contacts badge after a delete** (`c791878`): ContactsTab kept its own copy of the list; the sidebar badge and the work-card pickers read the Atelier's. The tab now reports every change (add, edit, delete, merge). Not exercised live (a delete removes a real contact).
+- **Work card names « — » from the QR link / ⌘K** (`904bfb7`, side session stress-test, three flow reviews): the card merges the contact list whenever it arrives; Pem by id; no false « unsaved » (artist / archive / reserved). Verified on the Docker copy.
+- **Vault folder tree** (`d93fc0f`): an open folder's sub-folders were drawn inside the parent's row (Commandes → Confiés beside the buttons); now below it (measured in Chrome).
+- **Card photo « nothing happened »** (`c499fda`): by design the photo alone is never read (Live Text gives the text; only the AI pass, on the studio PC, reads the photo). The screen now says so right after a photo (seen in Chrome).
+- Phone / email labels in English: imported data, not copy (« Mobile » 38, « * Other », « INTERNET », a person's name…) → Contacts review (TODO §3).
+- Drafts: AI desk ([`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)), legal pages A.2 batch prepared ([`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md)); `AI_ENGINES.md` corrected (Whisper transcripts + gemma3 image descriptions were missing).
+
 ## 2026-11-18 — Guide PDF + « ? » help (Pem « GO both »)
 
 - **PDF guide**, built on demand from the Aide's chapters (same text, same parser — `lib/aide/markdown.ts`, now shared with `AideMarkdown`): `/atelier/aide/guide.pdf?g=team|admin&lang=fr|en` ([`lib/aide/pdf.ts`](../lib/aide/pdf.ts)); cover, contents with clickable page numbers, a page per chapter start, running header + page numbers; Sofia Sans + Instrument Serif + Noto Sans Symbols 2 (downloaded with Pem's OK from google/fonts, OFL, licences beside the files in `lib/aide/pdf/fonts/`). pdfkit writes broken glyphs for a named instance of the variable Sofia Sans (accented letters dropped — tested), so only its default instance is embedded and bold is a thin outline. Team guide needs a team session, admin guide `is_admin()` (403 otherwise — seen: 401 signed out, 403 for the non-admin dev account, 200 team guide, 25 pages, 86 KB, built in ~2.4 s in dev). Seen in Chrome's PDF viewer: cover, contents, chapters 1–2 (lists, bold, quote, ☰ ··· 🗓 ‹ › →). « Télécharger le guide (PDF) » under the Aide's contents.

@@ -6,12 +6,8 @@ _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md).
 
 ## 0. Bugs — fix now
 
-From Pem's pass, 2026-11-18 evening (screenshots in that chat; not yet reproduced):
-- [ ] Carte (map) shows nothing.
-- [ ] Contacts: deleting a contact does not update the sidebar badge count.
-- [ ] Business card: photo taken in the app → « nothing happened » (Live Text pasted from a photo taken outside worked).
-- [ ] Vault folder tree: a nested folder (Commandes → Confiés) draws its row out of line, buttons overlapping (also check speed).
-- [ ] Aide (team guide) says team members record new works, reworks and photos; in fact only Pem (admin) does / approves; card « Améliorer avec l'IA » only works on Pem's laptop (Ollama) — say so. Condition report: who should make it (the custodian / closest person?) — Pem's call.
+From Pem's pass, 2026-11-18 evening — map, contacts badge, card photo, Vault tree fixed (→ DONE); phone labels moved to the Contacts review (§3).
+- [ ] Aide (team guide): team members' rights (new works / reworks / photos wait for Pem's approval), card AI only on Pem's laptop, condition report — being written by the guides session (batch 1 of « finish the Aide »).
 
 ## 1. Waiting on you, Pem
 

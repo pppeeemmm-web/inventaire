@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.72 (2026-11-18) — Pem's evening pass.
+  wn_map_back_card_names_t: { fr: 'La carte revient, la fiche nomme le propriétaire', en: 'The map is back, the card names the owner' },
+  wn_map_back_card_names_d: {
+    fr: 'La Carte affiche de nouveau son fond (il était bloqué depuis ce matin sur le site). Une fiche ouverte depuis l’étiquette QR ou ⌘K montre le propriétaire et le dépositaire, et propose tous les contacts.',
+    en: 'The Map shows its background again (it was blocked on the site since this morning). A card opened from the QR label or ⌘K shows the owner and the custodian, and offers every contact.',
+  },
+  wn_contacts_badge_vault_tree_t: { fr: 'Contacts, Coffre, carte de visite', en: 'Contacts, Vault, business card' },
+  wn_contacts_badge_vault_tree_d: {
+    fr: 'Supprimer un contact met à jour le compteur et les listes des fiches. Dans le Coffre, les sous-dossiers s’affichent sous leur dossier. Carte de visite : après la photo, l’écran rappelle d’ajouter le texte avec Live Text — la photo seule n’est pas lue.',
+    en: 'Deleting a contact updates the count and the cards’ lists. In the Vault, sub-folders show under their folder. Business card: after the photo, the screen reminds you to add the text with Live Text — the photo alone is not read.',
+  },
   // 3.1.71 (2026-11-18) — guide PDF + « ? » help.
   wn_help_pdf_and_panel_t: { fr: 'L’Aide en PDF, et un « ? » sur chaque écran', en: 'Help as a PDF, and a « ? » on every screen' },
   wn_help_pdf_and_panel_d: {
