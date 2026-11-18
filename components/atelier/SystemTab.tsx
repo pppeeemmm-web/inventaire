@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
+import { useState, useEffect, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { vaultStudioBible } from '@/app/atelier/(portal)/vault/bible-action'
 import { uploadLedgerAttachment } from '@/app/atelier/(portal)/system/ledger-attachment-actions'
-import { stringifyError } from '@/lib/error'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { imageUrl } from '@/lib/data'
@@ -130,15 +128,15 @@ function LedgerThumb({
   )
 }
 
-/** `embedded`: inside Kaizen → Système, only the site tool: Regenerate Studio Bible (owner 2026-11-12 removed the checklist PDF and the reference copy / download). */
-export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
+/** The manual system ledger (no route since `/atelier/system` redirects). Its « Regenerate Studio Bible » tool was
+ *  removed with the Aide (batch 6, 2026-11-18). */
+export function SystemTab() {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const [attachBusy, setAttachBusy] = useState(false)
 
   const attachFileRef = useRef<HTMLInputElement>(null)
@@ -329,30 +327,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
     if (!error) setLogs(logs.filter((l) => l.id !== id))
   }
 
-  function handleRegenerateBible() {
-    if (!confirm(t('system_ledger_bible_confirm'))) return
-    startTransition(async () => {
-      const res = await vaultStudioBible()
-      if ('error' in res) {
-        alert(`${t('system_ledger_bible_err_prefix')} ${stringifyError(res.error)}`)
-      } else {
-        alert(`${t('system_ledger_bible_success')} ${res.filename}`)
-        const sb = createClient()
-        await sb.from('system_log').insert([
-          {
-            action: 'Studio Bible Updated',
-            details: `Regenerated high-fidelity PDF and vaulted as ${res.filename}`,
-            type: 'improvement',
-            status: 'completed',
-            priority: 'P3',
-            attachments: [],
-          },
-        ])
-        void fetchLogs()
-      }
-    })
-  }
-
   function handleDetailsPaste(e: ClipboardEvent<HTMLTextAreaElement>, target: 'new' | 'edit') {
     const cb = e.clipboardData
     if (!cb?.files?.length) return
@@ -422,24 +396,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
     )
   }
 
-  const tools = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow || embedded ? 'stretch' : 'flex-end', gap: 8 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: narrow || embedded ? 'flex-start' : 'flex-end' }}>
-        <button
-          className="btn ghost sm"
-          onClick={handleRegenerateBible}
-          disabled={isPending}
-          style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}
-        >
-          {isPending ? t('system_ledger_bible_regenerating') : t('system_ledger_bible_cta')}
-        </button>
-      </div>
-    </div>
-  )
-
-  // Inside Kaizen → Système only the site tools show; entries are Kaizen entries there.
-  if (embedded) return <div data-testid="system-tools">{tools}</div>
-
   const headerPad = narrow ? '16px 16px' : '32px 40px'
 
   return (
@@ -480,7 +436,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
               <Link href="/atelier/kaizen-ops?view=website" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
             </p>
           </div>
-          {tools}
         </div>
 
         <form

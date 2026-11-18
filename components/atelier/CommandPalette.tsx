@@ -33,7 +33,6 @@ interface Props {
   onStockTake: () => void
   onPendingApprovals?: () => void
   onExportXlsx: () => void
-  onDownloadStudioBible: () => void
 }
 
 interface Item {
@@ -48,7 +47,7 @@ interface Item {
 export function CommandPalette({
   open, onClose, tabs, oeuvres, catalogueComplete = true, contacts,
   onGoTab, onGoWork, onCaptureSession, onScanQr, onFieldNote, onReminders,
-  onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
+  onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx,
 }: Props) {
   const { t } = useI18n()
   const tk = (key: string) => t(key as DictKey)
@@ -178,7 +177,6 @@ export function CommandPalette({
         ? [{ id: 'act:pending-approvals', label: t('cmd_palette_action_pending_approvals'), action: () => { onPendingApprovals(); onClose() } }]
         : []),
       { id: 'act:export-xlsx', label: t('cmd_palette_action_export_xlsx'), action: () => { onExportXlsx(); onClose() } },
-      { id: 'act:download-bible', label: t('cmd_palette_action_download_studio_bible'), action: () => { onDownloadStudioBible(); onClose() } },
     ]
     for (const a of actionDefs) {
       if (!q || a.label.toLowerCase().includes(qLow)) {
@@ -275,7 +273,7 @@ export function CommandPalette({
   }, [
     q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
-    onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
+    onStockTake, onPendingApprovals, onExportXlsx,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,
     catalogueComplete, serverTitleHits,
   ])

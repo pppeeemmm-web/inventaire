@@ -1,5 +1,7 @@
 # PEM Studio — Team Member Guide (Encyclopedia)
 
+> **Archived 2026-11-18** — replaced by the in-app Aide (`/atelier/aide`, `lib/aide/`). Historical; never execute from here.
+
 > **Dated 2026-11-13:** this guide is accurate to 2026-07 (plus the November summary below). Later changes are listed in the app: **Kaizen → Nouveautés**. It is not being rewritten.
 >
 > **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.

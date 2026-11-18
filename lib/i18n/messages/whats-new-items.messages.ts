@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.70 (2026-11-18) — Aide batch 6: the Studio Bible and the old guides retired.
+  wn_bible_to_aide_t: { fr: 'La Bible Atelier laisse place à l’Aide', en: 'The Studio Bible gives way to Help' },
+  wn_bible_to_aide_d: {
+    fr: 'Le téléchargement « Bible Atelier » (⌘K, menu du téléphone) n’existe plus : tout est dans Kaizen → Aide, tenu à jour. Un ancien lien vers la Bible ouvre l’Aide.',
+    en: 'The « Studio Bible » download (⌘K, phone menu) is gone: everything is in Kaizen → Help, kept up to date. An old link to the Bible opens Help.',
+  },
   // 3.1.69 (2026-11-18) — stress-test fixes.
   wn_sign_out_this_device_t: { fr: '« Se déconnecter » ne déconnecte que cet appareil', en: '« Sign out » signs out this device only' },
   wn_sign_out_this_device_d: {

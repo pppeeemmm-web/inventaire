@@ -44,9 +44,9 @@ export type DictKey =
   | 'system_ledger_status_active' | 'system_ledger_status_requested' | 'system_ledger_status_in_progress' | 'system_ledger_status_completed' | 'system_ledger_status_dismissed'
   | 'system_ledger_priority_p1' | 'system_ledger_priority_p2' | 'system_ledger_priority_p3' | 'system_ledger_priority_p4'
   | 'system_ledger_upload_not_authenticated' | 'system_ledger_upload_not_team' | 'system_ledger_upload_no_file' | 'system_ledger_upload_too_large' | 'system_ledger_upload_invalid_format' | 'system_ledger_upload_r2_failed'
-  | 'system_ledger_attach_max' | 'system_ledger_delete_confirm' | 'system_ledger_admin_only' | 'system_ledger_bible_confirm' | 'system_ledger_bible_err_prefix' | 'system_ledger_bible_success'
+  | 'system_ledger_attach_max' | 'system_ledger_delete_confirm' | 'system_ledger_admin_only'
   | 'system_ledger_attach_busy' | 'system_ledger_attach_add' | 'system_ledger_attach_remove_aria'
-  | 'system_ledger_title' | 'system_ledger_subtitle' | 'system_ledger_bible_regenerating' | 'system_ledger_bible_cta'
+  | 'system_ledger_title' | 'system_ledger_subtitle'
   | 'system_ledger_summary_ph' | 'system_ledger_details_ph' | 'system_ledger_logging' | 'system_ledger_add_entry'
   | 'system_ledger_loading' | 'system_ledger_empty'
   | 'system_ledger_col_pri' | 'system_ledger_col_date' | 'system_ledger_col_type' | 'system_ledger_col_entry' | 'system_ledger_col_status'
@@ -119,7 +119,7 @@ export type DictKey =
   | 'login_dev_lan_title' | 'login_dev_lan_oauth_warn' | 'login_dev_lan_auto_hint' | 'login_dev_lan_continue'
   | 'auth_err_session' | 'auth_err_generic'
   | 'hub_footer_internal'
-  | 'hub_menu' | 'hub_nav_signature_suffix' | 'hub_studio_bible' | 'hub_suggestions' | 'hub_public_site'
+  | 'hub_menu' | 'hub_nav_signature_suffix' | 'hub_suggestions' | 'hub_public_site'
   | 'hub_drawer_aria' | 'hub_pulse_ledger' | 'hub_ledger_empty' | 'hub_ledger_view_all'
   | 'hub_concept_fallback' | 'hub_tile_wip' | 'hub_tile_soon' | 'hub_tile_enter'
   | 'inventoryWorksBadge'
@@ -382,7 +382,7 @@ export type DictKey =
   // ── Block B — Command Palette ─────────────────────────────────────────────
   | 'cmd_palette_placeholder' | 'cmd_palette_no_results'
   | 'cmd_palette_group_tabs' | 'cmd_palette_group_works' | 'cmd_palette_group_contacts' | 'cmd_palette_group_actions'
-  | 'cmd_palette_action_new_work' | 'cmd_palette_action_export_xlsx' | 'cmd_palette_action_regen_bible'
+  | 'cmd_palette_action_new_work' | 'cmd_palette_action_export_xlsx'
   // ── Block B — Nav group labels (6-room) ──────────────────────────────────
   | 'nav_group_studio' | 'nav_group_catalogue' | 'nav_group_public_tab' | 'nav_group_admin'
   // ── Block B — Private link (/c/[token]) bilingual ─────────────────────────

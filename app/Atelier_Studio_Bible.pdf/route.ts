@@ -1,47 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { redirect } from 'next/navigation'
-
-const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
-
-function r2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID ?? ''
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.eu.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
-    },
-  })
-}
-
-export async function GET() {
-  const supabase = await createClient()
-  
-  // Find the latest 'bible' in the vault
-  const { data: doc } = await supabase
-    .from('document')
-    .select('storage_path')
-    .eq('kind', 'bible')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
-
-  if (!doc?.storage_path) {
-    return new Response('Studio Bible not found in vault.', { status: 404 })
-  }
-
-  // Generate a short-lived signed URL for the PDF
-  try {
-    const s3 = r2Client()
-    const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: doc.storage_path })
-    const url = await getSignedUrl(s3, cmd, { expiresIn: 60 }) // 1 minute
-    
-    // Redirect to the signed R2 URL
-    redirect(url)
-  } catch (e) {
-    return new Response(`Failed to generate signed URL: ${String(e)}`, { status: 500 })
-  }
+// Old Studio Bible download URL (bookmarks, old links). The Studio Bible and the two HTML guides were retired for
+// the in-app Aide (batch 6, Pem GO 2026-11-18): send the visitor there; middleware asks for a login if needed.
+// Relative Location: `req.url` can carry the server's bind host (0.0.0.0 in dev), not the visitor's.
+// 307, not 308: browsers cache a permanent redirect for good.
+export function GET() {
+  return new Response(null, { status: 307, headers: { Location: '/atelier/aide' } })
 }

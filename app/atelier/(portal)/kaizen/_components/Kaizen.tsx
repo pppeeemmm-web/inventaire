@@ -8,7 +8,6 @@
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -27,11 +26,9 @@ import {
   updateKaizen,
 } from '@/app/atelier/(portal)/kaizen/actions'
 
-// The 'website' section is shown as "Système" (owner 2026-11-02): app/site improvements + the former
-// System tab's tools. `?view=system` (old links) opens it.
+// The 'website' section is shown as "Système" (owner 2026-11-02): app/site improvements. `?view=system`
+// (old links) opens it. Its Studio Bible tool went with the Aide (batch 6, 2026-11-18).
 type View = KaizenSection | 'review'
-
-const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { ssr: false })
 
 const SECTION_KEY = {
   creation: 'kaizen_section_creation',
@@ -270,12 +267,6 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
       <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px' }}>
         {view === 'creation' ? (
           <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 12px' }}>{t('kaizen_section_creation_hint')}</p>
-        ) : null}
-        {view === 'website' ? (
-          <div data-testid="kaizen-system" style={{ marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--bd)' }}>
-            <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 10px' }}>{t('kaizen_section_system_hint')}</p>
-            <SystemTab embedded />
-          </div>
         ) : null}
 
         {view === 'review' ? (

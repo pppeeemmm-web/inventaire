@@ -1,32 +1,24 @@
 import { test, expect } from '@playwright/test'
 
 /**
+ * Old System / Studio Bible links keep landing somewhere useful (Aide batch 6, 2026-11-18: the Studio Bible, its
+ * Kaizen → Système regenerate tool and the ledger reference copy are gone).
  * Requires an authenticated session for `/atelier` (Supabase middleware).
  * Run locally: `ATELIER_E2E=1 npm run dev` then `ATELIER_E2E=1 npm run test:e2e`
  */
-test.describe('System tab — ledger reference MD', () => {
+test.describe('Old System / Studio Bible links', () => {
   test.skip(
     !process.env.ATELIER_E2E,
     'Set ATELIER_E2E=1 with a logged-in app session to run atelier E2E.',
   )
 
-  test('copy and download controls are visible on System tab', async ({ page }) => {
+  test('/atelier/system opens Kaizen', async ({ page }) => {
     await page.goto('/atelier/system', { waitUntil: 'domcontentloaded' })
-    // /atelier/system redirects to Kaizen → Système (2026-11-02); the embedded ledger has no own heading.
-    await expect(page.getByTestId('kaizen-system')).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByTestId('system-ledger-ref-copy')).toBeVisible()
-    await expect(page.getByTestId('system-ledger-ref-download')).toBeVisible()
+    await expect(page).toHaveURL(/\/atelier\/kaizen/, { timeout: 45_000 })
   })
 
-  test('copy places markdown in clipboard', async ({ page, context }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-    await page.goto('/atelier/system', { waitUntil: 'domcontentloaded' })
-    // /atelier/system redirects to Kaizen → Système (2026-11-02); the embedded ledger has no own heading.
-    await expect(page.getByTestId('kaizen-system')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('system-ledger-ref-copy').click()
-    await expect(page.getByRole('status')).toContainText(/clipboard|presse-papiers/i, { timeout: 15_000 })
-    const clip = await page.evaluate(() => navigator.clipboard.readText())
-    expect(clip).toContain('# System Ledger')
+  test('/Atelier_Studio_Bible.pdf opens the Aide', async ({ page }) => {
+    await page.goto('/Atelier_Studio_Bible.pdf', { waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/atelier\/aide/, { timeout: 45_000 })
   })
 })
-

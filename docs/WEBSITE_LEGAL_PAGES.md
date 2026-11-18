@@ -46,7 +46,7 @@ The privacy and cookie pages must describe the real site. Read in the live code 
 | 4 | Two audience tools (own counter + Vercel Analytics) | each must meet the exemption, or ask consent; two counters for one small site is redundant | keep the own counter (data stays in the EU) and **drop Vercel Analytics**, or check Vercel against the CNIL conditions [R] |
 | 5 | No way to **opt out** of counting | an exempt measurement must let people object [R] | an « Ne pas être compté·e » switch on the cookie page (sets a flag, no ID) |
 | 6 | Google Fonts loaded from Google on portals and `/card` | sends the visitor's IP to Google in the USA; a German court fined a site for it (LG München, 2022 [R]); safest is to self-host | serve the two fonts from the site (Next.js `next/font` does it) |
-| 7 | Team page views linked to a named team member | fine internally, but say it in the team notice | one line in the team guide (`TEAM_MEMBER_GUIDE.md`) |
+| 7 | Team page views linked to a named team member | fine internally, but say it in the team notice | one line in the in-app team guide (`lib/aide/team.*.ts`) |
 | 8 | OpenAI receives business-card images and contact data | a transfer outside the EU to a processor: needs a contract (OpenAI's data processing terms) and a transfer basis (EU–US Data Privacy Framework or standard clauses) [R] | check the OpenAI account's DPA; name it in the record of processing |
 
 Until gaps 3–5 are closed, the honest options are: **(a)** publish the cookie page saying what is stored and close the gaps quickly, or **(b)** add a consent banner. Proposal: (a), then (3)(4)(5) in one small batch — no banner on an artist's site.
@@ -107,7 +107,7 @@ Until gaps 3–5 are closed, the honest options are: **(a)** publish the cookie 
 
 *Notes for the lawyer:*
 - **Provenance « for the life of the work »** is the unusual point: justify it as a legitimate interest (title of the work, insurance, estate, resale right) with minimisation — keep the name and dates, drop the rest after 10 years. To confirm.
-- **Team members** (staff, assistants, volunteers using the app) need their own short notice (journal, voice notes, page views linked to them, calendar). Proposal: a section in `TEAM_MEMBER_GUIDE.md`.
+- **Team members** (staff, assistants, volunteers using the app) need their own short notice (journal, voice notes, page views linked to them, calendar). Proposal: a chapter in the in-app team guide (`lib/aide/team.*.ts`).
 - **Record of processing** (GDPR art. 30): the table above, plus the team's data, is the record. The small-business exemption does not apply to regular processing [R].
 - **Processors' contracts** (GDPR art. 28): Supabase, Vercel, Cloudflare and OpenAI publish data processing terms; check they are accepted on each account [R].
 - **Voice notes** through the browser's speech service send audio to Google or Apple — say so to the team, or prefer an on-device mode where the browser offers one.

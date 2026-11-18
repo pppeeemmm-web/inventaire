@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — In-app Aide, batch 6: Studio Bible + old guides retired (Pem « GO »)
+
+- Removed: the « Studio Bible » download (phone hub link + menu, ⌘K « Télécharger la Bible Atelier »), the Kaizen → Système « Régénérer la Studio Bible » tool (SystemTab `embedded` mode), `vault/bible-action.ts` (the PDF writer), `downloadLatestStudioBible` + `lib/studio-bible-download.ts`, 10 i18n keys. `/Atelier_Studio_Bible.pdf` now 307 → `/atelier/aide` (relative Location; seen in Chrome). `ADMIN_GUIDE.md` + `TEAM_MEMBER_GUIDE.md` → `docs/archive/` with a banner; SITE_MAP, SYSTEM_LEDGER, README, WEBSITE_LEGAL_PAGES updated; `tests/system-ledger-reference.spec.ts` (already stale) now checks the two old links. Seen in Chrome as admin: Kaizen → Système shows no tool, ⌘K lists no Bible action, no « Bible » text on the screens. What's new 3.1.70.
+- Left for Pem: the two Vault rows « Admin guide html » / « Team member Guide html » (kind `bible`; the Vault filter keeps the label until they go) → TODO §1.
+
 ## 2026-11-18 — In-app Aide, batch 5: admin guide (Pem « GO batch 5 »)
 
 - `435e9de`: 8 chapters FR + EN in `lib/aide/admin.{fr,en}.ts` — Ce guide, Le Fil, Valider le travail de l'équipe, Les séances de terrain, Corriger et revenir en arrière, Diffusion, Confidentialité des contacts, Sauvegardes — registered in `lib/aide/guides.ts`; the guide switch in `Aide.tsx` shows it to admins only (help text, nothing sensitive: it ships in the same chunk). Seen in Chrome as a non-admin: no switch, `?g=admin` falls back to the team guide. Not covered from the old batch 5 list: contacts merge. No What's new (admin only).

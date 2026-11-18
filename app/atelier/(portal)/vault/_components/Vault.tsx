@@ -32,6 +32,9 @@ const DOC_KINDS: { value: string; label: string }[] = [
   { value: 'bible',     label: 'Studio Bible' },
   { value: 'autre',     label: 'Autres' },
 ]
+/** Types offered when filing a document: « Studio Bible » retired with the Aide (batch 6, 2026-11-18) — its label
+ *  stays above only for the old rows still filed under it. */
+const PICKABLE_KINDS = DOC_KINDS.filter((k) => k.value !== 'bible')
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -1585,7 +1588,7 @@ function UploadModal({
             onChange={(e) => setShowCust(e.target.value === 'custom')}
           >
             <option value="">— Choisir —</option>
-            {DOC_KINDS.map(({ value, label }) => (
+            {PICKABLE_KINDS.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
             <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>
@@ -1828,7 +1831,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
             onChange={(e) => setShowCust(e.target.value === 'custom')}
           >
             <option value="">— Choisir —</option>
-            {DOC_KINDS.map(({ value, label }) => (
+            {(doc.kind === 'bible' ? DOC_KINDS : PICKABLE_KINDS).map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
             <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>

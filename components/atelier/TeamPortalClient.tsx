@@ -60,7 +60,6 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
-import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 import { useWhatsNewDots } from '@/lib/whats-new-dots'
 import { WhatsNewSpotNotice } from '@/components/atelier/WhatsNewSpotNotice'
 
@@ -172,8 +171,7 @@ function AtelierHeaderChrome({
         >
           {t('tab_reports')}
         </button>
-        {/* Audit items waiting (owner 2026-11-03: "be better informed on the desktop").
-            The Studio Bible button moved to the Vault page (still in the command palette). */}
+        {/* Audit items waiting (owner 2026-11-03: "be better informed on the desktop"). */}
         {onPendingReview && pendingReviewCount > 0 ? (
           <button
             type="button"
@@ -1102,13 +1100,6 @@ export function TeamPortalClient({
     return res.groupId
   }, [router])
 
-  const downloadStudioBible = useCallback(() => {
-    void triggerStudioBibleDownload({
-      notFoundMessage: t('studio_bible_download_not_found'),
-      errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
-    })
-  }, [t])
-
   // ── Environment Check ──────────────────────────────────────────
   const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   
@@ -1198,7 +1189,6 @@ export function TeamPortalClient({
         onStockTake={() => router.push('/atelier/stock?view=count')}
         onPendingApprovals={isAdmin ? () => handleSetTab('audit') : undefined}
         onExportXlsx={() => { handleSetTab('reports') }}
-        onDownloadStudioBible={downloadStudioBible}
       />
     <div
       ref={portalRootRef}

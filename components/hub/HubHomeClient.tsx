@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
@@ -9,7 +9,6 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
-import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 
 interface SystemLogEntry {
   id: number
@@ -76,13 +75,6 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
     lang === 'fr' ? 'fr-FR' : 'en-GB',
     { weekday: 'long', day: 'numeric', month: 'long' }
   )
-
-  const downloadStudioBible = useCallback(() => {
-    void triggerStudioBibleDownload({
-      notFoundMessage: t('studio_bible_download_not_found'),
-      errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
-    })
-  }, [t])
 
   const systemLogs = useMemo(() => [...auditFeed, ...taskFeed], [auditFeed, taskFeed])
 
@@ -159,14 +151,6 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         ) : (
           <div className="row gap-md" style={{ flexShrink: 0 }}>
             <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · {t('hub_nav_signature_suffix')}</div>
-            <button
-              type="button"
-              onClick={downloadStudioBible}
-              className="t-mono-sm"
-              style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              {t('hub_studio_bible')}
-            </button>
             <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
             <Link href="/atelier/system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
               {t('hub_suggestions')}
@@ -242,14 +226,6 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 {t('close')}
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => { setHubMenuOpen(false); downloadStudioBible() }}
-              className="t-mono-sm"
-              style={{ color: 'var(--tx2)', textDecoration: 'none', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-            >
-              {t('hub_studio_bible')}
-            </button>
             <Link href="/atelier/system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
               {t('hub_drawer_alerts_link')}
               {stats.stockAlerts > 0 ? ` · ${stats.stockAlerts}` : ''}
