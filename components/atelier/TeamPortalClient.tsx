@@ -59,6 +59,8 @@ import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
+import { useWhatsNewDots } from '@/lib/whats-new-dots'
+import { WhatsNewSpotNotice } from '@/components/atelier/WhatsNewSpotNotice'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
 
@@ -862,6 +864,8 @@ export function TeamPortalClient({
 
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(initialIsAdmin)
+  // What's new where it happened (TODO 24): a dot on the tab that changed, for the team (admins made the change).
+  const whatsNewDots = useWhatsNewDots(isAdmin)
 
   // Keep the "To review" count fresh while the Atelier stays open on a desktop: on focus and
   // every 5 min (admin only; the count is computed once at load otherwise).
@@ -1520,7 +1524,12 @@ export function TeamPortalClient({
                               justifyContent: 'space-between',
                             }}
                           >
-                            <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
+                            <span style={{ fontWeight: isActive ? 600 : 400, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {label}
+                              {whatsNewDots.has(key) ? (
+                                <span data-testid={`whats-new-dot-${key}`} aria-label={t('wn_spot_dot')} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ac)', flex: 'none' }} />
+                              ) : null}
+                            </span>
                             {count !== undefined && (
                               <span style={{
                                 fontSize: 9, opacity: 0.7, padding: '1px 4px',
@@ -1554,6 +1563,11 @@ export function TeamPortalClient({
               : undefined,
           }}
         >
+        {whatsNewDots.get(tab)?.length ? (
+          <div style={{ padding: '12px 16px 0' }}>
+            <WhatsNewSpotNotice items={whatsNewDots.get(tab) ?? []} />
+          </div>
+        ) : null}
 
         {effectiveRouteTab ? (
           <SegmentRoutePanel

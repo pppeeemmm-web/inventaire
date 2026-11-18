@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — A more human « What's new » (TODO 24, Pem « dots + voice card »)
+
+- 24. **A more human « What's new »** (Pem 2026-11-17): the team doesn't read it — too many updates, too complex, impersonal. Ideas: a « new » dot on the changed button with one plain sentence on first tap, or a short voice note from Pem per batch; the list stays as the archive → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — lead drafts the design first.
+- Built 2026-11-18 ([design](./design/2026-11-18/WhatsNew_Human.notes.md)): items in `lib/whats-new.ts` take a `spot` (the Atelier tab); a team member (not an admin) sees a dot on that menu entry for 21 days and, on the tab, one line « Nouveau ici : <title> » + « Compris » (`lib/whats-new-dots.ts`, `WhatsNewSpotNotice.tsx`; seen per browser, no SQL). Pem's voice card on Aujourd'hui: an admin voice note with « #équipe » in its subject, 21 days, + 3 latest novelties, « Écouté » hides it (`app/atelier/team-voice-actions.ts` reads it with the service client after `is_team()`, since RLS keeps admin notes from the team; `components/hub/TeamVoiceCard.tsx`, own chunk). Popup stays off. Defaults taken (Pem's open questions 2–4): seen per browser, dots for non-admins, no popup. Seen in Chrome as the non-admin dev account: 4 dots, the line on Commandes, « Got it » clears it; Aujourd'hui at 390 px, no sideways scroll (no « #équipe » note yet, so no card).
+
 ## 2026-11-18 — Content security policy enforced (TODO 8, Pem « go »)
 
 - 8. Security remaining: CSP is report-only (2026-11-16) — watch the live console, then enforce → [notes](./TODO_NOTES.md#security) (anon grants, ledger, `xlsx`, `system_log` / `studio_task` closed 2026-11-16 → [DONE](./DONE.md))

@@ -34,6 +34,8 @@ const VoiceNoteSheet = dynamic(
   () => import('@/components/shared/VoiceNoteSheet').then((m) => m.VoiceNoteSheet),
   { ssr: false },
 )
+/** Pem's « #équipe » voice card (TODO 24): its own chunk, so the phone page stays light. */
+const TeamVoiceCard = dynamic(() => import('@/components/hub/TeamVoiceCard'), { ssr: false })
 
 export type TodayWork = { id: number; title: string | null; thumb: string | null }
 
@@ -199,12 +201,18 @@ export function TodayPulse({ metrics, fil = null }: { metrics: FieldPulseMetric[
 }
 
 export function TodaySeeAgain({ seeAgain }: { seeAgain: SeeAgainSlots }) {
-  if (!seeAgain.then && !seeAgain.alone && !seeAgain.close) return null
+  const has = !!(seeAgain.then || seeAgain.alone || seeAgain.close)
   // Same card and actions as the Journal (Ouvrir, Plus tard, Écrire à ce sujet, Lier, Sans rapport), one slot at a time.
+  // Pem's voice card for the team sits above it (renders nothing when there is none).
   return (
-    <div data-testid="hub-today-see-again" style={{ padding: '10px 12px', borderTop: '1px solid var(--bd)' }}>
-      <SeeAgainCard context="today" initialSlots={seeAgain} oneAtATime />
-    </div>
+    <>
+      <TeamVoiceCard />
+      {has ? (
+        <div data-testid="hub-today-see-again" style={{ padding: '10px 12px', borderTop: '1px solid var(--bd)' }}>
+          <SeeAgainCard context="today" initialSlots={seeAgain} oneAtATime />
+        </div>
+      ) : null}
+    </>
   )
 }
 

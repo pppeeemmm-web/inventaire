@@ -17,4 +17,11 @@ export const whatsNewMessages = defineMessages({
   wn_open_kaizen: { fr: 'Voir dans Kaizen → Nouveautés', en: 'See in Kaizen → What’s new' },
   wn_kaizen_btn: { fr: 'Nouveautés {v}', en: 'What’s new {v}' },
   wn_kaizen_hide: { fr: 'Masquer les nouveautés', en: 'Hide what’s new' },
+  // TODO 24 — news where it happened, and Pem's voice card on Aujourd'hui.
+  wn_spot_new: { fr: 'Nouveau ici :', en: 'New here:' },
+  wn_spot_ok: { fr: 'Compris', en: 'Got it' },
+  wn_spot_dot: { fr: 'Nouveau', en: 'New' },
+  wn_voice_card_title: { fr: 'Un mot de {name}', en: 'A word from {name}' },
+  wn_voice_card_new: { fr: 'Nouveau cette semaine', en: 'New this week' },
+  wn_voice_card_ok: { fr: 'Écouté', en: 'Listened' },
 })

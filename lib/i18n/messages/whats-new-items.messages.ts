@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.55 (2026-11-18) — news where it happened (TODO 24).
+  wn_news_where_it_happened_t: { fr: 'Les nouveautés, là où elles sont', en: 'What’s new, where it happened' },
+  wn_news_where_it_happened_d: {
+    fr: 'Un point sur l’onglet du menu qui a changé ; en l’ouvrant, une ligne « Nouveau ici : … » et « Compris ». Et sur Aujourd’hui, un mot de Pem : une note vocale avec « #équipe » dans son sujet s’affiche pour toute l’équipe pendant 3 semaines, avec les dernières nouveautés en dessous.',
+    en: 'A dot on the menu tab that changed; opening it shows one line « New here: … » and « Got it ». And on Today, a word from Pem: a voice note with « #équipe » in its subject shows to the whole team for 3 weeks, with the latest novelties under it.',
+  },
   // 3.1.54 (2026-11-18) — image room, « Volée », voice notes, sale paper.
   wn_inputs_review_t: { fr: 'Notes vocales, photo d’inspiration, demandes du site', en: 'Voice notes, inspiration photo, site enquiries' },
   wn_inputs_review_d: {

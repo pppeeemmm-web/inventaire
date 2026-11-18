@@ -39,7 +39,6 @@ Trace
 
 Links
 - [ ] 23. **Theme notes** (Pem 2026-11-17): `theme` has only `id, name`, so the text goes in the title (4 names over 40 characters, longest 166) → add a notes field so titles stay short. SQL GO → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — building in session theme-notes-kit (SQL to Pem before apply).
-- [ ] 24. **A more human « What's new »** (Pem 2026-11-17): the team doesn't read it — too many updates, too complex, impersonal. Ideas: a « new » dot on the changed button with one plain sentence on first tap, or a short voice note from Pem per batch; the list stays as the archive → [R1 brief](./design/2026-11-17/R1_InputsFeed.notes.md#parked-from-the-same-session-not-r1) **GO 2026-11-18** — lead drafts the design first.
 
 Transmission (safety of what is kept)
 
