@@ -50,6 +50,7 @@ Speed and code health — first round built 2026-11-18 (measured: queries < 7 ms
 ## 4. To check once, when it happens (no build)
 
 New today
+- [ ] Order guards: `order_race_guards.sql` applied after the push (side session speed-measure); then a real double « Encaisser » or a sale from two tabs is refused with its message.
 - [ ] Collector share kit: the first real kit — made with its PDF, opened on a phone, an enquiry from it (Triage chip with the collector's name), the PDF download, « Prolonger » / « Retirer » (not tried: it would write real rows).
 - [ ] Phone navigation as admin: the Fil tile and its count, « Actions » rows; saving a real entry from the « Écrire » sheet (seen as a non-admin at 375 / 360 px only).
 - [ ] Search after the old « Commentaires » field: run `npm run embed:worker` on the PC once (works were re-marked; search now reads note lines).

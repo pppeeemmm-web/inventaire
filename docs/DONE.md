@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-18 — Stress-test fixes (Pem's GOs in session speed-measure)
+
+- Stress test on a throwaway local copy (fake records, prod read only): report [`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md), scripts in `scripts/stress/` (refuse anything not local; `dump/` gitignored — login tokens).
+- Security S1/S2 (`6c2ce5a`): `saveWork` honours `__skip_review` only for an admin; team check before the service client in 5 actions; system log team-only (`system_log_team_only.sql`, applied live on Pem's OK).
+- Orders (`fc0398d`): no double sale / double payment / overpayment (`advanceWorkOrder` moves only from the step it read; `recordOrderPayment` cap incl. shipping); « Recevoir » locks on a double tap; shipments follow their orders (B4); order reads in batches of 100 (`lib/supabase/in-chunks.ts`, B5 « URI too long » past ~200). Seen on the local copy only (races-plus 21 checks, 0 failed). `order_race_guards.sql` (DB-level guard for two tabs / two people) to apply after the push (Pem « Yes, after landing »).
+
 ## 2026-11-18 — Business card outdoors (Pem « Yes, all 4 »)
 
 - Card capture hung outdoors (Pem: the AI on the PC is out of reach): « Analyser » now reads the Live Text with rules only, at once; « Améliorer avec l'IA » is a separate button, one 30 s budget for photo reading + tidy-up (15 s at first; raised after the model's cold start took 18 s, Pem « 30s ») (`timeoutMs` on `refineContactWithLlm`, vision timeout), the contact stays when it fails; the photo is shrunk on the phone; on « Créer le contact » it is kept in the Vault (`cards/K_<id>_<hash8>.avif`, folder Business, `document.contact_id`, no SQL) (`a1df594`). Seen on localhost at 375 px: analyse instant, AI gave up at 15.6 s with its message. Not tried on an iPhone (« Scanner le texte », a real photo kept).

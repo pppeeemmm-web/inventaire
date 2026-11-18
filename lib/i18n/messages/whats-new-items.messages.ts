@@ -17,6 +17,16 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Une commande montre l’adresse où vont les œuvres, et on la choisit quand elle manque. Le « Retour » d’une œuvre vendue depuis un dépôt, payée mais pas livrée, la remet en « Consigné » chez la galerie, et le dépôt reprend.',
     en: 'An order shows the address the works go to, and you pick it when it is missing. A « Return » of a work sold out of a deposit, paid but not delivered, puts it back « Consigned » at the gallery, and the deposit reopens.',
   },
+  wn_orders_double_click_t: { fr: 'Commandes : un double clic ne compte qu’une fois', en: 'Orders: a double click counts once' },
+  wn_orders_double_click_d: {
+    fr: 'Une œuvre ne peut pas être vendue deux fois, un paiement ne s’enregistre pas deux fois, et le total payé ne dépasse jamais le prix + l’envoi. « Recevoir » une commande de fournitures se verrouille pendant l’envoi. L’onglet Ventes fonctionne au-delà de 200 commandes.',
+    en: 'A work can’t be sold twice, a payment isn’t recorded twice, and the total paid never goes above price + shipping. « Receive » on a supplies order locks while it saves. The Sales tab works past 200 orders.',
+  },
+  wn_shipments_follow_orders_t: { fr: 'Les envois suivent leurs commandes', en: 'Shipments follow their orders' },
+  wn_shipments_follow_orders_d: {
+    fr: 'Une vente annulée ou retournée, un dépôt ou un prêt clos à la main : ses œuvres sortent d’un envoi pas encore parti, et un carton vide est annulé. Un envoi déjà en route ne bouge pas.',
+    en: 'A sale cancelled or returned, a deposit or loan closed by hand: its works leave a shipment not yet gone, and an empty box is cancelled. A shipment already on the road is left as it is.',
+  },
   wn_card_live_text_t: { fr: 'Carte de visite : marche dehors', en: 'Business card: works outdoors' },
   wn_card_live_text_d: {
     fr: 'Touchez la case de texte deux fois, « Scanner le texte », visez la carte, puis « Analyser » : le contact se remplit tout de suite, sans IA ni réseau de l’atelier. « Améliorer avec l’IA » est à part et abandonne après 30 s. La photo de la carte est gardée avec le contact (Coffre › Business).',
