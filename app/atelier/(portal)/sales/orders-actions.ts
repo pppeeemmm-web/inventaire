@@ -392,6 +392,93 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   return { ok: true, id: order.id, ref: order.ref }
 }
 
+/** Steps on which a line's value may still change (Pem 2026-11-18). After signing, the paper must be remade. */
+const LINE_VALUE_EDITABLE = ['draft', 'signed']
+export type LineValueResult = { ok: true; paperRedone: boolean } | { error: string }
+
+/**
+ * Change one work's value on an order: price (sale), agreed price (consignment, also its insurance
+ * value), insurance value (loan, entrusted) or reference value (gift, never printed). Empty = the
+ * work's price today, as at creation. Draft: the draft paper is made again with it. Signed: the
+ * paper is left as signed — the screen says to make it again. Nothing changes once paid / out / given.
+ */
+export async function updateOrderLineValue(orderId: string, oeuvreId: number, raw: string): Promise<LineValueResult> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { supabase } = g
+  if (!UUID_RE.test(orderId) || !Number.isInteger(oeuvreId)) return { error: 'ord_err_step' }
+
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, ref').eq('id', orderId).single()
+  if (error || !o) return { error: error?.message ?? 'Order not found' }
+  if (!LINE_VALUE_EDITABLE.includes(o.status)) return { error: 'ord_err_value_locked' }
+  const kind = o.kind as WorkOrderKind
+
+  const { data: line } = await supabase.from('work_order_work')
+    .select('id, line_status, price, insurance_value').eq('order_id', o.id).eq('oeuvre_id', oeuvreId).maybeSingle()
+  if (!line || line.line_status !== 'active') return { error: 'ord_err_step' }
+
+  let value = raw.trim() === '' ? null : numOrNull(raw)
+  if (raw.trim() !== '' && (value == null || value < 0)) return { error: 'ord_err_value' }
+  if (value == null) {
+    const { data: w } = await supabase.from('Oeuvres').select('Prix').eq('OeuvreID', oeuvreId).maybeSingle()
+    value = w?.Prix == null ? null : Number(w.Prix)
+  }
+  const patch = kind === 'sale' ? { price: value }
+    : kind === 'consignment' ? { price: value, insurance_value: value }
+    : { insurance_value: value }
+  const { error: upErr } = await supabase.from('work_order_work').update(patch).eq('id', line.id)
+  if (upErr) return { error: upErr.message }
+
+  const before = kind === 'sale' || kind === 'consignment' ? line.price : line.insurance_value
+  await logSystemEvent({
+    eventType: 'PRICE_CHANGE', tableName: 'work_order_work', rowId: line.id,
+    oldValue: before, newValue: value, metadata: { ref: o.ref, kind, oeuvre_id: oeuvreId, status: o.status },
+  })
+  let paperRedone = false
+  if (o.status === 'draft') {
+    const paper = await makeOrderPaper(o.id)
+    if ('error' in paper) await logError('Draft paper not remade after a value change', paper.error, { source: 'orders.updateOrderLineValue', metadata: { orderId: o.id, ref: o.ref } })
+    else paperRedone = true
+  }
+  revalidatePath('/atelier/sales')
+  return { ok: true, paperRedone }
+}
+
+/** A work « Confié » (entrusted) and out at the craftsperson's — for the Production board (read only). */
+export type EntrustedOutWork = { oeuvre_id: number; title: string | null; image: string | null; order_id: string; ref: string | null; party: string; since: string | null }
+
+export async function fetchEntrustedOut(): Promise<EntrustedOutWork[]> {
+  const g = await guardTeam()
+  if ('error' in g || !ENTRUSTED_LIVE) return []
+  const { supabase } = g
+  const { data: orders } = await supabase.from('work_order')
+    .select('id, ref, party_id, delivered_at, start_date').eq('kind', 'entrusted').eq('status', 'out')
+  if (!orders?.length) return []
+  const [linesRes, partiesRes] = await Promise.all([
+    supabase.from('work_order_work').select('order_id, oeuvre_id, position').in('order_id', orders.map((o) => o.id)).eq('line_status', 'active'),
+    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', [...new Set(orders.map((o) => o.party_id))]),
+  ])
+  const lines = linesRes.data ?? []
+  if (!lines.length) return []
+  const { data: works } = await supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', [...new Set(lines.map((l) => l.oeuvre_id))])
+  const workById = new Map((works ?? []).map((w) => [w.OeuvreID, w]))
+  const partyById = new Map((partiesRes.data ?? []).map((c) => [c.ContactID, c]))
+  const orderById = new Map(orders.map((o) => [o.id, o]))
+  return lines
+    .map((l) => {
+      const o = orderById.get(l.order_id)!
+      const c = partyById.get(o.party_id)
+      const w = workById.get(l.oeuvre_id)
+      return {
+        oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null,
+        order_id: o.id, ref: o.ref,
+        party: c ? (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${o.party_id}`) : `#${o.party_id}`,
+        since: o.delivered_at ?? o.start_date,
+      }
+    })
+    .sort((a, b) => String(a.since ?? '').localeCompare(String(b.since ?? '')) || a.oeuvre_id - b.oeuvre_id)
+}
+
 type OrderRow = {
   id: string; kind: WorkOrderKind; status: string; party_id: number; address_id: number | null
   end_date: string | null; price_final: number | null; ref: string | null

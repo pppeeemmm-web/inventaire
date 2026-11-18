@@ -27,6 +27,7 @@ import { WorkCaption } from '@/components/atelier/WorkChip'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { untitledLine } from '@/lib/work-preview-cache'
 import type { Oeuvre } from '@/lib/types/database'
+import { fetchEntrustedOut, type EntrustedOutWork } from '@/app/atelier/(portal)/sales/orders-actions'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -90,6 +91,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const [actionTypes, setActionTypes] = useState<ActionType[]>([])
   const [actions,     setActions]     = useState<WorkAction[]>([])
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  /** Works « Confié » and out at a craftsperson's (R7, read only): strip above the board + card badge. */
+  const [entrusted, setEntrusted] = useState<EntrustedOutWork[]>([])
   const [localOeuvres, setLocalOeuvres] = useState<Oeuvre[]>(oeuvres)
   const { confirmStep, confirmDialog } = useConfirmStep()
   const [loading,     setLoading]     = useState(true)
@@ -121,6 +124,14 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     setFieldIssues((issues ?? []) as FieldIssue[])
     setLoading(false)
   }, [sb])
+
+  // Separate from loadData: the board must not wait for (or fail with) the orders read.
+  useEffect(() => {
+    let live = true
+    fetchEntrustedOut().then((rows) => { if (live) setEntrusted(rows) }).catch(() => { /* board works without it */ })
+    return () => { live = false }
+  }, [])
+  const entrustedById = useMemo(() => new Map(entrusted.map((e) => [e.oeuvre_id, e])), [entrusted])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -330,6 +341,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         onOpen={onOpen}
       />
 
+      {entrusted.length > 0 && <EntrustedStrip rows={entrusted} oeuvresById={oeuvresById} onOpen={onOpen} narrow={narrow} />}
+
 
       {/* Action type manager */}
       {editingTypes && (
@@ -390,6 +403,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
                   active={active}
                   tM={tM}
                   oeuvresById={oeuvresById}
+                  entrustedById={entrustedById}
                   onMarkDone={(oid) => markDone(oid, at.id)}
                   onAddAction={(oid) => addAction(oid, at.id)}
                   onOpen={onOpen}
@@ -414,7 +428,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 // ── Action column ─────────────────────────────────────────────
 
 function ActionColumn({
-  actionType, works, active, tM, onMarkDone, onAddAction, onOpen,
+  actionType, works, active, tM, entrustedById, onMarkDone, onAddAction, onOpen,
   dragEnabled = false, dragging = null, onDragStartWork, onDragEndWork, onDropWork,
 }: {
   actionType:  ActionType
@@ -422,6 +436,7 @@ function ActionColumn({
   active:      Oeuvre[]
   tM:          Record<number, string>
   oeuvresById: Map<number, Oeuvre>
+  entrustedById: Map<number, EntrustedOutWork>
   onMarkDone:  (oid: number) => void
   onAddAction: (oid: number) => void
   onOpen:      (o: Oeuvre) => void
@@ -552,6 +567,7 @@ function ActionColumn({
             key={o.OeuvreID}
             o={o}
             tM={tM}
+            entrusted={entrustedById.get(o.OeuvreID)}
             onMarkDone={() => onMarkDone(o.OeuvreID)}
             onOpen={onOpen}
             draggable={dragEnabled}
@@ -569,9 +585,11 @@ function ActionColumn({
 
 // ── Work card ─────────────────────────────────────────────────
 
-function WorkCard({ o, tM, onMarkDone, onOpen, draggable = false, onDragStart, onDragEnd }: {
+function WorkCard({ o, tM, entrusted, onMarkDone, onOpen, draggable = false, onDragStart, onDragEnd }: {
   o:          Oeuvre
   tM:         Record<number, string>
+  /** On a running « Confié » order: the work is at the craftsperson's. */
+  entrusted?: EntrustedOutWork
   onMarkDone: () => void
   onOpen:     (o: Oeuvre) => void
   draggable?: boolean
@@ -664,12 +682,20 @@ function WorkCard({ o, tM, onMarkDone, onOpen, draggable = false, onDragStart, o
       </div>
 
       {/* Badges */}
-      {(isFramed || (isCommission && (deadline || true))) && (
+      {(isFramed || isCommission || entrusted) && (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 47 }}>
           {isFramed && (
             <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '2px 6px' }}>
               {t('prod_tab_badge_framed')}
             </span>
+          )}
+          {entrusted && (
+            <a href={`/atelier/sales?order=${entrusted.order_id}`} data-testid={`production-entrusted-badge-${o.OeuvreID}`}
+              title={t('prod_entrusted_open_order').replace('{ref}', entrusted.ref ?? '')}
+              onClick={(e) => e.stopPropagation()}
+              style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--cyan, var(--ac))', border: '1px solid currentColor', padding: '2px 6px', textDecoration: 'none', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('prod_entrusted_badge').replace('{party}', entrusted.party)}
+            </a>
           )}
           {isCommission && deadline && (
             <span style={{
@@ -698,6 +724,78 @@ const FIELD_ISSUE_TYPE_KEYS: Partial<Record<string, DictKey>> = {
   maintenance: 'system_task_type_maintenance',
   backlog: 'system_task_type_backlog',
   bug: 'system_task_type_bug',
+}
+
+// ── Confié (R7): works out at a craftsperson's ───────────────
+// Read only (Pem GO 2026-11-18): « chez <party> depuis <date> » + the order. Folded by default.
+
+function EntrustedStrip({ rows, oeuvresById, onOpen, narrow }: {
+  rows:        EntrustedOutWork[]
+  oeuvresById: Map<number, Oeuvre>
+  onOpen:      (o: Oeuvre) => void
+  narrow:      boolean
+}) {
+  const { t, lang } = useI18n()
+  const [open, setOpen] = useState(false)
+  const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
+  const day = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+
+  return (
+    <section
+      aria-labelledby="entrusted-strip-heading"
+      data-testid="production-entrusted"
+      style={{ flexShrink: 0, margin: '0 0 12px', border: '1px solid var(--bd)', background: 'var(--bg0)' }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        title={t('prod_entrusted_tt')}
+        style={{
+          width: '100%', minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 10,
+          background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tx)', fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span aria-hidden style={{ color: 'var(--tx3)', fontSize: 11, width: 10 }}>{open ? '▾' : '▸'}</span>
+        <span id="entrusted-strip-heading" className="t-label">{t('prod_entrusted_title')}</span>
+        <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11 }}>{rows.length}</span>
+      </button>
+      {open && (
+        <div style={{ padding: '0 12px 12px', display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8 }}>
+          {rows.map((r) => {
+            const work = oeuvresById.get(r.oeuvre_id)
+            const line = r.since
+              ? t('prod_entrusted_line').replace('{party}', r.party).replace('{date}', day(r.since))
+              : t('prod_entrusted_line_nodate').replace('{party}', r.party)
+            return (
+              <article
+                key={`${r.order_id}-${r.oeuvre_id}`}
+                data-testid={`production-entrusted-${r.oeuvre_id}`}
+                style={{ border: '1px solid var(--bd)', background: 'var(--bg1)', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}
+              >
+                <button
+                  type="button"
+                  disabled={!work}
+                  onClick={() => { if (work) onOpen(work) }}
+                  style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', padding: 0, cursor: work ? 'pointer' : 'default', color: 'var(--tx)', textAlign: 'left', fontFamily: 'inherit', fontSize: 13 }}
+                >
+                  <WorkThumbLabel id={r.oeuvre_id} title={r.title} image={r.image} px={32} sub={line} />
+                </button>
+                <a
+                  href={`/atelier/sales?order=${r.order_id}`}
+                  title={t('prod_entrusted_open_order').replace('{ref}', r.ref ?? '')}
+                  className="t-mono-sm"
+                  style={{ flex: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 6px', color: 'var(--ac)', fontSize: 12, textDecoration: 'none' }}
+                >
+                  {r.ref ?? '→'}
+                </a>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function issuePriorityColor(priority: string | null): string {

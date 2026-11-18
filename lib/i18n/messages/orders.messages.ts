@@ -281,6 +281,45 @@ export const ordersMessages = defineMessages({
     en: 'Production closed: the work has left the studio. Its state follows its order.',
   },
   wc_stage_left_open: { fr: 'Ouvrir la commande', en: 'Open the order' },
+  // ── R7 leftovers (Pem GO 2026-11-18): a line's value after creation, share a paper, Confié on Production ──
+  ord_line_value_sale: { fr: 'Prix de vente', en: 'Sale price' },
+  ord_value_edit: { fr: 'Modifier', en: 'Edit' },
+  ord_value_edit_tt: { fr: 'Changer la valeur de cette œuvre sur la commande', en: 'Change this work’s value on the order' },
+  ord_value_save: { fr: 'Enregistrer', en: 'Save' },
+  ord_value_signed_warn: {
+    fr: 'Commande signée : le papier signé garde l’ancienne valeur. Après la modification, refaites le papier et faites-le signer de nouveau.',
+    en: 'Signed order: the signed paper keeps the old value. After the change, make the paper again and have it signed again.',
+  },
+  ord_value_sale_total: {
+    fr: 'Le prix total de la vente ({total}) ne change pas.',
+    en: 'The sale’s total price ({total}) does not change.',
+  },
+  ord_value_paper_stale: {
+    fr: 'Une valeur a changé après la signature : refaites le papier, puis ajoutez la nouvelle copie signée.',
+    en: 'A value changed after signing: make the paper again, then add the new signed copy.',
+  },
+  ord_value_paper_redone: { fr: 'Valeur enregistrée, brouillon du papier refait.', en: 'Value saved, draft paper made again.' },
+  ord_err_value: { fr: 'Valeur non valable : un montant de 0 ou plus.', en: 'Value not valid: an amount of 0 or more.' },
+  ord_err_value_locked: {
+    fr: 'Cette commande ne se modifie plus (payée, sortie, remise ou close).',
+    en: 'This order can no longer be changed (paid, out, handed over or closed).',
+  },
+  ord_share_paper: { fr: 'Partager', en: 'Share' },
+  ord_share_paper_tt: {
+    fr: 'Envoie le fichier lui-même (pas de lien). Sur un ordinateur : le télécharge.',
+    en: 'Sends the file itself (no link). On a computer: downloads it.',
+  },
+  ord_share_ready: { fr: 'Fichier prêt : touchez « Partager » encore une fois.', en: 'File ready: tap « Share » once more.' },
+  ord_share_error: { fr: 'Fichier non récupéré :', en: 'File not fetched:' },
+  prod_entrusted_title: { fr: 'Confiées hors de l’atelier', en: 'Entrusted outside the studio' },
+  prod_entrusted_tt: {
+    fr: 'Œuvres chez un artisan (encadreur, restaurateur…) par une commande « Confié » en cours. Lecture seule : ouvrez la commande pour la faire rentrer.',
+    en: 'Works with a craftsperson (framer, restorer…) on a running « Entrusted » order. Read only: open the order to bring them back.',
+  },
+  prod_entrusted_line: { fr: 'chez {party} depuis le {date}', en: 'with {party} since {date}' },
+  prod_entrusted_line_nodate: { fr: 'chez {party}', en: 'with {party}' },
+  prod_entrusted_badge: { fr: 'chez {party}', en: 'with {party}' },
+  prod_entrusted_open_order: { fr: 'Ouvrir la commande {ref}', en: 'Open order {ref}' },
   ord_mobile_done_delivered: {
     fr: 'Payée et emportée : la vente est « Livrée ». L’argent reste en attente pendant les 14 jours de retour, à partir d’aujourd’hui.',
     en: 'Paid and taken away: the sale is « Delivered ». The money stays held during the 14 return days, from today.',

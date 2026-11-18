@@ -12,7 +12,8 @@ import { useSearchParams } from 'next/navigation'
 import { ENTRUSTED_LIVE, REFUNDED_AT_LIVE } from '@/lib/orders/kinds'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 import { WorkLoupeThumb, WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
-import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, markSaleRefunded, recordOrderPayment, returnSaleOrder, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { advanceWorkOrder, attachSignedCopy, cancelWorkOrder, fetchWorkOrders, makeOrderPaper, markSaleRefunded, recordOrderPayment, returnSaleOrder, updateOrderLineValue, type WorkOrderKind, type WorkOrderView } from '@/app/atelier/(portal)/sales/orders-actions'
+import { sharePaperFile } from '@/lib/orders/share-paper-client'
 import { returnDaysLeft, returnLastDay, saleMoneyState } from '@/lib/sales/sale-money'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
@@ -36,11 +37,13 @@ const STEPS: Record<WorkOrderKind, string[]> = {
   entrusted: ['draft', 'out', 'closed'],
 }
 const VALUE_LABEL: Partial<Record<WorkOrderKind, DictKey>> = {
-  consignment: 'ord_line_value_consignment', loan: 'ord_line_value_loan', gift: 'ord_line_value_gift', entrusted: 'ord_line_value_entrusted',
+  sale: 'ord_line_value_sale', consignment: 'ord_line_value_consignment', loan: 'ord_line_value_loan', gift: 'ord_line_value_gift', entrusted: 'ord_line_value_entrusted',
 }
 /** Denser cells than the shared .tbl, so seven columns fit beside the order panel. */
 const CELL = { padding: '8px 10px' } as const
 const FINISHED = new Set(['closed', 'cancelled', 'delivered', 'handed_over'])
+/** Same steps as the server (`updateOrderLineValue`): a line's value changes on a draft or a signed order only. */
+const VALUE_EDITABLE = ['draft', 'signed']
 
 function stepLabelKey(kind: WorkOrderKind, step: string): DictKey {
   if (kind === 'gift' && step === 'signed') return 'ord_st_gift_signed'
@@ -148,6 +151,16 @@ export function Orders({ openWork, contacts }: Props) {
   const [stepBusy, setStepBusy] = useState(false)
   const [stepErr, setStepErr] = useState<string | null>(null)
   const [paperBusy, setPaperBusy] = useState(false)
+  /** A line's value being changed: the work and the text typed (Pem 2026-11-18). */
+  const [valueEdit, setValueEdit] = useState<{ oeuvreId: number; text: string } | null>(null)
+  const [valueBusy, setValueBusy] = useState(false)
+  const [valueErr, setValueErr] = useState<string | null>(null)
+  /** Orders whose value changed after signing this visit: the paper must be made (and signed) again. */
+  const [paperStale, setPaperStale] = useState<Set<string>>(() => new Set())
+  const [valueSavedNote, setValueSavedNote] = useState<string | null>(null)
+  /** « Partager »: the doc being fetched, and a doc whose file is fetched but needs a second tap. */
+  const [shareBusy, setShareBusy] = useState<string | null>(null)
+  const [shareReady, setShareReady] = useState<string | null>(null)
   const signedInput = useRef<HTMLInputElement>(null)
   /** An order opened by link (`?order=`): if it is closed, the list shows closed orders too. */
   const linkedOrder = useRef<string | null>(null)
@@ -169,6 +182,9 @@ export function Orders({ openWork, contacts }: Props) {
     if (FINISHED.has(o.status)) setShowClosed(true)
   }, [orders])
 
+  // Another order on screen: drop a half-typed value and the « file ready » state.
+  useEffect(() => { setValueEdit(null); setValueErr(null); setValueSavedNote(null); setShareReady(null) }, [selectedId])
+
   async function redoPaper(o: WorkOrderView) {
     setPaperBusy(true); setStepErr(null)
     try {
@@ -177,6 +193,37 @@ export function Orders({ openWork, contacts }: Props) {
       await load()
     } finally {
       setPaperBusy(false)
+    }
+  }
+
+  function startValueEdit(oeuvreId: number, value: number | null) {
+    setValueEdit({ oeuvreId, text: value == null ? '' : String(value) }); setValueErr(null); setValueSavedNote(null)
+  }
+
+  async function saveValue(o: WorkOrderView) {
+    if (!valueEdit) return
+    setValueBusy(true); setValueErr(null)
+    try {
+      const res = await updateOrderLineValue(o.id, valueEdit.oeuvreId, valueEdit.text)
+      if ('error' in res) { setValueErr(orderErrorText(res.error, t)); return }
+      setValueEdit(null)
+      if (o.status !== 'draft') setPaperStale((s) => new Set(s).add(o.id))
+      setValueSavedNote(res.paperRedone ? o.id : null)
+      await load()
+    } finally {
+      setValueBusy(false)
+    }
+  }
+
+  async function sharePaper(p: { id: string; name: string; storage_path: string | null }) {
+    if (!p.storage_path) return
+    setShareBusy(p.id); setStepErr(null)
+    try {
+      const res = await sharePaperFile(p.id, p.storage_path, p.name)
+      if (res === 'needs_second_tap') setShareReady(p.id)
+      else { setShareReady(null); if (typeof res === 'object') setStepErr(`${t('ord_share_error')} ${res.error}`) }
+    } finally {
+      setShareBusy(null)
     }
   }
 
@@ -191,6 +238,8 @@ export function Orders({ openWork, contacts }: Props) {
       fd.append('file', file)
       const res = await attachSignedCopy(fd)
       if ('error' in res) setStepErr(orderErrorText(res.error, t))
+      // The new signed copy carries the changed value: the « remake the paper » note is done.
+      else setPaperStale((s) => { const n = new Set(s); n.delete(o.id); return n })
       await load()
     } finally {
       setPaperBusy(false)
@@ -400,21 +449,61 @@ export function Orders({ openWork, contacts }: Props) {
           {o.reconstituted && <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>{t('ord_reconstituted_hint')}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
             {o.works.map((w) => {
+              const canEdit = !o.reconstituted && w.line_status === 'active' && VALUE_EDITABLE.includes(o.status)
+              const editing = canEdit && valueEdit?.oeuvreId === w.oeuvre_id
               return (
-                <button key={w.oeuvre_id} type="button" onClick={() => openWork(w.oeuvre_id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: 'none', border: 'none', padding: 0,
-                  color: 'var(--tx)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
-                }}>
-                  <WorkThumbLabel id={w.oeuvre_id} title={w.title} image={w.image} px={36} />
-                  {w.line_status !== 'active' && LINE_LABEL[w.line_status] && (
-                    <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(LINE_LABEL[w.line_status])}</span>
+                <div key={w.oeuvre_id} data-testid={`order-line-${w.oeuvre_id}`}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <button type="button" onClick={() => openWork(w.oeuvre_id)} style={{
+                      display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, background: 'none', border: 'none', padding: 0, flex: 1, minWidth: 0,
+                      color: 'var(--tx)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
+                    }}>
+                      <WorkThumbLabel id={w.oeuvre_id} title={w.title} image={w.image} px={36} />
+                      {w.line_status !== 'active' && LINE_LABEL[w.line_status] && (
+                        <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(LINE_LABEL[w.line_status])}</span>
+                      )}
+                    </button>
+                    {w.value != null && VALUE_LABEL[o.kind] && (
+                      <span title={t(VALUE_LABEL[o.kind]!)} style={{ fontSize: 12, color: 'var(--tx3)', whiteSpace: 'nowrap', flex: 'none' }}>{fmtMoney(w.value, o.currency)}</span>
+                    )}
+                    {canEdit && !editing && (
+                      <button type="button" className="btn ghost sm" data-testid={`order-line-value-edit-${w.oeuvre_id}`}
+                        title={`${t('ord_value_edit_tt')} — ${t(VALUE_LABEL[o.kind]!)}`}
+                        onClick={() => startValueEdit(w.oeuvre_id, w.value)} style={{ minHeight: 44, flex: 'none' }}>
+                        {t('ord_value_edit')}
+                      </button>
+                    )}
+                  </div>
+                  {editing && (
+                    <div style={{ margin: '4px 0 8px', padding: 10, border: '1px solid var(--bd2)', borderRadius: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={payLabel}>
+                        {t(VALUE_LABEL[o.kind]!)}
+                        <input className="input" type="number" inputMode="decimal" min={0} autoFocus value={valueEdit.text}
+                          data-testid="order-line-value-input"
+                          onChange={(e) => setValueEdit({ oeuvreId: w.oeuvre_id, text: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void saveValue(o); if (e.key === 'Escape') setValueEdit(null) }}
+                          style={payInput} />
+                      </label>
+                      <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('ord_line_value_hint')}</div>
+                      {o.kind === 'sale' && o.price_final != null && (
+                        <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('ord_value_sale_total').replace('{total}', fmtMoney(o.price_final, o.currency))}</div>
+                      )}
+                      {o.status !== 'draft' && (
+                        <div role="note" style={{ fontSize: 12, color: 'var(--yellow, var(--ac))' }}>{t('ord_value_signed_warn')}</div>
+                      )}
+                      {valueErr && <div role="alert" style={{ fontSize: 13, color: 'var(--rust)' }}>{valueErr}</div>}
+                      <div style={{ display: 'flex', gap: 8, flexDirection: narrow ? 'column' : 'row' }}>
+                        <button type="button" className="btn primary" disabled={valueBusy} onClick={() => { void saveValue(o) }} style={{ minHeight: 44 }}>
+                          {valueBusy ? t('ord_working') : t('ord_value_save')}
+                        </button>
+                        <button type="button" className="btn ghost" disabled={valueBusy} onClick={() => setValueEdit(null)} style={{ minHeight: 44 }}>{t('ord_new_cancel')}</button>
+                      </div>
+                    </div>
                   )}
-                  {w.value != null && VALUE_LABEL[o.kind] && (
-                    <span title={t(VALUE_LABEL[o.kind]!)} style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{fmtMoney(w.value, o.currency)}</span>
-                  )}
-                </button>
+                </div>
               )
             })}
+            {valueSavedNote === o.id && <div style={{ fontSize: 12, color: 'var(--sage)' }}>{t('ord_value_paper_redone')}</div>}
           </div>
         </div>
 
@@ -527,8 +616,21 @@ export function Orders({ openWork, contacts }: Props) {
                   {t('ord_open_paper')}
                 </button>
               )}
+              {p.storage_path && (
+                <button type="button" className="btn ghost sm" data-testid={`order-paper-share-${p.id}`} title={t('ord_share_paper_tt')}
+                  disabled={shareBusy === p.id} onClick={() => { void sharePaper(p) }}
+                  style={{ minHeight: 44, color: shareReady === p.id ? 'var(--ac)' : undefined, borderColor: shareReady === p.id ? 'var(--ac)' : undefined }}>
+                  {shareBusy === p.id ? t('ord_working') : t('ord_share_paper')}
+                </button>
+              )}
             </div>
           ))}
+          {shareReady && o.papers.some((p) => p.id === shareReady) && (
+            <div role="status" style={{ fontSize: 12, color: 'var(--ac)', marginTop: 6 }}>{t('ord_share_ready')}</div>
+          )}
+          {paperStale.has(o.id) && (
+            <div role="note" data-testid="order-paper-stale" style={{ fontSize: 12, color: 'var(--yellow, var(--ac))', marginTop: 6 }}>{t('ord_value_paper_stale')}</div>
+          )}
           <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
             <button type="button" className="btn ghost" disabled={paperBusy} onClick={() => { void redoPaper(o) }} style={{ minHeight: 44 }}>
               {paperBusy ? t('ord_working') : o.paper_path ? t('ord_paper_redo') : t('ord_paper_make')}
