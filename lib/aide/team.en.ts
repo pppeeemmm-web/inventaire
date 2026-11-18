@@ -236,4 +236,179 @@ Production (Field → Production) is the board of the steps left to do on the at
 2. "Columns" (top right, next to "Report") manages the columns themselves: name, colour, what ticking the step changes on the work.
 `,
   },
+  {
+    id: 'day',
+    title: 'The day and the Journal',
+    verified: '2026-11-18',
+    md: `
+The Journal keeps one page per day: the writings, voice notes, photos and works of that day. On the phone, the day's page is called **Today**.
+
+## Reading the day
+
+- At the top: the date, ‹ › to change day, 📅 for the list of days.
+- Under the date: how many entries, works and notes that day, then **Past due · Today · Review · Inbox**: the field queue (reminders, sessions to review, shares, issues). A tap opens it.
+- **See again today** brings back an old entry or two close works. "Open the day" goes there; "Later" puts it off for 7 days; "1 / 3 ›" moves to the next.
+- Then the works of the day, and the writings and notes of the day.
+
+## Writing an entry
+
+**When:** a thought, an observation, a spark, to keep.
+
+1. Bottom bar → **Write**.
+2. Pick the kind: Spark, Trigger, Reflection or Note.
+3. Write it as it comes. Type **#2399** in the text to link work no. 2399.
+4. **Add**.
+
+**Next:** the entry is added to that day ("Saved on this day").
+
+**Watch out:** an entry cannot be edited. To correct it, add a new one.
+
+## Recording a voice note
+
+**When:** speaking is faster than writing.
+
+1. Bottom bar → **Voice**. Recording starts at once.
+2. Speak. When the phone allows it, the words appear on screen as you speak.
+3. **Stop and save**.
+4. If you like: add details afterwards (optional).
+
+**Next:** the note is kept with its date and time, and shows in the day's writings and notes. "Link…" on the note ties it to a work, an idea or a project. A fuller transcript comes later, made on the studio PC.
+
+**Watch out:**
+- "Microphone not available": allow the microphone for the site in the browser settings, then "Retry"; or "Write a note" instead.
+- "Not saved": tap "Retry saving" before closing, the audio is still there.
+
+## Finding a day
+
+1. On the phone: 📅 on Today, or the **Journal** tile in the ☰ menu.
+2. Tap a day to open it, or "Go to" to pick a date.
+
+**Watch out:** the whole team reads the Journal; only admins capture or edit a work session.
+`,
+  },
+  {
+    id: 'ideas',
+    title: 'Ideas',
+    verified: '2026-11-18',
+    md: `
+Ideas (Studio → Ideas) gathers Pem's projects and concepts. Pem decides on ideas; the team reads them, discusses them and proposes new ones.
+
+## Reading an idea
+
+1. The chips at the top filter by weight and by maturity; "Search ideas…" looks in the titles.
+2. Tap an idea to open it: weight, maturity, notes and discussion.
+
+## Adding a line to the discussion
+
+1. Open the idea.
+2. Write in "Add a line…", then **Add**.
+
+**Next:** the line shows under the idea, with its date.
+
+## Proposing an idea
+
+1. **Propose an idea**.
+2. Your idea in a few words; a work (#1234) if it relates to one.
+3. **Send to Pem**.
+
+**Next:** it goes straight into Pem's feed, and he decides what follows.
+`,
+  },
+  {
+    id: 'orders',
+    title: 'Orders',
+    verified: '2026-11-18',
+    md: `
+An order follows every work that leaves the atelier's hands, with its steps and its papers. Five kinds: **Sale**, **Consignment** (with a gallery), **Loan**, **Gift**, and **Entrusted** (with a craftsperson: framer, restorer…).
+
+## Creating an order
+
+**When:** a sale is agreed, a gallery takes works, a loan or a gift is being prepared, a work goes to a craftsperson.
+
+1. Business → Orders → **+ New order** (easier on the computer).
+2. **Which kind?**
+3. **Works**: number or title, then Add.
+4. **With whom**: the buyer, the gallery, the borrower, the recipient or the craftsperson.
+5. The address the works go to (or "To set later").
+6. Depending on the kind: the price and deposit (sale), the commission (consignment), the out and return dates (consignment, loan).
+7. **Create the draft**.
+
+**Watch out:** a work already on another open order is refused, with its number.
+
+## Moving an order along
+
+Open the order: its **Steps** are ticked in order with the next step's button.
+
+- **Sale**: Draft → Signed (reserves the works) → Deposit → Paid (the buyer becomes the owner) → Delivered.
+- **Consignment** and **Loan**: Draft → Signed → Out (with the gallery or the borrower) → Back at the studio.
+- **Gift**: Draft → Deed signed (nothing moves yet) → Handed over (the recipient becomes the owner and holds the work).
+- **Entrusted**: Draft → Entrusted (with the craftsperson) → Back at the studio.
+
+**Next:** each step updates the work (status, owner, custodian); you do not have to do it on the card.
+
+## The money
+
+1. **Record a payment**: amount received, method, date, then "Save the payment". "Received" and "Left to pay" update.
+2. A sale can be returned for **14 days** after delivery or hand-over: "Return (14-day right)". Until then, the money is marked "held — not definitive yet".
+
+**Watch out:** the app never moves money. A return shows the amount to refund; the refund is made at the bank.
+
+## The papers
+
+1. **Make the paper** creates the order's document (in the Vault).
+2. Once signed: **Add the signed copy** (PDF or photo, 4 MB at most).
+
+## Cancelling
+
+**Cancel the order** closes it; its works leave a shipment that has not left yet.
+`,
+  },
+  {
+    id: 'logistics',
+    title: 'Logistics',
+    verified: '2026-11-18',
+    md: `
+Logistics (Business → Logistics) shows the shipments under way. A shipment carries one or more orders going to the same address.
+
+## Preparing a shipment
+
+1. Open the order, then **Prepare the shipment** (or **Prepare the collection** when the work is collected at the studio or at an event).
+2. The shipment shows in Logistics.
+
+## Moving a shipment along
+
+The steps are ticked in order, with "Move to « … »". For a shipment: Open → Condition photos → Picked → Packed → Insured → Label + tracking → Shipped → Delivered. A collection ends with "Handed over".
+
+Fill in along the way: carrier, tracking no. and link, parcel size and weight, packing materials, insured value, insurer.
+
+**Next:** "Show finished shipments" finds the delivered ones.
+
+**Watch out:**
+- "Cancel the shipment" leaves the works on their orders.
+- An order cancelled or returned takes its works off a shipment not yet gone; an empty box is cancelled. A shipment already on the road is left as it is.
+`,
+  },
+  {
+    id: 'events',
+    title: 'Exhibitions and events',
+    verified: '2026-11-18',
+    md: `
+Exhibitions & events (Studio → Exhibitions) brings together exhibitions, collaborations and edition launches, with their works and their orders. On the phone you read them; you create them on the computer.
+
+## Creating an event
+
+1. **+ New event**.
+2. Kind (Exhibition, Collaboration, Edition launch) and name, then **Create**.
+3. Fill in: status (To confirm, Planned, On, Ended), place (a contact, or the studio), start and end, link, notes.
+4. **People**: + person, with their role (venue, curator, organiser, gallery, partner, printer).
+
+## An event's works
+
+1. **Works**: create the selection from the works picked in Inventory, link an existing group, or **+ Works** to search for one.
+2. **To prepare**: one column per preparation (presentation, label…), ticked work by work.
+3. **Linked orders**: tick works, choose the order kind and the other party, then "Create the order".
+
+**Next:** "Export to calendar" sends the event to a calendar. The list groups events on now, coming and past, with the works out and the returns due soon.
+`,
+  },
 ]

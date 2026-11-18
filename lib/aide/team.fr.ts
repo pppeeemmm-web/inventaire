@@ -236,4 +236,179 @@ Production (Terrain → Production) est le tableau des étapes qui restent à fa
 2. « Colonnes » (en haut à droite, à côté de « Rapport ») gère les colonnes elles-mêmes : nom, couleur, ce que cocher l'étape change sur l'œuvre.
 `,
   },
+  {
+    id: 'day',
+    title: 'La journée et le Journal',
+    verified: '2026-11-18',
+    md: `
+Le Journal garde une page par jour : les écrits, les notes vocales, les photos et les œuvres de ce jour-là. Au téléphone, la page du jour s'appelle **Aujourd'hui**.
+
+## Lire la journée
+
+- En haut : la date, ‹ › pour changer de jour, 📅 pour la liste des jours.
+- Sous la date : combien d'entrées, d'œuvres et de notes ce jour-là, puis **Retard · Aujourd'hui · Revue · Inbox** : la file de terrain (rappels, sessions à revoir, partages, signalements). Un toucher l'ouvre.
+- **À revoir aujourd'hui** remonte une ancienne entrée ou deux œuvres proches. « Ouvrir le jour » y va ; « Plus tard » la remet à dans 7 jours ; « 1 / 3 › » passe à la suivante.
+- Puis les œuvres du jour, et les écrits et notes du jour.
+
+## Écrire une entrée
+
+**Quand :** une pensée, une observation, un déclic, à garder.
+
+1. Barre du bas → **Écrire**.
+2. Choisissez le genre : Étincelle, Déclencheur, Réflexion ou Note.
+3. Écrivez tel quel. Tapez **#2399** dans le texte pour relier l'œuvre n° 2399.
+4. **Ajouter**.
+
+**Ensuite :** l'entrée s'ajoute à ce jour-là (« Écrit enregistré sur ce jour »).
+
+**Attention :** une entrée ne se modifie pas. Pour corriger, ajoutez-en une nouvelle.
+
+## Enregistrer une note vocale
+
+**Quand :** parler va plus vite qu'écrire.
+
+1. Barre du bas → **Vocal**. L'enregistrement commence tout de suite.
+2. Parlez. Quand le téléphone le permet, les mots s'écrivent à l'écran pendant que vous parlez.
+3. **Arrêter et enregistrer**.
+4. Si vous voulez : ajoutez les détails ensuite (facultatif).
+
+**Ensuite :** la note est gardée avec sa date et son heure, et apparaît dans les écrits et notes du jour. « Relier… » sur la note la rattache à une œuvre, une idée ou un projet. Une transcription plus complète arrive plus tard, faite sur le PC de l'atelier.
+
+**Attention :**
+- « Micro non disponible » : autorisez le micro pour le site dans les réglages du navigateur, puis « Réessayer » ; ou « Écrire une note » à la place.
+- « Pas enregistrée » : touchez « Réessayer l'envoi » avant de fermer, l'audio est encore là.
+
+## Retrouver un jour
+
+1. Au téléphone : 📅 sur Aujourd'hui, ou la tuile **Journal** du menu ☰.
+2. Touchez un jour pour l'ouvrir, ou « Aller au » pour choisir une date.
+
+**Attention :** toute l'équipe lit le Journal ; seuls les administrateurs capturent ou modifient une séance de travail.
+`,
+  },
+  {
+    id: 'ideas',
+    title: 'Idées',
+    verified: '2026-11-18',
+    md: `
+Idées (Studio → Idées) rassemble les projets et les concepts de Pem. Pem décide des idées ; l'équipe les lit, en discute et en propose.
+
+## Lire une idée
+
+1. Les pastilles du haut filtrent par poids et par maturité ; « Rechercher une idée… » cherche dans les titres.
+2. Touchez une idée pour l'ouvrir : poids, maturité, notes et discussion.
+
+## Ajouter une ligne à la discussion
+
+1. Ouvrez l'idée.
+2. Écrivez dans « Ajouter une ligne… », puis **Ajouter**.
+
+**Ensuite :** la ligne s'affiche sous l'idée, avec la date.
+
+## Proposer une idée
+
+1. **Proposer une idée**.
+2. Votre idée en quelques mots ; une œuvre (#1234) si elle s'y rapporte.
+3. **Envoyer à Pem**.
+
+**Ensuite :** elle arrive directement dans le Fil de Pem, qui décide de la suite.
+`,
+  },
+  {
+    id: 'orders',
+    title: 'Commandes',
+    verified: '2026-11-18',
+    md: `
+Une commande suit chaque œuvre qui quitte les mains de l'atelier, avec ses étapes et ses papiers. Cinq genres : **Vente**, **Dépôt** (chez une galerie), **Prêt**, **Don**, et **Confié** (chez un artisan : encadreur, restaurateur…).
+
+## Créer une commande
+
+**Quand :** une vente se conclut, une galerie prend des œuvres, un prêt ou un don se prépare, une œuvre part chez un artisan.
+
+1. Business → Commandes → **+ Nouvelle commande** (plus confortable à l'ordinateur).
+2. **Quel genre ?**
+3. **Œuvres** : numéro ou titre, puis Ajouter.
+4. **Avec qui** : l'acheteur, la galerie, l'emprunteur, le bénéficiaire ou l'artisan.
+5. L'adresse où vont les œuvres (ou « À préciser plus tard »).
+6. Selon le genre : le prix et l'acompte (vente), la commission (dépôt), les dates de sortie et de retour (dépôt, prêt).
+7. **Créer le brouillon**.
+
+**Attention :** une œuvre déjà sur une autre commande ouverte est refusée, avec son numéro.
+
+## Faire avancer une commande
+
+Ouvrez la commande : ses **Étapes** se cochent dans l'ordre avec le bouton de l'étape suivante.
+
+- **Vente** : Brouillon → Signée (réserve les œuvres) → Acompte → Soldée (l'acheteur devient propriétaire) → Livrée.
+- **Dépôt** et **Prêt** : Brouillon → Signé → Sortie (chez la galerie ou l'emprunteur) → Rentré à l'atelier.
+- **Don** : Brouillon → Acte signé (rien ne bouge encore) → Remise (le bénéficiaire devient propriétaire et garde l'œuvre).
+- **Confié** : Brouillon → Confié (chez l'artisan) → Rentré à l'atelier.
+
+**Ensuite :** chaque étape met à jour l'œuvre (statut, propriétaire, dépositaire) ; vous n'avez pas à le faire sur la fiche.
+
+## L'argent
+
+1. **Encaisser** : montant reçu, moyen, date, puis « Enregistrer le paiement ». « Reçu » et « Reste » se mettent à jour.
+2. Une vente peut être retournée pendant **14 jours** après la livraison ou la remise : « Retour (droit de 14 jours) ». Jusque-là, l'argent est marqué « en attente — pas encore définitif ».
+
+**Attention :** l'application ne vire jamais d'argent. Un retour affiche le montant à rembourser ; le remboursement se fait à la banque.
+
+## Les papiers
+
+1. **Faire le papier** crée le document de la commande (dans le Coffre).
+2. Une fois signé : **Ajouter la copie signée** (PDF ou photo, 4 Mo au plus).
+
+## Annuler
+
+**Annuler la commande** la ferme ; ses œuvres sortent d'un envoi qui n'est pas encore parti.
+`,
+  },
+  {
+    id: 'logistics',
+    title: 'Logistique',
+    verified: '2026-11-18',
+    md: `
+Logistique (Business → Logistique) montre les envois en cours. Un envoi part d'une ou plusieurs commandes vers la même adresse.
+
+## Préparer un envoi
+
+1. Ouvrez la commande, puis **Préparer l'envoi** (ou **Préparer le retrait** si l'œuvre est retirée à l'atelier ou sur un événement).
+2. L'envoi apparaît dans Logistique.
+
+## Faire avancer un envoi
+
+Les étapes se cochent dans l'ordre, avec « Passer à « … » ». Pour une expédition : Ouvert → Photos d'état → Sorties → Emballées → Assurées → Étiquette + suivi → Parties → Livrées. Un retrait finit par « Remises ».
+
+Renseignez au passage : transporteur, n° et lien de suivi, dimensions et poids du colis, matériaux d'emballage, valeur assurée, assureur.
+
+**Ensuite :** « Voir les envois terminés » retrouve les envois livrés.
+
+**Attention :**
+- « Annuler l'envoi » laisse les œuvres sur leurs commandes.
+- Une commande annulée ou retournée retire ses œuvres d'un envoi pas encore parti ; un carton vide est annulé. Un envoi déjà en route ne bouge pas.
+`,
+  },
+  {
+    id: 'events',
+    title: 'Expositions et événements',
+    verified: '2026-11-18',
+    md: `
+Expositions & événements (Studio → Expositions) réunit les expositions, collaborations et lancements d'édition, avec leurs œuvres et leurs commandes. Au téléphone, on les consulte ; on les crée à l'ordinateur.
+
+## Créer un événement
+
+1. **+ Nouvel événement**.
+2. Genre (Exposition, Collaboration, Lancement d'édition) et nom, puis **Créer**.
+3. Remplissez : état (À confirmer, Prévu, En cours, Terminé), lieu (un contact, ou l'atelier), début et fin, lien, notes.
+4. **Personnes** : + personne, avec son rôle (lieu, commissaire, organisateur, galerie, partenaire, imprimeur).
+
+## Les œuvres d'un événement
+
+1. **Œuvres** : créez la sélection à partir des œuvres choisies dans l'Inventaire, liez un groupe existant, ou **+ Œuvres** pour en chercher une.
+2. **À préparer** : une colonne par préparation (présentation, cartel…), à cocher œuvre par œuvre.
+3. **Commandes liées** : cochez des œuvres, choisissez le genre de commande et l'autre partie, puis « Créer la commande ».
+
+**Ensuite :** « Exporter au calendrier » envoie l'événement vers un agenda. La liste groupe les événements en cours, à venir et passés, avec les œuvres sorties et les retours proches.
+`,
+  },
 ]
