@@ -35,4 +35,9 @@ export const captureCardMessages = defineMessages({
     en: 'Contact created, but the photo could not be kept.',
   },
   cc_shrinking: { fr: 'Préparation de la photo…', en: 'Preparing the photo…' },
+  // Pem 2026-11-18: « I captured a photo … nothing happened » — the photo alone is never read here.
+  cc_photo_not_read: {
+    fr: 'La photo seule n’est pas lue : ajoutez le texte avec Live Text ci-dessous, puis « Analyser ». L’IA qui lit la photo ne marche que sur l’ordinateur de l’atelier.',
+    en: 'The photo alone is not read: add the text with Live Text below, then « Analyse ». The AI that reads the photo only works on the studio computer.',
+  },
 })

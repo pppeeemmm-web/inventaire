@@ -267,6 +267,11 @@ export function CaptureCardClient() {
           <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.5, marginTop: 6 }}>
             {t('cc_photo_kept')}
           </div>
+          {!text.trim() ? (
+            <div data-testid="capture-card-photo-not-read" style={{ fontSize: 13, color: 'var(--ac)', lineHeight: 1.5, marginTop: 8 }}>
+              {t('cc_photo_not_read')}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <button
