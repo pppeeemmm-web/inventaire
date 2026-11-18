@@ -11,10 +11,10 @@ The AI that matters runs on **Pem's PC**, through batch scripts started by hand 
 | Search index (⌘K meaning search, Journal ✦) | Ollama `nomic-embed-text` | `npm run embed:worker`, `scripts/embed-run.ps1` | Yes — Overview « Local jobs » card (`countEmbeddingBacklog`) |
 | Voice notes → text | faster-whisper large-v3 | `scripts/transcribe/voice_batch.py` (venv) | Yes — same card (`countVoiceTranscriptBacklog`) |
 | Image descriptions | Ollama `gemma3:4b` | `scripts/describe-run.ps1` (task « PEM describe batch ») | No |
-| Business card « Améliorer avec l'IA » | Ollama `llama3.2:1b`, or OpenAI if a key is set on Vercel | In the capture screen, at capture time only — **fails on the phone** (Ollama is on the PC) | No: nothing marks a card captured without the AI pass; the photo is kept in the Vault (`cards/K_…`) |
+| Business card « Améliorer avec l'IA » | Photo: OpenAI only (key on Vercel?); text tidy-up: Ollama `llama3.2:1b` | In the capture screen, at capture time only. The call runs on the **server**: on the live site (Vercel) Ollama on the PC is out of reach **from any device**, so only an OpenAI key could make it work; Ollama works only when the app itself runs on the PC | No: nothing marks a card captured without the AI pass; the photo is kept in the Vault (`cards/K_…`) |
 | Contact from a web address | Ollama `llama3.2:1b` / OpenAI | In the contact editor, at that moment only | No |
 
-So: two backlogs are counted, three are invisible, and every job is started from a terminal or a task — except the two that run inside a screen, which only work when that screen is on the PC.
+So: two backlogs are counted, three are invisible, the live site's server can never reach the PC's Ollama (hence a local agent, below), and every job is started from a terminal or a task — except the two that run inside a screen, which only work when that screen is on the PC.
 
 ## The problem, in one line
 
