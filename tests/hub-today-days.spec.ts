@@ -13,15 +13,18 @@ test.describe('Aujourd’hui — days, folds, phone menu (R2)', () => {
 
   const reply = (value: unknown) => `0:{"a":"$@1","f":"","b":"development"}\n1:${JSON.stringify(value)}\n`
 
-  /** Every Server Action POST gets the fake folds; the calls are recorded. */
+  /** The fold read (`getJournalDayFolds(day)`: one `YYYY-MM-DD` argument) gets the fake folds; the calls are recorded. */
   async function mockActions(page: Page): Promise<unknown[][]> {
     const calls: unknown[][] = []
     await page.route('**/*', async (route: Route) => {
       const req = route.request()
       if (req.method() !== 'POST' || !req.headers()['next-action']) return route.continue()
-      calls.push(JSON.parse(req.postData() || '[]') as unknown[])
-      const creation = [{ id: -1, created_at: new Date().toISOString(), title: 'E2E création', body: 'Une idée de série', author: 'Test', done: false, works: [2233] }]
-      return route.fulfill({ status: 200, contentType: 'text/x-component', body: reply({ isAdmin: false, changes: [], creation }) })
+      const args = JSON.parse(req.postData() || '[]') as unknown[]
+      // Other reads of the page (no argument) go through untouched.
+      if (args.length !== 1 || typeof args[0] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(args[0])) return route.continue()
+      calls.push(args)
+      const changes = [{ oeuvre_id: 2233, title: 'E2E changement', fields: ['Titre'] }]
+      return route.fulfill({ status: 200, contentType: 'text/x-component', body: reply({ isAdmin: true, changes, creation: [] }) })
     })
     return calls
   }
@@ -61,17 +64,20 @@ test.describe('Aujourd’hui — days, folds, phone menu (R2)', () => {
   })
 
   test('folds start closed and read only when opened', async ({ page }) => {
+    // « Création » left the day (moved to Idées, R1 2026-11-18); « Fiches modifiées » is the one read-on-open
+    // fold, admin only. Not admin (the dev auto-login): no fold, and nothing is read.
     const calls = await mockActions(page)
     await page.goto('/hub')
-    const fold = page.getByTestId('hub-today-fold-creation')
-    await expect(fold).toBeVisible({ timeout: 45_000 })
-    await expect(fold).not.toHaveAttribute('open', /.*/)
+    await expect(page.getByTestId('hub-today-date')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('hub-today-fold-creation')).toHaveCount(0)
+    const fold = page.getByTestId('hub-today-fold-changes')
     await page.waitForTimeout(1_000)
     expect(calls).toEqual([])
+    if ((await fold.count()) === 0) return
 
+    await expect(fold).not.toHaveAttribute('open', /.*/)
     await fold.locator('summary').click()
-    await expect(fold).toContainText('E2E création')
-    await expect(fold).toContainText('#2233')
+    await expect(fold).toContainText('E2E changement')
     expect(calls).toHaveLength(1)
   })
 

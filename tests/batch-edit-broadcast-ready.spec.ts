@@ -25,7 +25,9 @@ test.describe('Batch edit broadcast-ready', () => {
     await yes.click()
     await expect(yes).toHaveAttribute('aria-checked', 'true')
 
-    await page.getByRole('button', { name: /Annuler|Cancel/i }).click()
+    // Scoped to the batch modal: the work card behind it has its own « Annuler » (work-card-discard).
+    const modal = page.getByRole('dialog').filter({ has: tri })
+    await modal.getByRole('button', { name: /^(Annuler|Cancel)$/ }).click()
     await expect(tri).toHaveCount(0)
   })
 })
