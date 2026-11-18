@@ -296,11 +296,12 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
           works={isAdmin ? oeuvres : null}
           onClose={() => setEditing(null)}
           onSaved={(e) => {
-            setExpenses((prev) =>
-              editing === 'new'
-                ? [e, ...prev]
-                : prev.map((x) => x.id === e.id ? e : x)
-            )
+            // An expense dated in another year leaves this year's list.
+            setExpenses((prev) => {
+              const rest = prev.filter((x) => x.id !== e.id)
+              if (e.fiscal_year !== year) return rest
+              return editing === 'new' ? [e, ...prev] : prev.map((x) => x.id === e.id ? e : x)
+            })
             setEditing(null)
           }}
           onDeleted={(id) => {
@@ -656,6 +657,8 @@ function ExpenseModal({
       const sb = createClient()
       const payload = {
         date:        form.date,
+        // The list and the Overview filter on fiscal_year; the table has no default or trigger for it.
+        fiscal_year: Number(form.date.slice(0, 4)) || null,
         libelle:     form.libelle   || null,
         category:    form.category  || null,
         type:        form.type      || 'receipt',
