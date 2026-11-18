@@ -156,7 +156,7 @@ export function CaptureCardClient() {
     })
   }
 
-  // Optional AI pass (photo reading + tidy-up). The server gives up after ~15 s; whatever is already
+  // Optional AI pass (photo reading + tidy-up). The server gives up after ~30 s; whatever is already
   // on screen stays as it is when the AI can't be reached.
   const improve = async () => {
     if (!canImprove || aiBusy) return

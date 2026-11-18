@@ -20,7 +20,7 @@ export const captureCardMessages = defineMessages({
     en: 'Add the card’s text (Live Text) — or try the AI on the photo.',
   },
   cc_ai: { fr: 'Améliorer avec l’IA', en: 'Improve with AI' },
-  cc_ai_busy: { fr: 'IA… (15 s max)', en: 'AI… (15 s max)' },
+  cc_ai_busy: { fr: 'IA… (30 s max)', en: 'AI… (30 s max)' },
   cc_ai_note: {
     fr: 'Facultatif. Besoin du réseau et de l’IA de l’atelier ; sinon le contact reste tel quel.',
     en: 'Optional. Needs the network and the studio AI; otherwise the contact stays as it is.',

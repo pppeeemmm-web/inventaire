@@ -19,8 +19,8 @@ export const whatsNewItemMessages = defineMessages({
   },
   wn_card_live_text_t: { fr: 'Carte de visite : marche dehors', en: 'Business card: works outdoors' },
   wn_card_live_text_d: {
-    fr: 'Touchez la case de texte deux fois, « Scanner le texte », visez la carte, puis « Analyser » : le contact se remplit tout de suite, sans IA ni réseau de l’atelier. « Améliorer avec l’IA » est à part et abandonne après 15 s. La photo de la carte est gardée avec le contact (Coffre › Business).',
-    en: 'Tap the text box twice, « Scan Text », aim at the card, then « Analyse »: the contact fills at once, no AI or studio network. « Improve with AI » is separate and gives up after 15 s. The card photo is kept with the contact (Vault › Business).',
+    fr: 'Touchez la case de texte deux fois, « Scanner le texte », visez la carte, puis « Analyser » : le contact se remplit tout de suite, sans IA ni réseau de l’atelier. « Améliorer avec l’IA » est à part et abandonne après 30 s. La photo de la carte est gardée avec le contact (Coffre › Business).',
+    en: 'Tap the text box twice, « Scan Text », aim at the card, then « Analyse »: the contact fills at once, no AI or studio network. « Improve with AI » is separate and gives up after 30 s. The card photo is kept with the contact (Vault › Business).',
   },
   wn_search_by_number_t: { fr: '⌘K : une œuvre par son numéro', en: '⌘K: a work by its number' },
   wn_search_by_number_d: {

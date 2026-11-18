@@ -25,7 +25,7 @@ import { logError } from '@/lib/error-reporter/server'
 
 const MAX_BYTES = 12 * 1024 * 1024
 /** The optional AI step gives up after this long (Pem 2026-11-18: outdoors the studio AI is out of reach). */
-const AI_BUDGET_MS = 15_000
+const AI_BUDGET_MS = 30_000
 
 export type CardCaptureMeta = {
   sources: string[]
