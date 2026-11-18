@@ -7,10 +7,10 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { WorkLoupeThumb } from '@/components/atelier/WorkThumbLabel'
 import { useI18n } from '@/lib/i18n/context'
 import { useEventsSqlLive } from './events-sql-live'
-import { thumbUrl, yearOf } from '@/lib/data'
+import { yearOf } from '@/lib/data'
 import type { EventDetail } from '@/app/atelier/(portal)/exhibitions/event-actions'
 import {
   EVENT_CHIP, PHONE_MOMENTS, PHONE_MOMENT_LABEL, PHONE_MOMENT_TICKS, PREP_LABEL,
@@ -104,16 +104,13 @@ export function EventPhone({ event, contactsById, tM, statusLabelMap, onBack, h 
         {works.length === 0 && <div style={{ padding: 16, fontSize: 13, color: 'var(--tx3)' }}>{t('ev_works_none')}</div>}
         {works.map((w) => {
           const where = whereIs(w.id, event.orders, event.contact_id)
-          const thumb = thumbUrl(w.image)
           const prep = prepBy.get(w.id)
           const soldElsewhere = where.at === 'order' && where.sold
           return (
             <div key={w.id} style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 64, padding: '6px 12px', borderBottom: '1px solid var(--bg2)' }}>
               <button type="button" onClick={() => h.openWork(w.id)} aria-label={t('ev_open_work_fmt').replace('{title}', w.title ?? `#${w.id}`)}
                 style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 0, background: 'transparent', border: 'none', padding: 0, color: 'var(--tx)', textAlign: 'left', cursor: 'pointer', minHeight: 52 }}>
-                <span style={{ width: 48, height: 48, position: 'relative', background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden' }}>
-                  {thumb && <Image src={thumb} alt="" fill sizes="48px" style={{ objectFit: 'cover' }} />}
-                </span>
+                <WorkLoupeThumb id={w.id} image={w.image} title={w.title} px={48} />
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title ?? t('ev_untitled')}</span>
                   {moment === 'salle' ? (

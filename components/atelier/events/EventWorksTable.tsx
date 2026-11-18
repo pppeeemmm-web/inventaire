@@ -6,10 +6,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { WorkLoupeThumb } from '@/components/atelier/WorkThumbLabel'
 import { useI18n } from '@/lib/i18n/context'
 import { useEventsSqlLive } from './events-sql-live'
-import { thumbUrl } from '@/lib/data'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { searchWorksForOrder, type OrderWorkHit } from '@/app/atelier/(portal)/sales/orders-actions'
 import type { EventDetail, EventPrepRow } from '@/app/atelier/(portal)/exhibitions/event-actions'
@@ -218,7 +217,6 @@ export function EventWorksTable(p: Props) {
               {rows.map((id) => {
                 const w = workById.get(id)!
                 const where = whereIs(id, event.orders, event.contact_id)
-                const thumb = thumbUrl(w.image)
                 const prep = prepBy.get(id)
                 const inSelection = event.selection?.work_ids.includes(id) ?? false
                 return (
@@ -228,9 +226,7 @@ export function EventWorksTable(p: Props) {
                     </td>
                     <td style={{ padding: '4px' }}>
                       <button type="button" onClick={() => p.onOpenWork(id)} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                        <span style={{ width: 36, height: 36, position: 'relative', background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden' }}>
-                          {thumb && <Image src={thumb} alt="" fill sizes="36px" style={{ objectFit: 'cover' }} />}
-                        </span>
+                        <WorkLoupeThumb id={id} image={w.image} title={w.title} px={36} />
                         <span style={{ minWidth: 0 }}>
                           <span style={{ display: 'block', color: 'var(--tx3)', fontSize: 10 }}>{`#${id}`}{!inSelection && event.selection ? ` · ${t('ev_only_on_order')}` : ''}</span>
                           <span style={{ display: 'block', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title ?? t('ev_untitled')}</span>
