@@ -66,6 +66,7 @@ import { versionFieldsMessages } from './version-fields.messages'
 import { workRulesMessages } from './work-rules.messages'
 import { themeNotesMessages } from './theme-notes.messages'
 import { collectorKitMessages, collectorKitPageMessages } from './collector-kit.messages'
+import { aideMessages } from './aide.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -137,6 +138,7 @@ export const featureMessages = {
   ...themeNotesMessages,
   ...collectorKitMessages,
   ...collectorKitPageMessages,
+  ...aideMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

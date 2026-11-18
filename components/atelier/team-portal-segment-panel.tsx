@@ -51,6 +51,7 @@ const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').the
 const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
 const SuppliesTab = dynamic(() => import('@/components/atelier/supplies/SuppliesTab').then((m) => ({ default: m.SuppliesTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const Aide = dynamic(() => import('@/app/atelier/(portal)/aide/_components/Aide').then((m) => ({ default: m.Aide })), { loading: () => <TabPanelFallback />, ssr: false })
 const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ContactsTab = dynamic(() => import('@/components/atelier/ContactsTab').then((m) => ({ default: m.ContactsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
@@ -241,6 +242,12 @@ export function SegmentRoutePanel({
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <SessionJournalTab />
+        </div>
+      )
+    case 'aide':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <Aide isAdmin={isAdmin} />
         </div>
       )
     case 'system':

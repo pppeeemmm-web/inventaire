@@ -1080,6 +1080,7 @@ export function TeamPortalClient({
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
       ['kaizen-ops',    t('kaizen_group_ops'), kaizenUnseen.ops > 0 ? kaizenUnseen.ops : undefined],
       ['system',        t('tab_system')],
+      ['aide',          t('aide_tab')],
       [
         'audit',
         t('tab_audit'),
@@ -1133,8 +1134,8 @@ export function TeamPortalClient({
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   // Kaizen: top of the sidebar. Audit (admin only) heads it — reviews are improvement work too
   // (owner 2026-11-12); the Admin group is gone.
-  // « Création » left Kaizen for Idées (R1, Pem 2026-11-18): Kaizen = Audit + Opérations & Stratégie.
-  const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen-ops'] : ['kaizen-ops']) as Tab[] }
+  // « Création » left Kaizen for Idées (R1, Pem 2026-11-18): Kaizen = Audit + Opérations & Stratégie + Aide (guides, 2026-11-18).
+  const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen-ops', 'aide'] : ['kaizen-ops', 'aide']) as Tab[] }
   // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
   // Notes are in the Journal (R1 step 7): /atelier/notes redirects there.
   const GROUPS: { label: string; tabs: Tab[] }[] = [

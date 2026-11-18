@@ -29,6 +29,7 @@ export type SegmentedAtelierTab =
   | 'kaizen'
   | 'kaizen-ops'
   | 'slideshows'
+  | 'aide'
 
 export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> = {
   overview: '/atelier/overview',
@@ -60,6 +61,7 @@ export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> =
   kaizen: '/atelier/kaizen',
   'kaizen-ops': '/atelier/kaizen-ops',
   slideshows: '/atelier/slideshows',
+  aide: '/atelier/aide',
 }
 
 export function isSegmentedAtelierTab(tab: string): tab is SegmentedAtelierTab {

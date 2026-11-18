@@ -26,7 +26,7 @@ type Tile = { key: string; icon: string; label: DictKey; href: string; sub: (d: 
 
 /** « Tout le reste »: today's menu groups minus the tiles (Pem 2026-11-18, answer 3). */
 const REST: Array<{ label: DictKey; items: Array<{ label: DictKey; href: string; admin?: boolean }> }> = [
-  { label: 'tab_kaizen', items: [{ label: 'tab_audit', href: '/atelier/audit', admin: true }, { label: 'kaizen_group_ops', href: '/atelier/kaizen-ops' }] },
+  { label: 'tab_kaizen', items: [{ label: 'tab_audit', href: '/atelier/audit', admin: true }, { label: 'kaizen_group_ops', href: '/atelier/kaizen-ops' }, { label: 'aide_tab', href: '/atelier/aide' }] },
   { label: 'nav_group_studio', items: [{ label: 'overview', href: '/atelier/overview' }, { label: 'pipeline', href: '/atelier/pipeline' }, { label: 'tab_stock', href: '/atelier/stock' }] },
   {
     label: 'nav_group_catalogue',
