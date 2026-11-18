@@ -394,6 +394,17 @@ export function TeamPortalClient({
   }, [router])
 
   const [oeuvres, setOeuvres] = useState<Oeuvre[]>(oeuvresChunk)
+  /** Contacts tab merge / delete: works pointing at the contact follow, as the DB does (merge moves owner / custodian /
+   *  buyer to the kept contact, delete clears them) — else their names read « — » until reload. */
+  const remapWorkContacts = useCallback((map: (id: number) => number | null) => {
+    setOeuvres((prev) => prev.map((o) => {
+      const r = o as Oeuvre & { ContactID?: number | null; LocalisationID?: number | null; AcheteurID?: number | null }
+      const c = r.ContactID != null ? map(r.ContactID) : r.ContactID
+      const l = r.LocalisationID != null ? map(r.LocalisationID) : r.LocalisationID
+      const a = r.AcheteurID != null ? map(r.AcheteurID) : r.AcheteurID
+      return c === r.ContactID && l === r.LocalisationID && a === r.AcheteurID ? o : ({ ...o, ContactID: c, LocalisationID: l, AcheteurID: a } as Oeuvre)
+    }))
+  }, [])
   const [oeuvresNextCursor, setOeuvresNextCursor] = useState<number | null>(oeuvresPaging?.nextCursor ?? null)
   const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
   const removedOeuvreIdsRef = useRef<Set<number>>(new Set())
@@ -1399,6 +1410,8 @@ export function TeamPortalClient({
           <SegmentRoutePanel
             tab={effectiveRouteTab}
             onContactsChange={setContacts}
+            onContactsMerged={(fromId, intoId) => remapWorkContacts((id) => (id === fromId ? intoId : id))}
+            onContactsDeleted={(ids) => remapWorkContacts((id) => (ids.includes(id) ? null : id))}
             oeuvres={oeuvres}
             sortedTechniques={sortedTechniques}
             sortedSupports={sortedSupports}

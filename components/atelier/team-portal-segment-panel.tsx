@@ -67,6 +67,8 @@ export type SegmentRoutePanelProps = {
   contacts: TeamPortalClientProps['contacts']
   /** Contacts tab → the Atelier's list (badge, pickers). */
   onContactsChange?: (rows: TeamPortalClientProps['contacts']) => void
+  onContactsMerged?: (fromId: number, intoId: number) => void
+  onContactsDeleted?: (ids: number[]) => void
   addresses?: ContactAddress[]
   presentations: { PresentationID: number; Nom: string | null }[]
   tM: Record<number, string>
@@ -127,6 +129,8 @@ export function SegmentRoutePanel({
   groups,
   contacts,
   onContactsChange,
+  onContactsMerged,
+  onContactsDeleted,
   addresses,
   presentations,
   tM,
@@ -191,7 +195,7 @@ export function SegmentRoutePanel({
         />
       )
     case 'contacts':
-      return <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} onContactsChange={onContactsChange as ((rows: ContactRow[]) => void) | undefined} />
+      return <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} onContactsChange={onContactsChange as ((rows: ContactRow[]) => void) | undefined} onContactsMerged={onContactsMerged} onContactsDeleted={onContactsDeleted} />
     case 'site':
     case 'portfolio':
     case 'analytics':

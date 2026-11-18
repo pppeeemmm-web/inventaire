@@ -7,7 +7,8 @@ _Open items only, one line each. Details → [`TODO_NOTES.md`](./TODO_NOTES.md).
 ## 0. Bugs — fix now
 
 From Pem's pass, 2026-11-18 evening — map, contacts badge, card photo, Vault tree fixed (→ DONE); phone labels moved to the Contacts review (§3).
-_None open._ (The Aide's team rights, card AI and condition-report wording: landed `2a63ec8`.)
+- [ ] Contacts: deleting a contact that owns or holds a work deletes its addresses first, then the contact delete fails (`Oeuvres.ContactID` / `LocalisationID` have no ON DELETE rule) — addresses lost, contact kept (`deleteContacts`, `app/atelier/(portal)/contacts/actions.ts:165`). Fix: check the works first and refuse with a message, before touching anything. Found by the flow review, 2026-11-18; not reproduced.
+- [ ] Card capture « Améliorer avec l'IA »: the photo is read only by OpenAI (key on Vercel?), the text tidy-up only by Ollama when the app itself runs on Pem's PC — on the live site neither may run. Pem: check `OPENAI_API_KEY` on Vercel; the Aide + `AI_ENGINES.md` follow the answer.
 
 ## 1. Waiting on you, Pem
 
@@ -30,7 +31,7 @@ R1–R7 built and pushed (history → [DONE](./DONE.md)); the rethink is archive
 ## 3. To build — needs a GO
 
 Contacts and Vault (Pem 2026-11-18 evening)
-- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed); phone / email labels are imported data in English and worse (« Mobile » 38, « Other », « Móvil », « * Other », « INTERNET », a person's name) → a fixed label list shown FR / EN + a data clean-up (SQL, Pem's OK).
+- [ ] Contacts tab review (design first): sort by family name everywhere, family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is never updated by the Contacts tab (edit / merge / delete — Inventory, work overlay, Curation dock, Compare read it stale until reload); one phone format (international E.164 stored, shown grouped, country codes — today « 0 », « +336 32932616 », « 0879262103 » mixed); phone / email labels are imported data in English and worse (« Mobile » 38, « Other », « Móvil », « * Other », « INTERNET », a person's name) → a fixed label list shown FR / EN + a data clean-up (SQL, Pem's OK).
 - [ ] Vault: a naming policy for every non-picture file (today a mess).
 - [ ] AI desk: one place on the computer to run the AI passes for items captured on the phone (the phone can't reach Ollama) — draft [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md), 4 decisions for Pem; needs a GO (deferred-feature rule).
 - [ ] Website legal pages, A.2 batch — prepared: [`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md). Part 1 (visitor ID 13 months, page_view 25 months, enquiries 3 years, drop Vercel Analytics, opt-out, self-hosted fonts + local QR) needs no legal facts; part 2 (the four pages + footer) needs the C.1 facts. 4 decisions for Pem.

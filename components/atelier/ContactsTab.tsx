@@ -52,6 +52,9 @@ interface Props {
   conflicts?: any[]
   /** The Atelier's own contact list (sidebar badge, work-card pickers) follows this tab's adds / edits / deletes / merges. */
   onContactsChange?: (rows: ContactRow[]) => void
+  /** Works pointing at changed contacts follow too (the DB moves them on merge, clears them on delete). */
+  onContactsMerged?: (fromId: number, intoId: number) => void
+  onContactsDeleted?: (ids: number[]) => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -99,7 +102,7 @@ function primaryListPhone(
 
 // ── Component ────────────────────────────────────────────────────────
 
-export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [], onContactsChange }: Props) {
+export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [], onContactsChange, onContactsMerged, onContactsDeleted }: Props) {
   const { t, lang } = useI18n()
   const listLocale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -570,6 +573,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     const res = await deleteContacts(ids)
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
+    onContactsDeleted?.(ids)
     setSelected(new Set())
     if (activeId && selected.has(activeId)) {
       setActiveId(null)
@@ -600,6 +604,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     const res = await deleteContacts([id])
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => c.ContactID !== id))
+    onContactsDeleted?.([id])
     if (activeIdRef.current === id) {
       setActiveId(null)
       setIsCreating(false)
@@ -866,6 +871,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                       return
                     }
                     setContacts((prev) => prev.filter((c) => c.ContactID !== fromId))
+                    onContactsMerged?.(fromId, mergeKeepId)
                     setExtra((prev) => {
                       const next = { ...prev }
                       delete next[fromId]
