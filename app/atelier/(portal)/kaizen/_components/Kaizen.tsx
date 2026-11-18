@@ -16,6 +16,7 @@ import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { KaizenScreenshots } from './KaizenScreenshots'
 import { WhatsNewList } from '@/components/atelier/WhatsNew'
+import { WHATS_NEW_RELEASE } from '@/lib/whats-new'
 import { KAIZEN_SECTIONS, type KaizenItem, type KaizenScope, type KaizenSection } from '@/lib/kaizen'
 import {
   confirmKaizenSections,
@@ -245,14 +246,14 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
             onClick={() => setShowWhatsNew((v) => !v)}
             style={{ minHeight: 44, whiteSpace: 'nowrap', borderColor: 'var(--ac)', color: showWhatsNew ? 'var(--bg0)' : 'var(--ac)', background: showWhatsNew ? 'var(--ac)' : undefined }}
           >
-            {showWhatsNew ? t('wn_kaizen_hide') : t('wn_kaizen_btn')}
+            {showWhatsNew ? t('wn_kaizen_hide') : t('wn_kaizen_btn').replace('{v}', WHATS_NEW_RELEASE)}
           </button>
           <ReportLinkButton source="kaizen" />
         </div>
         <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '4px 0 12px', maxWidth: 760 }}>{t('kaizen_intro')}</p>
         {showWhatsNew ? (
           <div data-testid="kaizen-whats-new" style={{ maxWidth: 760, margin: '0 0 16px', padding: '14px 16px', border: '1px solid var(--ac)', background: 'var(--bg1)' }}>
-            <div className="serif" style={{ fontSize: 18, color: 'var(--ac)', marginBottom: 10 }}>{t('wn_title')}</div>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--ac)', marginBottom: 10 }}>{t('wn_title').replace('{v}', WHATS_NEW_RELEASE)}</div>
             <WhatsNewList />
           </div>
         ) : null}

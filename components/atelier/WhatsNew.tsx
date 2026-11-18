@@ -129,7 +129,7 @@ export function WhatsNewDialog({ suppressed = false }: { suppressed?: boolean })
         }}
       >
         <div style={{ padding: '20px 22px 10px', borderBottom: '1px solid var(--bd)' }}>
-          <div id="whats-new-title" className="serif" style={{ fontSize: 22, color: 'var(--ac)' }}>{t('wn_title')}</div>
+          <div id="whats-new-title" className="serif" style={{ fontSize: 22, color: 'var(--ac)' }}>{t('wn_title').replace('{v}', WHATS_NEW_RELEASE)}</div>
           <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '4px 0 0' }}>{t('wn_intro')}</p>
         </div>
         <div style={{ padding: '14px 22px', overflowY: 'auto', flex: 1, minHeight: 0 }}>

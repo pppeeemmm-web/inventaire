@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.54 (2026-11-18) — image room, « Volée », voice notes, sale paper.
+  wn_image_room_stolen_t: { fr: 'Image plus grande, « Volée », notes vocales', en: 'Bigger image, « Stolen », voice notes' },
+  wn_image_room_stolen_d: {
+    fr: 'Sur ordinateur, l’image de la fiche œuvre prend presque toute la hauteur de l’écran, en pleine définition. Nouveau sort d’une œuvre : « Volée » (et « Retrouvée »), comme Détruite / Perdue, avec sa ligne d’historique. Une note vocale courte ou sans parole ne reste plus « transcription à venir » : le texte dicté sur le téléphone sert à défaut. Le bon de vente précise les 48 h pour signaler un dommage à la livraison. Le titre des nouveautés montre la version en cours.',
+    en: 'On a computer, the work card’s image takes nearly the full screen height, at full resolution. A new fate for a work: « Stolen » (and « Found »), like Destroyed / Lost, with its history line. A short or silent voice note no longer stays « transcript to come »: the phone’s dictation is used instead. The sale paper states the 48 h to report damage on delivery. The What’s new title shows the current version.',
+  },
   // 3.1.53 (2026-11-18) — R7, Pem's review.
   wn_orders_review_t: { fr: 'Commandes : ce que votre relecture a demandé', en: 'Orders: what your review asked for' },
   wn_orders_review_d: {

@@ -6,7 +6,8 @@ import { defineMessages } from '../message-core'
  * list opens, so it stays out of every page's catalog (it had grown to ~45 kB of French on the phone).
  */
 export const whatsNewMessages = defineMessages({
-  wn_title: { fr: 'www.thepemworkshop.com 3.0', en: 'www.thepemworkshop.com 3.0' },
+  // {v} = WHATS_NEW_RELEASE (lib/whats-new.ts), filled where used (Pem 2026-11-18: no hard-coded « 3.0 »).
+  wn_title: { fr: 'www.thepemworkshop.com {v}', en: 'www.thepemworkshop.com {v}' },
   wn_intro: {
     fr: 'Ce qui a changé ces derniers jours dans l’Atelier.',
     en: 'What changed in the Atelier over the last few days.',
@@ -14,6 +15,6 @@ export const whatsNewMessages = defineMessages({
   wn_dont_show: { fr: 'Ne plus afficher', en: 'Don’t show again' },
   wn_close: { fr: 'Fermer', en: 'Close' },
   wn_open_kaizen: { fr: 'Voir dans Kaizen → Nouveautés', en: 'See in Kaizen → What’s new' },
-  wn_kaizen_btn: { fr: 'Nouveautés 3.0', en: 'What’s new 3.0' },
+  wn_kaizen_btn: { fr: 'Nouveautés {v}', en: 'What’s new {v}' },
   wn_kaizen_hide: { fr: 'Masquer les nouveautés', en: 'Hide what’s new' },
 })
