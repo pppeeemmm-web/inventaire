@@ -12,7 +12,7 @@ _None open (B13, B14 closed 2026-11-17 → [DONE](./DONE.md))._
 
 - [ ] **Lawyer / accountant read:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form's VAT line. The site has no legal notice yet.
 - [ ] **Your look:** R4 (Chronologie, the map « Création », thumbnails on work numbers), R6 (Studio → Expositions, empty until your first event).
-- [ ] **Phone navigation:** Aujourd'hui and the Journal day show the same day twice (Pem 2026-11-18: « make navigation more mobile straightforward ») — say when to start the whole-screen design.
+- [ ] **Phone navigation:** designed with your 6 answers (option A, [`PhoneNav.notes.md`](./design/2026-11-18/PhoneNav.notes.md)) — your GO to build it.
 - [ ] **Site module:** fill email, phone and Instagram.
 - [ ] **R8 look decisions:** A (big painting vs true-scale wall), then B (a work's page), C (landing), D (one name) → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md).
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)); 20 minutes together.
