@@ -44,7 +44,19 @@
             "statusMessage": "Pre-push: checking branch + working tree..."
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-guard.ps1\"",
+            "timeout": 15,
+            "statusMessage": "Agent guard: checking subagent type..."
+          }
+        ]
       }
     ]
-  }
+  },
+  "effortLevel": "medium"
 }
