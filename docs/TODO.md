@@ -8,7 +8,8 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- 🔧 §0 Work card open in two tabs: the later save silently puts back what the other tab saved (saveWork writes the whole card as loaded) — the card sends the `edited_at` it loaded, saveWork refuses with « rechargez » if it changed; built by the stress-test side session in `app-worktrees/brave-goldberg-0cf0bd` (uncommitted): lead reviews, runs flow-reviewer, lands
+- 🔧 §0 Work card open in two tabs: the later save silently puts back what the other tab saved — fix in `app-worktrees/brave-goldberg-0cf0bd` (stress-test session, uncommitted), sent back after flow review: the card's fields come from the list cache but its stamp from a fresh read (the main case still passes); a draft restore keeps the fresh stamp; a refused offline save blocks the phone queue for good; a themes / groups failure after the write leaves the stamp stale; `restoreOeuvreVersion` rewinds `edited_at`
+- 🔧 Retouched photo keeps showing the old picture (work 2167): new file key per retouch — Inventory session reworks it in its own worktree (patch in the shared notes): grid / slideshow cover not refreshed, landing hero key, old pair left in R2, palette not recomputed, shoot day lost (898 photos carry the date only in the file name)
 
 ## 0. Bugs — fix now
 
