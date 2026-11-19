@@ -15,7 +15,7 @@ import {
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
 import { insertPendingChange } from '@/lib/pending-changes-insert'
-import { pendingInsertToSaveError } from '@/lib/work-save-error'
+import { pendingInsertToSaveError, WORK_BASE_EDITED_AT_FIELD, WORK_CHANGED_ERROR, WORK_IN_BIN_ERROR } from '@/lib/work-save-error'
 import {
   parsePendingLoadedBase,
   pendingPayloadFromFormData,
@@ -95,7 +95,7 @@ async function replaceOeuvreWorkGroups(
 // docs/WORK_RULES.md rules 6–7): no screen syncs them any more.
 
 /** `saved`: the row as stored after the DB triggers ran — lets the list patch one row, no reload. */
-export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre> }
+export type SaveResult   = { error: string; editedAt?: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre>; editedAt?: string }
 export type DeleteResult =
   | { error: string; deletedIds?: number[] }
   | { ok: true; deletedIds?: number[] }
@@ -499,6 +499,24 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const oid = parseInt(oeuvreIdRaw!, 10)
     if (isNaN(oid)) return { error: 'ID invalide' }
 
+    // Two tabs / two people on one card (stress test round 3, Pem « go for it »): the card sends the `edited_at` it
+    // opened with; a save since then (another tab, another person) refuses this one before anything is written —
+    // the card posts every field as it loaded them, so it would silently put back what the other save changed.
+    // No stamp sent (approval replay, older callers): no check, as before.
+    const baseEditedAt = formData.has(WORK_BASE_EDITED_AT_FIELD)
+      ? String(formData.get(WORK_BASE_EDITED_AT_FIELD) ?? '')
+      : null
+    if (baseEditedAt !== null) {
+      const sameQ = supabase.from('Oeuvres').select('OeuvreID').eq('OeuvreID', oid).is('deleted_at', null)
+      const { data: same, error: sameErr } = await (baseEditedAt ? sameQ.eq('edited_at', baseEditedAt) : sameQ.is('edited_at', null)).maybeSingle()
+      if (sameErr) return { error: sameErr.message }
+      if (!same) {
+        // Put in the bin since the card opened: say so, not « saved elsewhere ».
+        const { data: binned } = await supabase.from('Oeuvres').select('OeuvreID').eq('OeuvreID', oid).not('deleted_at', 'is', null).maybeSingle()
+        return { error: binned ? WORK_IN_BIN_ERROR : WORK_CHANGED_ERROR }
+      }
+    }
+
     // Fetch current record to compare statusId + ContactID for history
     type CurrentOeuvre = {
       statusId: number | null
@@ -617,15 +635,19 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       updatePayload.txtImageNameLink = imageName
     }
 
-    const { data: savedRow, error: updateErr } = await supabase
+    let updateQ = supabase
       .from('Oeuvres')
       .update(updatePayload)
       .eq('OeuvreID', oid)
       .is('deleted_at', null)
+    // Same stamp on the write itself: a save landing between the check above and here still loses nothing.
+    if (baseEditedAt !== null) updateQ = baseEditedAt ? updateQ.eq('edited_at', baseEditedAt) : updateQ.is('edited_at', null)
+    const { data: savedRow, error: updateErr } = await updateQ
       .select(OEUVRES_KEYSET_SELECT)
       .maybeSingle()
 
     if (updateErr) return { error: updateErr.message }
+    if (baseEditedAt !== null && !savedRow) return { error: WORK_CHANGED_ERROR }
 
     // ── Log Significant Event: Image Upload (form) ──
     if (formUploadedNewImage) {
@@ -690,19 +712,21 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // (`formDataForPendingEdit`, lib/work-pending-keys.ts).
     if (!(isAdmin && formData.get('__keep_themes') === '1')) {
       const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
-      if ('error' in themeRes) return { error: themeRes.error }
+      // The row is already written: hand back its new stamp so the card's next save is not refused.
+      if ('error' in themeRes) return { error: themeRes.error, editedAt }
     }
 
     if (!(isAdmin && formData.get('__keep_groups') === '1')) {
       const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
       const groupRes = await replaceOeuvreWorkGroups(svc, oid, groupIds)
-      if ('error' in groupRes) return { error: groupRes.error }
+      if ('error' in groupRes) return { error: groupRes.error, editedAt }
     }
 
     revalidatePath('/atelier')
     revalidatePath('/hub')
     revalidatePath('/works')
-    return { ok: true, saved: (savedRow ?? undefined) as Partial<Oeuvre> | undefined }
+    // The stamp this save wrote: the card sends it as its new base, so its own next save is not refused.
+    return { ok: true, saved: (savedRow ?? undefined) as Partial<Oeuvre> | undefined, editedAt }
   }
 }
 
@@ -1501,7 +1525,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, Montee, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, Montee, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision, edited_at'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing

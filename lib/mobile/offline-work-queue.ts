@@ -161,6 +161,34 @@ export async function enqueueOfflineWorkSave(fields: Record<string, string[]>): 
   await enqueueOfflineWorkSaveFromFormData(fd)
 }
 
+const first = (r: OfflineWorkSaveRecord, k: string): string | null => {
+  const e = r.fields[k]?.[0]
+  return e && e.kind === 'string' ? e.value : null
+}
+
+/**
+ * Rows the flush can drop unsent: an earlier save of the same work from the same card base (same `oeuvre_id` and
+ * `__base_edited_at`) when a later queued row exists. The card posts every field, so the later row holds the earlier
+ * one's edits plus its own; replayed in order, the earlier would win and the later be refused (`work_changed`).
+ * A row carrying a file (photo) is never dropped.
+ */
+export function supersededOfflineSaves(rows: readonly OfflineWorkSaveRecord[]): Set<string> {
+  const out = new Set<string>()
+  const sorted = [...rows].sort((a, b) => a.createdAt - b.createdAt)
+  sorted.forEach((r, i) => {
+    const oid = first(r, 'oeuvre_id')
+    const base = first(r, '__base_edited_at')
+    if (!oid || base === null) return
+    if (Object.values(r.fields).some((arr) => arr.some((e) => e.kind === 'blob'))) return
+    if (sorted.slice(i + 1).some((l) => first(l, 'oeuvre_id') === oid && first(l, '__base_edited_at') === base)) out.add(r.id)
+  })
+  return out
+}
+
+/** Window event after the flush saved a queued card save: the open card adopts the new stamp (`DrawerContent`). */
+export const OFFLINE_WORK_SAVED_EVENT = 'pem:offline-work-saved'
+export type OfflineWorkSavedDetail = { oeuvreId: number; base: string; editedAt: string; saved?: Record<string, unknown> }
+
 export async function listOfflineWorkSaves(): Promise<OfflineWorkSaveRecord[]> {
   const db = await openDb()
   const rows = await new Promise<unknown[]>((resolve, reject) => {

@@ -261,4 +261,16 @@ export const workCardMessages = defineMessages({
   wc_save_clean: { fr: 'aucune modification', en: 'no changes' },
   wc_save_dirty: { fr: '● modifications non enregistrées', en: '● unsaved changes' },
   wc_discard_tt: { fr: 'Annuler les modifications non enregistrées', en: 'Discard the unsaved changes' },
+  wc_err_work_changed: {
+    fr: 'Pas enregistré : cette œuvre a été enregistrée ailleurs (autre onglet, autre personne) depuis l’ouverture de la fiche. Notez vos changements, rouvrez la fiche pour voir la dernière version, puis refaites-les.',
+    en: 'Not saved: this work was saved elsewhere (another tab, another person) since the card opened. Note your changes, reopen the card to see the latest version, then make them again.',
+  },
+  wc_err_work_in_bin: {
+    fr: 'Pas enregistré : cette œuvre a été mise à la corbeille depuis l’ouverture de la fiche.',
+    en: 'Not saved: this work was put in the bin since the card opened.',
+  },
+  wc_offline_save_dropped: {
+    fr: '#{id} : la modification faite hors ligne est abandonnée.',
+    en: '#{id}: the change made offline is dropped.',
+  },
 })

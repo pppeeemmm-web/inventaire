@@ -8,7 +8,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- 🔧 §0 Work card open in two tabs: the later save silently puts back what the other tab saved — fix in `app-worktrees/brave-goldberg-0cf0bd` (stress-test session, uncommitted), sent back after flow review: the card's fields come from the list cache but its stamp from a fresh read (the main case still passes); a draft restore keeps the fresh stamp; a refused offline save blocks the phone queue for good; a themes / groups failure after the write leaves the stamp stale; `restoreOeuvreVersion` rewinds `edited_at`
+- ⏳ §0 Work card saves always post « TVA » 0 and « payé » no: `tva_rate` / `is_paid` are not in the list row the card fills from (`OEUVRES_KEYSET_SELECT`), and saveWork writes both (flow review 2026-11-19, not yet checked live) — lead checks live first
 - 🔧 Retouched photo keeps showing the old picture (work 2167): new file key per retouch — Inventory session reworks it in its own worktree (patch in the shared notes): grid / slideshow cover not refreshed, landing hero key, old pair left in R2, palette not recomputed, shoot day lost (898 photos carry the date only in the file name)
 
 ## 0. Bugs — fix now
@@ -44,6 +44,7 @@ Admin
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
 - [ ] Share inbox « link to a contact » picker: family name only, no first-name / institution search, not sorted — use the one name rule (`lib/contacts/contact-display.ts`).
 - [ ] Journal / graph chips and search show « Marie Dupont » (SQL views `graph_foundation/06_entity_view.sql`, `journal_entry_search.sql`): same name rule as the screens — SQL (Pem's OK).
+- [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved — softer message for that case.
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
 Contacts and Vault

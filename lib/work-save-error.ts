@@ -5,6 +5,13 @@ import type { PendingChangeInsertError } from '@/lib/pending-changes-insert'
 /** Server action error tokens resolved on the client via `t()`. */
 export const WORK_SAVE_SCHEMA_ERROR_KEY = 'wf_save_pending_schema_error' as const satisfies DictKey
 
+/** Form field: the work's `edited_at` as the card opened it; `saveWork` refuses with `WORK_CHANGED_ERROR` if it moved. */
+export const WORK_BASE_EDITED_AT_FIELD = '__base_edited_at'
+/** `saveWork` refusal: the work was saved elsewhere (another tab, another person) after the card opened. */
+export const WORK_CHANGED_ERROR = 'work_changed'
+/** `saveWork` refusal: the work was put in the bin after the card opened. */
+export const WORK_IN_BIN_ERROR = 'work_in_bin'
+
 export function pendingInsertToSaveError(
   err: PendingChangeInsertError,
 ): string {
@@ -32,6 +39,8 @@ const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
   gift_order_required: 'err_gift_order_required',
   archive_requires_catalogue: 'err_archive_requires_catalogue',
   archive_exit_requires_photo: 'err_archive_exit_requires_photo',
+  [WORK_CHANGED_ERROR]: 'wc_err_work_changed',
+  [WORK_IN_BIN_ERROR]: 'wc_err_work_in_bin',
 }
 
 /** `purgeWorkPermanently` refusal token `purge_blocked:<table>=<n>,…` → « … figure sur 1 commande, 2 liens du Journal. … » */

@@ -75,7 +75,8 @@
 // '3.1.67' (2026-11-18): Aide — day & Journal, Ideas, Orders, Logistics, Events chapters.
 // '3.1.68' (2026-11-18): Aide — Contacts, Supplies, Reports, Public, the rules, glossary: team guide complete.
 // '3.1.76' (2026-11-19): contact names one way (DUPONT Marie in lists, sorted by family name); phone fixes (R&D at 375, 44 px taps), Overview « envois à faire », card photo sent once.
-export const WHATS_NEW_RELEASE = '3.1.76'
+// '3.1.77' (2026-11-19): a work card open in two tabs (or by two people) no longer undoes the other save.
+export const WHATS_NEW_RELEASE = '3.1.77'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -101,6 +102,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'two_tabs_safe', day: '2026-11-19', spot: 'inventory' },
   { id: 'contact_names_one_way', day: '2026-11-19', spot: 'contacts' },
   { id: 'phone_fixes_1119', day: '2026-11-19', spot: 'overview' },
   { id: 'admin_ai_desk', day: '2026-11-18', spot: 'ai', admin: true },

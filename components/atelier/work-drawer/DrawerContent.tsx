@@ -9,7 +9,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage, replaceWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
-import { workSaveErrorToastMessage } from '@/lib/work-save-error'
+import { workSaveErrorToastMessage, WORK_BASE_EDITED_AT_FIELD } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { openReadOr, primeWorkDrawerOpen } from '@/lib/atelier/open-reads'
@@ -36,6 +36,8 @@ import {
 import {
   enqueueOfflineWorkSaveFromFormData,
   isLikelyOfflineSaveError,
+  OFFLINE_WORK_SAVED_EVENT,
+  type OfflineWorkSavedDetail,
 } from '@/lib/mobile/offline-work-queue'
 import { PENDING_LOADED_BASE_FIELD, pendingLoadedBaseFromRow } from '@/lib/work-pending-keys'
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
@@ -280,6 +282,14 @@ export function DrawerContent({
   const shipments = useWorkShipments(o.OeuvreID)
   /** Header « modifié par »: `edited_by` (auth uuid) → the team member's contact name. Read-only, one row. */
   const [editInfo, setEditInfo] = useState<{ at: string | null; who: string } | null>(null)
+  /** The `edited_at` that goes with the fields on screen: the list row's when the card fills from it
+   *  (`syncFormFieldsFromOeuvre`), then the one each of its own saves wrote. Sent with every save, so a save made
+   *  elsewhere since (another tab, another person) is refused by `saveWork`, not silently undone. Unknown → not sent
+   *  (a row loaded without the column, a restored draft). Never read fresh: a newer stamp beside older fields would
+   *  let the stale fields through. */
+  const baseEditedAtRef = useRef<{ id: number; at: string | null } | null>(null)
+  /** The stamp of this card's last own save per work: the fields re-applied from that save (A → B → A) go with it. */
+  const savedStampByOeuvreRef = useRef(new Map<number, string>())
   useEffect(() => {
     let alive = true
     setEditInfo(null)
@@ -565,6 +575,14 @@ export function DrawerContent({
   const syncFormFieldsFromOeuvre = useCallback(() => {
     syncedOeuvreIdRef.current = o.OeuvreID
     const persisted = submittedByOeuvreRef.current.get(o.OeuvreID) ?? null
+    // The stamp that goes with the fields applied below: this card's own last save when its fields come back
+    // (`persisted`), else the list row's. No column on the row → unknown, nothing sent.
+    const ownStamp = persisted ? savedStampByOeuvreRef.current.get(o.OeuvreID) : undefined
+    const rowStamp = 'edited_at' in o ? ((o as { edited_at?: string | null }).edited_at ?? null) : undefined
+    baseEditedAtRef.current =
+      ownStamp !== undefined ? { id: o.OeuvreID, at: ownStamp }
+      : rowStamp !== undefined ? { id: o.OeuvreID, at: rowStamp }
+      : null
     const mapThemes = oeuvreThemeMap.get(o.OeuvreID) ?? []
     const mapGroups = oeuvreGroupMap.get(o.OeuvreID) ?? []
     // Empty junction maps may simply not be hydrated yet: leave themes / groups unknown (filled below).
@@ -1029,6 +1047,9 @@ export function DrawerContent({
     fd.append('historique', historique)
     // The text this card loaded: the server keeps any line the database wrote since (rule 14).
     if (historiqueBaseKnownRef.current) fd.append('historique_base', noteBaseline.h)
+    // The work as this card last knew it saved: a save made elsewhere since is refused, not overwritten.
+    const base = baseEditedAtRef.current
+    if (base?.id === o.OeuvreID) fd.append(WORK_BASE_EDITED_AT_FIELD, base.at ?? '')
     fd.append('catalogued', prodStage !== 'atelier' ? '1' : '0')
     fd.append('needs_photograph', needsPhoto ? '1' : '0')
     fd.append('anonymity_level', String(anonymityLevel))
@@ -1042,6 +1063,27 @@ export function DrawerContent({
     }
     return fd
   }
+
+  function adoptOwnSaveStamp(oid: number, at: string) {
+    baseEditedAtRef.current = { id: oid, at }
+    savedStampByOeuvreRef.current.set(oid, at)
+  }
+
+  // The phone's offline queue saved this card's queued save: adopt its stamp when this card still holds the one it
+  // queued with (else its next save would be refused by its own queued save), and patch the catalogue row with the
+  // saved row (fields and stamp from one snapshot).
+  useEffect(() => {
+    const onFlushed = (e: Event) => {
+      const d = (e as CustomEvent<OfflineWorkSavedDetail>).detail
+      if (!d || d.oeuvreId !== o.OeuvreID) return
+      const base = baseEditedAtRef.current
+      if (base?.id !== d.oeuvreId || (base.at ?? '') !== d.base) return
+      adoptOwnSaveStamp(d.oeuvreId, d.editedAt)
+      if (d.saved) onWorkSaved?.(d.oeuvreId, d.saved as Parameters<NonNullable<typeof onWorkSaved>>[1])
+    }
+    window.addEventListener(OFFLINE_WORK_SAVED_EVENT, onFlushed)
+    return () => window.removeEventListener(OFFLINE_WORK_SAVED_EVENT, onFlushed)
+  }, [o.OeuvreID, onWorkSaved])
 
   /* eslint-disable react-hooks/exhaustive-deps -- deps mirror inline buildFormData() captures */
   const performSave = useCallback(async (): Promise<boolean> => {
@@ -1057,6 +1099,8 @@ export function DrawerContent({
     try {
       const res = await saveWork(fd)
       if ('error' in res) {
+        // The row itself was written (only themes / groups failed): the card's base is that save.
+        if (res.editedAt) adoptOwnSaveStamp(oid, res.editedAt)
         toast.error(workSaveErrorToastMessage(res.error, t))
         return false
       }
@@ -1077,6 +1121,7 @@ export function DrawerContent({
         toast.success(t('wf_save_pending_toast'))
         return true
       }
+      if (res.editedAt) adoptOwnSaveStamp(oid, res.editedAt)
       const savedLevel = normalizeAnonymityLevel(anonymityLevel)
       // Patch the list row with what the DB stored (triggers included) — pill/location update, no reload.
       onWorkSaved?.(oid, { anonymity_level: savedLevel, ...res.saved })
@@ -1248,6 +1293,8 @@ export function DrawerContent({
     applyDraftContentToForm(d)
     historiqueBaseKnownRef.current = false
     loadedBaseRef.current = null
+    // The draft's fields come from an older card: no stamp goes with them (save unchecked, as before the check).
+    baseEditedAtRef.current = null
   }, [longTextReady, draftKey, draftSnapshot, editorBaseline, applyDraftContentToForm, t])
 
   useEffect(() => {

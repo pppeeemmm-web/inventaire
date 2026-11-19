@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { unionHistorique } from '@/lib/historique-merge'
+import { provenanceTimestamp } from '@/lib/oeuvre-provenance'
 
 export interface OeuvreVersion {
   id:          number
@@ -77,6 +78,10 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     'is_public',         // trigger-owned (CLAUDE.md cemetery)
     'txtImageNameLink',  // trigger tblimage_cover_sync
     'created_at',        // immutable
+    // The restore is a new edit (stamped below): copying the snapshot's stamp back would make an open card's
+    // older stamp match again, so its next save would silently undo the restore (saveWork edited_at check).
+    'edited_at',
+    'edited_by',
     // Kept by the constat triggers (supabase/sql/condition_report_fate.sql).
     'fate',
     'fate_on',
@@ -92,6 +97,8 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     if (skip.has(k)) continue
     payload[k] = v
   }
+  payload.edited_at = provenanceTimestamp()
+  payload.edited_by = gate.user!.id
 
   // Historique is the work's log, written by the database (docs/WORK_RULES.md rule 14): a restore
   // brings back the snapshot's text and keeps every line written since, never drops one.
