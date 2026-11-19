@@ -1,3 +1,5 @@
+-- NOT USED (Pem 2026-11-19): « Privé » hides a contact from lists / search / pickers only, in the app — no RLS.
+-- Kept for reference: a full hide would break the team's orders, papers, reminders and calendar titles (8 orders, 6 works).
 -- « Privé » contacts are admin-only (TODO §0, 2026-11-18). NOT APPLIED — needs Pem's OK, AFTER Pem reviews the 32 contacts marked private
 -- today (the old import marked every imported contact private) and AFTER the « Contact privé » labels land (they are in branch
 -- worktree-agent-a998bbdf038fdc19c, held back: before this SQL they would label contacts that are merely not loaded yet).

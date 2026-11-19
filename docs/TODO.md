@@ -6,7 +6,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
-- ⏳ §0 « Privé » contacts hidden from the team (32 of 61; 8 orders and 6 works point to them) — Pem decides what « Privé » hides (whole contact vs list / pickers only); labels patch + flow review in the shared notes (`privacy-labels-only.patch`); `supabase/sql/contact_private_rls.sql` not applied
+- 🔧 §0 « Privé » contacts: hidden from non-admins in lists, search and pickers only; still readable where tied to a work / order / paper (Pem 2026-11-19, no RLS) — stress-test session builds it in `app-worktrees/privacy-test`; `supabase/sql/contact_private_rls.sql` is not used
 - ⏳ §3 Retention runs monthly once Pem adds `CRON_SECRET` on Vercel (function live 2026-11-19; nothing due before 2028)
 
 ## 0. Bugs — fix now
