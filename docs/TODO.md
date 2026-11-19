@@ -78,7 +78,7 @@ Trace
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
-- [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch · `is_admin()` STABLE (VOLATILE live).
+- [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
 
 ## 4. To check once, when it happens (no build)
 

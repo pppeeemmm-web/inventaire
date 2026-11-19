@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — `is_admin()` STABLE (Pem « yes, apply it », TODO 19)
+
+- Was VOLATILE live (re-run for every row an RLS policy checked); now STABLE like `is_team()` — body, SECURITY DEFINER, search_path unchanged (`supabase/sql/is_admin_stable.sql`, applied live, checked `provolatile = s`).
+
 ## 2026-11-19 — Phone taps (stress test round 3)
 
 - /hub « Aujourd'hui » chips (« Fil », « Inbox » and the other counters) 44 px tall (were 32); field-session photo ✕ keeps its 28 px round mark with a 44 × 44 tap area (3 buttons in `SessionPhotoCapture`).
