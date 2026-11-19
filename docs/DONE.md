@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — « Privé » contacts hidden from the team's lists, search and pickers (TODO §0, Pem « lists and pickers only »)
+
+- `pickableContacts(rows, { isAdmin, keepIds })` + `useIsAdmin()`: non-admins no longer find a private contact in Contacts (list, count, sidebar badge), ⌘K and semantic search, kit / share-triage search, new work, phone sale, new order / gift transfer, work card selects, Fiscal expense, events, exhibitions, pipeline, supplies, map contacts mode. Names stay wherever a contact is already tied (full list for name lookups; current value kept in every select). No RLS: `contact_private_rls.sql` not used. Built and verified by the stress-test session on the Docker copy (team hidden / named, saves keep the id, admin sees all).
+
 ## 2026-11-19 — A card save no longer brings a work out at a framer back to Pem (stress test, Docker copy)
 
 - `DrawerContent`: a « Disponible » work loaded with a holder other than Pem (out through a « Confié » order) keeps that holder in the card's baseline and stage effect; Pem is set only when the stage moves to Disponible / Archive or no holder is set. Before, a title-only save (admin direct, or a team proposal once approved) posted holder = Pem. Live: 0 works affected today (no open « Confié » order).

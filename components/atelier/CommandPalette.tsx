@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel, contactSearchText } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, contactSearchText, pickableContacts } from '@/lib/contacts/contact-display'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
@@ -11,7 +12,7 @@ import { searchMenuWorks, type MenuWork } from '@/app/hub/menu-actions'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 
-interface Contact { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null }
+interface Contact { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null; is_private?: boolean | null }
 
 type TabEntry = { id: string; label: string }
 
@@ -52,6 +53,8 @@ export function CommandPalette({
 }: Props) {
   const { t, lang } = useI18n()
   const tk = (key: string) => t(key as DictKey)
+  // « Privé » contacts are not searchable by the team (semantic hits are filtered on the server).
+  const isAdmin = useIsAdmin()
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
   const [semanticHits, setSemanticHits] = useState<SemanticSearchHit[]>([])
@@ -213,7 +216,7 @@ export function CommandPalette({
     // Contacts (search by name, min 2 chars)
     if (q.length >= 2) {
       let cCount = 0
-      for (const c of [...contacts].sort(compareContactsByName(lang))) {
+      for (const c of [...pickableContacts(contacts, { isAdmin })].sort(compareContactsByName(lang))) {
         if (contactSearchText(c).includes(qLow)) {
           result.push({ id: `contact:${c.ContactID}`, label: contactListLabel(c), group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
           if (++cCount >= 4) break
@@ -271,7 +274,7 @@ export function CommandPalette({
 
     return result
   }, [
-    q, tabs, oeuvres, contacts, lang, t, tk, onGoTab, onGoWork, onClose,
+    q, tabs, oeuvres, contacts, isAdmin, lang, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,

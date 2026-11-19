@@ -1975,6 +1975,7 @@ export function DrawerContent({
                 cName={cName}
                 narrow={narrow}
                 onOpenContact={(cid) => setQuickContactId(cid)}
+                isAdmin={isAdmin}
               />
             ) : null}
             <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('wc_commission_later')}</span>

@@ -146,3 +146,19 @@ export function compareContactsByName(lang?: string) {
 export function sortContactsByName<T extends ContactNameFields>(rows: readonly T[], lang?: string): T[] {
   return [...rows].sort(compareContactsByName(lang))
 }
+
+/**
+ * « Privé » (Pem 2026-11-19): a private contact is hidden from non-admin team members where they BROWSE, SEARCH or
+ * PICK a contact — and only there. Wherever it is already tied to something (a work's owner / holder / buyer, an order,
+ * a shipment, an event, a paper) its name and address still show and the team works normally: name lookups use the
+ * full list, never this one. `keepIds`: the field's current value(s), so an existing pick stays in its select.
+ */
+export function pickableContacts<T extends { ContactID: number; is_private?: boolean | null }>(
+  rows: readonly T[],
+  opts: { isAdmin: boolean; keepIds?: Iterable<number | string | null | undefined> },
+): T[] {
+  if (opts.isAdmin) return rows as T[]
+  const keep = new Set<number>()
+  for (const id of opts.keepIds ?? []) if (id != null && id !== '' && Number.isFinite(Number(id))) keep.add(Number(id))
+  return rows.filter((c) => !c.is_private || keep.has(c.ContactID))
+}

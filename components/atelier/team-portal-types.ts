@@ -65,7 +65,7 @@ export interface TeamPortalClientProps extends Partial<AtelierJunctionDerived> {
   supports:       { SupportID:   number; Support:   string | null }[]
   formats:        { FormatID:    number; Format:    string | null }[]
   themes:         { id:          number; name:      string }[]
-  contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
+  contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null; is_private?: boolean | null }[]
   initialGroups:  { id: string; name: string }[]
   presentations:  { PresentationID: number; Nom: string | null }[]
 }

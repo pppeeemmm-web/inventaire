@@ -17,6 +17,9 @@ export default async function NewWorkPage({
   const recordMode = sp.record === 'reprise' ? 'reprise' : 'new'
 
   const supabase = await createClient()
+  // « Privé » contacts are not offered to the team in pickers (Pem 2026-11-19): a new work has no tie to keep.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  const contactsQ = supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays').order('NomInstitution', { ascending: true })
 
   const [
     { data: techniques },
@@ -31,7 +34,7 @@ export default async function NewWorkPage({
     supabase.from('Support').select('SupportID, Support').order('Support', { ascending: true }),
     supabase.from('Format').select('FormatID, Format').order('Format', { ascending: true }),
     supabase.from('theme').select('id, name').order('name', { ascending: true }),
-    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays').order('NomInstitution', { ascending: true }),
+    isAdmin ? contactsQ : contactsQ.not('is_private', 'is', true),
     supabase.from('contact_addresses').select('*'),
     supabase.from('working_group').select('*').order('name', { ascending: true }),
   ])

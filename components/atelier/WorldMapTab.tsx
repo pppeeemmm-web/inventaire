@@ -14,12 +14,13 @@ import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { loadTimePlaceData, type TimePlaceData } from '@/app/atelier/time-place-actions'
 import { nearestPlace } from '@/lib/work-periods'
 import { untitledLine } from '@/lib/work-preview-cache'
 import { FIELD_PLACE_COLOR, inSpan, monthKey, parseMonthKey, placeColor, studioOrder } from '@/lib/time-place'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 interface ContactRow {
   ContactID:      number
@@ -220,6 +221,10 @@ export function WorldMapTab({
   onOpenOeuvreById,
 }: Props) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
+  // « Privé » (Pem 2026-11-19): the contacts map browses contacts, so the team does not see private ones there; the works
+  // map keeps every contact (a work's holder stays placed).
+  const browseContacts = useMemo(() => pickableContacts(contacts, { isAdmin }), [contacts, isAdmin])
   const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
   const params = useSearchParams()
   const [mode,      setMode]      = useState<Mode>(() => (params?.get('mode') === 'creation' ? 'creation' : 'contacts'))
@@ -265,9 +270,9 @@ export function WorldMapTab({
 
   const rolesInData = useMemo(() => {
     const s = new Set<string>()
-    contacts.forEach((c) => s.add(c.Role || SANS_ROLE))
+    browseContacts.forEach((c) => s.add(c.Role || SANS_ROLE))
     return [...s].sort((a, b) => a.localeCompare(b, 'fr'))
-  }, [contacts])
+  }, [browseContacts])
 
   const paysOptions = useMemo(() => {
     const s = new Set<string>()
@@ -414,6 +419,7 @@ export function WorldMapTab({
     dataReady,
     mode,
     contacts,
+    browseContacts,
     addresses,
     countryFilter,
     hiddenRoles,
@@ -423,7 +429,7 @@ export function WorldMapTab({
   async function buildContactPins() {
     const result: Pin[] = []
     const contactMap = new Map<number, ContactRow>()
-    contacts.forEach(c => contactMap.set(c.ContactID, c))
+    browseContacts.forEach(c => contactMap.set(c.ContactID, c))
 
     // Build location entries: prefer contact_addresses, fallback to Contact.Ville/Pays
     interface LocEntry { contact_id: number; ville: string; pays: string; label: string | null }
@@ -445,7 +451,7 @@ export function WorldMapTab({
           locEntries.push({ contact_id: a.contact_id, ville: a.ville ?? '', pays: a.pays ?? '', label: a.label })
         }
       })
-      contacts.forEach(c => {
+      browseContacts.forEach(c => {
         if (!contactsWithGeocodableAddressRow.has(c.ContactID) && (c.Ville || c.Pays)) {
           if (!passesContactFilters(c)) return
           if (!passesCountryOnEntry(c.Ville ?? '', c.Pays ?? '')) return
@@ -454,7 +460,7 @@ export function WorldMapTab({
       })
     } else {
       // No contact_addresses at all — fall back to Contact.Ville/Pays
-      contacts.forEach(c => {
+      browseContacts.forEach(c => {
         if (c.Ville || c.Pays) {
           if (!passesContactFilters(c)) return
           if (!passesCountryOnEntry(c.Ville ?? '', c.Pays ?? '')) return
@@ -591,7 +597,7 @@ export function WorldMapTab({
 
   const addrCount = addresses.length > 0
     ? addresses.length
-    : contacts.filter(c => c.Ville || c.Pays).length
+    : browseContacts.filter(c => c.Ville || c.Pays).length
   const worksWithLoc = oeuvresFiltered.length
 
   // « Création »: load the whole catalogue's places of making once, on first use.

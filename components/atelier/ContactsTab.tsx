@@ -24,7 +24,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { formatContactDeleteBlockers } from '@/lib/contacts/delete-blockers'
-import { compareContactsByName, contactListLabel, contactPersonListName, contactSearchText } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, contactPersonListName, contactSearchText, pickableContacts } from '@/lib/contacts/contact-display'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -324,9 +324,13 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     return extra[id]?.Ville ?? '—'
   }, [addresses, extra])
 
+  // « Privé »: a team member does not browse or search private contacts here (admins see all). The full list still
+  // goes up to the Atelier (onContactsChange) so works / orders tied to them keep their names.
+  const browsable = useMemo(() => pickableContacts(contacts, { isAdmin, keepIds: [activeId] }), [contacts, isAdmin, activeId])
+
   const filtered = useMemo(() => {
     const sq = q.trim().toLowerCase()
-    const base = contacts.filter((c) => {
+    const base = browsable.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
       if (isAdmin && privateOnly && !c.is_private) return false
       if (sq) {
@@ -413,7 +417,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [contacts, q, role, isAdmin, privateOnly, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
+  }, [browsable, q, role, isAdmin, privateOnly, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
 
   const privateCount = useMemo(() => contacts.filter((c) => c.is_private).length, [contacts])
 
@@ -731,7 +735,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         borderBottom: '1px solid var(--bd)', flexShrink: 0, flexWrap: 'wrap',
       }}>
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>
-          {filtered.length}<span style={{ opacity: 0.5 }}>/{contacts.length}</span>
+          {filtered.length}<span style={{ opacity: 0.5 }}>/{browsable.length}</span>
         </div>
         <input
           value={q}

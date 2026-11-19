@@ -18,6 +18,7 @@ import { PEM_CONTACT_ID } from '@/lib/data'
 import { FIS } from './drawer-widgets'
 import { Chip, TopLabel, chipH } from './WorkCardParts'
 import { WithCaption } from './WorkCardCaption'
+import { pickableContacts } from '@/lib/contacts/contact-display'
 
 export type WorkDrawerPipelineSectionProps = {
   /** Open a contact's card from the drawer (Kaizen #34: bounce work → contact → work). */
@@ -210,7 +211,8 @@ export function WorkDrawerPipelineSection({
         {!sortedContacts.some((c) => isPem(String(c.ContactID))) && (
           <option value={String(PEM_CONTACT_ID)}>{pemName}</option>
         )}
-        {sortedContacts.map((c) => (
+        {/* « Privé » contacts are not offered to the team; the current pick stays (pickableContacts). */}
+        {pickableContacts(sortedContacts, { isAdmin, keepIds: [value] }).map((c) => (
           <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
         ))}
       </select>
@@ -688,6 +690,7 @@ export function CommissionClient({
   cName,
   narrow,
   onOpenContact,
+  isAdmin = false,
 }: {
   buyerId: string
   setBuyerId: Dispatch<SetStateAction<string>>
@@ -695,6 +698,8 @@ export function CommissionClient({
   cName: (c: DrawerContactRow) => string
   narrow: boolean
   onOpenContact: (contactId: number) => void
+  /** Non-admin: « Privé » contacts are not offered (the current client stays). */
+  isAdmin?: boolean
 }) {
   const { t } = useI18n()
   const c = contacts.find((x) => String(x.ContactID) === buyerId)
@@ -708,7 +713,7 @@ export function CommissionClient({
       style={{ ...FIS, minWidth: 0, maxWidth: 260, height: narrow ? 44 : 26, padding: '0 6px', fontSize: 12 }}
     >
       <option value="">{t('wc_commission_client')}</option>
-      {contacts.map((x) => (
+      {pickableContacts(contacts, { isAdmin, keepIds: [buyerId] }).map((x) => (
         <option key={x.ContactID} value={x.ContactID}>{cName(x)}</option>
       ))}
     </select>

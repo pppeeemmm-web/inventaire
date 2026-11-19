@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl, EXHIBITION_LIST_TYPES } from '@/lib/data'
-import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
 import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { sendWorksToExhibition } from '@/app/atelier/(portal)/exhibitions/actions'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
@@ -18,6 +18,7 @@ import {
   type Step, type Exhibition, type ExhibitionContact, type ExhibitionGroupsCtx,
   STATUT_COLORS, STATUT_LABELS, STEP_COLORS, inputSt, fmtDate,
 } from './exhibitions-types'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
   onUpdate:     (p: Partial<Exhibition> & { _isEditing?: boolean }) => void
 }) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
   const [sendKind, setSendKind] = useState<'loan' | 'consignment'>('loan')
   const [sending, setSending] = useState(false)
@@ -228,7 +230,8 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
                         style={{ ...inputSt, flex: 1, fontSize: 10, padding: '4px 8px' }}
                       >
                         <option value="">— Aucun —</option>
-                        {[...contacts].sort(compareContactsByName(lang)).map(c => (
+                        {/* « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays. */}
+                        {[...pickableContacts(contacts, { isAdmin, keepIds: [exhibition.contact_id] })].sort(compareContactsByName(lang)).map(c => (
                           <option key={c.ContactID} value={c.ContactID}>
                             {contactListLabel(c)}
                           </option>

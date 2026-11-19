@@ -35,6 +35,8 @@ import {
   buildStockMaterialsPlainText,
   downloadStockMaterialsTxt,
 } from '@/lib/stock-material-list-export'
+import { pickableContacts } from '@/lib/contacts/contact-display'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 const UNCATEGORIZED = '__stock_uc__'
 const SUPPLIERS_OPEN_KEY = 'pem-stock-suppliers-open'
@@ -115,6 +117,7 @@ function matchesSupplierSearch(c: StockContactLike, q: string): boolean {
 
 export function SupplierHub({ contacts }: Props) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [items, setItems] = useState<StockItemRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,10 +141,13 @@ export function SupplierHub({ contacts }: Props) {
   const [itemSelected, setItemSelected] = useState<Set<number>>(new Set())
   const [itemExportBusy, setItemExportBusy] = useState(false)
 
-  const suppliers = useMemo(
+  const allSuppliers = useMemo(
     () => resolveStockSupplierContacts(contacts, items),
     [contacts, items],
   )
+  // Browse surface: « Privé » suppliers are not listed to the team (Pem 2026-11-19); item supplier names still resolve
+  // through `contacts`.
+  const suppliers = useMemo(() => pickableContacts(allSuppliers, { isAdmin }), [allSuppliers, isAdmin])
 
   const suppliersEnriched = useMemo(
     () =>
@@ -1574,7 +1580,8 @@ export function SupplierHub({ contacts }: Props) {
                     }}
                   >
                     <option value="">{t('stock_supplier_none_option')}</option>
-                    {suppliers.map((s) => (
+                    {/* « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays. */}
+                    {pickableContacts(suppliers, { isAdmin, keepIds: [editing.supplier_id] }).map((s) => (
                       <option key={s.ContactID} value={s.ContactID}>
                         {supplierDisplayName(s)}
                       </option>

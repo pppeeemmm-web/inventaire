@@ -126,11 +126,14 @@ export async function searchKitContacts(q: string): Promise<KitContactHit[]> {
   const term = q.trim().replace(/[%,()]/g, ' ').trim()
   if (term.length < 2) return []
   const like = `%${term}%`
-  const { data } = await g.supabase
+  let query = g.supabase
     .from('Contact')
     .select('ContactID, "Prénom", Nom, NomInstitution, Email, Ville')
     .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like},Email.ilike.${like}`)
-    .limit(12)
+  // « Privé » contacts are not searchable by the team (Pem 2026-11-19); an admin finds them.
+  const { data: isAdmin } = await g.supabase.rpc('is_admin')
+  if (!isAdmin) query = query.not('is_private', 'is', true)
+  const { data } = await query.limit(12)
   // Picker: `DUPONT Marie` (institution in the hint), sorted by family name.
   return [...(data ?? [])]
     .sort(compareContactsByName())

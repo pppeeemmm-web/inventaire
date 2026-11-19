@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/lib/ui/toast'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
 import { createWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
@@ -27,6 +27,7 @@ import {
   type ProcessType,
   type Responsable,
 } from '@/components/atelier/pipeline/pipeline-shared'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 const FIS: React.CSSProperties = {
   padding: '8px 12px', fontSize: 13,
@@ -55,6 +56,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 }) {
   const { typeLabel, t } = useSuiviLabels()
   const { lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const isNew = !process
   const [nom,          setNom]          = useState(process?.nom           ?? '')
   const [type,         setType]         = useState<ProcessType>(process?.type as ProcessType ?? 'prix')
@@ -318,14 +320,15 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
   const [contactSearch, setContactSearch] = useState('')
   const filteredContacts = useMemo(() => {
-    const list = [...(contacts || [])].sort(compareContactsByName(lang))
+    // « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays.
+    const list = [...pickableContacts(contacts || [], { isAdmin, keepIds: [contactId] })].sort(compareContactsByName(lang))
     if (!contactSearch.trim()) return list.slice(0, 10)
     const q = contactSearch.toLowerCase()
     return list.filter(c => {
       const name = [c.NomInstitution, c.Prénom, c.Nom].filter(Boolean).join(' ').toLowerCase()
       return name.includes(q)
     }).slice(0, 10)
-  }, [contacts, contactSearch, lang])
+  }, [contacts, contactSearch, lang, isAdmin, contactId])
 
   const processSnapshot = useMemo(() => JSON.stringify({
     nom, type, debut, fin, deadlineTime, statut, localisation, url, scope, stakeholders,

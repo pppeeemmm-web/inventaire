@@ -57,7 +57,7 @@ import {
 import { subscribeJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { subscribeWorksRestored } from '@/lib/atelier/works-restored-bus'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
-import { contactListLabel } from '@/lib/contacts/contact-display'
+import { contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -1137,7 +1137,8 @@ export function TeamPortalClient({
       ['sales',         t('nav_tab_orders'), underway.orders > 0 ? underway.orders : undefined],
       ['exhibitions',   t('exhibitions'), underway.events > 0 ? underway.events : undefined],
       ['vault',         t('vault')],
-      ['contacts',      t('contacts'), contacts.length],
+      // « Privé » contacts are not counted for the team: the badge matches the list they can browse.
+      ['contacts',      t('contacts'), pickableContacts(contacts, { isAdmin }).length],
       ['pipeline',      t('pipeline'), underway.pipeline > 0 ? underway.pipeline : undefined],
       ['map',           t('map')],
       ['fiscal',        t('fiscal')],
@@ -1161,7 +1162,7 @@ export function TeamPortalClient({
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen, underway],
+    [t, oeuvresCatalogueCount, contacts, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen, underway],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''

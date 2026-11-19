@@ -20,6 +20,14 @@ export default async function SaleNewPage() {
     )
   }
 
+  // « Privé » contacts are not offered to the team as buyers (Pem 2026-11-19): a new sale has no tie to keep.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  const contactsQ = supabase
+    .from('Contact')
+    .select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays')
+    .order('NomInstitution', { ascending: true, nullsFirst: false })
+    .order('Nom', { ascending: true, nullsFirst: false })
+
   const [worksRes, contactsRes, statusesRes, techniquesRes, groupsRes] = await Promise.all([
     supabase
       .from('Oeuvres')
@@ -27,11 +35,7 @@ export default async function SaleNewPage() {
       .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
       .limit(300),
-    supabase
-      .from('Contact')
-      .select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays')
-      .order('NomInstitution', { ascending: true, nullsFirst: false })
-      .order('Nom', { ascending: true, nullsFirst: false }),
+    isAdmin ? contactsQ : contactsQ.not('is_private', 'is', true),
     supabase.from('OeuvreStatus').select('id, label').order('id'),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
     supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),

@@ -6,7 +6,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel, contactSearchText } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, contactSearchText, pickableContacts } from '@/lib/contacts/contact-display'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { gateErrorKey } from '@/lib/work-save-error'
@@ -24,7 +25,7 @@ import {
 import { saveContactWithConflictCheck } from '@/app/atelier/(portal)/contacts/actions'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
-export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null }
+export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null }
 
 const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
 const KIND_LABEL: Record<WorkOrderKind, DictKey> = {
@@ -75,6 +76,7 @@ interface Props {
 }
 
 export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, intro }: Props) {
+  const isAdmin = useIsAdmin()
   const { t, lang } = useI18n()
   const [kind, setKind] = useState<WorkOrderKind | null>(initial?.kind ?? null)
   const [works, setWorks] = useState<OrderWorkHit[]>([])
@@ -192,11 +194,12 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
   const partyHits = useMemo(() => {
     const term = partyQ.trim().toLowerCase()
     if (!term) return []
-    return contacts
+    // « Privé » contacts are not found by the team (Pem 2026-11-19); a prefilled party (initial) is still picked above.
+    return pickableContacts(contacts, { isAdmin })
       .filter((c) => c.ContactID !== PEM && contactSearchText(c).includes(term))
       .sort(compareContactsByName(lang))
       .slice(0, 8)
-  }, [partyQ, contacts, lang])
+  }, [partyQ, contacts, isAdmin, lang])
 
   async function submit(): Promise<boolean> {
     setErr(null)

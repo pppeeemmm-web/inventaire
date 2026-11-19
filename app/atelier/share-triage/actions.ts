@@ -169,10 +169,13 @@ export async function searchShareAttachTargets(
     // Same name rule as every picker (lib/contacts/contact-display.ts): first name, family name or institution;
     // `DUPONT Marie · Galerie X`, sorted by family name. Commas / parentheses would break the `or` filter.
     const like = pattern.replace(/[,()]/g, ' ')
-    const { data, error } = await g.supabase.from('Contact')
+    let cq = g.supabase.from('Contact')
       .select('ContactID, Nom, "Prénom", NomInstitution')
       .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like}`)
-      .limit(20)
+    // « Privé » contacts are not searchable by the team (Pem 2026-11-19); an admin finds them.
+    const { data: isAdmin } = await g.supabase.rpc('is_admin')
+    if (!isAdmin) cq = cq.not('is_private', 'is', true)
+    const { data, error } = await cq.limit(20)
     if (error) return { error: error.message }
     const hits: ShareAttachSearchHit[] = sortContactsByName(data ?? []).map((r) => ({
       type: 'contact',

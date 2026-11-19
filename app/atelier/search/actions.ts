@@ -33,10 +33,10 @@ export type SemanticSearchResult =
 async function guardTeam() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' as const, supabase: null }
-  const { data: isTeam } = await supabase.rpc('is_team')
-  if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
-  return { error: null, supabase }
+  if (!user) return { error: 'Non authentifié' as const, supabase: null, isAdmin: false }
+  const [{ data: isTeam }, { data: isAdmin }] = await Promise.all([supabase.rpc('is_team'), supabase.rpc('is_admin')])
+  if (!isTeam) return { error: 'Accès refusé' as const, supabase: null, isAdmin: false }
+  return { error: null, supabase, isAdmin: !!isAdmin }
 }
 
 function isLocalOllamaReachable(): boolean {
@@ -109,6 +109,7 @@ async function vectorSearch(
 async function hydrateSemanticHits(
   svc: ReturnType<typeof createServiceClient>,
   results: VectorMatch[],
+  isAdmin: boolean,
 ): Promise<SemanticSearchHit[]> {
   const nodeIds = results.map((r) => r.node_id).filter(Boolean)
 
@@ -124,6 +125,23 @@ async function hydrateSemanticHits(
     if (parsed) byId.set(parsed.node_id, parsed)
   }
 
+  // « Privé » contacts are not searchable by the team (Pem 2026-11-19; the service client reads them all).
+  const hiddenContacts = new Set<string>()
+  if (!isAdmin) {
+    const contactIds = [...byId.values()]
+      .filter((e) => e.node_type === 'contact' && e.legacy_int_id != null)
+      .map((e) => e.legacy_int_id as number)
+    if (contactIds.length > 0) {
+      const { data: priv, error: privErr } = await svc.from('Contact').select('ContactID').in('ContactID', contactIds).eq('is_private', true)
+      if (privErr) throw new Error(privErr.message)
+      for (const row of priv ?? []) hiddenContacts.add(String(row.ContactID))
+    }
+  }
+  const hidden = (nodeId: string) => {
+    const e = byId.get(nodeId)
+    return e?.node_type === 'contact' && e.legacy_int_id != null && hiddenContacts.has(String(e.legacy_int_id))
+  }
+
   // Journal entries open on their day: read event_on for those hits.
   const journalIds = [...byId.values()]
     .filter((e) => e.node_type === 'journal_entry' && e.legacy_int_id != null)
@@ -135,6 +153,7 @@ async function hydrateSemanticHits(
   }
 
   return results
+    .filter((r) => !hidden(r.node_id))
     .map((r) => {
       const nodeId = r.node_id
       const ent = byId.get(nodeId)
@@ -152,7 +171,7 @@ async function hydrateSemanticHits(
 }
 
 export async function searchSemanticAtelier(query: string): Promise<SemanticSearchResult> {
-  const { error: authErr } = await guardTeam()
+  const { error: authErr, isAdmin } = await guardTeam()
   if (authErr) return { error: authErr }
 
   const q = normalizeSearchQuery(query)
@@ -167,7 +186,7 @@ export async function searchSemanticAtelier(query: string): Promise<SemanticSear
     const results = await vectorSearch(svc, resolved.vector, 12)
     if (!results.length) return { ok: true, hits: [] }
 
-    const hits = await hydrateSemanticHits(svc, results)
+    const hits = await hydrateSemanticHits(svc, results, isAdmin)
     return { ok: true, hits }
   } catch (err) {
     await logError('Semantic search failed', err, { source: 'search.searchSemanticAtelier' })

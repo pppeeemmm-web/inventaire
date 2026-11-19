@@ -32,6 +32,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_private_contacts_pickers_t: { fr: 'Contacts privés : cachés des listes et des recherches, toujours nommés là où ils sont liés', en: 'Private contacts: hidden from lists and searches, still named wherever they are linked' },
+  wn_private_contacts_pickers_d: {
+    fr: 'Un contact marqué « Privé » par un admin n’apparaît plus dans la liste Contacts, la recherche ni les listes de choix (acheteur, propriétaire, client d’une commande…). Sur une œuvre, une commande ou un envoi où il figure déjà, son nom reste affiché et vous travaillez normalement.',
+    en: 'A contact an admin marks « Private » no longer appears in the Contacts list, in search or in pickers (buyer, owner, order party…). On a work, order or shipment it is already linked to, its name still shows and you work as usual.',
+  },
   wn_pdf_from_group_t: { fr: 'PDF portfolio : partir d’un groupe de travail, dans l’ordre du groupe', en: 'Portfolio PDF: start from a working group, in the group’s order' },
   wn_pdf_from_group_d: {
     fr: 'Dans la fenêtre du PDF, la liste « Collections » propose aussi vos groupes de travail : choisissez-en un, et le PDF reprend ses œuvres publiques dans l’ordre du groupe. Les chapitres du site ne changent pas.',

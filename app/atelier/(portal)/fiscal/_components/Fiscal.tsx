@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
+import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
 import { WorkChip } from '@/components/atelier/WorkChip'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
@@ -23,6 +23,7 @@ import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from
 import { ExpenseFiles } from '@/components/atelier/supplies/ExpenseFiles'
 import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -603,6 +604,7 @@ function ExpenseModal({
   onDeleted: (id: number) => void
 }) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const isNew = !expense
   
 
@@ -792,7 +794,8 @@ function ExpenseModal({
               <div className="t-label" style={{ marginBottom: 3 }}>Contact / Fournisseur</div>
               <select value={form.contact_id} onChange={f('contact_id')} style={FIS}>
                 <option value="">— Aucun</option>
-                {[...contacts].sort(compareContactsByName(lang)).map(c => (
+                {/* « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays. */}
+                {[...pickableContacts(contacts, { isAdmin, keepIds: [form.contact_id] })].sort(compareContactsByName(lang)).map(c => (
                   <option key={c.ContactID} value={c.ContactID}>
                     {contactListLabel(c)}
                   </option>

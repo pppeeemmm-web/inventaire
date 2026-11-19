@@ -6,11 +6,11 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
-- 🔧 §0 « Privé » contacts: hidden from non-admins in lists, search and pickers only; still readable where tied to a work / order / paper (Pem 2026-11-19, no RLS) — stress-test session builds it in `app-worktrees/privacy-test`; `supabase/sql/contact_private_rls.sql` is not used
+- Next session (Pem 2026-11-19): AI desk phase 3 (cards from the phone → PC agent → accept / reject), then contact merge in one transaction (SQL OK), transcript « Corriger », phone mobile-data design note.
 
 ## 0. Bugs — fix now
 
-- [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
+— nothing open
 
 ## 1. Waiting on you, Pem
 

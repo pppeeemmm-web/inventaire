@@ -10,6 +10,8 @@ export type DrawerContactRow = {
   Role: string | null
   Ville?: string | null
   Pays?: string | null
+  /** « Privé »: hidden from the team's pickers (pickableContacts); names still shown. */
+  is_private?: boolean | null
 }
 
 export type WorkImageRow = {

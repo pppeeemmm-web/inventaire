@@ -20,9 +20,10 @@ import { BlurField } from './BlurField'
 import { EventSteps } from './EventSteps'
 import { EventWorksTable } from './EventWorksTable'
 import { EventPeople } from './EventPeople'
-import { compareContactsByName } from '@/lib/contacts/contact-display'
+import { compareContactsByName, pickableContacts } from '@/lib/contacts/contact-display'
 import { EVENT_CHIP_BG, ORDER_CHIP_BG, chipStyle, contactName, countText, fmtDay, type EventContact } from './events-shared'
 import type { EventHandlers } from './EventsTab'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 interface Props {
   event: EventDetail
@@ -56,6 +57,7 @@ function Section({ id, title, count, open, onToggle, children, right }: { id: st
 
 export function EventView({ event, contacts, contactsById, inventorySelection, groupsCtx, groupWorkCount, oeuvres, themes, tM, h }: Props) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const sqlLive = useEventsSqlLive()
   const kind = asEventKind(event.type)
   const status = asEventStatus(event.statut)
@@ -101,7 +103,8 @@ export function EventView({ event, contacts, contactsById, inventorySelection, g
           <select className="input" value={event.contact_id ?? ''} onChange={(e) => void h.patchField('contact_id', e.target.value ? Number(e.target.value) : null)} style={{ minHeight: 36, fontSize: 13 }}>
             <option value="">{t('ev_field_place_none')}</option>
             <option value={STUDIO_CONTACT_ID}>{t('ev_place_studio')}</option>
-            {sortedContacts.filter((c) => c.ContactID !== STUDIO_CONTACT_ID).map((c) => <option key={c.ContactID} value={c.ContactID}>{contactName(c)}</option>)}
+            {/* « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays. */}
+            {pickableContacts(sortedContacts, { isAdmin, keepIds: [event.contact_id] }).filter((c) => c.ContactID !== STUDIO_CONTACT_ID).map((c) => <option key={c.ContactID} value={c.ContactID}>{contactName(c)}</option>)}
           </select>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 3, color: 'var(--tx3)' }}>

@@ -27,6 +27,8 @@ import {
   type StockContactLike, formatStockCurrency, isStockSupplierRole, supplierDisplayName,
 } from '@/lib/stock-item'
 import { uploadInvoiceFile } from '@/lib/supplies/upload-invoice'
+import { pickableContacts } from '@/lib/contacts/contact-display'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 
 type ItemLite = { id: number; name: string; unit: string; quantity: number; supplier_id: number | null; category: string | null; cost_unit: number | null }
 
@@ -73,6 +75,7 @@ export function SupplyOrderSheet({
   onSupplierAdded: (c: StockContactLike) => void
 }) {
   const { t, lang } = useI18n()
+  const isAdmin = useIsAdmin()
   const isPhone = useMediaQuery('(max-width: 767px)')
   const errText = useCallback((e: string) => (e.startsWith('so_err_') ? t(e as DictKey) : e), [t])
 
@@ -144,11 +147,12 @@ export function SupplyOrderSheet({
   const supplierHits = useMemo(() => {
     const q = supQuery.trim().toLowerCase()
     const loc = lang === 'fr' ? 'fr-FR' : 'en-GB'
-    const list = contacts
+    // « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays.
+    const list = pickableContacts(contacts, { isAdmin, keepIds: [form.supplierId] })
       .filter((c) => !q || supplierDisplayName(c).toLowerCase().includes(q))
       .sort((a, b) => Number(isStockSupplierRole(b.Role)) - Number(isStockSupplierRole(a.Role)) || supplierDisplayName(a).localeCompare(supplierDisplayName(b), loc))
     return (q ? list : list.filter((c) => isStockSupplierRole(c.Role))).slice(0, 8)
-  }, [contacts, supQuery, lang])
+  }, [contacts, supQuery, lang, isAdmin, form.supplierId])
 
   const itemHits = useMemo(() => {
     const q = itemQuery.trim().toLowerCase()
