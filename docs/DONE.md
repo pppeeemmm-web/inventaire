@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Work card no longer resets « TVA » and « payé » (flow review)
+
+- `tva_rate` / `is_paid` were missing from the list row the card fills from, so every admin save posted TVA 0 and « payé » no. Both added to `OEUVRES_KEYSET_SELECT` and the shell's first-paint select. Checked live: nothing real lost (only #2345 ever had a rate, 0.01, reset 2026-11-03; no work ever marked paid).
+
 ## 2026-11-19 — Work card in two tabs (Pem « yes, fix both », TODO §0)
 
 - The card sends the `edited_at` that goes with its fields (the list row's, then each own save's); saveWork refuses a save made against an older one (`work_changed`) or a binned work (`work_in_bin`), before and on the write. Version restore stamps now + admin. Phone offline queue: a refused row is dropped with a message (no stuck queue); two queued saves of one card keep only the latest; the open card adopts the stamp its queued save wrote. Built by the stress-test session, verified 8/8 on the Docker copy; two flow-reviewer passes.
