@@ -619,8 +619,10 @@ export function DrawerContent({
     let loadedContactId = String(o.LocalisationID ?? '')
     let loadedOwnerId = String(o.ContactID ?? '')
     if (loadedOwn === 'artist' || loadedOwn === 'artist_archive') {
-      // Archive: the artist holds it by default, but an admin may have set another custodian (R3 rule).
-      if (loadedOwn === 'artist' || !loadedContactId) loadedContactId = pemId
+      // The artist holds it by default; a holder already set is kept — archive: an admin's custodian (R3 rule);
+      // Disponible: a work out at a framer / restorer through a « Confié » order (stress test 2026-11-19: a title-only
+      // save used to bring it back to Pem).
+      if (!loadedContactId) loadedContactId = pemId
       loadedOwnerId = pemId
     } else if (loadedOwn === 'reserved') {
       // Reserved: payment not cleared, Pem still owns it — the stage effect below sets the owner to Pem too.
@@ -883,12 +885,17 @@ export function DrawerContent({
   // Archive needs a catalogued work (Pem 2026-11-17, archive_shelf.sql): the Archive pill stays
   // closed while the stage is « Atelier » — nothing ticks « Catalogué » behind the user's back.
 
+  // Loaded as Disponible with another holder = out through a « Confié » order (the order sets and clears it).
+  const loadedOutHolder =
+    ownStageFromStatusId(o.statusId) === 'artist' && o.LocalisationID != null && o.LocalisationID !== PEM_CONTACT_ID
   useEffect(() => {
     if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {
-      if (ownStage === 'artist' || !loadedArchived) setContactId(String(pemContact.ContactID))
+      // Pem holds it when the stage moves here; a stage the work already had keeps its holder.
+      const keepHolder = ownStage === 'artist' ? loadedOutHolder : loadedArchived
+      if (!keepHolder) setContactId(String(pemContact.ContactID))
       setOwnerId(String(pemContact.ContactID))
     }
-  }, [ownStage, pemContact, loadedArchived])
+  }, [ownStage, pemContact, loadedArchived, loadedOutHolder])
 
   const baselineThemes = useMemo(
     () => new Set<number>(oeuvreThemeMap.get(o.OeuvreID) ?? []),

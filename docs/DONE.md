@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — A card save no longer brings a work out at a framer back to Pem (stress test, Docker copy)
+
+- `DrawerContent`: a « Disponible » work loaded with a holder other than Pem (out through a « Confié » order) keeps that holder in the card's baseline and stage effect; Pem is set only when the stage moves to Disponible / Archive or no holder is set. Before, a title-only save (admin direct, or a team proposal once approved) posted holder = Pem. Live: 0 works affected today (no open « Confié » order).
+
 ## 2026-11-19 — `is_admin()` STABLE (Pem « yes, apply it », TODO 19)
 
 - Was VOLATILE live (re-run for every row an RLS policy checked); now STABLE like `is_team()` — body, SECURITY DEFINER, search_path unchanged (`supabase/sql/is_admin_stable.sql`, applied live, checked `provolatile = s`).
