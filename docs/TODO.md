@@ -43,7 +43,7 @@ Admin
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
 Contacts and Vault
-- [ ] Contacts tab review (design first): sort by family name everywhere; family names in CAPITALS; an admin badge / filter for confidential contacts; much better autofill; the Atelier's address list is not refreshed by Contacts edit / merge / delete (Inventory, work overlay, Curation dock, Compare stay stale until reload); one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).
+- [ ] Contacts, what is left of the review: much better autofill; one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).
 - [ ] Vault: a naming policy for every non-picture file.
 
 AI desk
@@ -64,7 +64,7 @@ Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table (Contacts review phase 1).
 - [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
-- [ ] Phone: /hub chips « Fil » / « Inbox » 32 px tall; field session photo ✕ 28 px; the Journal day card lists the same work twice.
+- [ ] Phone: the Journal day card lists the same work twice.
 - [ ] Bureau IA phase 3: the agent must accept only a `cards/` Vault key in a « card » job (the team can queue one with any payload, by design).
 
 Rethink leftovers

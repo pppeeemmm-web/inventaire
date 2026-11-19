@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Phone taps (stress test round 3)
+
+- /hub « Aujourd'hui » chips (« Fil », « Inbox » and the other counters) 44 px tall (were 32); field-session photo ✕ keeps its 28 px round mark with a 44 × 44 tap area (3 buttons in `SessionPhotoCapture`).
+
 ## 2026-11-19 — Portfolio PDF from a working group (themes = creation, groups = business)
 
 - PDF window: « Groupes de travail » next to the site collections; a group (`group:<id>` in `collectionFilter`, saved profiles keep their shape) gives its works in group order, same eligibility as before (public works with an image). /works chapters stay on themes. Built by the Inventory session, tested on the Docker copy (8 of 12 works, group order, PDF generated).

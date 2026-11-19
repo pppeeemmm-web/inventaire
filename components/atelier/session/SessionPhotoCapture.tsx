@@ -259,19 +259,21 @@ export function SessionPhotoCapture({
                   onClick={() => removePending(p.id)}
                   style={{
                     position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    width: 28,
-                    height: 28,
-                    minHeight: 28,
-                    borderRadius: 999,
+                    top: 0,
+                    right: 0,
+                    // Tap area 44 × 44 (phone rule); the round 28 px mark stays the same.
+                    width: 44,
+                    height: 44,
+                    minHeight: 44,
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'flex-end',
                     border: 'none',
-                    background: 'rgba(0,0,0,0.55)',
-                    color: '#fff',
-                    fontSize: 14,
+                    background: 'none',
                   }}
                 >
-                  ×
+                  <span aria-hidden style={{ width: 28, height: 28, borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</span>
                 </button>
               </div>
             ))}
@@ -311,19 +313,21 @@ export function SessionPhotoCapture({
                   onClick={() => void onRemoveStaged(shot.sha256)}
                   style={{
                     position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    width: 28,
-                    height: 28,
-                    minHeight: 28,
-                    borderRadius: 999,
+                    top: 0,
+                    right: 0,
+                    // Tap area 44 × 44 (phone rule); the round 28 px mark stays the same.
+                    width: 44,
+                    height: 44,
+                    minHeight: 44,
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'flex-end',
                     border: 'none',
-                    background: 'rgba(0,0,0,0.55)',
-                    color: '#fff',
-                    fontSize: 14,
+                    background: 'none',
                   }}
                 >
-                  ×
+                  <span aria-hidden style={{ width: 28, height: 28, borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</span>
                 </button>
               </div>
             ))}
@@ -360,19 +364,21 @@ export function SessionPhotoCapture({
                     onClick={() => void onRemoveApplied(shot.image_id)}
                     style={{
                       position: 'absolute',
-                      top: 2,
-                      right: 2,
-                      width: 28,
-                      height: 28,
-                      minHeight: 28,
-                      borderRadius: 999,
+                      top: 0,
+                      right: 0,
+                      // Tap area 44 × 44 (phone rule); the round 28 px mark stays the same.
+                      width: 44,
+                      height: 44,
+                      minHeight: 44,
+                      padding: 2,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-end',
                       border: 'none',
-                      background: 'rgba(0,0,0,0.55)',
-                      color: '#fff',
-                      fontSize: 14,
+                      background: 'none',
                     }}
                   >
-                    ×
+                    <span aria-hidden style={{ width: 28, height: 28, borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</span>
                   </button>
                 ) : null}
               </div>

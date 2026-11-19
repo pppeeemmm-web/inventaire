@@ -172,13 +172,13 @@ export function TodayPulse({ metrics, fil = null }: { metrics: FieldPulseMetric[
   return (
     <nav data-testid="hub-field-pulse" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', padding: '0 16px 12px', fontSize: 13 }}>
       {fil != null ? (
-        <Link href="/hub/fil" data-testid="hub-pulse-fil" style={{ minHeight: 32, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: fil === 0 ? 'var(--tx3)' : 'var(--tx)' }}>
+        <Link href="/hub/fil" data-testid="hub-pulse-fil" style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: fil === 0 ? 'var(--tx3)' : 'var(--tx)' }}>
           <b>{fil}</b>
           {t('fil_title')}
         </Link>
       ) : null}
       {metrics.map((m) => (
-        <Link key={m.key} href={m.href} style={{ minHeight: 32, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: m.count === 0 ? 'var(--tx3)' : m.tone === 'urgent' ? 'var(--rust)' : 'var(--tx)' }}>
+        <Link key={m.key} href={m.href} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: m.count === 0 ? 'var(--tx3)' : m.tone === 'urgent' ? 'var(--rust)' : 'var(--tx)' }}>
           <b>{m.count}</b>
           {t(METRIC_LABELS[m.key])}
         </Link>
