@@ -100,7 +100,9 @@ export async function middleware(request: NextRequest) {
       Boolean(process.env.DEV_AUTO_LOGIN_EMAIL) &&
       Boolean(process.env.DEV_AUTO_LOGIN_PASSWORD)
 
-    const skipDevAutoLogin = p === '/login/reset-password'
+    // After « Se déconnecter » (cookie set by AccountActions, browser session only): no auto-login, so another
+    // account (an admin) can sign in on localhost.
+    const skipDevAutoLogin = p === '/login/reset-password' || request.cookies.get('pem_signed_out')?.value === '1'
     const tryDevLoginHere =
       devAutoLoginReady &&
       !skipDevAutoLogin &&

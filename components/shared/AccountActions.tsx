@@ -40,6 +40,9 @@ export function AccountActions({ compact = false, style }: { compact?: boolean; 
       setBusy(false)
       return
     }
+    // Dev only: tells middleware not to sign the dev auto-login account back in (an admin could not sign in on
+    // localhost after a sign-out). Browser-session cookie: gone when the browser closes. Production ignores it.
+    document.cookie = 'pem_signed_out=1; path=/; SameSite=Lax'
     // The phone's cached pages (« Aujourd'hui » …) belong to this user: gone before /login opens.
     await clearUserCaches().catch(() => undefined)
     window.location.assign('/login')
