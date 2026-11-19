@@ -7,12 +7,10 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
 - 🔧 §0 « Privé » contacts: hidden from non-admins in lists, search and pickers only; still readable where tied to a work / order / paper (Pem 2026-11-19, no RLS) — stress-test session builds it in `app-worktrees/privacy-test`; `supabase/sql/contact_private_rls.sql` is not used
-- ⏳ §3 Retention runs monthly once Pem adds `CRON_SECRET` on Vercel (function live 2026-11-19; nothing due before 2028)
 
 ## 0. Bugs — fix now
 
 - [ ] **Privacy:** a contact marked « Privé » (admin-only) is still shown to the team in Contacts, lists and pickers; nothing filters `is_private`.
-- [ ] **Local AI only (Pem 2026-11-18):** if `OPENAI_API_KEY` is set on Vercel, delete it — until then the live site can still send card photos to OpenAI. Bureau IA (`/atelier/ai`) shows « Clé OpenAI sur ce serveur : oui / non ».
 
 ## 1. Waiting on you, Pem
 
@@ -35,13 +33,14 @@ Leftovers are in §3, R8 in §5.
 
 Admin
 - [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database, so it needs SQL (Pem's OK).
-- [ ] Themes = creation, groups = business (Pem 2026-11-18): check every business picker (share kits, selections, exports, portfolio, broadcast) offers groups, not themes; add « copy a theme into a group » and back.
+- 🔧 Themes = creation, groups = business: the portfolio PDF gets its own « Groupe » source (its collections are the public /works chapters, kept on themes) — Inventory session builds it in `app-worktrees/theme-group`
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses).
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved — softer message for that case.
 - [ ] Retouched photos: the old file pair stays in storage for ever (logged as « backup » in `storage_object_ledger`); a work purge does not remove it, and `scripts/storage-ledger-backfill.mjs --write` relabels those rows « unidentified » — a clean-up that reads the ledger, and the backfill keeping `backup` rows.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
+- [ ] A theme or group created or copied on the Thèmes page reaches the other screens (Inventory filters, batch edit, drawer chips) only after a reload; leaving Thèmes and coming back hides it until then.
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
 Contacts and Vault

@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Local AI only; retention armed (TODO §0 / §3)
+
+- No `OPENAI_API_KEY` on Vercel (Pem checked): the live site sends nothing to OpenAI. `CRON_SECRET` set by Pem: `/api/cron/retention` answers 401 without it (was 503), the monthly retention run is armed.
+
+## 2026-11-19 — Copy a theme as a group, or a group as a theme (Pem « go », themes = creation / groups = business)
+
+- `copyThemeToGroup` / `copyGroupToTheme` (`app/atelier/selection/actions.ts`, team gate + RLS, same as batch theme / group edits): same name → asked first, then only the missing works are added; group positions follow, theme → group by work number. Thèmes page ⧉ (44 px row button on the phone). Business screens already offer groups (kits, selections, exports, sales, exhibitions); the portfolio PDF is next. Built by the Inventory session, tested on the Docker copy.
+
 ## 2026-11-19 — Journal / search chips name contacts like the screens (Pem « OK »)
 
 - `public.contact_list_label()` + `entity` view (`supabase/sql/entity_contact_label.sql`, applied live): chips, Constellation and search hits read `DUPONT Marie · Galerie X`; #35 → « Nathalie · Galerie Patrick Reygade »; institution-only contacts no longer show blank. Share-inbox contact search uses the same rule (5e348ef).

@@ -519,6 +519,129 @@ export async function createWorkingGroup(
   return { group: data as { id: string; name: string } }
 }
 
+// ── Copy theme ↔ working group (Pem 2026-11-19: themes = creation, groups = business) ──
+// Same team gate as the other theme / group writers, with the signed-in user's rights (RLS: is_team).
+// A target with the same name is never merged silently: `{ conflict }` comes back with nothing written,
+// and the screen asks before calling again with `into` (add the missing works to that one).
+
+export type CopyCollectionResult =
+  | { error: string }
+  | { conflict: { id: string; name: string } }
+  | { ok: true; id: string; name: string; added: number; already: number }
+
+const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase('fr') === b.trim().toLocaleLowerCase('fr')
+
+/** Theme → working group. A theme has no order: works go in by number. */
+export async function copyThemeToGroup(themeId: number, intoGroupId?: string): Promise<CopyCollectionResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: theme, error: thErr } = await supabase.from('theme').select('id, name').eq('id', themeId).maybeSingle()
+  if (thErr) return { error: thErr.message }
+  if (!theme) return { error: 'Thème introuvable' }
+
+  const { data: links, error: lErr } = await supabase
+    .from('oeuvre_theme')
+    .select('oeuvre_id')
+    .eq('theme_id', themeId)
+    .order('oeuvre_id', { ascending: true })
+  if (lErr) return { error: lErr.message }
+  const ids = (links ?? []).map((r) => r.oeuvre_id as number)
+
+  let group: { id: string; name: string }
+  if (intoGroupId) {
+    const { data: g, error: gErr } = await supabase.from('working_group').select('id, name').eq('id', intoGroupId).maybeSingle()
+    if (gErr) return { error: gErr.message }
+    if (!g) return { error: 'Groupe introuvable' }
+    group = g as { id: string; name: string }
+  } else {
+    const { data: all, error: aErr } = await supabase.from('working_group').select('id, name')
+    if (aErr) return { error: aErr.message }
+    const clash = (all ?? []).find((g) => sameName(String(g.name), theme.name))
+    if (clash) return { conflict: { id: String(clash.id), name: String(clash.name) } }
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: g, error: gErr } = await supabase
+      .from('working_group')
+      .insert({ name: theme.name.trim(), created_by: user?.id ?? null })
+      .select('id, name')
+      .single()
+    if (gErr || !g) return { error: gErr?.message ?? 'Création groupe' }
+    group = g as { id: string; name: string }
+  }
+
+  const { data: existing, error: eErr } = await supabase
+    .from('working_group_work')
+    .select('oeuvre_id, position')
+    .eq('group_id', group.id)
+  if (eErr) return { error: eErr.message }
+  const have = new Set((existing ?? []).map((r) => r.oeuvre_id as number))
+  let next = (existing ?? []).reduce((m, r) => Math.max(m, (r.position as number) + 1), 0)
+  const rows = ids.filter((id) => !have.has(id)).map((oeuvre_id) => ({ group_id: group.id, oeuvre_id, position: next++ }))
+  if (rows.length) {
+    const { error: wErr } = await supabase.from('working_group_work').insert(rows)
+    if (wErr) return { error: wErr.message }
+  }
+
+  revalidatePath('/atelier')
+  revalidatePath('/hub')
+  return { ok: true, id: group.id, name: group.name, added: rows.length, already: ids.length - rows.length }
+}
+
+/** Working group → theme. Theme names are unique in the database, so a same-name theme is always a conflict. */
+export async function copyGroupToTheme(groupId: string, intoThemeId?: number): Promise<CopyCollectionResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: group, error: gErr } = await supabase.from('working_group').select('id, name').eq('id', groupId).maybeSingle()
+  if (gErr) return { error: gErr.message }
+  if (!group) return { error: 'Groupe introuvable' }
+
+  const { data: links, error: lErr } = await supabase
+    .from('working_group_work')
+    .select('oeuvre_id')
+    .eq('group_id', groupId)
+    .order('position', { ascending: true })
+  if (lErr) return { error: lErr.message }
+  const ids = (links ?? []).map((r) => r.oeuvre_id as number)
+
+  let theme: { id: number; name: string }
+  if (intoThemeId != null) {
+    const { data: th, error: thErr } = await supabase.from('theme').select('id, name').eq('id', intoThemeId).maybeSingle()
+    if (thErr) return { error: thErr.message }
+    if (!th) return { error: 'Thème introuvable' }
+    theme = th
+  } else {
+    const { data: all, error: aErr } = await supabase.from('theme').select('id, name')
+    if (aErr) return { error: aErr.message }
+    const clash = (all ?? []).find((th) => sameName(th.name, String(group.name)))
+    if (clash) return { conflict: { id: String(clash.id), name: clash.name } }
+    const { data: th, error: thErr } = await supabase
+      .from('theme')
+      .insert({ name: String(group.name).trim() })
+      .select('id, name')
+      .single()
+    if (thErr?.code === '23505') {
+      const { data: raced } = await supabase.from('theme').select('id, name').eq('name', String(group.name).trim()).maybeSingle()
+      if (raced) return { conflict: { id: String(raced.id), name: raced.name } }
+    }
+    if (thErr || !th) return { error: thErr?.message ?? 'Création thème' }
+    theme = th
+  }
+
+  const { data: existing, error: eErr } = await supabase.from('oeuvre_theme').select('oeuvre_id').eq('theme_id', theme.id)
+  if (eErr) return { error: eErr.message }
+  const have = new Set((existing ?? []).map((r) => r.oeuvre_id as number))
+  const rows = ids.filter((id) => !have.has(id)).map((oeuvre_id) => ({ oeuvre_id, theme_id: theme.id }))
+  if (rows.length) {
+    const { error: wErr } = await supabase.from('oeuvre_theme').insert(rows)
+    if (wErr) return { error: wErr.message }
+  }
+
+  revalidatePath('/atelier')
+  revalidatePath('/works')
+  return { ok: true, id: String(theme.id), name: theme.name, added: rows.length, already: ids.length - rows.length }
+}
+
 // ── Export ────────────────────────────────────────────────────────────────
 
 export async function generateExport(

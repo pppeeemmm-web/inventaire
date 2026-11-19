@@ -32,6 +32,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_theme_group_copy_t: { fr: 'Thèmes : copier un thème en groupe de travail, ou un groupe en thème', en: 'Themes: copy a theme as a working group, or a group as a theme' },
+  wn_theme_group_copy_d: {
+    fr: 'Les thèmes servent à la création, les groupes au commercial (kits, sélections, envois). Sur la page Thèmes, ⧉ copie un thème en groupe avec les mêmes œuvres, ou l’inverse. Si le nom existe déjà, on vous demande avant d’ajouter les œuvres manquantes.',
+    en: 'Themes are for creation, groups for business (kits, selections, sending out). On the Themes page, ⧉ copies a theme into a group with the same works, or the other way round. If the name already exists, you are asked before the missing works are added.',
+  },
   wn_retouch_shows_now_t: { fr: 'Image retouchée : la nouvelle version s’affiche partout tout de suite', en: 'Retouched image: the new version shows everywhere straight away' },
   wn_retouch_shows_now_d: {
     fr: 'Remplacer une image par sa version retouchée ne laisse plus l’ancienne à l’écran (même après un rechargement) : liste, diaporamas, site public et image d’accueil montrent la nouvelle. L’ancienne reste gardée de côté.',

@@ -66,6 +66,7 @@ import { constellationToolsMessages } from './constellation-tools.messages'
 import { versionFieldsMessages } from './version-fields.messages'
 import { workRulesMessages } from './work-rules.messages'
 import { themeNotesMessages } from './theme-notes.messages'
+import { themeGroupCopyMessages } from './theme-group-copy.messages'
 import { collectorKitMessages, collectorKitPageMessages } from './collector-kit.messages'
 import { aideMessages } from './aide.messages'
 import { aiDeskMessages } from './ai-desk.messages'
@@ -141,6 +142,7 @@ export const featureMessages = {
   ...versionFieldsMessages,
   ...workRulesMessages,
   ...themeNotesMessages,
+  ...themeGroupCopyMessages,
   ...collectorKitMessages,
   ...collectorKitPageMessages,
   ...aideMessages,

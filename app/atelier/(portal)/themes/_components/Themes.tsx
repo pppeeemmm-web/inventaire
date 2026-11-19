@@ -15,6 +15,8 @@ import { THEME_NOTES_SQL_LIVE } from '@/lib/theme-notes'
 import { loadThemeNotes } from '../theme-notes-actions'
 import { ThemeNotesPanel } from './ThemeNotesPanel'
 import { ShareKitSheet } from '@/components/atelier/kits/ShareKitSheet'
+import { surfaceError } from '@/lib/error-reporter/client'
+import { copyGroupToTheme, copyThemeToGroup, type CopyCollectionResult } from '@/app/atelier/selection/actions'
 
 interface Theme  { id: number; name: string }
 interface Group  { id: string; name: string }
@@ -265,6 +267,63 @@ export function Themes({
     } else {
       void promptRenameTheme(t_.id, t_.name)
     }
+  }
+
+  // ── COPY theme ↔ group (themes = creation, groups = business) ──
+  /** Same-name target → ask before adding into it; never merged silently. */
+  async function runCopy(
+    call: (into?: string) => Promise<CopyCollectionResult>,
+    existsFmt: 'themes_copy_to_group_exists_fmt' | 'themes_copy_to_theme_exists_fmt',
+    sourceName: string,
+  ): Promise<Extract<CopyCollectionResult, { ok: true }> | null> {
+    setBusy(true)
+    try {
+      let res = await call()
+      if ('conflict' in res) {
+        const ask = t(existsFmt).replace('{name}', res.conflict.name).replace('{source}', sourceName)
+        if (!confirm(ask)) { flash(t('themes_copy_cancelled')); return null }
+        res = await call(res.conflict.id)
+      }
+      if ('error' in res) { flash(t('error') + ': ' + res.error); return null }
+      if ('conflict' in res) return null
+      flash(
+        t('themes_copy_done_fmt')
+          .replace('{name}', res.name)
+          .replace('{added}', String(res.added))
+          .replace('{already}', String(res.already)),
+      )
+      return res
+    } catch (e) {
+      surfaceError(t('error') + ': ' + String(e), e, { source: 'themes.copy' })
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function copyThemeAsGroup(th: Theme) {
+    const res = await runCopy((into) => copyThemeToGroup(th.id, into), 'themes_copy_to_group_exists_fmt', th.name)
+    if (!res) return
+    const src = localThemePrivateWorks[th.id] ?? []
+    setGroups((g_) => (g_.some((x) => x.id === res.id) ? g_ : [...g_, { id: res.id, name: res.name }].sort((a, b) => a.name.localeCompare(b.name, 'fr'))))
+    setLocalGroupWorkCount((prev) => ({ ...prev, [res.id]: (prev[res.id] ?? 0) + res.added }))
+    setLocalGroupPrivateWorks((prev) => {
+      const cur = prev[res.id] ?? []
+      return { ...prev, [res.id]: [...cur, ...src.filter((id) => !cur.includes(id))] }
+    })
+  }
+
+  async function copyGroupAsTheme(g: Group) {
+    const res = await runCopy((into) => copyGroupToTheme(g.id, into == null ? undefined : Number(into)), 'themes_copy_to_theme_exists_fmt', g.name)
+    if (!res) return
+    const tid = Number(res.id)
+    const src = localGroupPrivateWorks[g.id] ?? []
+    setThemes((t_) => (t_.some((x) => x.id === tid) ? t_ : [...t_, { id: tid, name: res.name }].sort((a, b) => a.name.localeCompare(b.name, 'fr'))))
+    setLocalThemeWorkCount((prev) => ({ ...prev, [tid]: (prev[tid] ?? 0) + res.added }))
+    setLocalThemePrivateWorks((prev) => {
+      const cur = prev[tid] ?? []
+      return { ...prev, [tid]: [...cur, ...src.filter((id) => !cur.includes(id))] }
+    })
   }
 
   // ── GROUPS ──
@@ -537,6 +596,9 @@ export function Themes({
                         )}
                         <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{localThemeWorkCount[t_.id] ?? 0}</span>
                         <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
+                          {!narrow && (
+                            <button type="button" aria-label={t('themes_copy_to_group')} title={t('themes_copy_to_group')} disabled={busy} onClick={(e) => { e.stopPropagation(); void copyThemeAsGroup(t_) }} className="themes-row-action-btn" data-testid="themes-copy-to-group">⧉</button>
+                          )}
                           <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} className="themes-row-action-btn">✎</button>
                           <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteTheme(t_.id) }} className="themes-row-action-btn themes-row-action-btn--danger">✕</button>
                         </div>
@@ -544,6 +606,11 @@ export function Themes({
                     </>
                   )}
                 </div>
+                {narrow && isHov && editTheme !== t_.id ? (
+                  <button type="button" className="btn ghost sm" style={{ minHeight: 44, width: '100%', margin: '2px 0 6px' }} disabled={busy} onClick={() => void copyThemeAsGroup(t_)} data-testid="themes-copy-to-group-phone">
+                    {t('themes_copy_to_group')}
+                  </button>
+                ) : null}
                 {narrow && notesAnchorId === t_.id && notesPanel}
                 </Fragment>
               )
@@ -766,6 +833,9 @@ export function Themes({
                           <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{localGroupWorkCount[g_.id] ?? 0}</span>
                           <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
                             <button type="button" aria-label={t('ck_share_open')} title={t('ck_share_open')} onClick={(e) => { e.stopPropagation(); setKitGroupId(g_.id) }} className="themes-row-action-btn" data-testid="themes-group-share-kit">↗</button>
+                            {!narrow && (
+                              <button type="button" aria-label={t('themes_copy_to_theme')} title={t('themes_copy_to_theme')} disabled={busy} onClick={(e) => { e.stopPropagation(); void copyGroupAsTheme(g_) }} className="themes-row-action-btn" data-testid="themes-copy-to-theme">⧉</button>
+                            )}
                             <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} className="themes-row-action-btn">✎</button>
                             <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} className="themes-row-action-btn themes-row-action-btn--danger">✕</button>
                           </div>
@@ -776,6 +846,11 @@ export function Themes({
                   {narrow && isHov && editGroup !== g_.id && (localGroupWorkCount[g_.id] ?? 0) > 0 ? (
                     <button type="button" className="btn ghost sm" style={{ minHeight: 44, width: '100%', margin: '2px 0 6px' }} onClick={() => setKitGroupId(g_.id)}>
                       {t('ck_share_open')}
+                    </button>
+                  ) : null}
+                  {narrow && isHov && editGroup !== g_.id ? (
+                    <button type="button" className="btn ghost sm" style={{ minHeight: 44, width: '100%', margin: '0 0 6px' }} disabled={busy} onClick={() => void copyGroupAsTheme(g_)} data-testid="themes-copy-to-theme-phone">
+                      {t('themes_copy_to_theme')}
                     </button>
                   ) : null}
                   </Fragment>
