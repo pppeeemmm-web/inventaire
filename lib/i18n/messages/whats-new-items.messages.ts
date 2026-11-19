@@ -32,7 +32,12 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
-  // 3.1.84 (2026-11-19) — contact merge in one step, admins only.
+  // 3.1.84 (2026-11-19) — contact merge in one step, admins only; Journal day lists.
+  wn_journal_day_once_t: { fr: 'Journal : chaque œuvre une fois par jour', en: 'Journal: each work once per day' },
+  wn_journal_day_once_d: {
+    fr: 'Dans la liste des jours du Journal, une œuvre travaillée deux fois le même jour n’apparaît plus qu’une fois. Sur le téléphone, la page d’un jour montre aussi les peintures pas encore enregistrées comme œuvres (« pas encore de fiche »), comme sur l’ordinateur.',
+    en: 'In the Journal’s list of days, a work handled twice the same day now shows once. On the phone, a day’s page also shows paintings not yet recorded as works (« no record yet »), as on the computer.',
+  },
   wn_contact_merge_safe_t: { fr: 'Fusion de deux contacts : en une seule étape, par un admin', en: 'Merging two contacts: one step, by an admin' },
   wn_contact_merge_safe_d: {
     fr: 'Fusionner deux fiches contact se fait maintenant d’un bloc : tout passe sur la fiche gardée (œuvres, commandes, adresses, e-mails, liens, lectures de cartes) ou rien ne bouge, jamais une fiche coupée en deux. Une fiche « Privé » le reste après la fusion. Le bouton « Fusionner » est réservé aux admins : demandez à Pem.',

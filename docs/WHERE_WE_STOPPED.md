@@ -15,7 +15,7 @@ Commercial tools stay where they are (STRATEGY: nothing spent until a real case 
 
 ## In flight at the pause
 
-The « Now » line in [`TODO.md`](./TODO.md), in order (this note and the two §1 contact bugs closed 2026-11-19, see `DONE.md`): contact merge in one SQL transaction → one automated stress round → if time remains, design drafts for reverse pricing and contacts as relationships (no builds). Whatever is not ticked in `DONE.md` by 17 Dec is still open.
+The « Now » line in [`TODO.md`](./TODO.md), in order (this note, the two §1 contact bugs, contact merge in one transaction, localhost sign-out and the Journal day lists closed 2026-11-19, see `DONE.md`): one automated stress round → if time remains, design drafts for reverse pricing and contacts as relationships (no builds). Whatever is not ticked in `DONE.md` by 17 Dec is still open.
 
 ## Waiting on Pem (§2)
 

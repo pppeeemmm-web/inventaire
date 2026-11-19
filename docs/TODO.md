@@ -8,12 +8,9 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- Until the pause (Max runs to 17 Dec 2026), in this order: contact merge in one transaction → one automated stress round → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
+- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
-
-Bugs
-- [ ] Localhost: « Se déconnecter » lands back on the dev auto-login account (team, not admin), so an admin can't sign in on localhost after a sign-out → skip the auto-login after an explicit sign-out (dev only).
 
 Data safety (SQL, Pem's OK given)
 - [ ] A queued work change (`pending_changes`) or an old work version that names a merged-away contact fails on approve / restore (foreign key).
@@ -21,8 +18,6 @@ Data safety (SQL, Pem's OK given)
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
-- [ ] Phone and desktop Journal disagree on a day item with no work yet (phone skips it).
-- [ ] Phone: the Journal day card lists the same work twice.
 - [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table.
 - [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
@@ -31,7 +26,7 @@ Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.no
 Small fixes
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
-- [ ] A theme or group created or copied on the Thèmes page reaches the other screens (Inventory filters, batch edit, drawer chips) only after a reload; leaving Thèmes and coming back hides it until then.
+- [ ] A theme or group made, deleted or copied anywhere (Thèmes, batch edit, export, catalogue save, an exhibition) reaches the other screens (Inventory filters, drawer pickers, per-work chips and counts) only after a reload → one shared refresh after any change (a first try that only covered Thèmes is parked on branch `wt-themes-push`).
 
 Checks
 - [ ] One automated stress round once the contact merge transaction lands: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)

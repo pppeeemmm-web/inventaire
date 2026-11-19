@@ -9,6 +9,12 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - PC agent card check (`checkCardKey`) trusts the `document` row of the job's contact, not the id inside the key, so a card job waiting at merge time still runs. Admin guide (Contacts, FR + EN): merge is admin only.
 - Bulk « Fusionner » shown to admins only. Seen: test merge on live inside a rolled-back transaction — non-admin refused, lost contact gone, empty fields filled, duplicate email / phone / url / social dropped, card job moved.
 
+## 2026-11-19 — Localhost sign-out, Journal day lists (TODO §1, Pem « go »)
+
+- Localhost « Se déconnecter » no longer lands back on the dev auto-login account: `AccountActions` sets a browser-session cookie `pem_signed_out`, middleware skips the dev auto-login while it is there; the login page's « Continuer sur ce serveur dev » clears it. Seen on a dev server with plain requests (no session → auto-login 200; with the cookie → `/login`). Production never auto-logs-in — `ab522ae`, `190c6ed`.
+- Journal day list: a work shows once (two items on one work printed it twice, with its title twice); the phone day (`/hub?day=`) lists items with no work yet (« pas encore de fiche ») like the desktop, same count rule. Seen in Chrome: 1 and 2 June list their work once; not seen: a visible no-work item (none in live data) — `ef8d10e`.
+- Thèmes → other screens: a first try (`1fd02cf`) reverted (`74b2c1e`) after the flow review — it left other writers out and could leave a deleted theme selected in the drawer; kept on branch `wt-themes-push`, item reworded in TODO §1.
+
 ## 2026-11-19 — Contact links in one row; AI contact fill in French; « where we stopped » note (TODO Now + §1 bugs, Pem « lets go », « Go, option A », « Yes, apply SQL »)
 
 - « Where we stopped » note: [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) — progress per aim, in flight, waiting on Pem, first after the pause (first version of the progress dashboard) — `1d94b3f`.

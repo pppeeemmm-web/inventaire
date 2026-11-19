@@ -105,6 +105,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_day_once', day: '2026-11-19', spot: 'journal' },
   { id: 'contact_merge_safe', day: '2026-11-19' },
   { id: 'contact_links_row', day: '2026-11-19', spot: 'contacts' },
   { id: 'admin_ai_on_demand', day: '2026-11-19', spot: 'ai', admin: true },
