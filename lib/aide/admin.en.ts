@@ -373,7 +373,7 @@ Card → Expanded → **Object** → **Contact confidentiality**: "How the owner
 
 **Next:** "Contacts merged." The other contact is removed, after its works, orders and documents are transferred; its fields fill the empty fields of the contact kept.
 
-**Watch out:** a merge cannot be undone. Anyone in the team can merge. A contact with studio access keeps its account: if both have a different one, the app refuses and says so.
+**Watch out:** a merge cannot be undone. Only an admin can merge; everything moves in one go, or nothing does. A contact with studio access keeps its account: if both have a different one, the app refuses and says so.
 `,
   },
   {

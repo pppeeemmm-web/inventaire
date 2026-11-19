@@ -4618,6 +4618,10 @@ export type Database = {
           deleted_system_log: number
         }[]
       }
+      contact_list_label: {
+        Args: { p_inst: string; p_nom: string; p_prenom: string }
+        Returns: string
+      }
       graph_mark_nodes_pending: {
         Args: { p_pk: string; p_type: string }
         Returns: undefined
@@ -4659,6 +4663,10 @@ export type Database = {
           score: number
         }[]
       }
+      merge_contacts: {
+        Args: { p_keep: number; p_lose: number }
+        Returns: number
+      }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
       oeuvre_contact_label: {
@@ -4691,6 +4699,13 @@ export type Database = {
       replace_oeuvre_work_groups: {
         Args: { p_group_ids: string[]; p_oeuvre_id: number }
         Returns: undefined
+      }
+      retention_page_view_inquiry: {
+        Args: never
+        Returns: {
+          deleted_inquiry: number
+          deleted_page_view: number
+        }[]
       }
     }
     Enums: {

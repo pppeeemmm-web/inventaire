@@ -32,6 +32,12 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  // 3.1.84 (2026-11-19) — contact merge in one step, admins only.
+  wn_contact_merge_safe_t: { fr: 'Fusion de deux contacts : en une seule étape, par un admin', en: 'Merging two contacts: one step, by an admin' },
+  wn_contact_merge_safe_d: {
+    fr: 'Fusionner deux fiches contact se fait maintenant d’un bloc : tout passe sur la fiche gardée (œuvres, commandes, adresses, e-mails, liens, lectures de cartes) ou rien ne bouge, jamais une fiche coupée en deux. Une fiche « Privé » le reste après la fusion. Le bouton « Fusionner » est réservé aux admins : demandez à Pem.',
+    en: 'Merging two contacts now happens in one go: everything moves to the kept contact (works, orders, addresses, emails, links, card readings) or nothing moves, never a contact split in two. A « Private » contact stays private after the merge. The « Merge » button is for admins only: ask Pem.',
+  },
   // 3.1.83 (2026-11-19) — contact links in one row; AI contact fill in French.
   wn_contact_links_row_t: { fr: 'Contacts : site web et réseaux en un clic', en: 'Contacts: website and socials in one click' },
   wn_contact_links_row_d: {

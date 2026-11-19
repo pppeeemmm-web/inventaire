@@ -40,17 +40,18 @@ function vault() {
  * A card job may only point at a card photo of that same contact: the key pattern AND a Vault `document` row
  * (kind « carte », that storage path, that contact). Team members can queue a card job with any payload (RLS
  * policy ai_job_team_card_insert), so this check is what keeps the agent from reading anything else.
+ * The `document` row decides, not the id inside the key: a contact merge (`merge_contacts`) moves the job and the
+ * document to the kept contact while the key keeps the merged-away id.
  */
 export async function checkCardKey(sb, key, targetId) {
   const m = typeof key === 'string' ? CARD_KEY_RE.exec(key) : null
   if (!m) return 'not a card photo key'
-  if (targetId != null && String(targetId) !== m[1]) return 'key does not belong to this contact'
   const { data, error } = await sb
     .from('document')
     .select('id')
     .eq('kind', 'carte')
     .eq('storage_path', key)
-    .eq('contact_id', Number(m[1]))
+    .eq('contact_id', Number(targetId ?? m[1]))
     .limit(1)
   if (error) return `document check failed: ${error.message}`
   if (!data?.length) return 'no card document for this key'

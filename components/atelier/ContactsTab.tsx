@@ -799,7 +799,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             <button className="btn sm" onClick={requestOpenBatch} disabled={busy} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
               {t('contacts_bulk_modify_fmt').replace('{n}', String(selected.size))}
             </button>
-            {selected.size === 2 && (
+            {isAdmin && selected.size === 2 && (
               <button
                 type="button"
                 className="btn sm"

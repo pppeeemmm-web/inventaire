@@ -286,222 +286,31 @@ export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult
 
 export type MergeContactsResult = { ok: true; keptId: number } | { error: string }
 
-function isBlankScalar(v: unknown): boolean {
-  return v == null || v === ''
-}
-
-/** No longer read (2026-11-19): the merge moves the contact_websites / contact_socials rows instead. */
-const LEGACY_LINK_COLUMNS = new Set(['Website', 'Instagram', 'LinkedIn', 'Facebook', 'Twitter'])
-
-/** Prefer rows already on `keep`; fill empty columns from `lose`. */
-function mergeContactScalars(keep: Record<string, unknown>, lose: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...keep }
-  for (const [k, v] of Object.entries(lose)) {
-    if (k === 'ContactID' || k === 'auth_user_id') continue
-    if (LEGACY_LINK_COLUMNS.has(k)) continue // links live in contact_websites / contact_socials (moved below)
-    if (k === 'is_team_member' || k === 'IsTeamMember') {
-      out[k] = Boolean(out[k]) || Boolean(v)
-      continue
-    }
-    if (isBlankScalar(v)) continue
-    if (isBlankScalar(out[k])) out[k] = v
-  }
-  const keepAuth = keep.auth_user_id as string | null | undefined
-  const loseAuth = lose.auth_user_id as string | null | undefined
-  if (!keepAuth && loseAuth) out.auth_user_id = loseAuth
-  return out
-}
-
-function normEmail(e: string): string {
-  return e.trim().toLowerCase()
-}
-
-function normPhone(p: string): string {
-  return p.replace(/\D/g, '')
-}
-
-function normWeb(u: string): string {
-  return u.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
-}
-
-function socialKey(platform: string, handle: string): string {
-  return `${platform.trim().toLowerCase()}|${handle.trim().toLowerCase()}`
-}
-
 /**
- * Merge `fromId` into `intoId`: reassign FKs, union contact_* rows (dedupe), fill blank Contact fields, delete `fromId`.
- * Uses service role for consistent FK + junction updates.
+ * Merge `fromId` into `intoId` — one DB transaction (`merge_contacts`, supabase/sql/merge_contacts_fn.sql): fills the kept
+ * contact's empty fields, moves every reference (orders before works), moves emails / phones / links / event roles without
+ * duplicates, moves Bureau IA card readings, then deletes `fromId`. Any failure rolls the whole merge back.
+ * Admin only (checked inside the function). Refused: merge_invoices, merge_both_invoiced (codes the UI maps); two logins (sentence).
  */
 export async function mergeContacts(intoId: number, fromId: number): Promise<MergeContactsResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
-  const { data: isTeam } = await supabase.rpc('is_team')
-  if (!isTeam) return { error: 'Accès refusé' }
-
   if (!intoId || !fromId || intoId === fromId) return { error: 'Fusion invalide' }
 
-  const svc = createServiceClient()
-
-  const { data: keepRow, error: ke } = await svc.from('Contact').select('*').eq('ContactID', intoId).maybeSingle()
-  const { data: loseRow, error: le } = await svc.from('Contact').select('*').eq('ContactID', fromId).maybeSingle()
-  if (ke || le || !keepRow || !loseRow) return { error: 'Contact introuvable' }
-  // TODO(contact_private_rls.sql): once private contacts are hidden from the team by RLS, refuse merging a
-  // « Privé » contact for non-admins here (the service role reads them). Not before: today the team sees them.
-
-  const keepAuth = (keepRow as { auth_user_id?: string | null }).auth_user_id ?? null
-  const loseAuth = (loseRow as { auth_user_id?: string | null }).auth_user_id ?? null
-
-  if (keepAuth && loseAuth && keepAuth !== loseAuth) {
-    return {
-      error:
-        'Les deux fiches ont des logins atelier différents. Gardez une seule fiche liée, ou déliez un compte avant de fusionner.',
+  const { error } = await supabase.rpc('merge_contacts', { p_keep: intoId, p_lose: fromId })
+  if (error) {
+    if (error.message === 'merge_forbidden') return { error: 'Accès refusé' }
+    if (error.message === 'merge_not_found') return { error: 'Contact introuvable' }
+    if (error.message === 'merge_two_logins') {
+      return {
+        error:
+          'Les deux fiches ont des logins atelier différents. Gardez une seule fiche liée, ou déliez un compte avant de fusionner.',
+      }
     }
+    return { error: error.message }
   }
-
-  // An issued invoice never changes hands (DB `invoice_frozen`, FK restrict): the contact with invoices must be the one
-  // kept. Checked before any write, so a refused merge leaves both contacts as they were (stress test 2026-11-18).
-  const [loseInv, keepInv] = await Promise.all([
-    svc.from('invoice').select('id', { count: 'exact', head: true }).eq('party_id', fromId),
-    svc.from('invoice').select('id', { count: 'exact', head: true }).eq('party_id', intoId),
-  ])
-  if (loseInv.error || keepInv.error) return { error: (loseInv.error ?? keepInv.error)!.message }
-  if ((loseInv.count ?? 0) > 0) return { error: (keepInv.count ?? 0) > 0 ? 'merge_both_invoiced' : 'merge_invoices' }
-
-  const mergedScalars = mergeContactScalars(keepRow as Record<string, unknown>, loseRow as Record<string, unknown>)
-  delete (mergedScalars as { ContactID?: number }).ContactID
-
-  const mergedAuth = (mergedScalars as { auth_user_id?: string | null }).auth_user_id ?? null
-  if (mergedAuth && loseAuth === mergedAuth) {
-    const { error: clearAuthErr } = await svc
-      .from('Contact')
-      .update({ auth_user_id: null })
-      .eq('ContactID', fromId)
-    if (clearAuthErr) return { error: clearAuthErr.message }
-  }
-
-  const { error: mergeErr } = await svc.from('Contact').update(mergedScalars).eq('ContactID', intoId)
-  if (mergeErr) return { error: mergeErr.message }
-
-  /** Base tables only — `exhibition` is a view on `suivi_process` and must not be updated via PostgREST.
-   *  Orders move BEFORE the works: the holder check (`oeuvre_holder_check`) lets a sold / given / consigned work change
-   *  owner or custodian only to someone with the matching order, so the kept contact must hold the orders first
-   *  (stress test 2026-11-18: merging a buyer failed with « paid_sale_required »). */
-  const fkRefs: { table: string; col: string }[] = [
-    { table: 'work_order', col: 'party_id' },
-    { table: 'Oeuvres', col: 'ContactID' },
-    { table: 'Oeuvres', col: 'LocalisationID' },
-    { table: 'Oeuvres', col: 'AcheteurID' },
-    { table: 'suivi_process', col: 'contact_id' },
-    { table: 'document', col: 'contact_id' },
-    { table: 'expense', col: 'contact_id' },
-    { table: 'shipment', col: 'to_contact_id' },
-    { table: 'stock_item', col: 'supplier_id' },
-    // Stress test 2026-11-18: these were missing — supply_order (FK restrict) made the final delete fail after everything
-    // else had moved; private_link / page_view (FK set null) lost their contact. event_contact below; invoices checked above.
-    { table: 'supply_order', col: 'supplier_id' },
-    { table: 'private_link', col: 'contact_id' },
-    { table: 'page_view', col: 'team_contact_id' },
-  ]
-
-  for (const { table, col } of fkRefs) {
-    const { error } = await (svc.from(table) as ReturnType<typeof svc.from>)
-      .update({ [col]: intoId })
-      .eq(col, fromId)
-    if (error) return { error: `${table}.${col}: ${error.message}` }
-  }
-
-  const { error: addrErr } = await svc.from('contact_addresses').update({ contact_id: intoId }).eq('contact_id', fromId)
-  if (addrErr) return { error: addrErr.message }
-
-  // Event roles (lender, guest… on an exhibition) — FK cascade: they were deleted with `fromId`. Move them; a role the kept
-  // contact already has on that event (unique process + contact + role) is dropped instead.
-  const { data: srcRoles } = await svc.from('event_contact').select('id, process_id, role').eq('contact_id', fromId)
-  if (srcRoles?.length) {
-    const { data: tgtRoles } = await svc.from('event_contact').select('process_id, role').eq('contact_id', intoId)
-    const roleSet = new Set((tgtRoles ?? []).map((r: { process_id: string; role: string }) => `${r.process_id}|${r.role}`))
-    for (const row of srcRoles) {
-      const k = `${row.process_id}|${row.role}`
-      const { error } = roleSet.has(k)
-        ? await svc.from('event_contact').delete().eq('id', row.id)
-        : await svc.from('event_contact').update({ contact_id: intoId }).eq('id', row.id)
-      if (error) return { error: `event_contact: ${error.message}` }
-      roleSet.add(k)
-    }
-  }
-
-  // Emails — dedupe by normalized email
-  const { data: srcEmails } = await svc.from('contact_emails').select('*').eq('contact_id', fromId)
-  const { data: tgtEmails } = await svc.from('contact_emails').select('email').eq('contact_id', intoId)
-  const emailSet = new Set((tgtEmails ?? []).map((r: { email: string }) => normEmail(r.email)))
-  for (const row of srcEmails ?? []) {
-    const ne = normEmail(row.email)
-    if (emailSet.has(ne)) {
-      const { error } = await svc.from('contact_emails').delete().eq('id', row.id)
-      if (error) return { error: error.message }
-    } else {
-      const { error } = await svc.from('contact_emails').update({ contact_id: intoId }).eq('id', row.id)
-      if (error) return { error: error.message }
-      emailSet.add(ne)
-    }
-  }
-
-  const { data: srcPhones } = await svc.from('contact_phones').select('*').eq('contact_id', fromId)
-  const { data: tgtPhones } = await svc.from('contact_phones').select('phone').eq('contact_id', intoId)
-  const phoneSet = new Set((tgtPhones ?? []).map((r: { phone: string }) => normPhone(r.phone)))
-  for (const row of srcPhones ?? []) {
-    const np = normPhone(row.phone)
-    if (phoneSet.has(np)) {
-      const { error } = await svc.from('contact_phones').delete().eq('id', row.id)
-      if (error) return { error: error.message }
-    } else {
-      const { error } = await svc.from('contact_phones').update({ contact_id: intoId }).eq('id', row.id)
-      if (error) return { error: error.message }
-      phoneSet.add(np)
-    }
-  }
-
-  const { data: srcWeb } = await svc.from('contact_websites').select('*').eq('contact_id', fromId)
-  const { data: tgtWeb } = await svc.from('contact_websites').select('url').eq('contact_id', intoId)
-  const webSet = new Set((tgtWeb ?? []).map((r: { url: string }) => normWeb(r.url)))
-  for (const row of srcWeb ?? []) {
-    const nw = normWeb(row.url)
-    if (webSet.has(nw)) {
-      const { error } = await svc.from('contact_websites').delete().eq('id', row.id)
-      if (error) return { error: error.message }
-    } else {
-      const { error } = await svc.from('contact_websites').update({ contact_id: intoId }).eq('id', row.id)
-      if (error) return { error: error.message }
-      webSet.add(nw)
-    }
-  }
-
-  const { data: srcSoc } = await svc.from('contact_socials').select('*').eq('contact_id', fromId)
-  const { data: tgtSoc } = await svc.from('contact_socials').select('platform, handle').eq('contact_id', intoId)
-  const socSet = new Set((tgtSoc ?? []).map((r: { platform: string; handle: string }) => socialKey(r.platform, r.handle)))
-  for (const row of srcSoc ?? []) {
-    const sk = socialKey(row.platform, row.handle)
-    if (socSet.has(sk)) {
-      const { error } = await svc.from('contact_socials').delete().eq('id', row.id)
-      if (error) return { error: error.message }
-    } else {
-      const { error } = await svc.from('contact_socials').update({ contact_id: intoId }).eq('id', row.id)
-      if (error) return { error: error.message }
-      socSet.add(sk)
-    }
-  }
-
-  const { error: ccErr } = await svc
-    .from('contact_conflicts')
-    .delete()
-    .or(`public_contact_id.eq.${fromId},private_contact_id.eq.${fromId}`)
-  if (ccErr && !isSupabaseMissingTableError(ccErr)) {
-    return { error: `contact_conflicts: ${ccErr.message}` }
-  }
-
-  const { error: delErr } = await svc.from('Contact').delete().eq('ContactID', fromId)
-  if (delErr) return { error: `Contact.delete: ${delErr.message}` }
 
   revalidatePath('/atelier')
   revalidatePath('/atelier/contacts')

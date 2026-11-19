@@ -373,7 +373,7 @@ Fiche → Développé → **Objet** → **Confidentialité du contact** : « Com
 
 **Ensuite :** « Contacts fusionnés. » L'autre contact est supprimé, après le transfert de ses œuvres, commandes et documents ; ses champs remplissent les champs vides du contact conservé.
 
-**Attention :** la fusion ne s'annule pas. Toute l'équipe peut fusionner. Un contact qui a l'accès à l'atelier garde son compte : si les deux en ont un, l'application refuse et le dit.
+**Attention :** la fusion ne s'annule pas. Seul un admin peut fusionner ; tout passe d'un bloc, ou rien ne bouge. Un contact qui a l'accès à l'atelier garde son compte : si les deux en ont un, l'application refuse et le dit.
 `,
   },
   {

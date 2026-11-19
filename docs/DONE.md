@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Contact merge in one transaction, admins only (TODO §1 Data safety, Pem « go », « Of course. Do so », « do what's best and what preserves data »)
+
+- Contact merge is separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function. Now `merge_contacts(p_keep, p_lose)` ([`merge_contacts_fn.sql`](../supabase/sql/merge_contacts_fn.sql), definer, `is_admin()` inside, EXECUTE authenticated only), applied live; `mergeContacts` makes one `rpc` call.
+- Same rules as before (fill empty fields, orders before works, duplicates dropped, refused on two logins / invoices on the lost contact); new: « Privé » carried over (OR), Bureau IA card readings (`ai_job.target_id`, no FK — missed before) follow the kept contact; the `contact_conflicts` step dropped (no such table live). The old service-role merge failed whenever the team-member flags differed (`protect_admin_flags` needs an admin caller).
+- PC agent card check (`checkCardKey`) trusts the `document` row of the job's contact, not the id inside the key, so a card job waiting at merge time still runs. Admin guide (Contacts, FR + EN): merge is admin only.
+- Bulk « Fusionner » shown to admins only. Seen: test merge on live inside a rolled-back transaction — non-admin refused, lost contact gone, empty fields filled, duplicate email / phone / url / social dropped, card job moved.
+
 ## 2026-11-19 — Contact links in one row; AI contact fill in French; « where we stopped » note (TODO Now + §1 bugs, Pem « lets go », « Go, option A », « Yes, apply SQL »)
 
 - « Where we stopped » note: [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) — progress per aim, in flight, waiting on Pem, first after the pause (first version of the progress dashboard) — `1d94b3f`.

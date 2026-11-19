@@ -16,7 +16,7 @@ Bugs
 - [ ] Localhost: « Se déconnecter » lands back on the dev auto-login account (team, not admin), so an admin can't sign in on localhost after a sign-out → skip the auto-login after an explicit sign-out (dev only).
 
 Data safety (SQL, Pem's OK given)
-- [ ] Contact merge is separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function.
+- [ ] A queued work change (`pending_changes`) or an old work version that names a merged-away contact fails on approve / restore (foreign key).
 - [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database.
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
