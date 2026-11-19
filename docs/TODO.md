@@ -38,7 +38,6 @@ Admin
 - [ ] Themes = creation, groups = business (Pem 2026-11-18): check every business picker (share kits, selections, exports, portfolio, broadcast) offers groups, not themes; add « copy a theme into a group » and back.
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses).
-- [ ] Any team member can restore any work from the bin (`restoreSoftDeletedWorks`), even a sold or given one an admin binned: gate it like the delete.
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
 - [ ] Share inbox « link to a contact » picker: family name only, no first-name / institution search, not sorted — use the one name rule (`lib/contacts/contact-display.ts`).
 - [ ] Journal / graph chips and search show « Marie Dupont » (SQL views `graph_foundation/06_entity_view.sql`, `journal_entry_search.sql`): same name rule as the screens — SQL (Pem's OK).

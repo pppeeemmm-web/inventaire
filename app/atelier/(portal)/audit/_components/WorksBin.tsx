@@ -45,7 +45,8 @@ export function WorksBin() {
     const res = await restoreSoftDeletedWorks([w.id])
     setBusyId(null)
     if ('error' in res) {
-      toast.error(t('restoreWorkFailed'))
+      // A sold / given work: admin only (database gate) — say so, else the plain failure.
+      toast.error(res.error.includes('sold_restore_admin_only') ? workSaveErrorToastMessage('sold_restore_admin_only', t) : t('restoreWorkFailed'))
       return
     }
     setWorks((prev) => prev?.filter((x) => x.id !== w.id) ?? prev)

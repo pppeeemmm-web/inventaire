@@ -9,7 +9,7 @@
 --    Anything else is refused with `holder_required` (errcode 23514).
 --    Fires after trg_oeuvre_field_defaults (name order), so an empty location is filled first.
 --    Checked before applying: 0 sold / consigned / loan works; the 7 gifts have holders ≠ Pem.
--- 10. Moving a sold / given work to the bin (deleted_at): admin only (`sold_delete_admin_only`).
+-- 10. Moving a sold / given work to the bin (deleted_at), or back out of it: admin only (`sold_delete_admin_only`, `sold_restore_admin_only`).
 -- 9. A destroyed / lost constat closes the work's open orders: a consignment / loan holding only
 --    that work is closed ('returned', the only closed state) with a note; an open sale order
 --    (draft / confirmed / deposit_paid) for that work alone is cancelled with a note; orders with
@@ -62,6 +62,12 @@ begin
      and old."statusId" in (6, 11)
      and auth.uid() is not null and not is_admin() then
     raise exception 'sold_delete_admin_only' using errcode = '42501';
+  end if;
+  -- Back out of the bin: same rule (Pem 2026-11-19) — a team member can't bring back a sold / given work an admin binned.
+  if new.deleted_at is null and old.deleted_at is not null
+     and old."statusId" in (6, 11)
+     and auth.uid() is not null and not is_admin() then
+    raise exception 'sold_restore_admin_only' using errcode = '42501';
   end if;
   return new;
 end;

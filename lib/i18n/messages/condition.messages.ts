@@ -118,6 +118,10 @@ export const conditionMessages = defineMessages({
     fr: 'Seul un admin peut mettre à la corbeille une œuvre vendue ou donnée.',
     en: 'Only an admin can move a sold or given work to the bin.',
   },
+  err_sold_restore_admin_only: {
+    fr: 'Seul un admin peut sortir de la corbeille une œuvre vendue ou donnée.',
+    en: 'Only an admin can bring a sold or given work back from the bin.',
+  },
   err_bulk_admin_only: {
     fr: 'Modifier statut, contact, prix… sur plusieurs œuvres est réservé aux admins. Les thèmes et groupes restent modifiables ; pour le reste, passez par la fiche (validation).',
     en: 'Changing status, contact, price… on several works is admin only. Themes and groups stay editable; for the rest, use the work drawer (approval).',

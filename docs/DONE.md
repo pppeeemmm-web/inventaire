@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Bin: a sold / given work comes back by an admin only (Pem « of course », TODO §3)
+
+- `oeuvre_soft_delete_gate` (applied live as migration `oeuvre_bin_restore_admin_only`; `supabase/sql/work_lifetime_gates.sql`) now also refuses taking a sold / given work (status 6, 11) out of the bin for a non-admin (`sold_restore_admin_only`), like putting it in. The Corbeille says why. Team members can still undo their own delete of other works.
+
 ## 2026-11-19 — Retouched image shows straight away (work 2167, Inventory session)
 
 - `replaceWorkImage` writes the retouch under a new key (content hash) — R2 / browsers kept the old picture at the old key for ever. The cover trigger moves `Oeuvres.txtImageNameLink` (checked live: fires on every `tblImage` update of a cover); the card patches the loaded catalogue; landing hero + OG follow `hero_image_id`. `txtImageName` keeps the old name when empty (shoot day for /hub; 0 rows at risk otherwise, checked live). Palette recomputed. Old pair kept at its key and logged as « backup » (Pem). Tested on the Docker copy; flow-reviewer run.
