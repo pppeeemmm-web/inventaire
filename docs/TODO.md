@@ -33,7 +33,6 @@ Leftovers are in §3, R8 in §5.
 
 Admin
 - [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database, so it needs SQL (Pem's OK).
-- 🔧 Themes = creation, groups = business: the portfolio PDF gets its own « Groupe » source (its collections are the public /works chapters, kept on themes) — Inventory session builds it in `app-worktrees/theme-group`
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses).
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).

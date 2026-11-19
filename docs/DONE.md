@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Portfolio PDF from a working group (themes = creation, groups = business)
+
+- PDF window: « Groupes de travail » next to the site collections; a group (`group:<id>` in `collectionFilter`, saved profiles keep their shape) gives its works in group order, same eligibility as before (public works with an image). /works chapters stay on themes. Built by the Inventory session, tested on the Docker copy (8 of 12 works, group order, PDF generated).
+
 ## 2026-11-19 — Local AI only; retention armed (TODO §0 / §3)
 
 - No `OPENAI_API_KEY` on Vercel (Pem checked): the live site sends nothing to OpenAI. `CRON_SECRET` set by Pem: `/api/cron/retention` answers 401 without it (was 503), the monthly retention run is armed.

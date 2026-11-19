@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
 import { useI18n } from '@/lib/i18n/context'
-import { generatePortfolioPdf, getPortfolioPdfWorkCandidates } from '@/app/atelier/(portal)/portfolio/pdf-action'
+import { generatePortfolioPdf, getPortfolioPdfGroups, getPortfolioPdfWorkCandidates } from '@/app/atelier/(portal)/portfolio/pdf-action'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { yearOf } from '@/lib/data'
 import {
@@ -24,6 +24,7 @@ import {
   type PdfWorkLayout,
   type PdfWorkLayoutMode,
   type PdfWorkPosition,
+  pdfGroupIdFromFilter,
 } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
 
@@ -108,6 +109,8 @@ export default function PdfExportDrawer({
   const [maxWorks,        setMaxWorks]        = useState<number | null>(null)
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null)
   const [collections,     setCollections]     = useState<PdfCollectionCandidate[]>([])
+  /** Working groups as a source (`group:<id>` in collectionFilter) — groups = business, themes = creation. */
+  const [groups,          setGroups]          = useState<PdfCollectionCandidate[]>([])
   const [workCandidates,  setWorkCandidates]  = useState<PdfWorkCandidate[]>([])
   const [sequenceIds,     setSequenceIds]     = useState<number[]>([])
   const [workLayouts,     setWorkLayouts]     = useState<Record<number, PdfWorkLayout>>({})
@@ -140,6 +143,17 @@ export default function PdfExportDrawer({
 
   useEffect(() => {
     if (!open) return
+    let cancelled = false
+    getPortfolioPdfGroups().then(result => {
+      if (!cancelled && 'groups' in result) setGroups(result.groups)
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- optional list: without it the collections still work
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const isGroup = pdfGroupIdFromFilter(collectionFilter) != null
     const mergedInitialWorks = mergeInitialWorks(initialCollections, initialWorksByCollection)
     const selectedInitialWorks = collectionFilter
       ? initialWorksByCollection[collectionFilter]
@@ -147,7 +161,7 @@ export default function PdfExportDrawer({
     const initialWorks = selectedInitialWorks && selectedInitialWorks.length > 0
       ? selectedInitialWorks
       : mergedInitialWorks
-    if (initialCollections.length > 0 && initialWorks.length > 0) {
+    if (!isGroup && initialCollections.length > 0 && initialWorks.length > 0) {
       setCollections(uniqueCollections(initialCollections))
       setWorkCandidates(initialWorks)
       setSequenceIds(sequenceForProfile(profileSettings?.workSequence, initialWorks))
@@ -422,7 +436,7 @@ export default function PdfExportDrawer({
             <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-8px 0 10px' }}>
               <HelpTip label="?" title={t('pdf_sequence_help')} />
             </div>
-            {collections.length > 0 && (
+            {(collections.length > 0 || groups.length > 0) && (
               <label style={{ display: 'block', marginBottom: 12 }}>
                 <span style={{ display: 'block', fontSize: 8, color: '#aaa', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 5 }}>
                   {t('pdf_sequence_collection_label')}
@@ -437,17 +451,35 @@ export default function PdfExportDrawer({
                     border: '1px solid rgba(0,0,0,0.1)',
                     borderRadius: 4,
                     padding: '8px 10px',
+                    minHeight: 44,
                     fontSize: 10,
                     color: '#1a1816',
                     fontFamily: 'inherit',
                   }}
                 >
                   <option value="">{t('pdf_sequence_collection_all')}</option>
-                  {collections.map(collection => (
+                  {groups.length > 0 && collections.length > 0 ? (
+                    <optgroup label={t('pdf_sequence_collections_optgroup')}>
+                      {collections.map(collection => (
+                        <option key={collection.id} value={collection.id}>
+                          {collection.title} ({collection.worksCount})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : collections.map(collection => (
                     <option key={collection.id} value={collection.id}>
                       {collection.title} ({collection.worksCount})
                     </option>
                   ))}
+                  {groups.length > 0 && (
+                    <optgroup label={t('pdf_sequence_groups_optgroup')}>
+                      {groups.map(group => (
+                        <option key={group.id} value={group.id}>
+                          {group.title} ({group.worksCount})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </label>
             )}

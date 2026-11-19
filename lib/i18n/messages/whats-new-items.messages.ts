@@ -32,6 +32,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_pdf_from_group_t: { fr: 'PDF portfolio : partir d’un groupe de travail, dans l’ordre du groupe', en: 'Portfolio PDF: start from a working group, in the group’s order' },
+  wn_pdf_from_group_d: {
+    fr: 'Dans la fenêtre du PDF, la liste « Collections » propose aussi vos groupes de travail : choisissez-en un, et le PDF reprend ses œuvres publiques dans l’ordre du groupe. Les chapitres du site ne changent pas.',
+    en: 'In the PDF window, the « Collections » list also offers your working groups: pick one and the PDF takes its public works in the group’s order. The site’s chapters do not change.',
+  },
   wn_theme_group_copy_t: { fr: 'Thèmes : copier un thème en groupe de travail, ou un groupe en thème', en: 'Themes: copy a theme as a working group, or a group as a theme' },
   wn_theme_group_copy_d: {
     fr: 'Les thèmes servent à la création, les groupes au commercial (kits, sélections, envois). Sur la page Thèmes, ⧉ copie un thème en groupe avec les mêmes œuvres, ou l’inverse. Si le nom existe déjà, on vous demande avant d’ajouter les œuvres manquantes.',

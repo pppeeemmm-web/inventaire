@@ -127,6 +127,16 @@ export interface PdfCollectionCandidate {
   worksCount: number
 }
 
+/**
+ * A working group as the PDF's source (Pem 2026-11-19: groups = business, themes = creation).
+ * Carried in `collectionFilter` as `group:<uuid>`, so saved PDF profiles keep their shape;
+ * collection ids (/works chapters) never contain a colon.
+ */
+export const PDF_GROUP_FILTER_PREFIX = 'group:'
+export function pdfGroupIdFromFilter(filter: string | null | undefined): string | null {
+  return filter?.startsWith(PDF_GROUP_FILTER_PREFIX) ? filter.slice(PDF_GROUP_FILTER_PREFIX.length) || null : null
+}
+
 export interface PdfCollectionStatement {
   id: string
   title: string

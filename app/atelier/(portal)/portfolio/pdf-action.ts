@@ -26,6 +26,8 @@ import {
   type PdfPortfolioConfig,
   type PdfProfileSettings,
   type PortfolioPdfResult,
+  PDF_GROUP_FILTER_PREFIX,
+  pdfGroupIdFromFilter,
 } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
 import {
@@ -123,8 +125,15 @@ export async function generatePortfolioPdf(
     const cfg = resolveConfig(rawConfig, opts.lang)
     opts = applySavedPdfProfile(rawConfig, opts)
 
-    // 3. Resolve sections (atelier-driven structure)
+    // 3. Resolve sections (atelier-driven structure) — or one working group, in its order
     let sections = resolveSections(rawConfig, allWorks, opts, worksResult.catalogueThemes)
+    const groupId = pdfGroupIdFromFilter(opts.collectionFilter)
+    if (groupId) {
+      const group = await loadGroupSection(groupId, allWorks)
+      if ('error' in group) return group
+      if (group.works.length === 0) return { error: 'Aucune œuvre publique avec image dans ce groupe.' }
+      sections = [group]
+    }
 
     // Fallback: no atelier source produced works → emit all public works in DB order
     if (sections.length === 0) {
@@ -255,12 +264,20 @@ export async function getPortfolioPdfWorkCandidates(
       }]
     })
 
-    const sections = opts.collectionFilter
+    const groupId = pdfGroupIdFromFilter(opts.collectionFilter)
+    let sections = opts.collectionFilter
       ? resolveSections(cfgResult.config, worksResult.works, {
           ...baseOpts,
           collectionFilter: opts.collectionFilter,
         }, worksResult.catalogueThemes)
       : allSections
+    if (groupId) {
+      const group = await loadGroupSection(groupId, worksResult.works)
+      if ('error' in group) return group
+      sections = [group]
+      // A group with no eligible work shows an empty list, not every public work.
+      if (group.works.length === 0) return { works: [], collections }
+    }
 
     const ordered = sections.length > 0
       ? sections.flatMap(s => s.works)
@@ -284,6 +301,55 @@ export async function getPortfolioPdfWorkCandidates(
     console.error('[getPortfolioPdfWorkCandidates]', e)
     return { error: e?.message ?? String(e) }
   }
+}
+
+/**
+ * Working groups offered as a PDF source: not archived, with at least one work the PDF may show
+ * (same eligibility as today: `loadPublicWorks`). Sorted by name. Team only (RLS on working_group).
+ */
+export async function getPortfolioPdfGroups(): Promise<{ groups: PdfCollectionCandidate[] } | { error: string }> {
+  try {
+    const sb = await createClient()
+    const [worksResult, { data: groups, error: gErr }, { data: links, error: lErr }] = await Promise.all([
+      loadPublicWorks(),
+      sb.from('working_group').select('id, name').is('archived_at', null),
+      sb.from('working_group_work').select('group_id, oeuvre_id'),
+    ])
+    if ('error' in worksResult) return { error: worksResult.error }
+    if (gErr) return { error: gErr.message }
+    if (lErr) return { error: lErr.message }
+    const eligible = new Set(worksResult.works.map(w => w.OeuvreID))
+    const count = new Map<string, number>()
+    for (const l of links ?? []) {
+      if (eligible.has(l.oeuvre_id as number)) count.set(String(l.group_id), (count.get(String(l.group_id)) ?? 0) + 1)
+    }
+    const out = (groups ?? [])
+      .map(g => ({ id: PDF_GROUP_FILTER_PREFIX + String(g.id), title: String(g.name), worksCount: count.get(String(g.id)) ?? 0 }))
+      .filter(g => g.worksCount > 0)
+      .sort((a, b) => a.title.localeCompare(b.title, 'fr'))
+    return { groups: out }
+  } catch (e: any) {
+    await logError('portfolio pdf groups failed', e, { source: 'portfolio.getPortfolioPdfGroups' })
+    return { error: e?.message ?? String(e) }
+  }
+}
+
+/** One working group as a PDF section: its works in group order, kept only if the PDF may show them. */
+async function loadGroupSection(groupId: string, allWorks: PdfWork[]): Promise<PdfSection | { error: string }> {
+  const sb = await createClient()
+  const [{ data: group, error: gErr }, { data: links, error: lErr }] = await Promise.all([
+    sb.from('working_group').select('id, name').eq('id', groupId).maybeSingle(),
+    sb.from('working_group_work').select('oeuvre_id').eq('group_id', groupId).order('position', { ascending: true }),
+  ])
+  if (gErr) return { error: gErr.message }
+  if (lErr) return { error: lErr.message }
+  if (!group) return { error: 'Groupe introuvable.' }
+  const byId = new Map(allWorks.map(w => [w.OeuvreID, w]))
+  const works = (links ?? []).flatMap(l => {
+    const w = byId.get(l.oeuvre_id as number)
+    return w ? [w] : []
+  })
+  return { id: PDF_GROUP_FILTER_PREFIX + String(group.id), title: String(group.name), description: '', intro: '', outro: '', works }
 }
 
 // ── Data loading ───────────────────────────────────────────────────────────

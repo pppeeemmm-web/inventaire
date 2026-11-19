@@ -77,7 +77,7 @@
 // '3.1.76' (2026-11-19): contact names one way (DUPONT Marie in lists, sorted by family name); phone fixes (R&D at 375, 44 px taps), Overview « envois à faire », card photo sent once.
 // '3.1.77' (2026-11-19): a work card open in two tabs (or by two people) no longer undoes the other save.
 // '3.1.78' (2026-11-19): a retouched image shows everywhere straight away (new file per retouch).
-// '3.1.79' (2026-11-19): Thèmes — copy a theme as a working group, or a group as a theme.
+// '3.1.79' (2026-11-19): Thèmes — copy a theme as a working group, or a group as a theme; portfolio PDF from a working group.
 export const WHATS_NEW_RELEASE = '3.1.79'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
@@ -104,6 +104,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'pdf_from_group', day: '2026-11-19', spot: 'portfolio' },
   { id: 'theme_group_copy', day: '2026-11-19', spot: 'themes' },
   { id: 'retouch_shows_now', day: '2026-11-19', spot: 'inventory' },
   { id: 'two_tabs_safe', day: '2026-11-19', spot: 'inventory' },

@@ -13,6 +13,14 @@ export const portfolioPdfMessages = defineMessages({
     fr: 'Collection sauvegardée',
     en: 'Saved collection',
   },
+  pdf_sequence_collections_optgroup: {
+    fr: 'Collections du site',
+    en: 'Site collections',
+  },
+  pdf_sequence_groups_optgroup: {
+    fr: 'Groupes de travail',
+    en: 'Working groups',
+  },
   pdf_profile_save: {
     fr: 'Enregistrer ce profil',
     en: 'Save this profile',
