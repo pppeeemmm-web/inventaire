@@ -8,6 +8,7 @@ import {
   resolveArtistDisplayName,
   isLandingHeroUnoptimized,
 } from '@/lib/seo/landing-hero'
+import { withLiveHeroKey } from '@/lib/seo/landing-hero-live'
 import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import {
   hiddenNavRoutes,
@@ -81,7 +82,7 @@ export default async function HomePage() {
     landingPartial = l
     landingBg = resolveLandingBackground(l)
     heroGloss = resolveHeroGloss(l)
-    heroImageUrl = resolveLandingHeroImageUrl(l ?? undefined)
+    heroImageUrl = resolveLandingHeroImageUrl((await withLiveHeroKey(l)) ?? undefined)
     heroImageUnoptimized = isLandingHeroUnoptimized(heroImageUrl)
     artistName = resolveArtistDisplayName(g?.artist_name)
     heroCaptionFr = (l?.hero_caption_fr ?? '').trim() || DEFAULT_HERO_CAPTION_FR

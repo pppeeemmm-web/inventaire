@@ -28,7 +28,7 @@ import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import { logError } from '@/lib/error-reporter/server'
-import { extractPalette } from '@/lib/image-palette'
+import { extractPalette, type PaletteSwatch } from '@/lib/image-palette'
 import { r2GetObjectBuffer } from '@/lib/r2-s3-object-get'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
@@ -100,7 +100,9 @@ export type DeleteResult =
   | { error: string; deletedIds?: number[] }
   | { ok: true; deletedIds?: number[] }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage } | { ok: true; pending: true }
-export type ImageReplaceResult = { error: string } | { ok: true; image: WorkImage; cacheKey: string }
+export type ImageReplaceResult =
+  | { error: string }
+  | { ok: true; image: WorkImage & { palette: PaletteSwatch[] | null }; isCover: boolean; cacheKey: string }
 
 /** Minimal snapshot for undo after save (status + pipeline booleans + junctions). */
 export type WorkRevertSnapshot = {
@@ -1073,36 +1075,6 @@ async function putPreparedWorkImage(
   })
 }
 
-async function backupRetouchObject(
-  filename: string,
-  oeuvreId: number,
-  imageId: number,
-  uploadedBy?: string | null,
-  kind: 'original' | 'thumb' = 'original',
-): Promise<string | null> {
-  const day = new Date().toISOString().slice(0, 10)
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const dst = `recycle/${day}/retouch/${stamp}/${filename}`
-  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
-  try {
-    await r2Copy(filename, dst)
-    await recordStorageObject({
-      bucket,
-      objectKey: dst,
-      source: 'work_image_retouch_backup',
-      classification: 'recycle',
-      status: 'present',
-      linkedRefs: [{ table: 'tblImage', column: 'ImageID', row_id: imageId }],
-      uploadedBy,
-      metadata: { original_key: filename, oeuvre_id: oeuvreId, kind },
-    })
-    return dst
-  } catch (e) {
-    console.warn('[works/actions] backupRetouchObject', filename, e)
-    return null
-  }
-}
-
 /**
  * Normalize upload and add it as a new R2 work image + thumb.
  */
@@ -1333,7 +1305,13 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
 }
 
 // Replace an existing image slot after external retouching.
-// Preserves ImageID, txtImageNameLink, and SeqNo so ordering, cover selection, and public URLs stay stable.
+// Keeps ImageID and SeqNo (order, cover). The retouched file gets a NEW key (content hash), because
+// R2 / browsers cache a key forever: overwriting the same key kept showing the old picture (work 2167).
+// The old pair stays at its key (Pem 2026-11-19): it is the backup, and links / pages still holding it keep working.
+// tblImage.txtImageNameLink → new key; the cover trigger copies it to Oeuvres when this image is the cover.
+// txtImageName keeps the previous name when empty: old file names carry the shoot date that
+// « Photographiées ce jour » (/hub) matches on. Palette recomputed from the new thumb.
+// The landing hero follows by hero_image_id (lib/seo/landing-hero-live.ts).
 export async function replaceWorkImage(formData: FormData): Promise<ImageReplaceResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -1348,7 +1326,7 @@ export async function replaceWorkImage(formData: FormData): Promise<ImageReplace
 
   const { data: img, error: imgErr } = await supabase
     .from('tblImage')
-    .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded')
+    .select('ImageID, OeuvreID, txtImageName, txtImageNameLink, SeqNo, DateAdded')
     .eq('ImageID', imageId)
     .eq('OeuvreID', oeuvreId)
     .maybeSingle()
@@ -1358,12 +1336,8 @@ export async function replaceWorkImage(formData: FormData): Promise<ImageReplace
   const prepared = await prepareWorkImageUpload(file)
   if ('error' in prepared) return prepared
 
-  const filename = img.txtImageNameLink
-  const thumbName = thumbNameFor(filename)
-  const [originalBackup, thumbBackup] = await Promise.all([
-    backupRetouchObject(filename, oeuvreId, imageId, user.id, 'original'),
-    backupRetouchObject(thumbName, oeuvreId, imageId, user.id, 'thumb'),
-  ])
+  const previousFilename = img.txtImageNameLink
+  const filename = makeImageStorageFilename(oeuvreId, img.SeqNo, prepared.sourceBuf, 'avif')
 
   try {
     await putPreparedWorkImage(prepared, filename, oeuvreId, img.SeqNo, user.id, 'work_image_retouch')
@@ -1371,19 +1345,47 @@ export async function replaceWorkImage(formData: FormData): Promise<ImageReplace
     return { error: String(e) }
   }
 
+  let palette: PaletteSwatch[] | null = null
+  try {
+    const p = await extractPalette(prepared.thumbBuf)
+    if (p.length) palette = p
+  } catch (e) {
+    await logError('Image palette failed', e, { source: 'works.replaceWorkImage', metadata: { oeuvreId, filename } })
+  }
+
   const updateRow: Record<string, unknown> = {
+    txtImageNameLink: filename,
     DateAdded: new Date().toISOString(),
     sha256: prepared.sourceSha256,
   }
+  if (!img.txtImageName) updateRow.txtImageName = previousFilename
+  if (palette) updateRow.palette = palette
 
   const { data: updated, error: updateErr } = await supabase
     .from('tblImage')
     .update(updateRow)
     .eq('ImageID', imageId)
     .eq('OeuvreID', oeuvreId)
-    .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded')
+    .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded, is_cover, palette')
     .single()
   if (updateErr || !updated) return { error: updateErr?.message ?? 'Erreur mise à jour image' }
+
+  // The old pair stays at its key (links keep working) but is logged as a backup of this image, so a later
+  // clean-up (work purged, storage review) can find it — nothing else points at it any more.
+  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
+  // Same bytes uploaded again → same key: the live file is not a backup.
+  for (const [key, kind] of previousFilename === filename ? [] : [[previousFilename, 'original'], [thumbNameFor(previousFilename), 'thumb']] as const) {
+    await recordStorageObject({
+      bucket,
+      objectKey: key,
+      source: 'work_image_retouch_previous',
+      classification: 'backup',
+      status: 'present',
+      linkedRefs: [{ table: 'tblImage', column: 'ImageID', row_id: imageId }],
+      uploadedBy: user.id,
+      metadata: { oeuvre_id: oeuvreId, kind, superseded_by: filename },
+    })
+  }
 
   await logSystemEvent({
     eventType: 'VAULT_UPLOAD',
@@ -1393,13 +1395,21 @@ export async function replaceWorkImage(formData: FormData): Promise<ImageReplace
     metadata: {
       source: 'image_retouch',
       oeuvreId,
-      originalBackup,
-      thumbBackup,
+      previousFilename,
+      previousThumb: thumbNameFor(previousFilename),
     },
   })
 
   revalidatePath('/atelier')
-  return { ok: true, image: updated as WorkImage, cacheKey: prepared.sourceSha256.slice(0, 12) }
+  revalidatePath('/works')
+  revalidatePath('/')
+  const { is_cover, palette: savedPalette, ...row } = updated
+  return {
+    ok: true,
+    image: { ...(row as WorkImage), palette: (savedPalette as PaletteSwatch[] | null) ?? null },
+    isCover: is_cover === true,
+    cacheKey: prepared.sourceSha256.slice(0, 12),
+  }
 }
 
 // Delete one image from a work. Admin only — image deletion is irreversible at R2 layer.

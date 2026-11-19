@@ -32,6 +32,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_retouch_shows_now_t: { fr: 'Image retouchée : la nouvelle version s’affiche partout tout de suite', en: 'Retouched image: the new version shows everywhere straight away' },
+  wn_retouch_shows_now_d: {
+    fr: 'Remplacer une image par sa version retouchée ne laisse plus l’ancienne à l’écran (même après un rechargement) : liste, diaporamas, site public et image d’accueil montrent la nouvelle. L’ancienne reste gardée de côté.',
+    en: 'Replacing an image with its retouched version no longer leaves the old one on screen (even after a reload): lists, slideshows, the public site and the home image show the new one. The old one is kept aside.',
+  },
   wn_two_tabs_safe_t: { fr: 'Une fiche ouverte deux fois ne défait plus l’autre enregistrement', en: 'A card open twice no longer undoes the other save' },
   wn_two_tabs_safe_d: {
     fr: 'Si une œuvre a été enregistrée ailleurs (autre onglet, autre personne) depuis que vous avez ouvert sa fiche, votre enregistrement est refusé avec un message, au lieu d’effacer l’autre en silence : rouvrez la fiche, puis refaites vos changements. Même chose si elle a été mise à la corbeille. Hors ligne sur le téléphone, deux enregistrements de la même fiche n’en font plus qu’un (le plus récent).',

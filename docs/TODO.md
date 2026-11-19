@@ -8,7 +8,6 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 - ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
 - ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
-- 🔧 Retouched photo keeps showing the old picture (work 2167): new file key per retouch — Inventory session reworks it in its own worktree (patch in the shared notes): grid / slideshow cover not refreshed, landing hero key, old pair left in R2, palette not recomputed, shoot day lost (898 photos carry the date only in the file name)
 
 ## 0. Bugs — fix now
 
@@ -44,6 +43,8 @@ Admin
 - [ ] Share inbox « link to a contact » picker: family name only, no first-name / institution search, not sorted — use the one name rule (`lib/contacts/contact-display.ts`).
 - [ ] Journal / graph chips and search show « Marie Dupont » (SQL views `graph_foundation/06_entity_view.sql`, `journal_entry_search.sql`): same name rule as the screens — SQL (Pem's OK).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved — softer message for that case.
+- [ ] Retouched photos: the old file pair stays in storage for ever (logged as « backup » in `storage_object_ledger`); a work purge does not remove it, and `scripts/storage-ledger-backfill.mjs --write` relabels those rows « unidentified » — a clean-up that reads the ledger, and the backfill keeping `backup` rows.
+- [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
 
 Contacts and Vault

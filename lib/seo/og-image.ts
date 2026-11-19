@@ -4,6 +4,7 @@ import sharp from 'sharp'
 import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import { migrate } from '@/lib/portfolio-config-types'
 import { resolveLandingHeroImageUrl } from '@/lib/seo/landing-hero'
+import { withLiveHeroKey } from '@/lib/seo/landing-hero-live'
 import { resolvePublicSiteThemeForPage } from '@/lib/public-site-theme'
 import type { PublicPageKey } from '@/lib/page-background'
 
@@ -31,7 +32,7 @@ export async function renderSiteOgJpeg(page: PublicPageKey): Promise<Buffer> {
     const theme = resolvePublicSiteThemeForPage(page, cfg.landing, cfg.site_blocks)
     top = safeHex(theme.topHex, top)
     bottom = safeHex(theme.bottomHex, bottom)
-    heroUrl = resolveLandingHeroImageUrl(cfg.landing)
+    heroUrl = resolveLandingHeroImageUrl(await withLiveHeroKey(cfg.landing))
   } catch (e) {
     console.error('[og-image] portfolio sections load failed', e)
   }

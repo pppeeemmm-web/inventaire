@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Retouched image shows straight away (work 2167, Inventory session)
+
+- `replaceWorkImage` writes the retouch under a new key (content hash) — R2 / browsers kept the old picture at the old key for ever. The cover trigger moves `Oeuvres.txtImageNameLink` (checked live: fires on every `tblImage` update of a cover); the card patches the loaded catalogue; landing hero + OG follow `hero_image_id`. `txtImageName` keeps the old name when empty (shoot day for /hub; 0 rows at risk otherwise, checked live). Palette recomputed. Old pair kept at its key and logged as « backup » (Pem). Tested on the Docker copy; flow-reviewer run.
+
 ## 2026-11-19 — Work card no longer resets « TVA » and « payé » (flow review)
 
 - `tva_rate` / `is_paid` were missing from the list row the card fills from, so every admin save posted TVA 0 and « payé » no. Both added to `OEUVRES_KEYSET_SELECT` and the shell's first-paint select. Checked live: nothing real lost (only #2345 ever had a rate, 0.01, reset 2026-11-03; no work ever marked paid).

@@ -466,6 +466,8 @@ export function DrawerContent({
         ...prev,
         [imageId]: res.cacheKey || String(Date.now()),
       }))
+      // New file name per retouch: the loaded catalogue (grid, list, CSV, slideshows) holds the cover's name.
+      if (res.isCover) onWorkSaved?.(o.OeuvreID, { txtImageNameLink: res.image.txtImageNameLink })
       toast.success(t('wf_images_retouch_uploaded'))
       router.refresh()
     } catch (err) {
