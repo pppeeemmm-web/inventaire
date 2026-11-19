@@ -917,6 +917,17 @@ export function Themes({
           border-radius: 4px;
         }
         .mosaic-grid--dense .mosaic-unlink-icon { font-size: 16px; }
+        /* Phone: the dense 28 px button keeps its look; its tap area grows to 44 x 44 down and left, inside the card. */
+        @media (max-width: 767px) {
+          .mosaic-grid--dense .mosaic-unlink-btn::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            bottom: -14px;
+            left: -14px;
+          }
+        }
         .mosaic-card:hover .mosaic-unlink-btn,
         .mosaic-card:focus-within .mosaic-unlink-btn,
         .mosaic-unlink-btn:focus-visible {

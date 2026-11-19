@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { ImportedContact } from '@/lib/contact-import-types'
+import { contactProseLabel } from '@/lib/contacts/contact-display'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import {
   commitBusinessCardCapture,
@@ -32,7 +33,8 @@ function CardPreview({
   contact: ImportedContact
   t: (k: DictKey) => string
 }) {
-  const name = [contact.prenom, contact.nom].filter(Boolean).join(' ') || '—'
+  // Family name in capitals: shows at a glance which part was read as the family name.
+  const name = contactProseLabel({ Prénom: contact.prenom, Nom: contact.nom }, { fallback: '—' })
   return (
     <div
       className="t-mono-sm"
@@ -77,7 +79,9 @@ function MetaLine({ meta, t }: { meta: CardCaptureMeta; t: (k: DictKey) => strin
   )
 }
 
-export function CaptureCardClient() {
+/** `photoReadable`: the server has a vision engine (resolveCardVisionMode). Without one the photo is not sent
+ *  with « Améliorer avec l'IA » — it would be uploaded for nothing, then again at « Créer » (stress test round 3). */
+export function CaptureCardClient({ photoReadable = false }: { photoReadable?: boolean }) {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [text, setText] = useState('')
@@ -160,11 +164,16 @@ export function CaptureCardClient() {
   // on screen stays as it is when the AI can't be reached.
   const improve = async () => {
     if (!canImprove || aiBusy) return
+    // Photo only, and nothing on the server can read it: same answer as the server's « ocr_failed », no upload.
+    if (!text.trim() && !photoReadable) {
+      toast.error(t('cc_ai_failed'))
+      return
+    }
     setAiBusy(true)
     try {
       const fd = new FormData()
       if (text.trim()) fd.set('text', text.trim())
-      if (shot) fd.set('file', shot.file)
+      if (shot && photoReadable) fd.set('file', shot.file)
       fd.set('refineWithLlm', '1')
       const res = await previewBusinessCardCapture(fd)
       if ('error' in res || (res.meta.llm === 'none' && !res.meta.ocrUsed)) {

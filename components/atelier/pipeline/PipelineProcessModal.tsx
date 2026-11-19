@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/lib/ui/toast'
+import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { createWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
@@ -52,6 +54,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
   onRemindersMutated?: () => Promise<void>
 }) {
   const { typeLabel, t } = useSuiviLabels()
+  const { lang } = useI18n()
   const isNew = !process
   const [nom,          setNom]          = useState(process?.nom           ?? '')
   const [type,         setType]         = useState<ProcessType>(process?.type as ProcessType ?? 'prix')
@@ -315,14 +318,14 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
   const [contactSearch, setContactSearch] = useState('')
   const filteredContacts = useMemo(() => {
-    const list = contacts || []
+    const list = [...(contacts || [])].sort(compareContactsByName(lang))
     if (!contactSearch.trim()) return list.slice(0, 10)
     const q = contactSearch.toLowerCase()
     return list.filter(c => {
-      const name = (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`).toLowerCase()
+      const name = [c.NomInstitution, c.Prénom, c.Nom].filter(Boolean).join(' ').toLowerCase()
       return name.includes(q)
     }).slice(0, 10)
-  }, [contacts, contactSearch])
+  }, [contacts, contactSearch, lang])
 
   const processSnapshot = useMemo(() => JSON.stringify({
     nom, type, debut, fin, deadlineTime, statut, localisation, url, scope, stakeholders,
@@ -506,7 +509,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
                 </div>
               ) : contactId ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg1)', padding: '6px 12px', border: '1px solid var(--ac)', height: 32 }}>
-                  <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contacts?.find(c => c.ContactID === contactId)?.NomInstitution || t('pm_selected_contact_fallback')}</div>
+                  <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contactListLabel(contacts?.find(c => c.ContactID === contactId), { fallback: t('pm_selected_contact_fallback') })}</div>
                   <button type="button" onClick={() => setContactId(null)} aria-label={t('delete')} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', fontSize: 14, minHeight: 44, minWidth: 44 }}>×</button>
                 </div>
               ) : (
@@ -515,7 +518,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
                   {contactSearch.trim() && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto' }}>
                       {filteredContacts.map(c => (
-                        <div key={c.ContactID} onClick={() => { setContactId(c.ContactID); setContactSearch('') }} style={{ padding: '10px 15px', fontSize: 11, cursor: 'pointer' }}>{c.NomInstitution || `${c.Prénom} ${c.Nom}`}</div>
+                        <div key={c.ContactID} onClick={() => { setContactId(c.ContactID); setContactSearch('') }} style={{ padding: '10px 15px', fontSize: 11, cursor: 'pointer' }}>{contactListLabel(c)}</div>
                       ))}
                     </div>
                   )}

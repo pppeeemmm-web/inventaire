@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 
 export type EventContact = {
   ContactID: number
@@ -13,7 +14,7 @@ export type EventContact = {
 
 export function contactName(c: EventContact | undefined | null, id?: number | null): string {
   if (!c) return id != null ? `#${id}` : '—'
-  return c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+  return contactListLabel(c)
 }
 
 const locale = (lang: Lang) => (lang === 'en' ? 'en-GB' : 'fr-FR')

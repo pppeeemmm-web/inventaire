@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel, contactSearchText } from '@/lib/contacts/contact-display'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
@@ -49,7 +50,7 @@ export function CommandPalette({
   onGoTab, onGoWork, onCaptureSession, onScanQr, onFieldNote, onReminders,
   onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx,
 }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const tk = (key: string) => t(key as DictKey)
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
@@ -212,10 +213,9 @@ export function CommandPalette({
     // Contacts (search by name, min 2 chars)
     if (q.length >= 2) {
       let cCount = 0
-      for (const c of contacts) {
-        const name = [c.Prénom, c.Nom, c.NomInstitution].filter(Boolean).join(' ')
-        if (name.toLowerCase().includes(qLow)) {
-          result.push({ id: `contact:${c.ContactID}`, label: name || `#${c.ContactID}`, group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
+      for (const c of [...contacts].sort(compareContactsByName(lang))) {
+        if (contactSearchText(c).includes(qLow)) {
+          result.push({ id: `contact:${c.ContactID}`, label: contactListLabel(c), group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
           if (++cCount >= 4) break
         }
       }
@@ -271,7 +271,7 @@ export function CommandPalette({
 
     return result
   }, [
-    q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
+    q, tabs, oeuvres, contacts, lang, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,

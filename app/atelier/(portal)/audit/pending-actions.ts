@@ -15,7 +15,7 @@ import {
   PENDING_REF_KEYS,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
-import { contactDisplayName } from '@/lib/oeuvre-historique'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
@@ -108,8 +108,8 @@ async function loadPendingRefLabels(
   for (const r of support?.data ?? []) put(['support'], r.SupportID, r.Support)
   for (const r of format?.data ?? []) put(['format'], r.FormatID, r.Format)
   for (const r of contact?.data ?? []) {
-    const name = contactDisplayName(r)
-    put(['contact_id', 'localisation_id', 'acheteur_id'], r.ContactID, name === '—' ? null : name)
+    const name = contactListLabel(r, { fallback: '' })
+    put(['contact_id', 'localisation_id', 'acheteur_id'], r.ContactID, name || null)
   }
   for (const r of address?.data ?? []) {
     put(['localisation_address_id'], r.id, [r.label, r.ville].filter(Boolean).join(' · '))

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { statusOf } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -73,7 +74,7 @@ const PAYMENT_METHODS = [
 ] as const
 
 function contactLabel(contact: MobileSaleContact): string {
-  return contact.NomInstitution || `${contact.Prénom ?? ''} ${contact.Nom ?? ''}`.trim() || `#${contact.ContactID}`
+  return contactListLabel(contact)
 }
 
 function numberInputValue(n: number): string {
@@ -159,6 +160,10 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
   const selectedBuyer = useMemo(
     () => contacts.find((contact) => String(contact.ContactID) === buyerId) ?? null,
     [buyerId, contacts],
+  )
+  const sortedContacts = useMemo(
+    () => [...contacts].sort(compareContactsByName(lang)),
+    [contacts, lang],
   )
   const selectedTotal = useMemo(
     () => selectedWorks.reduce((sum, work) => sum + Number(work.PrixFinal ?? work.Prix ?? 0), 0),
@@ -350,7 +355,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
             <StepTitle label={t('sale_mobile_step_buyer')} />
             <select value={buyerId} onChange={(event) => setBuyerId(event.target.value)} style={inputStyle} data-testid="mobile-sale-buyer">
               <option value="">{t('sale_mobile_buyer_placeholder')}</option>
-              {contacts.map((contact) => (
+              {sortedContacts.map((contact) => (
                 <option key={contact.ContactID} value={contact.ContactID}>{contactLabel(contact)}</option>
               ))}
             </select>

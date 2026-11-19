@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CalendarEventDraft } from '@/lib/calendar/types'
+import { contactProseLabel } from '@/lib/contacts/contact-display'
 import { accessForAccount, addDays, dateKey, deleteRemote, upsertRemote, type AccountRow } from '@/lib/calendar/sync-exhibition'
 
 export type OrderDateKey = 'start' | 'end' | 'delivery' | 'return_end'
@@ -59,7 +60,8 @@ export async function syncOrderToCalendars(
   const order = o as Order
   const { data: c } = await supabase.from('Contact').select('NomInstitution, Nom, "Prénom"').eq('ContactID', order.party_id).maybeSingle()
   const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
-  const party = contact ? (contact.NomInstitution || `${contact.Prénom ?? ''} ${contact.Nom ?? ''}`.trim()) : ''
+  // Event title is a sentence: « Marie DUPONT », institution after.
+  const party = contactProseLabel(contact, { fallback: '' })
   const ref = order.ref ?? ''
 
   const dates = orderCalendarDates(order)

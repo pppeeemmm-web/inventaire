@@ -8,6 +8,7 @@ import { ACTION_STATUS_KEY, GRADE_KEY, type ConditionReport } from '@/lib/condit
 import type { ReportSaleOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import type { ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
 import { yearOf } from '@/lib/data'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import type { ReportConfig, ReportField } from '@/lib/reports/engine'
 import { REPORT_COLUMN_HEADER_KEY, formatReportCell, type ReportMaps } from '@/lib/reports/works-table'
 import type { ReportSource } from '@/lib/reports/saved-report'
@@ -339,8 +340,7 @@ function salesSource(c: SourceCtx): SourceDef<SaleRow> {
 
 function contactsSource(c: SourceCtx): SourceDef<ReportContactRow> {
   const { t } = c
-  const name = (r: ReportContactRow) =>
-    orNull(r.NomInstitution) ?? orNull(`${r.Prénom ?? ''} ${r.Nom ?? ''}`) ?? `#${r.ContactID}`
+  const name = (r: ReportContactRow) => contactListLabel(r)
   return {
     id: 'contacts',
     fields: [

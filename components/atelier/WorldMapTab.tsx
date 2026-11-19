@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { loadTimePlaceData, type TimePlaceData } from '@/app/atelier/time-place-actions'
 import { nearestPlace } from '@/lib/work-periods'
@@ -218,7 +219,7 @@ export function WorldMapTab({
   onOpenContact,
   onOpenOeuvreById,
 }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
   const params = useSearchParams()
   const [mode,      setMode]      = useState<Mode>(() => (params?.get('mode') === 'creation' ? 'creation' : 'contacts'))
@@ -490,7 +491,7 @@ export function WorldMapTab({
       const topRole = Object.entries(roleCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
 
       const label = unique.length === 1
-        ? (unique[0].NomInstitution || `${unique[0].Prénom ?? ''} ${unique[0].Nom ?? ''}`.trim() || `#${unique[0].ContactID}`)
+        ? contactListLabel(unique[0])
         : `${unique.length} contacts`
       const sub   = [city, country].filter(Boolean).join(', ') + (topRole ? ` · ${topRole}` : '')
 
@@ -501,9 +502,9 @@ export function WorldMapTab({
       )
       const workTitles  = assoc.map(o => o.Titre ?? `#${o.OeuvreID}`).filter(Boolean).slice(0, 12) as string[]
       const workThumbs  = assoc.map(o => o.txtImageNameLink ?? '').filter(Boolean).slice(0, 6) as string[]
-      const contactList = unique.slice(0, 12).map(c => ({
+      const contactList = [...unique].sort(compareContactsByName(lang)).slice(0, 12).map(c => ({
         id:   c.ContactID,
-        name: c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`,
+        name: contactListLabel(c),
         role: c.Role,
       }))
 

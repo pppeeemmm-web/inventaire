@@ -3,6 +3,7 @@
 // Importable from client and server (no 'use server', no DB).
 
 import { MAX_WORKS } from '@/lib/portfolio-pdf-types'
+import { contactProseLabel } from '@/lib/contacts/contact-display'
 
 /** Pem 2026-11-18 (answer 5): links valid 14 days by default. */
 export const KIT_DEFAULT_DAYS = 14
@@ -120,10 +121,9 @@ export function kitSize(w: { Hauteur: string | null; Largeur: string | null; Pro
   return p.length ? `${p.join(' × ')} cm` : ''
 }
 
-/** Full name for the page (Pem answer 4): person first, else the institution. */
+/** Full name for the page (Pem answer 4): person first (`Marie DUPONT`), else the institution. */
 export function kitContactName(c: { Prénom: string | null; Nom: string | null; NomInstitution: string | null }): string {
-  const person = `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()
-  return person || (c.NomInstitution ?? '').trim()
+  return contactProseLabel(c, { institution: 'none', fallback: '' })
 }
 
 /**

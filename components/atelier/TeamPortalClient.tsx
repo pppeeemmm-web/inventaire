@@ -57,6 +57,7 @@ import {
 import { subscribeJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { subscribeWorksRestored } from '@/lib/atelier/works-restored-bus'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -406,6 +407,22 @@ export function TeamPortalClient({
       return c === r.ContactID && l === r.LocalisationID && a === r.AcheteurID ? o : ({ ...o, ContactID: c, LocalisationID: l, AcheteurID: a } as Oeuvre)
     }))
   }, [])
+  /** Contacts tab merge / delete: the address list follows too (merge moves the rows to the kept contact, delete drops
+   *  them) — Inventory, the work overlay, Curation dock and Compare read it. Edits arrive whole via onAddressesChange. */
+  const onContactsMerged = useCallback((fromId: number, intoId: number) => {
+    remapWorkContacts((id) => (id === fromId ? intoId : id))
+    setCurationAddresses((prev) =>
+      prev.some((a) => a.contact_id === fromId)
+        ? prev.map((a) => (a.contact_id === fromId ? { ...a, contact_id: intoId } : a))
+        : prev,
+    )
+  }, [remapWorkContacts])
+  const onContactsDeleted = useCallback((ids: number[]) => {
+    remapWorkContacts((id) => (ids.includes(id) ? null : id))
+    setCurationAddresses((prev) =>
+      prev.some((a) => ids.includes(a.contact_id)) ? prev.filter((a) => !ids.includes(a.contact_id)) : prev,
+    )
+  }, [remapWorkContacts])
   const [oeuvresNextCursor, setOeuvresNextCursor] = useState<number | null>(oeuvresPaging?.nextCursor ?? null)
   const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
   const removedOeuvreIdsRef = useRef<Set<number>>(new Set())
@@ -1068,7 +1085,9 @@ export function TeamPortalClient({
   )
   const cM = useMemo(
     () => Object.fromEntries(contacts.map((c) => {
-      const label = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)
+      // Dense work columns (Inventory, reports, fiscal, logistics): the institution when there is one (« Pem »,
+      // « Galerie X » as before), else `DUPONT Marie` — person + institution truncated every row to « MOULIN Pierr… ».
+      const label = contactListLabel(c, { institution: 'prefer', fallback: String(c.ContactID) })
       return [c.ContactID, label]
     })),
     [contacts],
@@ -1433,8 +1452,9 @@ export function TeamPortalClient({
           <SegmentRoutePanel
             tab={effectiveRouteTab}
             onContactsChange={setContacts}
-            onContactsMerged={(fromId, intoId) => remapWorkContacts((id) => (id === fromId ? intoId : id))}
-            onContactsDeleted={(ids) => remapWorkContacts((id) => (ids.includes(id) ? null : id))}
+            onContactsMerged={onContactsMerged}
+            onContactsDeleted={onContactsDeleted}
+            onAddressesChange={setCurationAddresses}
             oeuvres={oeuvres}
             sortedTechniques={sortedTechniques}
             sortedSupports={sortedSupports}
@@ -1627,7 +1647,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     if (!cid) return '—'
     const c = contacts.find(x => String(x.ContactID) === String(cid))
     if (!c) return `#${cid}`
-    return c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${cid}`
+    return contactListLabel(c, { institution: 'prefer', fallback: `#${cid}` })
   }
 
   const resolveLocation = (cid: any) => {
@@ -1646,7 +1666,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     // Multiple addresses: show address label + city
     // For now, since we don't have an AddressID in Oeuvre, we look at LocalisationDetail
     // or fallback to the contact name if we can't distinguish.
-    const name = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()
+    const name = contactListLabel(c, { institution: 'prefer', fallback: '' })
     return geo ? `${name} (${geo})` : name
   }
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { thumbUrl, imageUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
@@ -42,6 +43,7 @@ export function SuggestionThumb({ file, alt }: { file: string; alt: string }) {
 
 export function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   return (
     <div style={{
@@ -53,7 +55,24 @@ export function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }
         fontSize: 22, fontWeight: 800, color: 'var(--tx)', opacity: 0.18,
         letterSpacing: -1, userSelect: 'none', lineHeight: 1,
       }}>{id}</span>
-      {onOpen && (
+      {onOpen && narrow && (
+        // Phone: same small ⊕ in the corner, tap area 44 x 44 (clipped by a smaller tile, which it then fills).
+        <button
+          onClick={e => { e.stopPropagation(); onOpen() }}
+          title={t('work_thumb_add_image')}
+          aria-label={t('work_thumb_add_image')}
+          style={{
+            position: 'absolute', bottom: 0, right: 0, width: 44, height: 44,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+            background: 'none', border: 'none', padding: 2, cursor: 'pointer',
+          }}>
+          <span aria-hidden style={{
+            background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)', borderRadius: 3,
+            fontSize: 8, padding: '1px 3px', lineHeight: 1.4,
+          }}>⊕</span>
+        </button>
+      )}
+      {onOpen && !narrow && (
         <button
           onClick={e => { e.stopPropagation(); onOpen() }}
           title={t('work_thumb_add_image')}

@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Contact names one way; four small fixes (Pem « Go contacts », TODO §0 / §3)
+
+- One name rule (`lib/contacts/contact-display.ts`): lists / pickers / columns `DUPONT Marie · Galerie X`, papers / sentences `Marie DUPONT`, sorted by family name (« de Kooning » under D); invoices, order papers and supplier rows keep the institution as the party. Family name = the institution (#35 « Galerie Patrick Reygade », Prénom Nathalie — correct data, Pem): the gallery shows once, sorted under G. Contacts tab: « Privé » chip + filter (admin), name search both ways, address list refreshed after edit / merge / delete. Events place picker same sort. No saved report filtered on a contact name (checked live: 0 saved reports).
+- Revenus & Dépenses at 375 (tabs scroll, « € » never wraps); phone taps ≥ 44 px (Inventory ⊕, « Retirer du thème », map zoom, Chronologie arrows); Overview « envois à faire » counts boxes not yet shipped / delivered / cancelled (a failed count shows « … »); business-card photo sent once when no vision engine is set up.
+
 ## 2026-11-18 — « Tempera » once (Pem « Go ahead », SQL applied live)
 
 - Technique 25 (duplicate « Tempera ») merged into 6: its 1 work moved, row deleted; 6 now holds the 6 works. Every technique picker lists it once.

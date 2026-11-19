@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { diffPendingPayload } from '@/lib/work-pending-keys'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import { approvePendingChange, rejectPendingChange } from '@/app/atelier/(portal)/audit/pending-actions'
 import { cancelWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 
@@ -149,7 +150,7 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
   for (const l of draftLines.data ?? []) if (!firstWorkOf.has(l.order_id)) firstWorkOf.set(l.order_id, l.oeuvre_id)
   const partyName = new Map<number, string>()
   for (const c of (draftParties.data ?? []) as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]) {
-    partyName.set(c.ContactID, c.NomInstitution || [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || `#${c.ContactID}`)
+    partyName.set(c.ContactID, contactListLabel(c))
   }
 
   // Idea lines: one item per idea, counting lines newer than Pem's last look.

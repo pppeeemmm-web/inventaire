@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage, replaceWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
@@ -805,7 +806,7 @@ export function DrawerContent({
 
   /** Custodian shown next to the address picker. */
   const currentLoc = currentCustodian
-    ? (currentCustodian.NomInstitution || [currentCustodian.Prénom, currentCustodian.Nom].filter(Boolean).join(' ') || `#${currentCustodian.ContactID}`)
+    ? contactListLabel(currentCustodian, { institution: 'prefer' })
     : '—'
 
   // Stage/photo auto-advance lives in USER-action handlers, not effects: the
@@ -1401,13 +1402,13 @@ export function DrawerContent({
     setSelection(next)
   }
 
-  const cName = (c: DrawerContactRow) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+  const cName = (c: DrawerContactRow) => contactListLabel(c)
   const fateLastLocation = (() => {
     if (!o.fate || o.LocalisationID == null) return ''
     const c = localContacts.find((x) => x.ContactID === o.LocalisationID)
     return c ? cName(c) : ''
   })()
-  const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
+  const sortedContacts = [...localContacts].sort(compareContactsByName(lang))
 
   const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
   const activeImageCacheKey = activeImage ? imageCacheKeys[activeImage.ImageID] : undefined

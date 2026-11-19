@@ -67,11 +67,12 @@ export async function previewBusinessCardCapture(
 
   if (hasFile && file instanceof File) {
     if (file.size > MAX_BYTES) return { error: 'file_too_large' }
-    const buf = Buffer.from(await file.arrayBuffer())
-    const validated = await validateWorkImageBuffer(buf)
-    if ('error' in validated) return { error: validated.error }
-
+    // No vision engine: the photo is not read at all (the client no longer sends it then — CaptureCardClient
+    // `photoReadable`); it is uploaded once, at « Créer », to the Vault.
     if (resolveCardVisionMode() !== 'none') {
+      const buf = Buffer.from(await file.arrayBuffer())
+      const validated = await validateWorkImageBuffer(buf)
+      if ('error' in validated) return { error: validated.error }
       try {
         ocrText = await extractTextFromCardImage(buf, AI_BUDGET_MS)
       } catch (e) {

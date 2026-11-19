@@ -90,6 +90,10 @@ export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvre
             background: none; font-family: monospace; text-decoration: none;
           }
           .pem-popup-link:hover { border-color: #c8a86e; background: rgba(200,168,110,0.08); }
+          /* Phone: zoom buttons at least 44 x 44 (Leaflet's touch size is 30; stress test round 3). */
+          @media (max-width: 767px) {
+            .pem-world-map .leaflet-control-zoom.leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 24px; }
+          }
         `
         document.head.appendChild(s)
       }
@@ -243,5 +247,5 @@ export function WorldMapInner({ pins, route, mapKey, onOpenContact, onOpenOeuvre
     return () => { cancelled = true }
   }, [pins, route, onOpenOeuvreById, ready])
 
-  return <div ref={divRef} style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
+  return <div ref={divRef} className="pem-world-map" style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
 }

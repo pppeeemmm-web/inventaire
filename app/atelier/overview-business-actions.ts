@@ -11,6 +11,8 @@ import { RULE_RUNS_LIVE } from '@/lib/overview/signal-strip'
 
 export type OverviewBusiness = {
   orders: number
+  /** Boxes still to send: not « Expédié », « Livré » or « Annulé » (stress test round 3 — the sidebar
+   *  Logistique badge also counts boxes already on their way; this one does not). */
   shipments: number
   events: number
   /** Admin only, else null. */
@@ -19,11 +21,21 @@ export type OverviewBusiness = {
   lastRuleRun: { ranAt: string; breaks: number; source: string; error: string | null } | null
 }
 
+/** A box already on its way or finished — nothing left to do before it goes (same rule as `notGone` in
+ *  app/atelier/(portal)/sales/cascade-actions.ts). */
+const SHIPMENT_GONE = ['shipped', 'delivered', 'cancelled']
+
 export async function getOverviewBusiness(): Promise<OverviewBusiness | null> {
   const counts = await getSidebarCounts()
   if ('error' in counts) return null
   const supabase = await createClient()
-  const { data: isAdmin } = await supabase.rpc('is_admin')
+  const [{ data: isAdmin }, toShip] = await Promise.all([
+    supabase.rpc('is_admin'),
+    supabase.from('shipment').select('id', { count: 'exact', head: true }).not('status', 'in', `(${SHIPMENT_GONE.join(',')})`),
+  ])
+
+  // A failed count must not read as « 0 envoi » (flow review): the Overview shows « … » instead.
+  if (toShip.error) return null
 
   let errors7d: number | null = null
   let lastRuleRun: OverviewBusiness['lastRuleRun'] = null
@@ -38,5 +50,5 @@ export async function getOverviewBusiness(): Promise<OverviewBusiness | null> {
       if (r) lastRuleRun = { ranAt: r.ran_at, breaks: r.breaks, source: r.source, error: r.error }
     }
   }
-  return { orders: counts.orders, shipments: counts.logistics, events: counts.events, errors7d, lastRuleRun }
+  return { orders: counts.orders, shipments: toShip.count ?? 0, events: counts.events, errors7d, lastRuleRun }
 }

@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { Chip, EmptyValue, TapEdit, chipH } from './WorkCardParts'
 import { FIS } from './drawer-widgets'
@@ -59,7 +60,7 @@ export function useWorkShipments(oeuvreId: number): WorkShipment[] | null {
       if (cids.length) {
         const { data: cs } = await sb.from('Contact').select('ContactID, NomInstitution, "Prénom", Nom').in('ContactID', cids)
         for (const c of cs ?? []) {
-          names.set(c.ContactID, c.NomInstitution || [c.Prénom, c.Nom].filter(Boolean).join(' ') || '')
+          names.set(c.ContactID, contactListLabel(c, { fallback: '' }))
         }
       }
       const out: WorkShipment[] = (ships ?? []).map((s) => ({

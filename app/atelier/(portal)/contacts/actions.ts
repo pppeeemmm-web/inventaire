@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMissingTableError } from '@/lib/supabase/missing-table'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import type { ImportedContact } from '@/lib/contact-import-types'
 import {
   assertSafePublicUrl,
@@ -259,7 +260,7 @@ export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult
   for (const c of visible) {
     const b: ContactDeleteBlocker = {
       id: c.ContactID,
-      name: c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`,
+      name: contactListLabel(c),
       login: !!c.auth_user_id,
       owner: 0, holder: 0, shipments: 0, orders: 0, invoices: 0, supplyOrders: 0,
     }

@@ -20,6 +20,7 @@ import { saleMoneyState } from '@/lib/sales/sale-money'
 import type { WorkSaleMoney } from '@/lib/sales/work-paid'
 import { makeOrderCoas, openShipmentForOrder, syncOrderCalendarQuietly } from '@/app/atelier/(portal)/sales/cascade-actions'
 import { inChunks } from '@/lib/supabase/in-chunks'
+import { contactListLabel, contactProseLabel } from '@/lib/contacts/contact-display'
 import { SHIP_OPEN, type ShipmentStatus } from '@/lib/orders/cascade'
 
 /** « entrusted » = « Confié » (framer, restorer…): needs supabase/sql/work_order_r7_decisions.sql first (lib/orders/kinds.ts). */
@@ -145,9 +146,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const view: WorkOrderView[] = orders.map((o) => {
     const c = partyById.get(o.party_id)
-    const name = c
-      ? (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${o.party_id}`)
-      : `#${o.party_id}`
+    const name = contactListLabel(c, { fallback: `#${o.party_id}` })
     const place = c ? [c.Ville, c.Pays].filter(Boolean).join(', ') : ''
     const works = lines
       .filter((l) => l.order_id === o.id)
@@ -282,7 +281,7 @@ async function scheduleDateReminders(supabase: Supa, orderId: string): Promise<v
   if (!o?.ref || !CUSTODY_KINDS.includes(o.kind as WorkOrderKind)) return
   const { data: c } = await supabase.from('Contact').select('*').eq('ContactID', o.party_id).maybeSingle()
   const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
-  const party = contact ? (contact.NomInstitution || [contact.Prénom, contact.Nom].filter(Boolean).join(' ').trim()) : `#${o.party_id}`
+  const party = contactProseLabel(contact, { fallback: `#${o.party_id}` })
   const kind = resolveMessage('fr', o.kind === 'loan' ? 'ord_kind_loan' : o.kind === 'entrusted' ? 'ord_kind_entrusted' : 'ord_kind_consignment')
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const today = new Date().toISOString().slice(0, 10)
@@ -557,7 +556,7 @@ export async function fetchEntrustedOut(): Promise<EntrustedOutWork[]> {
       return {
         oeuvre_id: l.oeuvre_id, title: w?.Titre ?? null, image: w?.txtImageNameLink ?? null,
         order_id: o.id, ref: o.ref,
-        party: c ? (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${o.party_id}`) : `#${o.party_id}`,
+        party: contactListLabel(c, { fallback: `#${o.party_id}` }),
         since: o.delivered_at ?? o.start_date,
       }
     })
@@ -941,7 +940,7 @@ export async function findOrderForWork(oeuvreId: number): Promise<(ProcessOrderL
       : Promise.resolve({ data: [] as { amount: number; refunded_at: string | null }[] }),
   ])
   const contact = c as { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null
-  const party = contact ? (contact.NomInstitution || [contact.Prénom, contact.Nom].filter(Boolean).join(' ').trim()) : `#${o.party_id}`
+  const party = contactListLabel(contact, { fallback: `#${o.party_id}` })
   const sale: WorkSaleMoney | null = saleRow
     ? {
         id: saleRow.id,
@@ -1210,8 +1209,9 @@ export async function makeOrderPaper(orderId: string): Promise<SimpleOrderResult
   const sM = new Map((supps.data ?? []).map((x) => [x.SupportID, x.Support]))
   const byId = new Map(works.map((w) => [w.OeuvreID, w]))
 
+  // Paper: the institution is the party when there is one (as before); a person reads « Marie DUPONT ».
   const nameOf = (c: { NomInstitution: string | null; Nom: string | null; Prénom: string | null } | null) =>
-    c ? (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()) : ''
+    contactProseLabel(c, { institution: 'prefer', fallback: '' })
   const party: PaperParty = {
     name: nameOf(partyRes.data) || `#${o.party_id}`,
     lines: addressLines(addrRes.data, [[partyRes.data?.Ville, partyRes.data?.Pays].filter(Boolean).join(', ')]),

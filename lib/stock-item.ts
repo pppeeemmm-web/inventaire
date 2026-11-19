@@ -1,4 +1,5 @@
 import type { Lang } from '@/lib/i18n/dictionary'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 
 /** Row shape for `stock_item` (Supabase client). */
 export interface StockItemRow {
@@ -58,11 +59,9 @@ export function buildSupplierOrderedListLines(
   })
 }
 
-/** Primary display name for a contact (supplier row). */
+/** Primary display name for a contact (supplier row): the shop when there is one (as before), else `DUPONT Marie`. */
 export function supplierDisplayName(c: StockContactLike): string {
-  const inst = (c.NomInstitution ?? '').trim()
-  if (inst) return inst
-  return `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()
+  return contactListLabel(c, { institution: 'prefer', fallback: '' })
 }
 
 const STOCK_SUPPLIER_ROLES = new Set([

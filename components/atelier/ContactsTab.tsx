@@ -24,6 +24,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { formatContactDeleteBlockers } from '@/lib/contacts/delete-blockers'
+import { compareContactsByName, contactListLabel, contactPersonListName, contactSearchText } from '@/lib/contacts/contact-display'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -56,12 +57,16 @@ interface Props {
   /** Works pointing at changed contacts follow too (the DB moves them on merge, clears them on delete). */
   onContactsMerged?: (fromId: number, intoId: number) => void
   onContactsDeleted?: (ids: number[]) => void
+  /** The Atelier's address list (Inventory, work overlay, Curation dock, Compare) follows this tab's address edits,
+   *  merges (rows re-pointed to the kept contact) and deletes. Reports the whole list. */
+  onAddressesChange?: (rows: ContactAddress[]) => void
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+/** Lists: `DUPONT Marie · Galerie X`, `Galerie X`, else `#id` (lib/contacts/contact-display.ts). */
 function displayName(c: ContactRow): string {
-  return c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+  return contactListLabel(c)
 }
 
 function fmtPhone(ind: string | null | undefined, num: string | null | undefined): string | null {
@@ -103,7 +108,7 @@ function primaryListPhone(
 
 // ── Component ────────────────────────────────────────────────────────
 
-export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [], onContactsChange, onContactsMerged, onContactsDeleted }: Props) {
+export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [], onContactsChange, onContactsMerged, onContactsDeleted, onAddressesChange }: Props) {
   const { t, lang } = useI18n()
   const listLocale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -122,6 +127,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [q,          setQ]          = useState('')
   const [searchBy,   setSearchBy]   = useState('all')
   const [role,       setRole]       = useState('all')
+  /** Admin only: show only « Privé » contacts. */
+  const [privateOnly, setPrivateOnly] = useState(false)
   const [sortKey,    setSortKey]    = useState<string>('alpha')
   const [sortDir,    setSortDir]    = useState<'asc' | 'desc'>('asc')
   const toggleSort = (k: string) => {
@@ -155,6 +162,15 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [phones,     setPhones]     = useState<Record<number, ContactPhone[]>>({})
   const [websites,   setWebsites]   = useState<Record<number, ContactWebsite[]>>({})
   const [socials,    setSocials]    = useState<Record<number, ContactSocial[]>>({})
+  // Report address changes up (same pattern as contacts above): the shell's list stayed stale until reload.
+  const onAddressesChangeRef = useRef(onAddressesChange)
+  onAddressesChangeRef.current = onAddressesChange
+  const addressesReportedRef = useRef(addresses)
+  useEffect(() => {
+    if (addressesReportedRef.current === addresses) return
+    addressesReportedRef.current = addresses
+    onAddressesChangeRef.current?.(Object.values(addresses).flat())
+  }, [addresses])
 
   // List of all roles from tblRole
   const [allRoles,   setAllRoles]   = useState<string[]>([])
@@ -312,6 +328,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     const sq = q.trim().toLowerCase()
     const base = contacts.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
+      if (isAdmin && privateOnly && !c.is_private) return false
       if (sq) {
         const id = c.ContactID
         const ex = extra[id]
@@ -340,7 +357,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             addrStr,
           ].filter(Boolean).join(' ')
         } else if (searchBy === 'name') {
-          target = [c.NomInstitution, c.Nom, c.Prénom].filter(Boolean).join(' ')
+          target = contactSearchText(c)
         } else if (searchBy === 'city') {
           target = addrStr || [c.Ville, c.Pays].filter(Boolean).join(' ')
         } else if (searchBy === 'email') {
@@ -355,17 +372,18 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     })
     
     const list = [...base]
+    const byName = compareContactsByName(lang)
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
       
       if (sortKey === 'alpha') {
-        return displayName(a).localeCompare(displayName(b), listLocale) * dir
+        return byName(a, b) * dir
       }
       if (sortKey === 'role') {
         const ra = (a.Role || 'Zzz').toLowerCase()
         const rb = (b.Role || 'Zzz').toLowerCase()
         if (ra !== rb) return ra.localeCompare(rb, listLocale) * dir
-        return displayName(a).localeCompare(displayName(b), listLocale) * dir
+        return byName(a, b) * dir
       }
       if (sortKey === 'ContactID') {
         return (a.ContactID - b.ContactID) * dir
@@ -395,7 +413,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [contacts, q, role, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale])
+  }, [contacts, q, role, isAdmin, privateOnly, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
+
+  const privateCount = useMemo(() => contacts.filter((c) => c.is_private).length, [contacts])
 
   const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => [...prev, c])
@@ -575,6 +595,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     if ('blocked' in res) { alert(formatContactDeleteBlockers(res.blocked, t)); setBusy(false); return }
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
+    setAddresses(prev => {
+      const next = { ...prev }
+      for (const id of ids) delete next[id]
+      return next
+    })
     onContactsDeleted?.(ids)
     setSelected(new Set())
     if (activeId && selected.has(activeId)) {
@@ -609,6 +634,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     if ('blocked' in res) { alert(formatContactDeleteBlockers(res.blocked, t)); setBusy(false); return }
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => c.ContactID !== id))
+    setAddresses(prev => {
+      if (!(id in prev)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
     onContactsDeleted?.([id])
     if (activeIdRef.current === id) {
       setActiveId(null)
@@ -719,6 +750,24 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           <option value="all">{t('allRoles')}</option>
           {roles.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
+        {isAdmin && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="contacts-private-filter"
+            aria-pressed={privateOnly}
+            title={t('contacts_private_filter_title')}
+            onClick={() => setPrivateOnly((v) => !v)}
+            style={{
+              whiteSpace: 'nowrap', flexShrink: 0, minHeight: narrow ? 44 : undefined,
+              background: privateOnly ? 'var(--bg2)' : undefined,
+              borderColor: privateOnly ? 'var(--ac)' : undefined,
+              color: privateOnly ? 'var(--ac)' : undefined,
+            }}
+          >
+            {t('contacts_private_filter_fmt').replace('{n}', String(privateCount))}
+          </button>
+        )}
 
         {selected.size > 0 && (
           <div style={{ display: 'flex', gap: 4 }}>
@@ -908,9 +957,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                       delete next[fromId]
                       return next
                     })
+                    // The server moved them to the kept contact (mergeContacts): re-point here, the refresh below reloads.
                     setAddresses((prev) => {
+                      const moved = (prev[fromId] ?? []).map((a) => ({ ...a, contact_id: mergeKeepId }))
                       const next = { ...prev }
                       delete next[fromId]
+                      if (moved.length) next[mergeKeepId] = [...(next[mergeKeepId] ?? []), ...moved]
                       return next
                     })
                     const refreshed = await refreshContactsClientData()
@@ -1021,7 +1073,22 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {displayName(c)}
+                      {(() => {
+                        const person = contactPersonListName(c)
+                        const inst = (c.NomInstitution ?? '').trim()
+                        return person && inst
+                          ? <>{person}<span style={{ color: 'var(--tx3)' }}> · {inst}</span></>
+                          : displayName(c)
+                      })()}
+                      {isAdmin && c.is_private && (
+                        <span
+                          data-testid="contacts-private-chip"
+                          title={t('contacts_private_chip_title')}
+                          style={{ marginLeft: 8, border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 9, padding: '1px 5px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}
+                        >
+                          {t('contacts_private_chip')}
+                        </span>
+                      )}
                       {conflicts.some(conf => conf.public_contact_id === c.ContactID) && (
                         <span style={{ marginLeft: 8, background: 'var(--rust)', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}>
                           {t('contacts_conflict_badge')}

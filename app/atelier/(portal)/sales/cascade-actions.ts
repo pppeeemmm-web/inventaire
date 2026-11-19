@@ -16,6 +16,7 @@ import { VAULT_FOLDER_INVOICES } from '@/lib/vault/folder-routing'
 import { generateCOA } from '@/app/atelier/(portal)/vault/actions'
 import { advanceWorkOrder, type WorkOrderKind } from '@/app/atelier/(portal)/sales/orders-actions'
 import { buildInvoicePaper, type InvoiceLine } from '@/lib/orders/invoice-paper'
+import { contactListLabel, contactProseLabel } from '@/lib/contacts/contact-display'
 import { syncOrderToCalendars, type OrderDateKey, type OrderSyncLabels } from '@/lib/calendar/sync-order'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -124,7 +125,7 @@ async function expandShipments(supabase: Supa, rows: ShipRow[], opts: { liveOnly
   const orderOfLine = new Map((linesRes.data ?? []).map((l) => [l.id, l.order_id]))
   const refOf = new Map((ordersRes.data ?? []).map((o) => [o.id, o.ref]))
   const titleOf = new Map((worksRes.data ?? []).map((w) => [w.OeuvreID, w.Titre]))
-  const nameOf = new Map((contactsRes.data ?? []).map((c) => [c.ContactID, c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()]))
+  const nameOf = new Map((contactsRes.data ?? []).map((c) => [c.ContactID, contactListLabel(c, { fallback: '' })]))
   const openByLine = new Map<string, number>()
   for (const d of demandsRes.data ?? []) openByLine.set(d.line_id, (openByLine.get(d.line_id) ?? 0) + 1)
   const deadOrder = new Set((ordersRes.data ?? []).filter((o) => ORDER_DEAD.includes(o.status)).map((o) => o.id))
@@ -514,7 +515,8 @@ async function partyBlock(supabase: Supa, contactId: number, addressId: number |
         ? supabase.from('contact_addresses').select('adresse, code_postal, ville, pays').eq('contact_id', PEM).ilike('label', 'principal').maybeSingle()
         : Promise.resolve({ data: null }),
   ])
-  const name = c.data ? (c.data.NomInstitution || `${c.data.Prénom ?? ''} ${c.data.Nom ?? ''}`.trim()) : `#${contactId}`
+  // Invoice paper: the institution is the party when there is one (as before); a person reads « Marie DUPONT ».
+  const name = c.data ? contactProseLabel(c.data, { institution: 'prefer', fallback: '' }) : `#${contactId}`
   const ad = a.data as { adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null } | null
   const lines = ad
     ? [ad.adresse, [ad.code_postal, ad.ville].filter(Boolean).join(' '), ad.pays].filter((x): x is string => !!x && !!x.trim())

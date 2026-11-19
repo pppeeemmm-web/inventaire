@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { WorkChip } from '@/components/atelier/WorkChip'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
@@ -21,6 +22,7 @@ import { FiscalByYear } from './FiscalByYear'
 import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from '@/app/atelier/(portal)/fiscal/cost-actions'
 import { ExpenseFiles } from '@/components/atelier/supplies/ExpenseFiles'
 import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -83,7 +85,8 @@ const FIS: React.CSSProperties = {
 function fmt(n: number, decimals = 0) {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
-function fmtEur(n: number) { return `${fmt(n, 2)} €` }
+// No-break space before « € »: an amount never wraps its sign onto a second line (375 px, stress test round 3).
+function fmtEur(n: number) { return `${fmt(n, 2)} €` }
 
 function Badge({ label, ok }: { label: string; ok: boolean }) {
   return (
@@ -114,6 +117,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 
 export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, tM = {} }: Props) {
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   // Cost per work is admin-only (owner enters costs alone for now).
   const [isAdmin, setIsAdmin] = useState(false)
   useEffect(() => {
@@ -275,7 +279,8 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
     <button
       onClick={() => setSection(s)}
       style={{
-        padding: '12px 20px', background: 'none', border: 'none',
+        padding: narrow ? '12px 12px' : '12px 20px', background: 'none', border: 'none',
+        whiteSpace: 'nowrap', flexShrink: 0,
         borderBottom: section === s ? '2px solid var(--ac)' : '2px solid transparent',
         color: section === s ? 'var(--ac)' : 'var(--tx3)',
         cursor: 'pointer', fontSize: 10, letterSpacing: 1.5,
@@ -311,20 +316,20 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
         />
       )}
 
-      {/* Sub-nav */}
+      {/* Sub-nav — on the phone the tabs scroll sideways in their own row and the year / regime pickers wrap below */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 0,
+        display: 'flex', alignItems: 'center', gap: 0, flexWrap: narrow ? 'wrap' : undefined,
         borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', flexShrink: 0,
-        padding: '0 28px', justifyContent: 'space-between',
+        padding: narrow ? '0 8px' : '0 28px', justifyContent: 'space-between',
       }}>
-        <div style={{ display: 'flex' }}>
+        <div style={narrow ? { display: 'flex', flexBasis: '100%', minWidth: 0, overflowX: 'auto' } : { display: 'flex' }}>
           {navBtn('dashboard', t('dashboard'))}
           {navBtn('by_year', t('fiscal_by_year_tab'))}
           {navBtn('sales', t('fiscal_sales_tab'))}
           {navBtn('expenses', `${t('expenses')} (${expenses.length})`)}
           {navBtn('framework', t('framework'))}
         </div>
-        <div style={{ display: section === 'by_year' || section === 'sales' ? 'none' : 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: section === 'by_year' || section === 'sales' ? 'none' : 'flex', alignItems: 'center', gap: 10, padding: narrow ? '6px 4px 8px' : undefined }}>
           {/* Year selector (By year shows every year, so it is hidden there) */}
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
             style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
@@ -341,10 +346,10 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
 
       {/* ── Dashboard ── */}
       {section === 'dashboard' && (
-        <div style={{ flex: 1, overflow: 'auto', padding: '28px 32px' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '16px' : '28px 32px' }}>
 
           {/* KPI row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, border: '1px solid var(--bd)', marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(3, 1fr)', gap: 1, border: '1px solid var(--bd)', marginBottom: 24 }}>
             <StatCard label={t('income')} value={fmtEur(recettes)} sub={`Ventes ${year}`} />
             <StatCard label={t('expenses')} value={fmtEur(totalDepenses)} sub={`TTC (${expenses.length})`} />
             <StatCard label="BNC" value={fmtEur(bnc)} sub={regime === 'micro' ? 'Net (abattement 34%)' : 'Réel (CA - Frais)'} />
@@ -375,11 +380,11 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
                   const pct = totalDepenses > 0 ? total / totalDepenses : 0
                   return (
                     <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className="t-mono-sm" style={{ minWidth: 220, color: 'var(--tx2)', fontSize: 10 }}>{cat}</div>
+                      <div className="t-mono-sm" style={narrow ? { flex: '0 1 40%', minWidth: 0, color: 'var(--tx2)', fontSize: 10 } : { minWidth: 220, color: 'var(--tx2)', fontSize: 10 }}>{cat}</div>
                       <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
                         <div style={{ width: `${pct * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2 }} />
                       </div>
-                      <div className="t-mono-sm" style={{ minWidth: 80, textAlign: 'right', color: 'var(--tx3)', fontSize: 10 }}>
+                      <div className="t-mono-sm" style={{ minWidth: 80, textAlign: 'right', color: 'var(--tx3)', fontSize: 10, whiteSpace: 'nowrap' }}>
                         {fmtEur(total)}
                       </div>
                     </div>
@@ -408,7 +413,7 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
                   fontWeight: bold ? 600 : 400,
                 }}>
                   <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{label}</span>
-                  <span style={{ fontSize: 11, color: bold ? 'var(--tx)' : 'var(--tx2)' }}>{value}</span>
+                  <span style={{ fontSize: 11, color: bold ? 'var(--tx)' : 'var(--tx2)', whiteSpace: 'nowrap' }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -439,8 +444,8 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
       {section === 'expenses' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{
-            padding: '10px 28px', borderBottom: '1px solid var(--bd)',
-            display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0,
+            padding: narrow ? '10px 16px' : '10px 28px', borderBottom: '1px solid var(--bd)',
+            display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap',
           }}>
             <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
               {expenses.length} dépense{expenses.length > 1 ? 's' : ''} · Total {fmtEur(totalDepenses)} TTC
@@ -479,13 +484,13 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
                       </td>
                       <td>{e.libelle}</td>
                       <td className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{e.category ?? '—'}</td>
-                      <td className="t-mono-sm" style={{ textAlign: 'right', color: 'var(--tx3)' }}>
+                      <td className="t-mono-sm" style={{ textAlign: 'right', color: 'var(--tx3)', whiteSpace: 'nowrap' }}>
                         {e.montant_ht != null ? fmtEur(Number(e.montant_ht)) : '—'}
                       </td>
                       <td className="t-mono-sm" style={{ textAlign: 'right', color: 'var(--tx3)' }}>
                         {e.tva_rate != null && Number(e.tva_rate) > 0 ? `${e.tva_rate}%` : '—'}
                       </td>
-                      <td className="t-mono-sm" style={{ textAlign: 'right', fontWeight: 600 }}>
+                      <td className="t-mono-sm" style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {fmtEur(Number(e.montant_ttc))}
                       </td>
                       <td className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{e.receipt_ref ?? '—'}</td>
@@ -503,7 +508,7 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
       {section === 'sales' && <FiscalSales oeuvres={oeuvres} statusLabelMap={statusLabelMap} cM={cM} tM={tM} />}
 
       {section === 'framework' && (
-        <div style={{ flex: 1, overflow: 'auto', padding: '28px 32px', maxWidth: 760 }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '16px' : '28px 32px', maxWidth: 760 }}>
           <div className="t-label" style={{ marginBottom: 20 }}>{t('taxFramework')}</div>
 
           <FrameworkBlock title="Régime Micro-BNC" accent>
@@ -597,7 +602,7 @@ function ExpenseModal({
   onSaved:   (e: Expense) => void
   onDeleted: (id: number) => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const isNew = !expense
   
 
@@ -787,9 +792,9 @@ function ExpenseModal({
               <div className="t-label" style={{ marginBottom: 3 }}>Contact / Fournisseur</div>
               <select value={form.contact_id} onChange={f('contact_id')} style={FIS}>
                 <option value="">— Aucun</option>
-                {contacts.sort((a,b) => (a.NomInstitution||a.Nom||'').localeCompare(b.NomInstitution||b.Nom||'', 'fr')).map(c => (
+                {[...contacts].sort(compareContactsByName(lang)).map(c => (
                   <option key={c.ContactID} value={c.ContactID}>
-                    {c.NomInstitution || `${c.Prénom||''} ${c.Nom||''}`.trim() || `#${c.ContactID}`}
+                    {contactListLabel(c)}
                   </option>
                 ))}
               </select>

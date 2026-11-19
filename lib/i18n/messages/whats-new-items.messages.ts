@@ -32,6 +32,16 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_contact_names_one_way_t: { fr: 'Les noms des contacts, partout pareil', en: 'Contact names, the same everywhere' },
+  wn_contact_names_one_way_d: {
+    fr: 'Dans les listes et les choix : « DUPONT Marie · Galerie X », triés par nom de famille (« de Kooning » sous D). Sur les papiers : « Marie DUPONT ». Une galerie ou un musée s’écrit tel quel, une seule fois. La liste des adresses se met à jour après une modification, une fusion ou une suppression.',
+    en: 'In lists and pickers: « DUPONT Marie · Galerie X », sorted by family name (« de Kooning » under D). On papers: « Marie DUPONT ». A gallery or museum is written as typed, once. The address list updates after an edit, a merge or a delete.',
+  },
+  wn_phone_fixes_1119_t: { fr: 'Petites corrections, surtout sur le téléphone', en: 'Small fixes, mostly on the phone' },
+  wn_phone_fixes_1119_d: {
+    fr: 'Revenus & Dépenses tient dans l’écran du téléphone (onglets qui défilent, montants sans « € » coupé). Boutons plus faciles à toucher : ⊕ de l’Inventaire, « Retirer du thème », zoom de la carte, flèches de la Chronologie. Sur la Vue d’ensemble, « envois à faire » ne compte plus les colis déjà partis. La photo d’une carte de visite n’est envoyée qu’une fois.',
+    en: 'Revenus & Dépenses fits the phone screen (tabs scroll, amounts never split from their « € »). Easier taps: Inventory ⊕, « Retirer du thème », map zoom, Chronologie arrows. On Overview, « shipments to do » no longer counts boxes already sent. A business-card photo is sent only once.',
+  },
   wn_contact_delete_safe_t: { fr: 'Supprimer un contact ne perd plus rien', en: 'Deleting a contact no longer loses anything' },
   wn_contact_delete_safe_d: {
     fr: 'Un contact encore propriétaire ou détenteur d’une œuvre, ou lié à une commande, ne se supprime pas : un message dit ce qui le retient, et rien n’est effacé (avant, ses adresses disparaissaient). Les contacts que vous importez ne sont plus marqués « Privé ».',

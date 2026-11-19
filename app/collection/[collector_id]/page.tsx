@@ -2,6 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PortalLayout from '@/components/portals/PortalLayout'
+import { contactProseLabel } from '@/lib/contacts/contact-display'
 
 export default async function CollectionPage({
   params,
@@ -33,7 +34,7 @@ export default async function CollectionPage({
   return (
     <PortalLayout 
       title="Collection Privée"
-      subtitle={`${contact.Prénom} ${contact.Nom}`}
+      subtitle={contactProseLabel(contact, { institution: 'none', fallback: '' })}
       userName={user.email || 'Collectionneur'}
       works={works || []}
     />

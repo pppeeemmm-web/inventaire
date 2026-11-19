@@ -20,6 +20,7 @@ import { BlurField } from './BlurField'
 import { EventSteps } from './EventSteps'
 import { EventWorksTable } from './EventWorksTable'
 import { EventPeople } from './EventPeople'
+import { compareContactsByName } from '@/lib/contacts/contact-display'
 import { EVENT_CHIP_BG, ORDER_CHIP_BG, chipStyle, contactName, countText, fmtDay, type EventContact } from './events-shared'
 import type { EventHandlers } from './EventsTab'
 
@@ -63,7 +64,7 @@ export function EventView({ event, contacts, contactsById, inventorySelection, g
   const prepCols = prepColumnsOf(kind, event.contact_id, event.prep_columns)
   const place = event.contact_id ? contactsById.get(event.contact_id) : undefined
   const stepsDone = event.steps.filter((s) => s.statut === 'fait').length
-  const sortedContacts = [...contacts].sort((a, b) => contactName(a).localeCompare(contactName(b), lang))
+  const sortedContacts = [...contacts].sort(compareContactsByName(lang))
   const workCount = new Set([...(event.selection?.work_ids ?? []), ...event.orders.flatMap((o) => o.lines.map((l) => l.oeuvre_id))]).size
 
   return (

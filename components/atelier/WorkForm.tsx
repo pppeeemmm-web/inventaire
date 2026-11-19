@@ -10,6 +10,7 @@ import { useState, useEffect, useTransition, useRef, useMemo, useLayoutEffect } 
 import { useRouter } from 'next/navigation'
 import { thumbUrl, imageUrl, isCircularSupport, DIAMETER_SIGN, PEM_CONTACT_ID } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult, WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages, revertWorkSnapshot } from '@/app/atelier/works/actions'
@@ -89,7 +90,7 @@ export function WorkForm({
   shareInboxPrefill = null,
   recordMode = 'new',
 }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   // Phone field mode (owner 2026-11-12): photo, comments, title, technique, support, size first;
   // themes, history, production, ownership and finance hidden (still mounted: their inputs stay
@@ -382,6 +383,7 @@ export function WorkForm({
     () => localContacts.find(c => String(c.ContactID) === contactId),
     [localContacts, contactId]
   )
+  const sortedLocalContacts = useMemo(() => [...localContacts].sort(compareContactsByName(lang)), [localContacts, lang])
 
   const currentLoc = useMemo(() => {
       if (ownStage === 'artist' || ownStage === 'artist_archive') {
@@ -392,7 +394,7 @@ export function WorkForm({
     if (ownStage === 'reserved') {
       if (currentOwner) {
         const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-        return `Réservé — ${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
+        return `Réservé — ${contactListLabel(currentOwner, { institution: 'prefer', fallback: '?' })} (${loc || '?'})`
       }
       return 'Réservé — acheteur TBD'
     }
@@ -400,18 +402,18 @@ export function WorkForm({
       if (activeConsignment) {
         const c = activeConsignment.Contact
         const loc = [c?.Ville, c?.Pays].filter(Boolean).join(', ')
-        return `${activeConsignment.label ?? 'En dépôt'} · ${c?.NomInstitution ?? c?.Nom ?? 'Holder'} (${loc || '?'})`
+        return `${activeConsignment.label ?? 'En dépôt'} · ${contactListLabel(c, { institution: 'prefer', fallback: 'Holder' })} (${loc || '?'})`
       }
       if (currentOwner) {
         const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-        return `${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
+        return `${contactListLabel(currentOwner, { institution: 'prefer', fallback: '?' })} (${loc || '?'})`
       }
       return 'En dépôt / Transit'
     }
     if (isOwnershipTransferred) {
       if (!currentOwner) return 'Acheteur TBD'
       const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-      return loc || `${currentOwner.NomInstitution ?? currentOwner.Nom ?? 'Acheteur'} (localisation TBD)`
+      return loc || `${contactListLabel(currentOwner, { institution: 'prefer', fallback: 'Acheteur' })} (localisation TBD)`
     }
     return '—'
   }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
@@ -889,9 +891,9 @@ export function WorkForm({
                     <div style={{ display: 'flex', gap: 8 }}>
                       <select value={contactId} onChange={e => setContactId(e.target.value)} style={FIS}>
                         <option value="">{t('select_option_placeholder')}</option>
-                        {localContacts.map(c => (
+                        {sortedLocalContacts.map(c => (
                           <option key={c.ContactID} value={c.ContactID}>
-                            {c.NomInstitution ?? `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()}
+                            {contactListLabel(c)}
                           </option>
                         ))}
                       </select>

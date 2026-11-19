@@ -70,6 +70,7 @@ import { collectorKitMessages, collectorKitPageMessages } from './collector-kit.
 import { aideMessages } from './aide.messages'
 import { aiDeskMessages } from './ai-desk.messages'
 import { contactPrivacyMessages } from './contact-privacy.messages'
+import { contactDisplayMessages } from './contact-display.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -145,6 +146,7 @@ export const featureMessages = {
   ...aideMessages,
   ...aiDeskMessages,
   ...contactPrivacyMessages,
+  ...contactDisplayMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useEventsSqlLive } from './events-sql-live'
 import type { EventPerson } from '@/app/atelier/(portal)/exhibitions/event-actions'
 import { contactName, type EventContact } from './events-shared'
+import { compareContactsByName } from '@/lib/contacts/contact-display'
 
 const ROLE_KEYS = ['ev_role_venue', 'ev_role_curator', 'ev_role_organiser', 'ev_role_gallery', 'ev_role_partner', 'ev_role_printer'] as const
 
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export function EventPeople({ people, contacts, contactsById, onAdd, onRemove }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const sqlLive = useEventsSqlLive()
   const [adding, setAdding] = useState(false)
   const [contactId, setContactId] = useState('')
@@ -55,7 +56,7 @@ export function EventPeople({ people, contacts, contactsById, onAdd, onRemove }:
         >
           <select className="input" aria-label={t('ev_people_contact')} value={contactId} onChange={(e) => setContactId(e.target.value)} style={{ minHeight: 32, fontSize: 12, maxWidth: 200 }}>
             <option value="">{t('ev_people_contact')}</option>
-            {contacts.map((c) => <option key={c.ContactID} value={c.ContactID}>{contactName(c)}</option>)}
+            {[...contacts].sort(compareContactsByName(lang)).map((c) => <option key={c.ContactID} value={c.ContactID}>{contactName(c)}</option>)}
           </select>
           <input className="input" list="ev-role-list" aria-label={t('ev_people_role')} placeholder={t('ev_people_role')} value={role} onChange={(e) => setRole(e.target.value)} style={{ minHeight: 32, fontSize: 12, width: 140 }} />
           <datalist id="ev-role-list">{ROLE_KEYS.map((k) => <option key={k} value={t(k)} />)}</datalist>

@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { compareContactsByName, contactListLabel, contactSearchText } from '@/lib/contacts/contact-display'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
 import { gateErrorKey } from '@/lib/work-save-error'
@@ -39,7 +40,7 @@ const LINE_VALUE_LABEL: Partial<Record<WorkOrderKind, DictKey>> = {
 const DATED: WorkOrderKind[] = ['consignment', 'loan', 'entrusted']
 const PEM = 13
 
-const nameOf = (c: OrderContact) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+const nameOf = (c: OrderContact) => contactListLabel(c)
 
 /** Server error token → readable text. */
 export function orderErrorText(err: string, t: (k: DictKey) => string): string {
@@ -74,7 +75,7 @@ interface Props {
 }
 
 export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, intro }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [kind, setKind] = useState<WorkOrderKind | null>(initial?.kind ?? null)
   const [works, setWorks] = useState<OrderWorkHit[]>([])
   const [q, setQ] = useState('')
@@ -192,10 +193,10 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     const term = partyQ.trim().toLowerCase()
     if (!term) return []
     return contacts
-      .filter((c) => c.ContactID !== PEM && nameOf(c).toLowerCase().includes(term))
-      .sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
+      .filter((c) => c.ContactID !== PEM && contactSearchText(c).includes(term))
+      .sort(compareContactsByName(lang))
       .slice(0, 8)
-  }, [partyQ, contacts])
+  }, [partyQ, contacts, lang])
 
   async function submit(): Promise<boolean> {
     setErr(null)

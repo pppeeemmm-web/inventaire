@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/server'
 import { thumbUrl, yearOf } from '@/lib/data'
 import { logError } from '@/lib/error-reporter/server'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { PRESET_DEFAULTS } from '@/lib/portfolio-pdf-types'
 import { generatePortfolioPdf } from '@/app/atelier/(portal)/portfolio/pdf-action'
 import {
@@ -130,14 +131,15 @@ export async function searchKitContacts(q: string): Promise<KitContactHit[]> {
     .select('ContactID, "Prénom", Nom, NomInstitution, Email, Ville')
     .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like},Email.ilike.${like}`)
     .limit(12)
-  return (data ?? [])
+  // Picker: `DUPONT Marie` (institution in the hint), sorted by family name.
+  return [...(data ?? [])]
+    .sort(compareContactsByName())
     .map((c) => ({
       contactId: c.ContactID,
-      name: kitContactName(c) || c.Email || `#${c.ContactID}`,
+      name: contactListLabel(c, { institution: 'none', fallback: '' }) || c.Email || `#${c.ContactID}`,
       hint: [c.NomInstitution && kitContactName({ ...c, NomInstitution: null }) ? c.NomInstitution : null, c.Ville]
         .filter(Boolean).join(' · ') || null,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 }
 
 export async function getKitContact(contactId: number): Promise<KitContactHit | null> {
@@ -146,7 +148,7 @@ export async function getKitContact(contactId: number): Promise<KitContactHit | 
   const { data: c } = await g.supabase
     .from('Contact').select('ContactID, "Prénom", Nom, NomInstitution, Email, Ville').eq('ContactID', contactId).maybeSingle()
   if (!c) return null
-  return { contactId: c.ContactID, name: kitContactName(c) || c.Email || `#${c.ContactID}`, hint: c.Ville ?? null }
+  return { contactId: c.ContactID, name: contactListLabel(c, { institution: 'none', fallback: '' }) || c.Email || `#${c.ContactID}`, hint: c.Ville ?? null }
 }
 
 // ── PDF in the Vault ─────────────────────────────────────────────────────────────────────────────────────────

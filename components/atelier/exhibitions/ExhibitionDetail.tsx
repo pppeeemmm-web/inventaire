@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl, EXHIBITION_LIST_TYPES } from '@/lib/data'
+import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { sendWorksToExhibition } from '@/app/atelier/(portal)/exhibitions/actions'
 import { orderErrorText } from '@/app/atelier/(portal)/sales/_components/NewOrderForm'
@@ -38,9 +39,7 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
   const [sending, setSending] = useState(false)
 
   const contact     = contacts.find((c) => c.ContactID === exhibition.contact_id)
-  const contactName = contact
-    ? (contact.NomInstitution ?? [contact.Prénom, contact.Nom].filter(Boolean).join(' ') ?? '—')
-    : '—'
+  const contactName = contactListLabel(contact, { fallback: '—' })
 
   const stepsTotal = exhibition.steps.length
   const stepsDone  = exhibition.steps.filter((s) => s.statut === 'fait').length
@@ -229,9 +228,9 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
                         style={{ ...inputSt, flex: 1, fontSize: 10, padding: '4px 8px' }}
                       >
                         <option value="">— Aucun —</option>
-                        {contacts.map(c => (
+                        {[...contacts].sort(compareContactsByName(lang)).map(c => (
                           <option key={c.ContactID} value={c.ContactID}>
-                            {c.NomInstitution || [c.Prénom, c.Nom].filter(Boolean).join(' ') || `#${c.ContactID}`}
+                            {contactListLabel(c)}
                           </option>
                         ))}
                       </select>

@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { loadTimePlaceData, type TimePlaceData, type TPWork } from '@/app/atelier/time-place-actions'
 import { WorkChip } from '@/components/atelier/WorkChip'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { inSpan, monthKey, monthOf, parseMonthKey, placeColor, studioOrder } from '@/lib/time-place'
 
@@ -46,6 +47,7 @@ function countBy<T>(items: T[], key: (x: T) => number | null): Map<number, numbe
 
 export function ChronologieTab() {
   const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const params = useSearchParams()
   const router = useRouter()
   const [data, setData] = useState<TimePlaceData | null>(null)
@@ -367,10 +369,10 @@ export function ChronologieTab() {
             {t(k as 'chrono_zoom_all')}
           </button>
         ))}
-        <button type="button" className="btn ghost sm" aria-label={t('chrono_prev')} title={t('chrono_prev')} onClick={() => shift(-1)}>
+        <button type="button" className="btn ghost sm" style={narrow ? { minWidth: 44, minHeight: 44 } : undefined} aria-label={t('chrono_prev')} title={t('chrono_prev')} onClick={() => shift(-1)}>
           ‹
         </button>
-        <button type="button" className="btn ghost sm" aria-label={t('chrono_next')} title={t('chrono_next')} onClick={() => shift(1)}>
+        <button type="button" className="btn ghost sm" style={narrow ? { minWidth: 44, minHeight: 44 } : undefined} aria-label={t('chrono_next')} title={t('chrono_next')} onClick={() => shift(1)}>
           ›
         </button>
         {placeName ? (
