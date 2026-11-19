@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useMemo, useEffect, type MouseEvent } from 'react'
+import { Fragment, useState, useMemo, useEffect, useRef, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import {
@@ -28,6 +28,10 @@ interface Props {
   groupWorkCount:  Record<string, number>
   themePrivateWorks?: Record<number, number[]>
   groupPrivateWorks?: Record<string, number[]>
+  /** The shell's lists (Inventory filters, batch edit, drawer chips) follow every add / rename / delete / copy here
+   *  without a reload (TODO §1, 2026-11-19). */
+  onThemesChange?: (themes: Theme[]) => void
+  onGroupsChange?: (groups: Group[]) => void
   themeToGroups?:      Record<number, string[]>
   groupToThemes?:      Record<string, number[]>
   oeuvres:             Oeuvre[]
@@ -41,7 +45,7 @@ export function Themes({
   initialThemes, initialGroups, themeWorkCount, groupWorkCount,
   themePrivateWorks = {}, groupPrivateWorks = {},
   themeToGroups = {}, groupToThemes = {},
-  oeuvres, oeuvresCatalogueTotal, onOpen, tM
+  oeuvres, oeuvresCatalogueTotal, onOpen, tM, onThemesChange, onGroupsChange,
 }: Props) {
   const sb = createClient()
   const { t } = useI18n()
@@ -49,6 +53,16 @@ export function Themes({
 
   const [themes,     setThemes]     = useState<Theme[]>(initialThemes)
   const [groups,     setGroups]     = useState<Group[]>(initialGroups)
+  // Push local list changes up to the shell (skips the first render: nothing changed yet).
+  const listsMounted = useRef(false)
+  useEffect(() => {
+    if (!listsMounted.current) return
+    onThemesChange?.(themes)
+  }, [themes]) // eslint-disable-line react-hooks/exhaustive-deps -- the callback identity must not re-push
+  useEffect(() => {
+    if (!listsMounted.current) { listsMounted.current = true; return }
+    onGroupsChange?.(groups)
+  }, [groups]) // eslint-disable-line react-hooks/exhaustive-deps -- the callback identity must not re-push
   const [newTheme,   setNewTheme]   = useState('')
   const [newGroup,   setNewGroup]   = useState('')
   const [editTheme,  setEditTheme]  = useState<number | null>(null)

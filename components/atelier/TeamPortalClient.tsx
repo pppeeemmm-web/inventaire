@@ -1489,6 +1489,8 @@ export function TeamPortalClient({
             onLoadMore={oeuvresNextCursor != null ? loadMoreOeuvres : undefined}
             isAdmin={isAdmin}
             themes={themes}
+            onThemesChange={setThemes}
+            onGroupsChange={(g) => setGroups([...g].sort((a, b) => a.name.localeCompare(b.name, 'fr')))}
             themeWorkCount={themeWorkCount}
             groupWorkCount={groupWorkCount}
             themePrivateWorks={themePrivateWorks}

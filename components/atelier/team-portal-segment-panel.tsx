@@ -89,6 +89,8 @@ export type SegmentRoutePanelProps = {
   onLoadMore?: () => void
   isAdmin: boolean
   themes: { id: number; name: string }[]
+  onThemesChange?: (themes: { id: number; name: string }[]) => void
+  onGroupsChange?: (groups: { id: string; name: string }[]) => void
   themeWorkCount: Record<number, number>
   groupWorkCount: Record<string, number>
   themePrivateWorks: Record<number, number[]>
@@ -152,6 +154,8 @@ export function SegmentRoutePanel({
   onLoadMore,
   isAdmin,
   themes,
+  onThemesChange,
+  onGroupsChange,
   themeWorkCount,
   groupWorkCount,
   themePrivateWorks,
@@ -421,6 +425,8 @@ export function SegmentRoutePanel({
         <Themes
           initialThemes={[...themes].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'fr'))}
           initialGroups={groups}
+          onThemesChange={onThemesChange}
+          onGroupsChange={onGroupsChange}
           themeWorkCount={themeWorkCount}
           groupWorkCount={groupWorkCount}
           themePrivateWorks={themePrivateWorks}
