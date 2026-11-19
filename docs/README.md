@@ -15,6 +15,7 @@
 | [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
 | [`ENVIRONMENTAL_POLICY.md`](./ENVIRONMENTAL_POLICY.md) | Materials, packing, sending, digital, yearly measures — first draft, `[[…]]` = Pem's facts | 2026-11-18 (draft) |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
+| [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) | **Read first after the pause** (17 Dec 2026): progress per aim, what was in flight, what comes first — first version of the progress dashboard | 2026-11-19 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |
 | [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-16 |
 | [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink leftovers / to build / to check once / parked | 2026-11-18 (after `747df2b`) |
