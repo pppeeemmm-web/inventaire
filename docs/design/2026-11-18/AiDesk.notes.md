@@ -1,6 +1,6 @@
 # AI desk — draft (2026-11-18)
 
-Pem, 2026-11-18: « I tried to improve [a business card] with the AI, and my phone couldn't connect to the AI because it's not on the phone. That's why I already said I need some dashboard for AI engines running … a central place for the desktop app so that I can improve, for instance, the data for the new contact. » **Built 2026-11-18 (Pem « go for ai build », « local » — decision 3: Ollama only, no OpenAI; decisions 2 + 4 taken as recommended: Kaizen, admin only):** phase 1 screen + phase 2 agent and `ai_job` / `ai_agent` (SQL applied). Phase 3 (cards, web) open. Design first: this note says what exists, the problem, one proposal and the decisions.
+Pem, 2026-11-18: « I tried to improve [a business card] with the AI, and my phone couldn't connect to the AI because it's not on the phone. That's why I already said I need some dashboard for AI engines running … a central place for the desktop app so that I can improve, for instance, the data for the new contact. » **Built 2026-11-18 (Pem « go for ai build », « local » — decision 3: Ollama only, no OpenAI; decisions 2 + 4 taken as recommended: Kaizen, admin only):** phase 1 screen + phase 2 agent and `ai_job` / `ai_agent` (SQL applied). Phase 3 cards built 2026-11-19 (Pem « Go, as recommended »: every kept card photo queued, accept through the contact editor's Save, existing photos queued once, web later); web addresses open. Design first: this note says what exists, the problem, one proposal and the decisions.
 
 ## What exists today
 
@@ -34,7 +34,7 @@ On the phone: nothing new to learn — a card captured there simply appears in �
 ## Data (sketch — SQL needs Pem's OK)
 
 - New table `ai_job` (`id`, `kind` = embed / voice / describe / card / web, `target` (contact id, voice note id, work id), `status` = waiting / running / done / failed, `requested_by`, `result` jsonb (the suggestion), `error`, `created_at`, `done_at`). RLS: admin read / write; the agent writes with the service key from the PC's `.env.local`.
-- Card captures mark themselves: `commitBusinessCardCapture` (`app/atelier/capture/card-actions.ts`) adds an `ai_job` row (kind card) when the AI pass did not run — the photo key and the Live Text go in the job.
+- Card captures mark themselves: `commitBusinessCardCapture` (`app/atelier/capture/card-actions.ts`) adds an `ai_job` row (kind card) when the AI pass did not run — the photo key goes in the job.
 - **Flow trace (to complete at build):** writers = capture screen (card job), desk (run / accept / reject), agent (status, result); readers = desk, Overview « Local jobs » card (counts), Contacts (accepted suggestion → contact fields, the normal save path), Aide (admin chapter « AI engines »).
 
 ## Phases

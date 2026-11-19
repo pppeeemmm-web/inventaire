@@ -454,7 +454,7 @@ Changer l'un d'eux est un travail technique : demandez-le à une session de dév
   {
     id: 'admin-ai',
     title: 'Bureau IA : les moteurs et les travaux locaux',
-    verified: '2026-11-18',
+    verified: '2026-11-19',
     md: `
 Le site public n'utilise aucune IA. Dans l'Atelier, l'IA est facultative et **locale** : tout tourne sur votre PC, rien n'est envoyé à un service d'IA extérieur. Quand le PC est éteint, la fonction fait moins, rien ne casse.
 
@@ -463,7 +463,8 @@ Le site public n'utilise aucune IA. Dans l'Atelier, l'IA est facultative et **lo
 [Bureau IA](/atelier/ai) (Kaizen, à côté d'Audit ; au téléphone : ☰ → Kaizen → Bureau IA) montre :
 
 - **Les moteurs**, tels que le serveur du site les voit : l'agent du PC (« vu il y a n min » et ses modèles), une clé OpenAI posée ou non sur ce serveur (oui / non), le moteur qui lit une photo de carte et nettoie le texte des cartes et des pages web, les modèles Ollama. Sur le site en ligne, Ollama est toujours hors d'atteinte (le serveur ne voit pas votre PC) : c'est normal.
-- **Ce qui attend** : les notes vocales à transcrire (Whisper), les éléments à indexer pour la recherche, les œuvres dont l'image n'est pas encore décrite (gemma3:4b), les cartes de visite gardées avec leur photo (on n'enregistre pas encore si leur passe IA a eu lieu ; la phase 3 les lira et proposera les champs, à accepter ou refuser).
+- **Ce qui attend** : les notes vocales à transcrire (Whisper), les éléments à indexer pour la recherche, les œuvres dont l'image n'est pas encore décrite (gemma3:4b), les cartes de visite photographiées au téléphone, que l'agent du PC lit avec gemma3:4b.
+- **Cartes lues, à vérifier** : pour chaque carte lue, ce qu'elle ajouterait à la fiche (un champ vide rempli, un e-mail, un téléphone, un site ou une adresse que la fiche n'a pas encore) et le texte lu. **Ouvrir et vérifier** ouvre la fiche avec ces ajouts déjà posés : corrigez si besoin, puis **Enregistrer** (la carte passe alors en acceptée) ; **Rejeter** la retire. Rien n'est jamais remplacé, et rien n'est écrit avant votre Enregistrer.
 - **Les derniers travaux** : en attente, en cours, terminés ou échoués ; un échec montre son journal.
 
 Vue d'ensemble → **Tâches locales** reste un coup d'œil rapide (notes vocales, indexation, âge de l'archive).
@@ -473,7 +474,7 @@ Vue d'ensemble → **Tâches locales** reste un coup d'œil rapide (notes vocale
 - **La recherche par le sens (⌘K) et les suggestions ✦ du Journal** : nomic-embed-text transforme les textes en repères, gardés dans la base. Sur le site en ligne, une phrase nouvelle se cherche en texte simple.
 - **Les notes vocales** : au téléphone, le navigateur écrit les mots pendant qu'on parle (Safari → Apple, Chrome → Google) ; la transcription complète est faite sur votre PC par faster-whisper large-v3.
 - **La description des images** : gemma3:4b décrit les images des œuvres.
-- **La carte de visite et l'adresse web** : le texte est lu sans IA (Live Text sur l'iPhone, lecture de la page) ; llama3.2:1b peut ensuite nettoyer le texte, mais seulement quand l'application tourne sur votre PC : sur le site en ligne, « Améliorer avec l'IA » n'a pas d'IA tant que la phase 3 (la carte lue par l'agent du PC) n'est pas faite.
+- **La carte de visite et l'adresse web** : le texte est lu sans IA (Live Text sur l'iPhone, lecture de la page) ; llama3.2:1b peut ensuite nettoyer le texte, mais seulement quand l'application tourne sur votre PC. Partout, la photo de la carte gardée au Coffre est ensuite lue par l'agent du PC (gemma3:4b) et proposée dans Bureau IA → Cartes lues. L'adresse web n'a pas encore cette lecture par le PC.
 - **Les légendes de Diffusion** : l'IA de Make.com (OpenAI ou Anthropic), hors de l'application.
 
 ## Lancer les travaux

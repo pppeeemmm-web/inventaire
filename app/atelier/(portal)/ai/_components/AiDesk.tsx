@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { surfaceError } from '@/lib/error-reporter/client'
-import { loadAiDesk, queueAiJob, type AiDeskData, type AiRunKind } from '../actions'
+import { decideAiJob, loadAiDesk, queueAiJob, type AiDeskData, type AiRunKind, type CardReview } from '../actions'
 
 /** Same scripts as the Overview « Local jobs » card (the `pem-embed:` protocol runs embed-run.ps1). */
 const CMD_VOICE_INDEX = 'pwsh scripts/embed-run.ps1'
@@ -86,6 +86,84 @@ function RunButton({ kind, jobs, onDone }: { kind: AiRunKind; jobs: AiDeskData['
   )
 }
 
+/**
+ * Phase 3: business cards the PC read, one block each — what it would add to the contact, the card's text as read,
+ * « Ouvrir et vérifier » (contact editor pre-filled; accepted when Pem saves there) or « Rejeter ».
+ */
+function CardReviews({ items, onDone }: { items: CardReview[]; onDone: () => void }) {
+  const { t } = useI18n()
+  const [pending, setPending] = useState<number | null>(null)
+  const [err, setErr] = useState<number | null>(null)
+  const labels: Record<CardReview['changes'][number]['field'], string> = {
+    prenom: t('ai_card_f_prenom'),
+    nom: t('ai_card_f_nom'),
+    institution: t('ai_card_f_institution'),
+    email: t('ai_card_f_email'),
+    phone: t('ai_card_f_phone'),
+    website: t('ai_card_f_website'),
+    address: t('ai_card_f_address'),
+  }
+  const fieldLabel = (f: CardReview['changes'][number]['field']) => labels[f]
+  const reject = async (jobId: number) => {
+    setPending(jobId)
+    setErr(null)
+    try {
+      const res = await decideAiJob(jobId, 'rejected')
+      if ('error' in res && res.error !== 'gone') setErr(jobId)
+      else onDone()
+    } catch (e) {
+      surfaceError(String(e), e, { source: 'ai-desk.card-reject' })
+      setErr(jobId)
+    } finally {
+      setPending(null)
+    }
+  }
+  return (
+    <div data-testid="ai-desk-cards" style={{ marginTop: 20 }}>
+      <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('ai_cards_review').replace('{n}', String(items.length))}</div>
+      {items.map((c) => (
+        <div key={c.jobId} data-testid="ai-desk-card" style={{ padding: '12px 0', borderBottom: '1px solid var(--bd)' }}>
+          <div style={{ color: 'var(--tx)', fontSize: 15 }}>{c.name}</div>
+          {c.changes.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '4px 0 0' }}>{t('ai_card_nothing_new')}</p>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0', fontSize: 13 }}>
+              {c.changes.map((ch, i) => (
+                <li key={i} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '2px 0' }}>
+                  <span style={{ color: 'var(--tx3)', minWidth: 90 }}>{fieldLabel(ch.field)}</span>
+                  <span style={{ color: 'var(--tx3)' }}>{ch.before ?? t('ai_card_empty')} →</span>
+                  <span style={{ color: 'var(--tx)', overflowWrap: 'anywhere' }}>{ch.after}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {c.text ? (
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ fontSize: 12, color: 'var(--tx3)', cursor: 'pointer', minHeight: 32, display: 'flex', alignItems: 'center' }}>{t('ai_card_text_read')}</summary>
+              <pre style={{ fontSize: 12, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '4px 0 0', color: 'var(--tx2)' }}>{c.text}</pre>
+            </details>
+          ) : null}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+            {c.changes.length > 0 ? (
+              <a
+                href={`/atelier/contacts?contact=${c.contactId}&aiJob=${c.jobId}`}
+                className="btn primary sm"
+                style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+              >
+                {t('ai_card_open')}
+              </a>
+            ) : null}
+            <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={pending === c.jobId} onClick={() => void reject(c.jobId)}>
+              {c.changes.length === 0 ? t('ai_card_close') : t('ai_card_reject')}
+            </button>
+            {err === c.jobId ? <span style={{ color: 'var(--rust)', fontSize: 13 }}>{t('ai_run_failed')}</span> : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** One job the PC's assistant does, in plain words: title, what it is for, how many wait, its button. */
 function Task({ title, what, count, zero, children }: { title: string; what: string; count: string; zero: boolean; children?: ReactNode }) {
   const { t } = useI18n()
@@ -144,7 +222,7 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
   const agentFresh = agent != null && Date.now() - new Date(agent.seenAt).getTime() < 3 * 60000
   const jobs = data?.jobs ?? []
   const kindLabel = (k: string) =>
-    k === 'voice' ? t('ai_kind_voice') : k === 'embed' ? t('ai_kind_embed') : k === 'describe' ? t('ai_kind_describe') : k
+    k === 'voice' ? t('ai_kind_voice') : k === 'embed' ? t('ai_kind_embed') : k === 'describe' ? t('ai_kind_describe') : k === 'card' ? t('ai_kind_card') : k
   const statusLabel = (s: string) =>
     s === 'waiting' ? t('ai_job_waiting') : s === 'running' ? t('ai_job_running') : s === 'done' ? t('ai_job_done') : t('ai_job_failed')
   const ollamaOk = data?.ollama != null
@@ -189,8 +267,9 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
           <Task title={t('ai_plain_describe')} what={t('ai_plain_describe_what')} count={n(q?.describe)} zero={(q?.describe ?? 0) === 0}>
             <RunButton kind="describe" jobs={jobs} onDone={() => void refresh()} />
           </Task>
-          <Task title={t('ai_plain_cards')} what={t('ai_plain_cards_what')} count={n(q?.cards?.count)} zero />
+          <Task title={t('ai_plain_cards')} what={t('ai_plain_cards_what')} count={n(q?.cards?.waiting)} zero={(q?.cards?.waiting ?? 0) === 0} />
         </div>
+        {q?.cards && q.cards.review.length > 0 ? <CardReviews items={q.cards.review} onDone={() => void refresh()} /> : null}
         {data && !agentFresh ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '8px 0 0' }}>{t('ai_plain_queued_off')}</p> : null}
 
         <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 28 }}>{t('ai_jobs')}</div>
@@ -234,7 +313,7 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
               <Command cmd={CMD_VOICE_INDEX} withLink />
               <Command cmd="npm run embed:worker -- --drain" />
               <Command cmd={CMD_DESCRIBE} />
-              {q?.cards?.latest ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_q_cards')} · {t('ai_latest').replace('{d}', date(q.cards.latest))}</p> : null}
+              {q?.cardPhotos?.latest ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_q_cards')} · {n(q.cardPhotos.count)} · {t('ai_latest').replace('{d}', date(q.cardPhotos.latest))}</p> : null}
             </div>
           ) : null}
         </details>

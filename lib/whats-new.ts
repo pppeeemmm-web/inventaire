@@ -79,7 +79,7 @@
 // '3.1.78' (2026-11-19): a retouched image shows everywhere straight away (new file per retouch).
 // '3.1.79' (2026-11-19): Thèmes — copy a theme as a working group, or a group as a theme; portfolio PDF from a working group.
 // '3.1.80' (2026-11-19): private contacts hidden from the team's lists and searches, still named where linked.
-export const WHATS_NEW_RELEASE = '3.1.80'
+export const WHATS_NEW_RELEASE = '3.1.81'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -105,6 +105,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'admin_ai_cards', day: '2026-11-19', spot: 'ai', admin: true },
   { id: 'private_contacts_pickers', day: '2026-11-19', spot: 'contacts' },
   { id: 'pdf_from_group', day: '2026-11-19', spot: 'portfolio' },
   { id: 'theme_group_copy', day: '2026-11-19', spot: 'themes' },

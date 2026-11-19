@@ -137,19 +137,19 @@ export async function previewBusinessCardCapture(
 }
 
 /** The card photo goes to the Vault (« Business »), linked to the new contact, so the AI can reread it
- *  later (Pem 2026-11-18). Normalised like a session shot: AVIF q50, long side 2100. False = not kept. */
+ *  later (Pem 2026-11-18). Normalised like a session shot: AVIF q50, long side 2100. Returns the Vault key, null = not kept. */
 async function keepCardPhoto(
   supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>,
   userId: string | null,
   contactId: number,
   label: string,
   file: File,
-): Promise<boolean> {
+): Promise<string | null> {
   try {
-    if (file.size > MAX_BYTES) return false
+    if (file.size > MAX_BYTES) return null
     const raw = Buffer.from(await file.arrayBuffer())
     const validated = await validateWorkImageBuffer(raw)
-    if ('error' in validated) return false
+    if ('error' in validated) return null
     const avif = await sharp(raw)
       .rotate()
       .resize({ width: 2100, height: 2100, fit: 'inside', withoutEnlargement: true })
@@ -171,11 +171,23 @@ async function keepCardPhoto(
       notes: 'Photo de la carte de visite (capture terrain)',
     })
     if (error) await logError('capture_card: card photo document insert', error)
-    return !error
+    return error ? null : key
   } catch (e) {
     await logError('capture_card: keeping the card photo', e)
-    return false
+    return null
   }
+}
+
+/** AI desk phase 3: every kept card photo waits for the PC agent (ai_job kind « card »), whose reading comes back
+ *  as a suggestion on Bureau IA. Never blocks the capture: a failure is logged, the contact and photo stay. */
+async function queueCardJob(
+  supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>,
+  contactId: number,
+  key: string,
+): Promise<void> {
+  const { error } = await supabase.from('ai_job').insert({ kind: 'card', target_id: String(contactId), payload: { key } })
+  // 23505 = a card job for this contact is already open (ai_job_one_open): nothing to add.
+  if (error && error.code !== '23505') await logError('capture_card: queue card job', error)
 }
 
 export async function commitBusinessCardCapture(
@@ -207,7 +219,9 @@ export async function commitBusinessCardCapture(
   let photoKept: boolean | null = null
   if (file instanceof File && file.size > 0) {
     const label = [contact.prenom, contact.nom].filter(Boolean).join(' ') || contact.institution || String(contactId)
-    photoKept = await keepCardPhoto(g.supabase, g.userId, contactId, label, file)
+    const key = await keepCardPhoto(g.supabase, g.userId, contactId, label, file)
+    photoKept = key !== null
+    if (key) await queueCardJob(g.supabase, contactId, key)
   }
 
   revalidatePath('/atelier')

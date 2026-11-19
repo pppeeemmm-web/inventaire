@@ -1,13 +1,16 @@
 'use server'
 
 // « Bureau IA », phase 1 (Pem « go for ai build », 2026-11-18; design docs/design/2026-11-18/AiDesk.notes.md):
-// read only — which AI engines this server can use, what is waiting for the PC's local jobs, and the command
-// that runs each queue. Nothing is written. Admin only.
+// which AI engines this server can use, what is waiting for the PC's local jobs, and the command that runs each
+// queue. Phase 2 queues `ai_job` rows (queueAiJob); phase 3 lists the business cards the PC agent read and records
+// the admin's decision (decideAiJob) — a card's fields reach the contact only through the contact editor's Save.
+// Admin only.
 
 import { createClient } from '@/lib/supabase/server'
 import { countEmbeddingBacklog, countVoiceTranscriptBacklog } from '@/app/atelier/embedding-status-actions'
 import { resolveCardVisionMode } from '@/lib/contact-card-vision'
 import { resolveLlmMode, resolveOllamaClientUrl } from '@/lib/contact-url-enrich'
+import { cardChanges, type CardBefore, type CardChange, type CardSuggestion } from '@/lib/ai-card-suggestion'
 
 /** The models the PC's jobs use (AI_ENGINES.md). */
 const OLLAMA_MODELS = ['nomic-embed-text', 'llama3.2:1b', 'gemma3:4b'] as const
@@ -28,8 +31,10 @@ export type AiDeskData = {
     voice: number | null
     index: number | null
     describe: number | null
-    /** Business cards kept with their photo (the AI pass itself is not recorded before phase 3). */
-    cards: { count: number; latest: string | null } | null
+    /** Business cards kept with their photo (Vault « carte » documents) — technical details only. */
+    cardPhotos: { count: number; latest: string | null } | null
+    /** Phase 3: card jobs waiting for the PC agent, and its readings waiting for a decision. */
+    cards: { waiting: number; review: CardReview[] } | null
   }
   /** The PC agent (`npm run ai:agent`): last check-in and the models it found; null = never seen. */
   agent: { id: string; seenAt: string; models: { name: string; present: boolean }[] } | null
@@ -38,6 +43,19 @@ export type AiDeskData = {
 }
 
 export type AiRunKind = 'voice' | 'embed' | 'describe'
+
+/** One card read by the PC agent, not yet accepted or rejected: what it would add to the contact. */
+export type CardReview = {
+  jobId: number
+  contactId: number
+  name: string
+  /** The card's text as the model read it (the evidence beside each change). */
+  text: string | null
+  changes: CardChange[]
+  doneAt: string | null
+}
+
+const REVIEW_MAX = 50
 
 async function ollamaModels(): Promise<AiDeskData['ollama']> {
   try {
@@ -93,7 +111,7 @@ async function describeBacklog(supabase: Awaited<ReturnType<typeof createClient>
   return covers.size
 }
 
-async function cardPhotos(supabase: Awaited<ReturnType<typeof createClient>>): Promise<AiDeskData['queues']['cards']> {
+async function cardPhotos(supabase: Awaited<ReturnType<typeof createClient>>): Promise<AiDeskData['queues']['cardPhotos']> {
   const [count, latest] = await Promise.all([
     supabase.from('document').select('id', { count: 'exact', head: true }).eq('kind', 'carte'),
     supabase.from('document').select('doc_date').eq('kind', 'carte').order('doc_date', { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
@@ -103,6 +121,95 @@ async function cardPhotos(supabase: Awaited<ReturnType<typeof createClient>>): P
     return null
   }
   return { count: count.count ?? 0, latest: latest.data?.doc_date ?? null }
+}
+
+type Sb = Awaited<ReturnType<typeof createClient>>
+type ContactBeforeRow = {
+  ContactID: number
+  Prénom: string | null
+  Nom: string | null
+  NomInstitution: string | null
+  Email: string | null
+  Téléphone1: string | null
+  Téléphone2: string | null
+  Website: string | null
+  Adresse: string | null
+  CodePostal: string | null
+  Ville: string | null
+  Pays: string | null
+}
+
+/** What each contact has now (columns + its email / phone / website / address rows), for cardChanges. */
+async function contactsBefore(supabase: Sb, ids: number[]): Promise<Map<number, CardBefore & { name: string }>> {
+  const out = new Map<number, CardBefore & { name: string }>()
+  if (ids.length === 0) return out
+  const [c, e, p, w, a] = await Promise.all([
+    supabase.from('Contact').select('ContactID, "Prénom", Nom, NomInstitution, Email, "Téléphone1", "Téléphone2", Website, Adresse, CodePostal, Ville, Pays').in('ContactID', ids),
+    supabase.from('contact_emails').select('contact_id, email').in('contact_id', ids),
+    supabase.from('contact_phones').select('contact_id, phone').in('contact_id', ids),
+    supabase.from('contact_websites').select('contact_id, url').in('contact_id', ids),
+    supabase.from('contact_addresses').select('contact_id, adresse, code_postal, ville, pays').in('contact_id', ids),
+  ])
+  const err = c.error ?? e.error ?? p.error ?? w.error ?? a.error
+  if (err) throw new Error(err.message)
+  for (const r of (c.data ?? []) as ContactBeforeRow[]) {
+    out.set(r.ContactID, {
+      name: [r.Prénom, r.Nom].filter(Boolean).join(' ') || r.NomInstitution || `#${r.ContactID}`,
+      prenom: r.Prénom,
+      nom: r.Nom,
+      institution: r.NomInstitution,
+      emails: r.Email ? [r.Email] : [],
+      phones: [r.Téléphone1, r.Téléphone2].filter((x): x is string => !!x),
+      websites: r.Website ? [r.Website] : [],
+      addresses: r.Adresse || r.CodePostal || r.Ville ? [{ adresse: r.Adresse, code_postal: r.CodePostal, ville: r.Ville, pays: r.Pays }] : [],
+    })
+  }
+  for (const r of e.data ?? []) out.get(r.contact_id)?.emails.push(r.email)
+  for (const r of p.data ?? []) out.get(r.contact_id)?.phones.push(r.phone)
+  for (const r of w.data ?? []) out.get(r.contact_id)?.websites.push(r.url)
+  for (const r of a.data ?? []) out.get(r.contact_id)?.addresses.push(r)
+  return out
+}
+
+function suggestionOf(result: unknown): { contact: CardSuggestion; text: string | null } | null {
+  const r = result as { contact?: CardSuggestion; text?: unknown } | null
+  if (!r?.contact || !Array.isArray(r.contact.emails)) return null
+  return { contact: r.contact, text: typeof r.text === 'string' ? r.text : null }
+}
+
+/** Card jobs waiting for the agent + its readings not yet decided (a reading that adds nothing still shows, to close). */
+async function cardQueue(supabase: Sb): Promise<AiDeskData['queues']['cards']> {
+  const [waiting, done] = await Promise.all([
+    supabase.from('ai_job').select('id', { count: 'exact', head: true }).eq('kind', 'card').in('status', ['waiting', 'running']),
+    supabase
+      .from('ai_job')
+      .select('id, target_id, result, done_at')
+      .eq('kind', 'card')
+      .eq('status', 'done')
+      .is('decision', null)
+      .order('done_at', { ascending: true })
+      .limit(REVIEW_MAX),
+  ])
+  if (waiting.error || done.error) {
+    console.error('[ai-desk] card jobs', waiting.error?.message ?? done.error?.message)
+    return null
+  }
+  const rows = (done.data ?? []).filter((j) => Number(j.target_id) > 0)
+  let before: Awaited<ReturnType<typeof contactsBefore>>
+  try {
+    before = await contactsBefore(supabase, [...new Set(rows.map((j) => Number(j.target_id)))])
+  } catch (e) {
+    console.error('[ai-desk] card contacts', e instanceof Error ? e.message : e)
+    return null
+  }
+  const review: CardReview[] = []
+  for (const j of rows) {
+    const s = suggestionOf(j.result)
+    const b = before.get(Number(j.target_id))
+    if (!s || !b) continue // contact deleted, or a reading without fields: only the job list shows it
+    review.push({ jobId: j.id, contactId: Number(j.target_id), name: b.name, text: s.text, changes: cardChanges(b, s.contact), doneAt: j.done_at })
+  }
+  return { waiting: waiting.count ?? 0, review }
 }
 
 async function adminClient() {
@@ -161,11 +268,12 @@ export async function loadAiDesk(): Promise<AiDeskData | { error: 'auth' }> {
   const supabase = await adminClient()
   if (!supabase) return { error: 'auth' }
 
-  const [voice, index, describe, cards, ollama, aj] = await Promise.all([
+  const [voice, index, describe, cardPhotoCount, cards, ollama, aj] = await Promise.all([
     countVoiceTranscriptBacklog(),
     countEmbeddingBacklog(),
     describeBacklog(supabase),
     cardPhotos(supabase),
+    cardQueue(supabase),
     ollamaModels(),
     agentAndJobs(supabase),
   ])
@@ -175,7 +283,56 @@ export async function loadAiDesk(): Promise<AiDeskData | { error: 'auth' }> {
     cardPhoto: resolveCardVisionMode(),
     cardText: resolveLlmMode(),
     ollama,
-    queues: { voice, index, describe, cards },
+    queues: { voice, index, describe, cardPhotos: cardPhotoCount, cards },
     ...aj,
   }
+}
+
+/**
+ * The suggestion of one card job, for the contact editor (« Ouvrir et vérifier »): only a read card job not yet
+ * decided. The editor fills what is empty and adds what is missing (lib/ai-card-suggestion.ts), the admin saves.
+ */
+export async function getCardSuggestion(
+  jobId: number,
+): Promise<{ ok: true; contactId: number; contact: CardSuggestion } | { error: 'auth' | 'gone' }> {
+  const supabase = await adminClient()
+  if (!supabase) return { error: 'auth' }
+  const { data, error } = await supabase
+    .from('ai_job')
+    .select('target_id, result')
+    .eq('id', jobId)
+    .eq('kind', 'card')
+    .eq('status', 'done')
+    .is('decision', null)
+    .maybeSingle()
+  if (error) console.error('[ai-desk] card suggestion', error.message)
+  const s = suggestionOf(data?.result)
+  if (!data || !s || !(Number(data.target_id) > 0)) return { error: 'gone' }
+  return { ok: true, contactId: Number(data.target_id), contact: s.contact }
+}
+
+/**
+ * Accept (the contact editor, after its Save went through) or reject (Bureau IA) one card reading. Only an
+ * undecided, read card job: a second click or a second tab answers 'gone'. Never touches the contact itself.
+ */
+export async function decideAiJob(jobId: number, decision: 'accepted' | 'rejected'): Promise<{ ok: true } | { error: 'auth' | 'gone' | 'update' }> {
+  if (decision !== 'accepted' && decision !== 'rejected') return { error: 'update' }
+  const supabase = await adminClient()
+  if (!supabase) return { error: 'auth' }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('ai_job')
+    .update({ decision, decided_by: user?.id ?? null, decided_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .eq('kind', 'card')
+    .eq('status', 'done')
+    .is('decision', null)
+    .select('id')
+  if (error) {
+    console.error('[ai-desk] decide', error.message)
+    return { error: 'update' }
+  }
+  return data && data.length > 0 ? { ok: true } : { error: 'gone' }
 }

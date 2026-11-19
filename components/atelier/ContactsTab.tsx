@@ -18,6 +18,8 @@ import {
   type UrlEnrichMeta,
 } from '@/app/atelier/(portal)/contacts/actions'
 import { runOllamaInstructionScript } from '@/app/atelier/ollama/actions'
+import { getCardSuggestion } from '@/app/atelier/(portal)/ai/actions'
+import type { CardSuggestion } from '@/lib/ai-card-suggestion'
 import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -175,6 +177,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   // List of all roles from tblRole
   const [allRoles,   setAllRoles]   = useState<string[]>([])
 
+  /** The email / phone / website / address rows arrived (the editor reads them only when it mounts). */
+  const [junctionsLoaded, setJunctionsLoaded] = useState(false)
+
   /** Same loads as mount — must run after merge/import so list + editor junctions match DB. */
   const refreshContactsClientData = useCallback(async (): Promise<boolean> => {
     const sb = createClient()
@@ -261,6 +266,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       if (rolesRes.data) {
         setAllRoles((rolesRes.data as { Nom: string }[]).map((r) => r.Nom).filter(Boolean))
       }
+      setJunctionsLoaded(true)
       return true
     } catch (err) {
       console.error('[contacts refresh]', err)
@@ -277,14 +283,30 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Auto-open a contact card when navigated from Map / share-triage / capture
+  // Bureau IA « Ouvrir et vérifier » (AI desk phase 3): a business card read by the PC, pre-filled in the editor.
+  const [aiSuggestion, setAiSuggestion] = useState<{ jobId: number; contactId: number; contact: CardSuggestion } | null>(null)
+
+  // Auto-open a contact card when navigated from Map / share-triage / capture / Bureau IA
   useEffect(() => {
     const fromQuery = searchParams.get('contact')
     if (fromQuery) {
       const id = parseInt(fromQuery, 10)
       if (!isNaN(id)) setActiveId(id)
+      const aiJob = parseInt(searchParams.get('aiJob') ?? '', 10)
+      // The admin check is the server action's (isAdmin is still loading here); a team member gets nothing.
+      if (!isNaN(id) && !isNaN(aiJob)) {
+        void getCardSuggestion(aiJob)
+          .then((res) => {
+            if ('error' in res) {
+              if (res.error === 'gone') toast.error(t('ai_card_gone'))
+            }
+            else if (res.contactId === id) setAiSuggestion({ jobId: aiJob, contactId: id, contact: res.contact })
+          })
+          .catch((e: unknown) => toast.error(`${t('error_prefix')} ${e instanceof Error ? e.message : String(e)}`))
+      }
       const next = new URLSearchParams(searchParams.toString())
       next.delete('contact')
+      next.delete('aiJob')
       const q = next.toString()
       router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false })
       return
@@ -294,7 +316,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     sessionStorage.removeItem('pem_open_contact')
     const id = parseInt(raw, 10)
     if (!isNaN(id)) setActiveId(id)
-  }, [pathname, router, searchParams])
+  }, [pathname, router, searchParams, t])
 
   // Work counts
   const workCounts = useMemo(() => {
@@ -1115,7 +1137,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
         {showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
           <ContactEditorPanel
-            key={`${isCreating ? 'new' : activeId}-${editorNonce}`}
+            // Remounted once when the junction rows arrive: an editor opened from a link before them started with
+            // empty lists, and its Save (delete + reinsert) would have dropped the contact's emails / phones / addresses.
+            key={`${isCreating ? 'new' : activeId}-${editorNonce}-${junctionsLoaded ? 1 : 0}`}
             ref={editorRef}
             contact={isCreating ? null : editorContactResolved}
             initialAddresses={isCreating || activeId == null ? [] : (addresses[activeId] ?? [])}
@@ -1134,6 +1158,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             onDismissEditor={dismissEditor}
             onDeleteContact={!isCreating && activeId != null ? requestDeleteActive : undefined}
             baselineEpoch={editorNonce}
+            aiSuggestion={junctionsLoaded && !isCreating && aiSuggestion && aiSuggestion.contactId === activeId ? aiSuggestion : null}
+            onAiSuggestionDone={() => setAiSuggestion(null)}
           />
         ) : (
           !narrow && (

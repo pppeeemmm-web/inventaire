@@ -32,7 +32,7 @@ The **public website** (`/`, `/works`, `/about`, `/practice`, `/enquiry`, the co
 
 _Corrected 2026-11-18 (same evening): the first version missed the Whisper transcripts and the gemma3 image descriptions. AI desk: [`design/2026-11-18/AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)._
 
-**Local only (Pem 2026-11-18).** No OpenAI: the **Bureau IA** screen (`/atelier/ai`, admin) queues work in `ai_job`; the PC agent (`npm run ai:agent`, started at sign-in by `scripts/register-ai-agent.ps1`) runs it on the PC's models, one job at a time, and checks in to `ai_agent` every minute. Phase 3 (business cards read by a local vision model, suggested on the desk) is next.
+**Local only (Pem 2026-11-18).** No OpenAI: the **Bureau IA** screen (`/atelier/ai`, admin) queues work in `ai_job`; the PC agent (`npm run ai:agent`, started at sign-in by `scripts/register-ai-agent.ps1`) runs it on the PC's models, one job at a time, and checks in to `ai_agent` every minute. Phase 3, business cards (2026-11-19): every card photo kept at capture queues an `ai_job` (kind `card`); the agent checks the key is that contact's Vault card photo (`cards/K_<id>_<hash8>.avif` + its `document` row), reads it with Ollama `gemma3:4b` (`scripts/ai-agent/card.mjs`; try one with `npm run ai:agent -- --try <key>`) and stores the suggestion; Bureau IA lists what it would add (rule in `lib/ai-card-suggestion.ts`: empty fields only, missing rows added), « Ouvrir et vérifier » pre-fills the contact editor and the job is accepted on its Save. Web addresses: not yet.
 
 ## How to check the one unknown
 

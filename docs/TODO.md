@@ -6,7 +6,7 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
-- Next session (Pem 2026-11-19): AI desk phase 3 (cards from the phone → PC agent → accept / reject), then contact merge in one transaction (SQL OK), transcript « Corriger », phone mobile-data design note.
+- Next session (Pem 2026-11-19): contact merge in one transaction (SQL OK), transcript « Corriger », phone mobile-data design note.
 
 ## 0. Bugs — fix now
 
@@ -41,13 +41,14 @@ Admin
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
 - [ ] A theme or group created or copied on the Thèmes page reaches the other screens (Inventory filters, batch edit, drawer chips) only after a reload; leaving Thèmes and coming back hides it until then.
 - [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
+- [ ] Localhost: « Se déconnecter » lands back on the dev auto-login account (team, not admin), so an admin can't sign in on localhost after a sign-out — skip the auto-login after an explicit sign-out (dev only).
 
 Contacts and Vault
 - [ ] Contacts, what is left of the review: much better autofill; one phone format (E.164 stored, shown grouped, with country codes); a fixed phone / email label list shown FR / EN, plus a clean-up of the imported labels (SQL, Pem's OK).
 - [ ] Vault: a naming policy for every non-picture file.
 
 AI desk
-- [ ] Phase 3 ([`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)): business cards captured on the phone become `ai_job` rows (kind `card`), the PC agent reads the photo with a local vision model and the desk suggests the fields, to accept or reject; then web addresses the same way.
+- [ ] Phase 3, web addresses ([`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)): contacts with a web address read by the PC agent and suggested on the desk like the cards — design first (which contacts, how often reread).
 
 Public site
 - [ ] Website legal pages, A.2 part 2 ([`LegalPages_A2.notes.md`](./design/2026-11-18/LegalPages_A2.notes.md)): the four pages + footer, needs the C.1 facts. Part 1 is built; its retention SQL waits for Pem's OK (« Now »). `ANALYTICS_EXCLUDE_VISITOR_IDS` lists browser IDs that all renew on 2027-06-14 — the team should use « Ne pas être compté·e » instead. `CRON_SECRET` must be set on Vercel for the monthly retention cron.
@@ -65,7 +66,6 @@ Look and layout ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md
 - [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 - [ ] Phone: the Journal day card lists the same work twice.
-- [ ] Bureau IA phase 3: the agent must accept only a `cards/` Vault key in a « card » job (the team can queue one with any payload, by design).
 
 Rethink leftovers
 - [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy.

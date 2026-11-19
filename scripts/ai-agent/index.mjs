@@ -10,7 +10,9 @@
  *   voice    → scripts/transcribe/voice_batch.py --run --write, then the search index
  *   describe → scripts/transcribe/describe_batch.py --write, then the search index
  *   embed    → scripts/embed-worker/index.mjs --drain
- * Kinds 'card' / 'web' (phase 3) are left waiting until this agent can read them.
+ *   card     → card.mjs: the Vault card photo read by gemma3:4b → a contact SUGGESTION in `result` (phase 3)
+ *   npm run ai:agent -- --try cards/K_…avif   read one card photo, print the suggestion, write nothing
+ * Kind 'web' is left waiting until this agent can read it.
  * Uses the service key from .env.local (never leaves the PC). Nothing is sent to any other AI service.
  */
 import { spawn } from 'node:child_process'
@@ -20,9 +22,10 @@ import path from 'node:path'
 import { supabaseAdmin } from '../embed-worker/supabase-admin.mjs'
 import { ollamaBaseUrl } from '../embed-worker/ollama-client.mjs'
 import { ensureOllamaRunning } from '../embed-worker/ensure-ollama.mjs'
+import { checkCardKey, readCard } from './card.mjs'
 
 const AGENT_ID = process.env.AI_AGENT_ID?.trim() || 'studio-pc'
-const KINDS = ['voice', 'describe', 'embed']
+const KINDS = ['voice', 'describe', 'embed', 'card']
 const MODELS = ['nomic-embed-text', 'llama3.2:1b', 'gemma3:4b']
 const POLL_MS = 15_000
 const HEARTBEAT_MS = 60_000
@@ -55,7 +58,22 @@ function run(cmd, args) {
 
 const drainIndex = () => run(process.execPath, ['scripts/embed-worker/index.mjs', '--drain'])
 
-async function runJob(kind) {
+/** Card job: the key must be this contact's card photo (checkCardKey), then the local vision model reads it. */
+async function runCardJob(job) {
+  const refused = await checkCardKey(sb, job.payload?.key, job.target_id)
+  if (refused) return { code: 1, out: `refused: ${refused}` }
+  await ensureOllamaRunning()
+  try {
+    const r = await readCard(job.payload.key)
+    return { code: 0, out: `${r.model}: read`, result: r }
+  } catch (e) {
+    return { code: 1, out: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function runJob(job) {
+  const kind = job.kind
+  if (kind === 'card') return runCardJob(job)
   if (kind === 'embed') {
     await ensureOllamaRunning()
     return drainIndex()
@@ -94,7 +112,7 @@ async function heartbeat() {
 async function claim() {
   const { data, error } = await sb
     .from('ai_job')
-    .select('id, kind')
+    .select('id')
     .eq('status', 'waiting')
     .in('kind', KINDS)
     .order('created_at')
@@ -110,7 +128,7 @@ async function claim() {
     .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', job.id)
     .eq('status', 'waiting')
-    .select('id, kind')
+    .select('id, kind, target_id, payload')
   if (e2) log('claim failed:', e2.message)
   return got?.[0] ?? null
 }
@@ -120,14 +138,14 @@ async function drainQueue() {
     const job = await claim()
     if (!job) return
     log(`job ${job.id} (${job.kind}) started`)
-    const r = await runJob(job.kind)
+    const r = await runJob(job)
     const ok = r.code === 0
     const { error } = await sb
       .from('ai_job')
       .update({
         status: ok ? 'done' : 'failed',
         done_at: new Date().toISOString(),
-        result: { log: r.out },
+        result: r.result ? { ...r.result, log: r.out } : { log: r.out },
         error: ok ? null : `exit ${r.code}`,
       })
       .eq('id', job.id)
@@ -137,6 +155,15 @@ async function drainQueue() {
 }
 
 async function main() {
+  const tryAt = process.argv.indexOf('--try')
+  if (tryAt > -1) {
+    const key = process.argv[tryAt + 1]
+    const refused = await checkCardKey(sb, key, null)
+    if (refused) throw new Error(refused)
+    await ensureOllamaRunning()
+    console.log(JSON.stringify(await readCard(key), null, 1))
+    return
+  }
   // A job left « running » belongs to a previous agent that was stopped: mark it failed so it can be queued again.
   const { error } = await sb
     .from('ai_job')

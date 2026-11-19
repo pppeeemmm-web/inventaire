@@ -463,7 +463,8 @@ The public site uses no AI. In the Atelier, AI is optional and **local**: everyt
 [AI desk](/atelier/ai) (Kaizen, next to Audit; on the phone: ☰ → Kaizen → AI desk) shows:
 
 - **The engines**, as the server running the site sees them: the PC agent ("seen n min ago" and its models), whether an OpenAI key is set on this server (yes / no), the engine that reads a card photo and tidies card and web text, the Ollama models. On the live site, Ollama is always out of reach (the server cannot see your PC): that is expected.
-- **What is waiting**: voice notes to transcribe (Whisper), items to index for search, works whose image is not described yet (gemma3:4b), business cards kept with their photo (whether their AI pass ran is not recorded yet; phase 3 will read them and suggest the fields, to accept or reject).
+- **What is waiting**: voice notes to transcribe (Whisper), items to index for search, works whose image is not described yet (gemma3:4b), business cards photographed on the phone, which the PC agent reads with gemma3:4b.
+- **Cards read, to check**: for each card read, what it would add to the contact (an empty field filled, an email, phone, website or address the contact does not have yet) and the text read. **Open and check** opens the contact with those additions already in place: correct if needed, then **Save** (the card then counts as accepted); **Reject** removes it. Nothing is ever replaced, and nothing is written before your Save.
 - **The latest jobs**: waiting, running, done or failed; a failed one shows its log.
 
 Overview → **Local jobs** remains as a quick glance (voice notes, indexing, archive age).
@@ -473,7 +474,7 @@ Overview → **Local jobs** remains as a quick glance (voice notes, indexing, ar
 - **Meaning-based search (⌘K) and the Journal's ✦ suggestions**: nomic-embed-text turns texts into markers, kept in the database. On the live site, a new phrase is searched as plain text.
 - **Voice notes**: on the phone, the browser writes the words as you speak (Safari → Apple, Chrome → Google); the full transcription is done on your PC by faster-whisper large-v3.
 - **Image descriptions**: gemma3:4b describes the works' images.
-- **Business cards and web addresses**: the text is read without AI (Live Text on the iPhone, page reading); llama3.2:1b can then tidy the text, but only when the app runs on your PC: on the live site, « Improve with AI » has no AI until phase 3 (the card read by the PC agent) is done.
+- **Business cards and web addresses**: the text is read without AI (Live Text on the iPhone, page reading); llama3.2:1b can then tidy the text, but only when the app runs on your PC: everywhere, the card photo kept in the Vault is then read by the PC agent (gemma3:4b) and suggested in Bureau IA → Cards read. Web addresses do not have this PC reading yet.
 - **Broadcast captions**: Make.com's AI (OpenAI or Anthropic), outside the app.
 
 ## Running the jobs

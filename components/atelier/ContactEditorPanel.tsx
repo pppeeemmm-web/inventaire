@@ -33,6 +33,8 @@ import type {
   ContactWebsite,
 } from '@/components/atelier/contact-editor-types'
 import { ContactKitsSection } from '@/components/atelier/kits/ContactKitsSection'
+import { decideAiJob } from '@/app/atelier/(portal)/ai/actions'
+import { sameAddress, sameEmail, samePhone, sameUrl, type CardSuggestion } from '@/lib/ai-card-suggestion'
 
 export type ContactEditorPanelHandle = {
   save: () => Promise<boolean>
@@ -193,6 +195,10 @@ export type ContactEditorPanelProps = {
   baselineEpoch: number
   /** Fill the parent (a pop-up) instead of sizing as the Contacts tab's side panel. */
   fill?: boolean
+  /** Bureau IA « Ouvrir et vérifier » (AI desk phase 3): a business card read by the PC agent. Pre-filled by the rule
+   *  of lib/ai-card-suggestion.ts (empty fields only, missing rows added); accepted once this editor's Save succeeds. */
+  aiSuggestion?: { jobId: number; contact: CardSuggestion } | null
+  onAiSuggestionDone?: () => void
 }
 
 export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEditorPanelProps>(
@@ -216,6 +222,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       onTeamAccessUpdated,
       baselineEpoch,
       fill = false,
+      aiSuggestion = null,
+      onAiSuggestionDone,
     },
     ref,
   ) {
@@ -272,6 +280,45 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     const [phoneList, setPhoneList] = useState<ContactPhone[]>(initialPhones)
     const [webList, setWebList] = useState<ContactWebsite[]>(initialWebsites)
     const [socialList, setSocialList] = useState<ContactSocial[]>(initialSocials)
+
+    // AI desk phase 3: pre-fill once per card job; the form turns dirty, nothing is written until Save.
+    const aiAppliedJob = useRef<number | null>(null)
+    useEffect(() => {
+      if (!aiSuggestion || isNew || aiAppliedJob.current === aiSuggestion.jobId) return
+      aiAppliedJob.current = aiSuggestion.jobId
+      const s = aiSuggestion.contact
+      const cid = contact!.ContactID
+      // Same « already there » as Bureau IA's list: the rows plus the contact's old single columns.
+      const oldEmail = contact?.Email ? [contact.Email] : []
+      const oldPhones = [contact?.Téléphone1, contact?.Téléphone2].filter((x): x is string => !!x)
+      const oldWeb = contact?.Website ? [contact.Website] : []
+      setForm((p) => ({
+        ...p,
+        Prénom: p.Prénom.trim() ? p.Prénom : s.prenom ?? '',
+        Nom: p.Nom.trim() ? p.Nom : s.nom ?? '',
+        NomInstitution: p.NomInstitution.trim() ? p.NomInstitution : s.institution ?? '',
+      }))
+      setEmailList((prev) => {
+        const add = s.emails.filter((e) => !prev.some((x) => sameEmail(x.email, e.email)) && !oldEmail.some((x) => sameEmail(x, e.email)))
+        return [...prev, ...add.map((e, i) => ({ contact_id: cid, email: e.email, label: e.label, is_primary: prev.length === 0 && i === 0 }))]
+      })
+      setPhoneList((prev) => {
+        const add = s.phones.filter((ph) => !prev.some((x) => samePhone(x.phone, ph.phone)) && !oldPhones.some((x) => samePhone(x, ph.phone)))
+        return [...prev, ...add.map((ph, i) => ({ contact_id: cid, phone: ph.phone, country_code: ph.country_code, label: ph.label, is_primary: prev.length === 0 && i === 0 }))]
+      })
+      setWebList((prev) => [
+        ...prev,
+        ...s.websites.filter((w) => !prev.some((x) => sameUrl(x.url, w.url)) && !oldWeb.some((x) => sameUrl(x, w.url))).map((w) => ({ contact_id: cid, url: w.url, label: w.label })),
+      ])
+      setAddrList((prev) => {
+        const add = s.addresses.filter((a) => !prev.some((x) => sameAddress(x, a)))
+        if (add.length === 0) return prev
+        const rows = add.map((a) => ({ ...emptyAddr(), label: a.label, adresse: a.adresse ?? '', code_postal: a.code_postal ?? '', ville: a.ville ?? '', pays: a.pays ?? '' }))
+        // One blank address row (a contact with no address) is replaced, not kept beside the new one.
+        const blankOnly = prev.length === 1 && !prev[0].id && !prev[0].adresse && !prev[0].code_postal && !prev[0].ville && !prev[0].pays
+        return blankOnly ? rows : [...prev, ...rows]
+      })
+    }, [aiSuggestion, isNew, contact])
 
     const [busy, setBusy] = useState(false)
     const [accessState, setAccessState] = useState<TeamAccessState | null>(null)
@@ -492,6 +539,12 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         } else {
           onUpdated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
         }
+        // The card reading is accepted only now that its fields are saved (a Discard leaves it on Bureau IA).
+        if (aiSuggestion && aiAppliedJob.current === aiSuggestion.jobId) {
+          const jobId = aiSuggestion.jobId
+          onAiSuggestionDone?.() // cleared first: the editor remounts after a save and must not pre-fill again
+          void decideAiJob(jobId, 'accepted').catch((e: unknown) => console.error('[contact-editor] ai accept', e))
+        }
         return true
       } catch (e) {
         setErr(String(e))
@@ -515,6 +568,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       contact?.auth_user_id,
       contact?.is_team_member,
       webList,
+      aiSuggestion,
+      onAiSuggestionDone,
     ])
 
     const inviteEmail = useMemo(
@@ -688,6 +743,15 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                 </button>
               </div>
             </div>
+
+            {aiSuggestion && !isNew ? (
+              <div
+                data-testid="contact-editor-ai-banner"
+                style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--tx2)', padding: '8px 10px', border: '1px solid var(--bd)', borderLeft: '3px solid var(--sage)', background: 'var(--bg0)', marginBottom: 8 }}
+              >
+                {t('ai_card_banner')}
+              </div>
+            ) : null}
 
             <Section title={t('contactEditorSectionIdentity')} />
             <Grid2 narrow={narrow}>

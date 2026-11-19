@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — AI desk phase 3: business cards read on the PC, checked on Bureau IA (TODO §3 AI desk + Look and layout « agent accepts only a cards/ key », Pem « Go, as recommended »)
+
+- Capture: every card photo kept in the Vault queues an `ai_job` (kind `card`, target = contact, payload = Vault key) — `commitBusinessCardCapture` / `queueCardJob`; no SQL (table, kind and team insert policy existed).
+- PC agent: kind `card` → `scripts/ai-agent/card.mjs`: refuses a key that is not `cards/K_<contact>_<hash8>.avif` with that contact's « carte » `document` row, reads the Vault photo with Ollama `gemma3:4b`, stores `{ text, contact, model }`; `--try <key>` reads one without writing. First real card: text read right in 8–18 s, fields roughly (institution split into « Nom »).
+- Bureau IA « Cartes lues, à vérifier »: what each card would add (`lib/ai-card-suggestion.ts`: empty name / institution only, missing email / phone / site / address; an address with the same postcode, city and street number counts as present — the model read « Bourgoin » for « Bourgeois »), the text read, « Ouvrir et vérifier » / « Rejeter » (`decideAiJob`). The card's job title is not used (« Rôle » is a category list).
+- Contact editor: `?aiJob=` pre-fills those additions with a banner; the job is accepted only after Save; Discard leaves it on the desk. Existing card photo (contact 970, the only one) queued once, read (job 3), left undecided for Pem.
+- Seen in Chrome as admin on localhost: desk list, editor pre-fill + banner (not saved; contact 970 still 1 address), 375 px iframe: no sideways scroll, buttons 44 px. Not seen: a card captured on the phone end to end, the Save → accepted path.
+
 ## 2026-11-19 — « Privé » contacts hidden from the team's lists, search and pickers (TODO §0, Pem « lists and pickers only »)
 
 - `pickableContacts(rows, { isAdmin, keepIds })` + `useIsAdmin()`: non-admins no longer find a private contact in Contacts (list, count, sidebar badge), ⌘K and semantic search, kit / share-triage search, new work, phone sale, new order / gift transfer, work card selects, Fiscal expense, events, exhibitions, pipeline, supplies, map contacts mode. Names stay wherever a contact is already tied (full list for name lookups; current value kept in every select). No RLS: `contact_private_rls.sql` not used. Built and verified by the stress-test session on the Docker copy (team hidden / named, saves keep the id, admin sees all).
