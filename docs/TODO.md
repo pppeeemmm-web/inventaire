@@ -13,9 +13,9 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 ## 1. Finish first — small, before anything new
 
 Data safety (SQL, Pem's OK given)
-- [ ] A queued work change (`pending_changes`) or an old work version that names a merged-away contact fails on approve / restore (foreign key).
+- [ ] A deleted contact (not merged) still named in a queued work change or an old work version makes approve / restore fail (foreign key).
 - [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database.
-- [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does).
+- [ ] A work card left open while an order step, batch edit or stage change rewrites the work can still post the old status / owner / price: those writers don't move `edited_at` (only the card's save does). The database stamp (`supabase/sql/oeuvre_edit_stamp.sql`, not live) needs first: the production board, Inventory broadcast toggle, constat, production dates, contact merge / delete remap and the card's « Annuler » carrying the new stamp; « Annuler » resetting the card's form; the phone offline queue keeping a refused edit; the Journal badge ignoring system stamps.
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).

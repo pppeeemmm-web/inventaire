@@ -9,6 +9,11 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - PC agent card check (`checkCardKey`) trusts the `document` row of the job's contact, not the id inside the key, so a card job waiting at merge time still runs. Admin guide (Contacts, FR + EN): merge is admin only.
 - Bulk « Fusionner » shown to admins only. Seen: test merge on live inside a rolled-back transaction — non-admin refused, lost contact gone, empty fields filled, duplicate email / phone / url / social dropped, card job moved.
 
+## 2026-11-19 — Merged-away contact no longer breaks approve / restore (TODO §1 data safety, Pem « Go ahead as recommended », « Yes, apply both »)
+
+- `merge_contacts` (re-applied live, [`merge_contacts_fn.sql`](../supabase/sql/merge_contacts_fn.sql) step 4b) also rewrites the lost id → kept id inside `pending_changes.payload` (`contact_id` / `localisation_id` / `acheteur_id`), `.baseline` and `oeuvre_versions.snapshot` (`ContactID` / `LocalisationID` / `AcheteurID`): approving a proposal or restoring a version that named the lost contact no longer fails on the foreign key, and the proposal's base still matches the work (no false conflict). Tested live in a rolled-back transaction (proposal, base and version all on the kept contact, lost one gone); no version pointed at a deleted contact before.
+- The edit stamp (`oeuvre_edit_stamp.sql`, item « work card left open … ») was applied and dropped the same day: the flow review found false « work changed » refusals and dropped offline phone edits with today's app; item kept open in TODO §1 with what it needs.
+
 ## 2026-11-19 — Localhost sign-out, Journal day lists (TODO §1, Pem « go »)
 
 - Localhost « Se déconnecter » no longer lands back on the dev auto-login account: `AccountActions` sets a browser-session cookie `pem_signed_out`, middleware skips the dev auto-login while it is there; the login page's « Continuer sur ce serveur dev » clears it. Seen on a dev server with plain requests (no session → auto-login 200; with the cookie → `/login`). Production never auto-logs-in — `ab522ae`, `190c6ed`.

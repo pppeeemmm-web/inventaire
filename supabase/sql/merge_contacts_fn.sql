@@ -23,8 +23,13 @@
 --     an open card job of the lost contact that would clash with an open one of the kept contact is closed
 --     as failed (« merged into #keep ») instead of blocking the merge;
 --   * contact_conflicts step dropped (table does not exist in the live DB).
--- Not moved: ai_job kind « web » (nothing queues it with a target today); contact ids inside JSON of
--- pending_changes and oeuvre_versions (approve / restore of such a row then fails on the FK — TODO §1).
+-- Not moved: ai_job kind « web » (nothing queues it with a target today).
+-- Contact ids inside JSON (2026-11-19, TODO §1, re-applied as create or replace): pending_changes.payload
+-- (form keys contact_id / localisation_id / acheteur_id, text) and .baseline (ContactID / LocalisationID /
+-- AcheteurID), oeuvre_versions.snapshot (same columns) are rewritten lost → kept, so approving a proposal or
+-- restoring a version that named the lost contact no longer fails on the FK, and a proposal's baseline still
+-- matches the work (whose ids moved too) instead of showing a false conflict. Every status / version row: the
+-- lost contact is the same person, its id would only point at nothing.
 -- The PC agent's card check (scripts/ai-agent/card.mjs checkCardKey) trusts the moved `document` row, not the id
 -- inside the key, so a waiting card job still runs after a merge.
 --
@@ -180,6 +185,26 @@ begin
      and exists (select 1 from public.ai_job k
                   where k.kind = 'card' and k.target_id = p_keep::text and k.status in ('waiting', 'running'));
   update public.ai_job set target_id = p_keep::text where kind = 'card' and target_id = p_lose::text;
+
+  -- ── 4b. Contact ids inside JSON: proposals and version snapshots follow the kept contact ───────────
+  update public.pending_changes set payload = jsonb_set(payload, '{contact_id}', to_jsonb(p_keep::text))
+   where payload->>'contact_id' = p_lose::text;
+  update public.pending_changes set payload = jsonb_set(payload, '{localisation_id}', to_jsonb(p_keep::text))
+   where payload->>'localisation_id' = p_lose::text;
+  update public.pending_changes set payload = jsonb_set(payload, '{acheteur_id}', to_jsonb(p_keep::text))
+   where payload->>'acheteur_id' = p_lose::text;
+  update public.pending_changes set baseline = jsonb_set(baseline, '{ContactID}', to_jsonb(p_keep))
+   where baseline->>'ContactID' = p_lose::text;
+  update public.pending_changes set baseline = jsonb_set(baseline, '{LocalisationID}', to_jsonb(p_keep))
+   where baseline->>'LocalisationID' = p_lose::text;
+  update public.pending_changes set baseline = jsonb_set(baseline, '{AcheteurID}', to_jsonb(p_keep))
+   where baseline->>'AcheteurID' = p_lose::text;
+  update public.oeuvre_versions set snapshot = jsonb_set(snapshot, '{ContactID}', to_jsonb(p_keep))
+   where snapshot->>'ContactID' = p_lose::text;
+  update public.oeuvre_versions set snapshot = jsonb_set(snapshot, '{LocalisationID}', to_jsonb(p_keep))
+   where snapshot->>'LocalisationID' = p_lose::text;
+  update public.oeuvre_versions set snapshot = jsonb_set(snapshot, '{AcheteurID}', to_jsonb(p_keep))
+   where snapshot->>'AcheteurID' = p_lose::text;
 
   -- ── 5. Delete the lost contact (graph node unregistered by its trigger; any reference left → FK error → rollback)
   delete from public."Contact" where "ContactID" = p_lose;
