@@ -1,6 +1,6 @@
 # lib/ — What's new, images, storage (loaded when working here; root CLAUDE.md still applies)
 
-- What's new: item in `WHATS_NEW_ITEMS` (`lib/whats-new.ts`, newest first, with day) + its `wn_<id>_t` / `wn_<id>_d` copy FR + EN in `lib/i18n/messages/whats-new-items.messages.ts` (NOT registered in `index.ts`: `WhatsNewList` loads it on open). `whats-new.messages.ts` = dialog chrome only. New batch = bump `WHATS_NEW_RELEASE`. Plain language; admin-only tools go to the Aide, not here. `ship.ps1` refuses a feat/fix push without it (`-NoWhatsNew` to pass).
+- What's new: item in `WHATS_NEW_ITEMS` (`lib/whats-new.ts`, newest first, with day) + its `wn_<id>_t` / `wn_<id>_d` copy FR + EN in `lib/i18n/messages/whats-new-items.messages.ts` (NOT registered in `index.ts`: `WhatsNewList` loads it on open). `whats-new.messages.ts` = dialog chrome only. New batch = bump `WHATS_NEW_RELEASE`. Plain language; an admin-only change gets `admin: true` (shown to admins only). `ship.ps1` refuses a feat/fix push without it (`-NoWhatsNew` to pass).
 
 - R2 endpoint: EU only, `https://<account_id>.eu.r2.cloudflarestorage.com`. No global endpoint.
 - Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 (thumb q=70) + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
