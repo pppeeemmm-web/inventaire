@@ -574,11 +574,11 @@ export function SupplierHub({ contacts }: Props) {
     }
     try {
       const sb = createClient()
-      const [contactRes, addrRes, emailRes, phoneRes] = await Promise.all([
+      const [contactRes, addrRes, emailRes, phoneRes, webRes] = await Promise.all([
         sb
           .from('Contact')
           .select(
-            'ContactID, NomInstitution, Nom, "Prénom", Role, Email, IndicatifPays1, "Téléphone1", Website, Adresse, CodePostal, Ville, Pays, Notes',
+            'ContactID, NomInstitution, Nom, "Prénom", Role, Email, IndicatifPays1, "Téléphone1", Adresse, CodePostal, Ville, Pays, Notes',
           )
           .in('ContactID', orderedIds),
         sb
@@ -594,6 +594,7 @@ export function SupplierHub({ contacts }: Props) {
           .from('contact_phones')
           .select('contact_id, country_code, phone, is_primary')
           .in('contact_id', orderedIds),
+        sb.from('contact_websites').select('contact_id, url').in('contact_id', orderedIds).order('id'),
       ])
       if (contactRes.error) throw contactRes.error
       const blocks = buildSupplierExportDetails(
@@ -602,6 +603,7 @@ export function SupplierHub({ contacts }: Props) {
         (emailRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[2],
         (phoneRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[3],
         orderedIds,
+        webRes.data ?? [],
       )
       const plain = buildSuppliersPlainText(blocks, title, date, labels)
       downloadSuppliersTxt(`suppliers-list-${date}.txt`, plain)

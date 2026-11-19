@@ -13,16 +13,11 @@ export interface ContactRow {
   Téléphone1?: string | null
   IndicatifPays2?: string | null
   Téléphone2?: string | null
-  Website?: string | null
   Adresse?: string | null
   CodePostal?: string | null
   Ville?: string | null
   Pays?: string | null
   Notes?: string | null
-  Instagram?: string | null
-  LinkedIn?: string | null
-  Facebook?: string | null
-  Twitter?: string | null
   PersonneResponsable?: string | null
   RoleResponsable?: string | null
   Actif?: boolean | null

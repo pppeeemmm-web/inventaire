@@ -21,7 +21,8 @@ Answer with JSON only, in this exact shape (use null or [] when absent, never in
  "emails": [string], "phones": [string],
  "addresses": [{"adresse": string|null, "code_postal": string|null, "ville": string|null, "pays": string|null}],
  "websites": [string]}
-"prenom" is the given name, "nom" the family name, "institution" the company / gallery / organisation, "role" the job title.`
+"prenom" is the given name, "nom" the family name, "institution" the company / gallery / organisation, "role" the job title.
+Language: the card may be in any language. Copy names, the institution, street, postcode, city, emails, phones and web addresses exactly as printed, never translated. Write "role" and "pays" in French (for example "Directrice", "Espagne", "Royaume-Uni", "États-Unis"), whatever the card's language. "text" stays exactly as printed.`
 
 let s3 = null
 function vault() {

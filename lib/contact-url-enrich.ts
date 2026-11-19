@@ -366,7 +366,9 @@ emails: [{ email, label }], phones: [{ country_code, phone, label }],
 addresses: [{ label, adresse, code_postal, ville, pays }],
 websites: [{ url, label }].
 N'invente pas d'emails ou téléphones absents du texte fourni ou des données structurelles déjà extraites.
-Tu peux clarifier institution/noms/rôle/notes à partir du texte et des brouillons fournis.`
+Tu peux clarifier institution/noms/rôle/notes à partir du texte et des brouillons fournis.
+Langue : la source peut être dans n'importe quelle langue. Écris role, notes, pays et les libellés (label) en français.
+Recopie tels quels, sans traduire : prénoms, noms, institution, rue, code postal, ville, emails, téléphones, URLs.`
 
 export async function refineContactWithLlm(
   draft: ImportedContact,

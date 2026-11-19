@@ -200,7 +200,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private')
           .order('ContactID'),
         sb.from('Contact')
-          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Website, Adresse, CodePostal, Ville, Pays, Notes, Instagram, LinkedIn, Facebook, Twitter, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id'),
+          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Adresse, CodePostal, Ville, Pays, Notes, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id'),
         sb.from('contact_addresses')
           .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
           .order('position'),
@@ -375,9 +375,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             c.NomInstitution, c.Nom, c.Prénom, c.Role,
             multiEmailStr, ex?.Email,
             multiPhoneStr, ex?.Téléphone1, ex?.Téléphone2,
-            webStr, ex?.Website,
+            webStr,
             ex?.Notes,
-            ex?.Instagram, ex?.LinkedIn, ex?.Facebook, ex?.Twitter,
             socialStr,
             ex?.PersonneResponsable, ex?.RoleResponsable,
             addrStr,

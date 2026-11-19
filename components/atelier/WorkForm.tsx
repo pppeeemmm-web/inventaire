@@ -1445,7 +1445,19 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     if (!form.NomInstitution && !form.Nom) return false
     setBusy(true)
     const sb = createClient()
-    const { data, error } = await sb.from('Contact').insert(form).select().single()
+    const { Website, ...contactCols } = form
+    const { data, error } = await sb.from('Contact').insert(contactCols).select().single()
+    // Rows like the contact editor writes (2026-11-19): the website is a contact_websites row (not the Contact.Website
+    // column); email / phone also get their rows, so the contact's links row shows them.
+    if (!error && data) {
+      const cid = (data as { ContactID: number }).ContactID
+      const rows = await Promise.all([
+        Website.trim() ? sb.from('contact_websites').insert({ contact_id: cid, url: Website.trim(), label: 'Site' }) : null,
+        form.Email.trim() ? sb.from('contact_emails').insert({ contact_id: cid, email: form.Email.trim(), label: 'Travail', is_primary: true }) : null,
+        form.Téléphone1.trim() ? sb.from('contact_phones').insert({ contact_id: cid, phone: form.Téléphone1.trim(), label: 'Travail', is_primary: true }) : null,
+      ])
+      for (const r of rows) if (r?.error) console.error('[work-form] contact rows', r.error)
+    }
     setBusy(false)
     if (!error && data) {
       onCreated(data)

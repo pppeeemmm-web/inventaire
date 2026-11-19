@@ -21,7 +21,6 @@ type ContactScalar = {
   Email: string | null
   IndicatifPays1: string | null
   Téléphone1: string | null
-  Website: string | null
   Adresse: string | null
   CodePostal: string | null
   Ville: string | null
@@ -97,7 +96,11 @@ export function buildSupplierExportDetails(
   emails: EmailRow[],
   phones: PhoneRow[],
   orderIds: number[],
+  /** contact_websites rows: the first one per contact is the export's website (the Website column is no longer read). */
+  websites: { contact_id: number | null; url: string }[] = [],
 ): SupplierExportDetail[] {
+  const webBy = new Map<number, string>()
+  for (const w of websites) if (w.contact_id != null && w.url?.trim() && !webBy.has(w.contact_id)) webBy.set(w.contact_id, w.url.trim())
   const byId = new Map(contacts.map((c) => [c.ContactID, c]))
   const addrsBy = new Map<number, AddrRow[]>()
   for (const a of addresses) {
@@ -138,7 +141,7 @@ export function buildSupplierExportDetails(
       emails: uniqueStrings([primEmail, ...emailRows.map((e) => e.email), c.Email]),
       phones: phoneList,
       addressLines: addressLinesForContact(c, addrsBy.get(id) ?? []),
-      website: c.Website?.trim() || null,
+      website: webBy.get(id) ?? null,
       notes: c.Notes?.trim() || null,
     })
   }

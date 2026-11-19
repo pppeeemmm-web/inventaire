@@ -72,7 +72,6 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     const primaryEmail = c.emails[0]?.email ?? null
     const primaryPhone = c.phones[0] ?? null
-    const primaryWebsite = c.websites[0]?.url?.slice(0, 500) ?? null
 
     const { data: inserted, error: insertErr } = await svc
       .from('Contact')
@@ -84,7 +83,6 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
         Email:           primaryEmail,
         Téléphone1:      (primaryPhone?.phone ?? null)?.slice(0, 20) ?? null,
         IndicatifPays1:  (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
-        Website:         primaryWebsite,
         Notes:           c.notes,
         is_private:      !!isAdmin,
         Actif:           true,
@@ -292,11 +290,15 @@ function isBlankScalar(v: unknown): boolean {
   return v == null || v === ''
 }
 
+/** No longer read (2026-11-19): the merge moves the contact_websites / contact_socials rows instead. */
+const LEGACY_LINK_COLUMNS = new Set(['Website', 'Instagram', 'LinkedIn', 'Facebook', 'Twitter'])
+
 /** Prefer rows already on `keep`; fill empty columns from `lose`. */
 function mergeContactScalars(keep: Record<string, unknown>, lose: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...keep }
   for (const [k, v] of Object.entries(lose)) {
     if (k === 'ContactID' || k === 'auth_user_id') continue
+    if (LEGACY_LINK_COLUMNS.has(k)) continue // links live in contact_websites / contact_socials (moved below)
     if (k === 'is_team_member' || k === 'IsTeamMember') {
       out[k] = Boolean(out[k]) || Boolean(v)
       continue

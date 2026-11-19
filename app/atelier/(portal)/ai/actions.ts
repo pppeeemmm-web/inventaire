@@ -132,7 +132,6 @@ type ContactBeforeRow = {
   Email: string | null
   Téléphone1: string | null
   Téléphone2: string | null
-  Website: string | null
   Adresse: string | null
   CodePostal: string | null
   Ville: string | null
@@ -144,7 +143,7 @@ async function contactsBefore(supabase: Sb, ids: number[]): Promise<Map<number, 
   const out = new Map<number, CardBefore & { name: string }>()
   if (ids.length === 0) return out
   const [c, e, p, w, a] = await Promise.all([
-    supabase.from('Contact').select('ContactID, "Prénom", Nom, NomInstitution, Email, "Téléphone1", "Téléphone2", Website, Adresse, CodePostal, Ville, Pays').in('ContactID', ids),
+    supabase.from('Contact').select('ContactID, "Prénom", Nom, NomInstitution, Email, "Téléphone1", "Téléphone2", Adresse, CodePostal, Ville, Pays').in('ContactID', ids),
     supabase.from('contact_emails').select('contact_id, email').in('contact_id', ids),
     supabase.from('contact_phones').select('contact_id, phone').in('contact_id', ids),
     supabase.from('contact_websites').select('contact_id, url').in('contact_id', ids),
@@ -160,7 +159,7 @@ async function contactsBefore(supabase: Sb, ids: number[]): Promise<Map<number, 
       institution: r.NomInstitution,
       emails: r.Email ? [r.Email] : [],
       phones: [r.Téléphone1, r.Téléphone2].filter((x): x is string => !!x),
-      websites: r.Website ? [r.Website] : [],
+      websites: [], // contact_websites rows only (the Website column is no longer read, 2026-11-19)
       addresses: r.Adresse || r.CodePostal || r.Ville ? [{ adresse: r.Adresse, code_postal: r.CodePostal, ville: r.Ville, pays: r.Pays }] : [],
     })
   }

@@ -35,6 +35,7 @@ import type {
 import { ContactKitsSection } from '@/components/atelier/kits/ContactKitsSection'
 import { decideAiJob } from '@/app/atelier/(portal)/ai/actions'
 import { sameAddress, sameEmail, samePhone, sameUrl, type CardSuggestion } from '@/lib/ai-card-suggestion'
+import { contactLinks, LINK_GLYPH } from '@/lib/contacts/contact-links'
 
 export type ContactEditorPanelHandle = {
   save: () => Promise<boolean>
@@ -111,11 +112,6 @@ type FormState = {
   Téléphone1: string
   IndicatifPays2: string
   Téléphone2: string
-  Website: string
-  Instagram: string
-  LinkedIn: string
-  Facebook: string
-  Twitter: string
   PersonneResponsable: string
   RoleResponsable: string
   Notes: string
@@ -241,11 +237,6 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       Téléphone1: contact?.Téléphone1 ?? '',
       IndicatifPays2: contact?.IndicatifPays2 ?? '',
       Téléphone2: contact?.Téléphone2 ?? '',
-      Website: contact?.Website ?? '',
-      Instagram: contact?.Instagram ?? '',
-      LinkedIn: contact?.LinkedIn ?? '',
-      Facebook: contact?.Facebook ?? '',
-      Twitter: contact?.Twitter ?? '',
       PersonneResponsable: contact?.PersonneResponsable ?? '',
       RoleResponsable: contact?.RoleResponsable ?? '',
       Notes: contact?.Notes ?? '',
@@ -288,10 +279,9 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       aiAppliedJob.current = aiSuggestion.jobId
       const s = aiSuggestion.contact
       const cid = contact!.ContactID
-      // Same « already there » as Bureau IA's list: the rows plus the contact's old single columns.
+      // Same « already there » as Bureau IA's list: the rows plus the contact's old single columns (websites: rows only).
       const oldEmail = contact?.Email ? [contact.Email] : []
       const oldPhones = [contact?.Téléphone1, contact?.Téléphone2].filter((x): x is string => !!x)
-      const oldWeb = contact?.Website ? [contact.Website] : []
       setForm((p) => ({
         ...p,
         Prénom: p.Prénom.trim() ? p.Prénom : s.prenom ?? '',
@@ -308,7 +298,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       })
       setWebList((prev) => [
         ...prev,
-        ...s.websites.filter((w) => !prev.some((x) => sameUrl(x.url, w.url)) && !oldWeb.some((x) => sameUrl(x, w.url))).map((w) => ({ contact_id: cid, url: w.url, label: w.label })),
+        ...s.websites.filter((w) => !prev.some((x) => sameUrl(x.url, w.url))).map((w) => ({ contact_id: cid, url: w.url, label: w.label })),
       ])
       setAddrList((prev) => {
         const add = s.addresses.filter((a) => !prev.some((x) => sameAddress(x, a)))
@@ -358,7 +348,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       }
     }
 
-    function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Website' | 'Instagram' | 'LinkedIn' | 'Facebook' | 'Twitter' | 'Notes'>) {
+    function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Notes'>) {
       return (e: React.FocusEvent<HTMLInputElement>) => {
         setForm((p) => ({ ...p, [k]: cap(e.target.value) }))
       }
@@ -422,15 +412,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           Téléphone1: form.Téléphone1 || null,
           IndicatifPays2: form.IndicatifPays2 || null,
           Téléphone2: form.Téléphone2 || null,
-          Website: form.Website || null,
           Adresse: validAddrs[0]?.adresse || null,
           CodePostal: validAddrs[0]?.code_postal || null,
           Ville: primaryVille,
           Pays: primaryPays,
-          Instagram: form.Instagram || null,
-          LinkedIn: form.LinkedIn || null,
-          Facebook: form.Facebook || null,
-          Twitter: form.Twitter || null,
           PersonneResponsable: form.PersonneResponsable || null,
           RoleResponsable: form.RoleResponsable || null,
           Notes: form.Notes || null,
@@ -693,6 +678,23 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     const locs = id != null ? oeuvres.filter((o) => o.LocalisationID === id) : []
     const buys = id != null ? oeuvres.filter((o) => o.AcheteurID === id) : []
 
+    // One clickable row: email, phone, websites, social profiles (TODO §1 social links, 2026-11-19).
+    const linkRow = useMemo(() => {
+      const out: { key: string; glyph: string; aria: string; href: string; external: boolean }[] = []
+      for (const e of emailList) {
+        const v = e.email.trim()
+        if (v) out.push({ key: `m${out.length}`, glyph: '✉', aria: t('contact_links_email_fmt').replace('{label}', v), href: `mailto:${v}`, external: false })
+      }
+      for (const p of phoneList) {
+        const v = `${(p.country_code ?? '').trim()}${p.phone.trim()}`.replace(/[^\d+]/g, '')
+        if (v) out.push({ key: `p${out.length}`, glyph: '☎', aria: t('contact_links_phone_fmt').replace('{label}', `${p.country_code ?? ''} ${p.phone}`.trim()), href: `tel:${v}`, external: false })
+      }
+      for (const l of contactLinks(webList, socialList)) {
+        out.push({ key: `l${out.length}`, glyph: LINK_GLYPH[l.kind] ?? '↗', aria: t('contact_links_open_fmt').replace('{label}', l.label), href: l.href, external: true })
+      }
+      return out
+    }, [emailList, phoneList, webList, socialList, t])
+
     const rowFlex: React.CSSProperties = narrow
       ? { display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }
       : { display: 'flex', gap: 6, alignItems: 'center' }
@@ -750,6 +752,23 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                 style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--tx2)', padding: '8px 10px', border: '1px solid var(--bd)', borderLeft: '3px solid var(--sage)', background: 'var(--bg0)', marginBottom: 8 }}
               >
                 {t('ai_card_banner')}
+              </div>
+            ) : null}
+
+            {linkRow.length > 0 ? (
+              <div data-testid="contact-editor-links" role="group" aria-label={t('contact_links_row')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {linkRow.map((l) => (
+                  <a
+                    key={l.key}
+                    href={l.href}
+                    aria-label={l.aria}
+                    title={l.aria}
+                    {...(l.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, height: 44, padding: '0 8px', border: '1px solid var(--bd)', borderRadius: 22, background: 'var(--bg0)', color: 'var(--tx1)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    {l.glyph}
+                  </a>
+                ))}
               </div>
             ) : null}
 
