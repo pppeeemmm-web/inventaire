@@ -479,13 +479,15 @@ Vue d'ensemble → **Tâches locales** reste un coup d'œil rapide (notes vocale
 
 ## Lancer les travaux
 
-1. Dans [Bureau IA](/atelier/ai), cliquez **Lancer** sur la file voulue : le travail est mis en attente.
-2. L'**agent du PC** le prend dans les 15 secondes, un travail à la fois (la carte graphique ne peut pas tenir Whisper et les modèles Ollama ensemble).
-3. « ou à la main » affiche la commande à lancer vous-même.
+L'IA du PC ne tourne pas en permanence : elle tourne quand vous la lancez, fait tout ce qui attend, un travail à la fois (la carte graphique ne peut pas tenir Whisper et les modèles Ollama ensemble), puis s'arrête.
 
-**Première installation, une fois** : sur le PC, lancez pwsh scripts/register-ai-agent.ps1. L'agent (npm run ai:agent) démarre ensuite avec Windows.
+1. **Le badge** à côté de Bureau IA, dans le menu, compte ce qui attend : notes vocales à transcrire, éléments à indexer, travaux en attente, cartes lues à vérifier (les descriptions d'images n'y sont pas : voyez Bureau IA).
+2. Sur le PC du studio, dans [Bureau IA](/atelier/ai) : **Lancer sur ce PC** fait tout ce qui attend ; **Faire maintenant** sur une ligne la met en attente et lance l'IA. La première fois, Chrome demande d'ouvrir le lien : cochez « Toujours ».
+3. Au téléphone, **Faire maintenant** met seulement en attente : ce sera fait au prochain lancement sur le PC.
+4. L'IA passe aussi une fois à l'ouverture de votre session Windows.
+5. En haut de Bureau IA : « L'IA du PC travaille… » pendant un passage, sinon la date du dernier passage.
 
-**Attention :** si l'agent est éteint (« vu il y a » très ancien), les travaux restent en attente jusqu'à son retour.
+**Première installation, une fois** : sur le PC, lancez pwsh scripts/register-ai-agent.ps1 (le lien « Lancer sur ce PC » et le passage à l'ouverture de session). Le journal du dernier passage est dans scripts/ai-agent/agent.log.
 
 ## Local seulement
 

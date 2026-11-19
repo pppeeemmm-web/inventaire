@@ -479,13 +479,15 @@ Overview → **Local jobs** remains as a quick glance (voice notes, indexing, ar
 
 ## Running the jobs
 
-1. In [AI desk](/atelier/ai), click **Run** on the queue you want: the work is queued.
-2. The **PC agent** picks it up within 15 seconds, one job at a time (the graphics card cannot hold Whisper and the Ollama models together).
-3. "or by hand" shows the command to run yourself.
+The PC's AI does not run all the time: it runs when you start it, does everything waiting, one job at a time (the graphics card cannot hold Whisper and the Ollama models together), then stops.
 
-**First-time setup, once**: on the PC, run pwsh scripts/register-ai-agent.ps1. The agent (npm run ai:agent) then starts with Windows.
+1. **The badge** next to AI desk in the menu counts what waits: voice notes to transcribe, items to index, queued jobs, cards read and to check (image descriptions are not in it: see AI desk).
+2. On the studio PC, in [AI desk](/atelier/ai): **Start on this PC** does everything waiting; **Do it now** on a line queues it and starts the AI. The first time, Chrome asks to open the link: tick "Always".
+3. On the phone, **Do it now** only queues: it is done the next time it is started on the PC.
+4. The AI also runs once when you sign in to Windows.
+5. At the top of AI desk: "The PC's AI is working…" during a pass, otherwise when it last ran.
 
-**Watch out:** if the agent is off (a very old "seen ... ago"), jobs stay waiting until it is back.
+**First-time setup, once**: on the PC, run pwsh scripts/register-ai-agent.ps1 (the "Start on this PC" link and the sign-in pass). The last pass's log is in scripts/ai-agent/agent.log.
 
 ## Local only
 

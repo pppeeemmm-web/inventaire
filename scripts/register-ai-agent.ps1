@@ -1,14 +1,17 @@
 <#
 .SYNOPSIS
-  One-time, per user: start the PEM AI agent (scripts/ai-agent/index.mjs) when you sign in to Windows,
-  with NO window (scripts/ai-agent/start-hidden.vbs), from this repo. -Stop stops a running agent. Task Scheduler task « PEM AI agent » for the current user only (no admin).
-  -Unregister removes it. -Now also starts it right away.
-  The agent picks the jobs queued on Bureau IA (/atelier/ai) and runs them on this PC's models.
+  One-time, per user (no admin, HKCU + your own Task Scheduler only):
+  - the `pem-ai:` link: Bureau IA's « Lancer sur ce PC » / « Faire maintenant » start the agent on this PC;
+  - the Task Scheduler task « PEM AI agent »: one pass at Windows sign-in.
+  Both run scripts/ai-agent/start-hidden.vbs: the agent (scripts/ai-agent/index.mjs) does what is waiting on
+  Bureau IA (/atelier/ai), with no window, then stops. -Now also starts a pass right away. -Stop stops a running
+  agent. -Unregister removes the task and the link. Re-run after moving the repo.
 #>
 param([switch]$Unregister, [switch]$Now, [switch]$Stop)
 
 $ErrorActionPreference = "Stop"
 $name = "PEM AI agent"
+$protocolKey = "HKCU:\Software\Classes\pem-ai"
 
 # The hidden launcher (wscript running start-hidden.vbs) restarts node when it stops: end the launcher first, then node.
 function Stop-PemAgent {
@@ -27,7 +30,8 @@ if ($Stop -or $Unregister) {
 
 if ($Unregister) {
   Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
-  Write-Host "$name removed."
+  if (Test-Path $protocolKey) { Remove-Item -Path $protocolKey -Recurse }
+  Write-Host "$name and the pem-ai: link removed."
   return
 }
 
@@ -35,10 +39,18 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $vbs = Join-Path $repo "scripts\ai-agent\start-hidden.vbs"
 $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbs`"" -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-# No time limit (it keeps running); restart it if it stops with an error.
-$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Hidden
-Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Description "Runs the AI jobs queued on Bureau IA, on this PC" -Force | Out-Null
-Write-Host "$name registered: starts at sign-in from $repo"
+# One pass, then it stops: no restarts. Two hours is far above any pass (Whisper on a long backlog included).
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 2) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Hidden
+Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Description "One pass of the AI jobs queued on Bureau IA, on this PC, at sign-in" -Force | Out-Null
+Write-Host "$name registered: one pass at sign-in, from $repo"
+
+# The pem-ai: link (same way as pem-embed:, scripts/register-embed-protocol.ps1). The URL itself is not passed on.
+New-Item -Path $protocolKey -Force | Out-Null
+Set-Item -Path $protocolKey -Value "URL:PEM AI agent"
+Set-ItemProperty -Path $protocolKey -Name "URL Protocol" -Value ""
+New-Item -Path "$protocolKey\shell\open\command" -Force | Out-Null
+Set-Item -Path "$protocolKey\shell\open\command" -Value "wscript.exe `"$vbs`""
+Write-Host "pem-ai: link registered -> $vbs"
 
 if ($Now) {
   # Replace an agent already running (in a window, or an older hidden one) by the hidden one.

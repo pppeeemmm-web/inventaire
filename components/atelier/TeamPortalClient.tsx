@@ -46,6 +46,7 @@ import { tabNeedsCatalogueChunkOnColdStart, tabNeedsWholeCatalogue } from '@/lib
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
 import { getSidebarCounts, type SidebarCounts } from '@/app/atelier/sidebar-counts-actions'
+import { aiDeskBadgeCount } from '@/app/atelier/(portal)/ai/actions'
 import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
@@ -775,6 +776,8 @@ export function TeamPortalClient({
   const [kaizenUnseen, setKaizenUnseen] = useState({ creation: 0, ops: 0 })
   // Work under way (Pem 2026-11-18): orders, production, pipeline, events, shipments — refreshed on tab change.
   const [underway, setUnderway] = useState<SidebarCounts>({ orders: 0, production: 0, pipeline: 0, events: 0, logistics: 0 })
+  // Bureau IA (admin): what waits for the PC's AI — voice notes, index, queued jobs, cards to check (Pem 2026-11-19).
+  const [aiWaiting, setAiWaiting] = useState(0)
 
   // Journal badge: team activity by OTHER users since this device's last Journal
   // visit (per-device cursor in localStorage). Kaizen badges: entries others added
@@ -809,6 +812,12 @@ export function TeamPortalClient({
       void afterForeground().then(() => openReadOr(shellOpenKey.sidebar, () => getSidebarCounts())).then((r) => {
         if (!cancelled && !('error' in r)) setUnderway(r)
       }).catch(() => { /* badges stay as they were */ })
+      // initialIsAdmin: the isAdmin state is declared further down; the server re-checks anyway.
+      if (initialIsAdmin) {
+        void afterForeground().then(() => aiDeskBadgeCount()).then((n) => {
+          if (!cancelled) setAiWaiting(n)
+        }).catch(() => { /* badge stays as it was */ })
+      }
     }
     // Page open: both counts come with the frame's read. A tab hop (TODO 19): Server Actions run one
     // at a time, so the badges wait a moment and the new tab's own read goes first; quick hops refresh once.
@@ -817,7 +826,7 @@ export function TeamPortalClient({
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [tab])
+  }, [tab, initialIsAdmin])
 
   // The rest of the catalogue (~1 MB) only where a tab reads it whole: Inventory, Reports, Themes,
   // Production… — not on Overview (server counts, newest works from the first chunk), Stock, or the tabs
@@ -1155,14 +1164,14 @@ export function TeamPortalClient({
       ['kaizen-ops',    t('kaizen_group_ops'), kaizenUnseen.ops > 0 ? kaizenUnseen.ops : undefined],
       ['system',        t('tab_system')],
       ['aide',          t('aide_tab')],
-      ['ai',            t('ai_tab')],
+      ['ai',            t('ai_tab'), isAdmin && aiWaiting > 0 ? aiWaiting : undefined],
       [
         'audit',
         t('tab_audit'),
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen, underway],
+    [t, oeuvresCatalogueCount, contacts, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen, underway, aiWaiting],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''

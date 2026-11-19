@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — The PC's AI on demand: « Lancer sur ce PC », one pass then it stops, a badge on Bureau IA (Pem « switch it on if I need to … a badge on the sidebar », « Go, build it »)
+
+- Why it was « éteint »: `start-hidden.vbs` (`026accf`) started node from `<app>\scripts`, which found no script and exited — the agent never ran from the task; « Faire maintenant » only queued. Launcher fixed (`34f89d0`), then made on demand.
+- Agent: one pass by default (`npm run ai:agent`: what waits, one job after the other, then stops; check-in at start and end); `--watch` keeps the old loop, by hand. `start-hidden.vbs`: no window, no loop, log `scripts/ai-agent/agent.log` (gitignored).
+- `register-ai-agent.ps1`: the `pem-ai:` link (HKCU, like `pem-embed:`) + one pass at Windows sign-in (no restarts); `-Stop` ends the launcher then node; `-Unregister` removes both. Applied on the studio PC.
+- Bureau IA: top line « L'IA du PC travaille… » / « Dernier passage : … », « Lancer sur ce PC » (PC only); « Faire maintenant » queues and starts it on the PC, only queues on a phone (own wording). Sidebar « Bureau IA » badge (admin): voice notes + index + queued jobs + cards to check (`aiDeskBadgeCount`, with the other badges on tab change).
+- Seen: `pem-ai:run` → one pass → « nothing left — stopping », no process left; Chrome (admin, localhost): status line + button; 375 px frame: no button, phone wording, no sideways scroll, job queued → sidebar « Bureau IA 1 » → pass → badge gone. Not clicked in Chrome: the « Lancer » button itself (Chrome's « Ouvrir ? » prompt), the link was run from Windows.
+
 ## 2026-11-19 — AI desk phase 3: business cards read on the PC, checked on Bureau IA (TODO §3 AI desk + Look and layout « agent accepts only a cards/ key », Pem « Go, as recommended »)
 
 - Capture: every card photo kept in the Vault queues an `ai_job` (kind `card`, target = contact, payload = Vault key) — `commitBusinessCardCapture` / `queueCardJob`; no SQL (table, kind and team insert policy existed).

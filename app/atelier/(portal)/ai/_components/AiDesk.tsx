@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { surfaceError } from '@/lib/error-reporter/client'
 import { decideAiJob, loadAiDesk, queueAiJob, type AiDeskData, type AiRunKind, type CardReview } from '../actions'
 
@@ -13,6 +14,13 @@ import { decideAiJob, loadAiDesk, queueAiJob, type AiDeskData, type AiRunKind, t
 const CMD_VOICE_INDEX = 'pwsh scripts/embed-run.ps1'
 const CMD_DESCRIBE = 'pwsh scripts/describe-run.ps1'
 const PROTOCOL_HREF = 'pem-embed:run'
+/** Starts ONE pass of the PC agent on this PC (scripts/register-ai-agent.ps1 registers it): it runs what waits, then stops. */
+const AGENT_HREF = 'pem-ai:run'
+
+/** On the PC (not a phone): open the pem-ai: link, which starts the agent for one pass. Chrome asks the first time. */
+function startAgentHere() {
+  window.location.href = AGENT_HREF
+}
 
 function Dot({ on }: { on: boolean }) {
   return <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: on ? 'var(--sage)' : 'var(--tx3)', opacity: on ? 1 : 0.5 }} />
@@ -56,7 +64,7 @@ function Command({ cmd, withLink }: { cmd: string; withLink?: boolean }) {
   )
 }
 
-function RunButton({ kind, jobs, onDone }: { kind: AiRunKind; jobs: AiDeskData['jobs']; onDone: () => void }) {
+function RunButton({ kind, jobs, onDone, onPc }: { kind: AiRunKind; jobs: AiDeskData['jobs']; onDone: () => void; onPc: boolean }) {
   const { t } = useI18n()
   const [pending, setPending] = useState(false)
   const [err, setErr] = useState(false)
@@ -67,7 +75,11 @@ function RunButton({ kind, jobs, onDone }: { kind: AiRunKind; jobs: AiDeskData['
     try {
       const res = await queueAiJob(kind)
       if ('error' in res && res.error !== 'already') setErr(true)
-      else onDone()
+      else {
+        // On the PC the job is queued AND the agent started; on a phone it waits for the next pass on the PC.
+        if (onPc) startAgentHere()
+        onDone()
+      }
     } catch (e) {
       surfaceError(String(e), e, { source: 'ai-desk.queue' })
       setErr(true)
@@ -186,6 +198,8 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
   const [data, setData] = useState<AiDeskData | null>(null)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The pem-ai: switch exists on the studio PC only; a phone just queues (the next pass on the PC does it).
+  const onPc = !useMediaQuery('(max-width: 767px)')
 
   const refresh = useCallback(async () => {
     setBusy(true)
@@ -218,9 +232,9 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
   const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
   const n = (v: number | null | undefined) => (data === null ? '…' : v == null ? '—' : v.toLocaleString(loc))
   const agent = data?.agent ?? null
-  const agentMin = agent ? Math.max(0, Math.floor((Date.now() - new Date(agent.seenAt).getTime()) / 60000)) : 0
-  const agentFresh = agent != null && Date.now() - new Date(agent.seenAt).getTime() < 3 * 60000
   const jobs = data?.jobs ?? []
+  const running = jobs.some((j) => j.status === 'running')
+  const when = (d: string) => new Date(d).toLocaleString(loc, { dateStyle: 'short', timeStyle: 'short' })
   const kindLabel = (k: string) =>
     k === 'voice' ? t('ai_kind_voice') : k === 'embed' ? t('ai_kind_embed') : k === 'describe' ? t('ai_kind_describe') : k === 'card' ? t('ai_kind_card') : k
   const statusLabel = (s: string) =>
@@ -242,35 +256,46 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
         </div>
         {failed ? <p style={{ color: 'var(--rust)' }}>{t('ai_load_error')}</p> : null}
 
-        {/* 1. One sentence: is the PC's assistant on? (Pem 2026-11-18: « obscure » — plain words first, details folded) */}
+        {/* 1. The PC's assistant runs on demand (Pem 2026-11-19 « switch it on if I need to, it shuts down when done »):
+            running now, or when it last ran — and the switch. */}
         <div
           data-testid="ai-desk-status"
-          style={{ margin: '14px 0 24px', padding: '16px 18px', border: '1px solid var(--bd)', borderLeft: `3px solid ${agentFresh ? 'var(--sage)' : 'var(--tx3)'}`, background: 'var(--bg1)' }}
+          style={{ margin: '14px 0 24px', padding: '16px 18px', border: '1px solid var(--bd)', borderLeft: `3px solid ${running ? 'var(--sage)' : 'var(--tx3)'}`, background: 'var(--bg1)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
         >
-          <div style={{ fontSize: 18, color: 'var(--tx)' }}>
-            {data === null ? '…' : agentFresh ? t('ai_plain_on') : t('ai_plain_off')}
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+            <div style={{ fontSize: 18, color: 'var(--tx)' }}>
+              {data === null ? '…' : running ? t('ai_pass_running') : agent ? t('ai_pass_last').replace('{d}', when(agent.seenAt)) : t('ai_pass_never')}
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--tx2)', marginTop: 6 }}>{data === null ? null : onPc ? t('ai_pass_sub_pc') : t('ai_pass_sub_phone')}</div>
           </div>
-          <div style={{ fontSize: 14, color: 'var(--tx2)', marginTop: 6 }}>
-            {data === null ? null : agentFresh ? t('ai_plain_on_sub') : t('ai_plain_off_sub')}
-          </div>
+          {onPc && data !== null ? (
+            <a
+              href={AGENT_HREF}
+              data-testid="ai-desk-launch"
+              className="btn primary sm"
+              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+              onClick={() => window.setTimeout(() => void refresh(), 3000)}
+            >
+              {running ? t('ai_pass_running_short') : t('ai_launch')}
+            </a>
+          ) : null}
         </div>
 
         {/* 2. What it does for you: one line per job, a count, one button. */}
         <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('ai_plain_tasks')}</div>
         <div data-testid="ai-desk-queues">
           <Task title={t('ai_plain_voice')} what={t('ai_plain_voice_what')} count={n(q?.voice)} zero={(q?.voice ?? 0) === 0}>
-            <RunButton kind="voice" jobs={jobs} onDone={() => void refresh()} />
+            <RunButton kind="voice" jobs={jobs} onDone={() => void refresh()} onPc={onPc} />
           </Task>
           <Task title={t('ai_plain_index')} what={t('ai_plain_index_what')} count={n(q?.index)} zero={(q?.index ?? 0) === 0}>
-            <RunButton kind="embed" jobs={jobs} onDone={() => void refresh()} />
+            <RunButton kind="embed" jobs={jobs} onDone={() => void refresh()} onPc={onPc} />
           </Task>
           <Task title={t('ai_plain_describe')} what={t('ai_plain_describe_what')} count={n(q?.describe)} zero={(q?.describe ?? 0) === 0}>
-            <RunButton kind="describe" jobs={jobs} onDone={() => void refresh()} />
+            <RunButton kind="describe" jobs={jobs} onDone={() => void refresh()} onPc={onPc} />
           </Task>
           <Task title={t('ai_plain_cards')} what={t('ai_plain_cards_what')} count={n(q?.cards?.waiting)} zero={(q?.cards?.waiting ?? 0) === 0} />
         </div>
         {q?.cards && q.cards.review.length > 0 ? <CardReviews items={q.cards.review} onDone={() => void refresh()} /> : null}
-        {data && !agentFresh ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '8px 0 0' }}>{t('ai_plain_queued_off')}</p> : null}
 
         <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 28 }}>{t('ai_jobs')}</div>
         {data && jobs.length === 0 ? <p style={{ color: 'var(--tx3)', fontSize: 13 }}>{t('ai_jobs_none')}</p> : null}
@@ -298,9 +323,9 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
           {data ? (
             <div data-testid="ai-desk-engines">
               <Row
-                on={agentFresh}
+                on={running}
                 label={t('ai_agent')}
-                value={agent ? t('ai_agent_seen').replace('{n}', String(agentMin)) + (agentFresh ? ' · ' + agent.models.map((m) => `${m.name} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ') : '') : t('ai_agent_never')}
+                value={agent ? when(agent.seenAt) + (agent.models.length > 0 ? ' · ' + agent.models.map((m) => `${m.name} ${m.present ? t('ai_model_present') : t('ai_model_missing')}`).join(' · ') : '') : t('ai_agent_never')}
               />
               <Row on={!data.openaiKey} label={t('ai_openai_key')} value={data.openaiKey ? t('ai_yes') : t('ai_no')} />
               <Row on={data.cardPhoto !== 'none'} label={t('ai_card_photo')} value={data.cardPhoto === 'openai' ? t('ai_engine_openai') : t('ai_engine_none')} />
@@ -309,6 +334,7 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
               {!ollamaOk ? <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '6px 0 0 19px' }}>{data.server === 'live' ? t('ai_ollama_out_live') : t('ai_ollama_out_pc')}</p> : null}
               <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_agent_start')}</p>
               <Command cmd="npm run ai:agent" />
+              <Command cmd="pwsh scripts/register-ai-agent.ps1" />
               <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '12px 0 0' }}>{t('ai_by_hand')}</p>
               <Command cmd={CMD_VOICE_INDEX} withLink />
               <Command cmd="npm run embed:worker -- --drain" />

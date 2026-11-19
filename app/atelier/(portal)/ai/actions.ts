@@ -336,3 +336,22 @@ export async function decideAiJob(jobId: number, decision: 'accepted' | 'rejecte
   }
   return data && data.length > 0 ? { ok: true } : { error: 'gone' }
 }
+
+/**
+ * Sidebar badge on « Bureau IA » (admin; Pem 2026-11-19 « something on the sidebar that the AI needs to be run »):
+ * voice notes to transcribe + items to index + jobs queued for the PC + cards read and not yet decided.
+ * Image descriptions are left out (counting them reads the whole catalogue); Bureau IA shows them.
+ * 0 when not admin or on any read error (a badge never blocks the menu).
+ */
+export async function aiDeskBadgeCount(): Promise<number> {
+  const supabase = await adminClient()
+  if (!supabase) return 0
+  const [voice, index, queued, review] = await Promise.all([
+    countVoiceTranscriptBacklog(),
+    countEmbeddingBacklog(),
+    supabase.from('ai_job').select('id', { count: 'exact', head: true }).eq('status', 'waiting'),
+    supabase.from('ai_job').select('id', { count: 'exact', head: true }).eq('kind', 'card').eq('status', 'done').is('decision', null),
+  ])
+  if (queued.error || review.error) console.error('[ai-desk] badge', queued.error?.message ?? review.error?.message)
+  return (voice ?? 0) + (index ?? 0) + (queued.count ?? 0) + (review.count ?? 0)
+}

@@ -32,6 +32,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  wn_admin_ai_on_demand_t: { fr: 'L’IA du PC : un bouton pour la lancer, un badge pour ce qui attend', en: 'The PC’s AI: a button to start it, a badge for what waits' },
+  wn_admin_ai_on_demand_d: {
+    fr: 'Le badge de Bureau IA dans le menu compte ce qui attend. Sur le PC, « Lancer sur ce PC » (ou « Faire maintenant ») fait tout, puis l’IA s’arrête. Elle passe aussi à l’ouverture de session Windows.',
+    en: 'The AI desk badge in the menu counts what waits. On the PC, « Start on this PC » (or « Do it now ») does it all, then the AI stops. It also runs when you sign in to Windows.',
+  },
   wn_admin_ai_cards_t: { fr: 'Bureau IA : les cartes de visite lues par votre PC', en: 'Bureau IA: business cards read by your PC' },
   wn_admin_ai_cards_d: {
     fr: 'Une carte photographiée au téléphone est lue par l’IA de votre PC. Bureau IA → « Cartes lues, à vérifier » montre ce qu’elle ajouterait à la fiche ; « Ouvrir et vérifier » pose ces ajouts dans la fiche, vous corrigez puis Enregistrer. Rien n’est remplacé.',

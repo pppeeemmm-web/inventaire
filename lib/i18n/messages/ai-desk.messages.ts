@@ -2,16 +2,8 @@ import { defineMessages } from '../message-core'
 
 /** « Bureau IA » (Kaizen → Bureau IA, admin) — phase 1, read only (Pem « go for ai build », 2026-11-18). */
 export const aiDeskMessages = defineMessages({
-  ai_plain_on: { fr: '✓ L’assistant IA de votre PC est allumé.', en: '✓ Your PC’s AI assistant is on.' },
-  ai_plain_on_sub: {
-    fr: 'Il fait les travaux ci-dessous sur votre PC. Rien ne part vers un service d’IA extérieur.',
-    en: 'It does the jobs below on your PC. Nothing goes to an outside AI service.',
-  },
-  ai_plain_off: { fr: 'L’assistant IA de votre PC est éteint.', en: 'Your PC’s AI assistant is off.' },
-  ai_plain_off_sub: {
-    fr: 'Il se rallume tout seul quand vous ouvrez votre session Windows sur le PC du studio. En attendant, rien n’est perdu : le travail attend ici.',
-    en: 'It starts again by itself when you sign in to Windows on the studio PC. Meanwhile nothing is lost: the work waits here.',
-  },
+
+
   ai_plain_tasks: { fr: 'Ce qu’il fait pour vous', en: 'What it does for you' },
   ai_plain_voice: { fr: 'Transcrire vos notes vocales', en: 'Transcribe your voice notes' },
   ai_plain_voice_what: { fr: 'Chaque note vocale devient un texte dans le Journal.', en: 'Each voice note becomes a text in the Journal.' },
@@ -27,10 +19,7 @@ export const aiDeskMessages = defineMessages({
   ai_plain_nothing: { fr: 'rien à faire', en: 'nothing to do' },
   ai_plain_waiting: { fr: '{n} en attente', en: '{n} waiting' },
   ai_plain_run: { fr: 'Faire maintenant', en: 'Do it now' },
-  ai_plain_queued_off: {
-    fr: '« Faire maintenant » fonctionne même PC éteint : le travail sera fait dès qu’il se rallume.',
-    en: '« Do it now » works with the PC off too: the work is done as soon as it is back on.',
-  },
+
   ai_plain_tech: { fr: 'Détails techniques (inutile au quotidien)', en: 'Technical details (not needed day to day)' },
   ai_plain_tech_note: {
     fr: 'Pour un dépannage. « Clé OpenAI : non » est voulu : vous avez choisi l’IA locale. « Ollama hors de portée » aussi : le site en ligne ne voit pas votre PC, c’est l’assistant du PC qui fait le travail.',
@@ -75,10 +64,9 @@ export const aiDeskMessages = defineMessages({
   ai_latest: { fr: 'dernière : {d}', en: 'latest: {d}' },
   ai_agent: { fr: 'Agent du PC', en: 'PC agent' },
   ai_agent_never: { fr: 'jamais vu', en: 'never seen' },
-  ai_agent_seen: { fr: 'vu il y a {n} min', en: 'seen {n} min ago' },
   ai_agent_start: {
-    fr: 'L’agent ne tourne pas. Sur le PC du studio, dans le dossier de l’application :',
-    en: 'The agent is not running. On the studio PC, in the app folder:',
+    fr: 'À la main, sur le PC du studio, dans le dossier de l’application : un passage (1re ligne) ; installer « Lancer sur ce PC » et le passage à l’ouverture de session (2e ligne, une fois) :',
+    en: 'By hand, on the studio PC, in the app folder: one pass (line 1); set up « Start on this PC » and the sign-in pass (line 2, once):',
   },
   ai_run_intro: {
     fr: '« Lancer » met le travail en file ; l’agent du PC le prend dans les 15 secondes, un à la fois.',
@@ -120,4 +108,17 @@ export const aiDeskMessages = defineMessages({
     en: 'Suggestions read from the business card by the PC’s AI: only empty fields are filled, nothing is replaced. Check, then Save.',
   },
   ai_card_gone: { fr: 'Cette suggestion a déjà été traitée.', en: 'This suggestion was already handled.' },
+  ai_pass_running: { fr: 'L’IA du PC travaille…', en: 'The PC’s AI is working…' },
+  ai_pass_running_short: { fr: 'En cours…', en: 'Working…' },
+  ai_pass_last: { fr: 'Dernier passage de l’IA du PC : {d}', en: 'The PC’s AI last ran: {d}' },
+  ai_pass_never: { fr: 'L’IA du PC n’a pas encore tourné.', en: 'The PC’s AI has not run yet.' },
+  ai_pass_sub_pc: {
+    fr: 'Elle tourne quand vous la lancez (ou à l’ouverture de votre session Windows), fait tout ce qui attend, puis s’arrête. Rien ne part vers un service d’IA extérieur.',
+    en: 'It runs when you start it (or when you sign in to Windows), does everything waiting, then stops. Nothing goes to an outside AI service.',
+  },
+  ai_pass_sub_phone: {
+    fr: '« Faire maintenant » met le travail en attente : il sera fait au prochain lancement sur le PC du studio.',
+    en: '« Do it now » queues the work: it is done the next time it is started on the studio PC.',
+  },
+  ai_launch: { fr: 'Lancer sur ce PC', en: 'Start on this PC' },
 })

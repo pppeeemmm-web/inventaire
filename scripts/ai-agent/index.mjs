@@ -2,8 +2,10 @@
  * PEM AI agent — runs on the studio PC (Pem « go for ai build », local only, 2026-11-18).
  * docs/design/2026-11-18/AiDesk.notes.md, table `ai_job` (supabase/sql/ai_job.sql).
  *
- *   npm run ai:agent            keep running: heartbeat every minute, pick waiting jobs every 15 s
- *   npm run ai:agent -- --once  run what is waiting now, then exit
+ *   npm run ai:agent             run what is waiting now, one job after the other, then exit (the default:
+ *                                Pem 2026-11-19 « on when I need it » — started by Bureau IA's « Lancer sur ce PC »
+ *                                (pem-ai: link) or at Windows sign-in, scripts/register-ai-agent.ps1)
+ *   npm run ai:agent -- --watch  keep running: heartbeat every minute, pick waiting jobs every 15 s (by hand)
  *
  * The Bureau IA screen queues jobs; this process picks them ONE AT A TIME (Whisper large-v3 and the Ollama
  * models do not fit together in 8 GB of GPU memory) and runs the same scripts as before:
@@ -31,7 +33,7 @@ const POLL_MS = 15_000
 const HEARTBEAT_MS = 60_000
 const LOG_TAIL = 4000
 const PYTHON = path.join(os.homedir(), '.venvs', 'transcribe', 'Scripts', 'python.exe')
-const ONCE = process.argv.includes('--once')
+const WATCH = process.argv.includes('--watch')
 
 const sb = supabaseAdmin()
 
@@ -173,8 +175,12 @@ async function main() {
   if (error) log('reset failed:', error.message)
 
   await heartbeat()
-  if (ONCE) {
+  if (!WATCH) {
+    // One pass: the desk shows « En cours » from the running job, then « Dernier passage » from this last check-in.
+    log(`PEM AI agent « ${AGENT_ID} »: one pass`)
     await drainQueue()
+    await heartbeat()
+    log('nothing left — stopping')
     return
   }
   log(`PEM AI agent « ${AGENT_ID} » running — Ctrl+C to stop`)
