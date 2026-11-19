@@ -46,3 +46,6 @@ components/public/WorksClient_clean.tsx
 
 # python caches (scripts/transcribe)
 __pycache__/
+
+# PC AI agent log (scripts/ai-agent/start-hidden.vbs)
+scripts/ai-agent/agent.log

@@ -10,11 +10,18 @@ param([switch]$Unregister, [switch]$Now, [switch]$Stop)
 $ErrorActionPreference = "Stop"
 $name = "PEM AI agent"
 
-if ($Stop -or $Unregister) {
-  # The agent runs as node.exe with scripts/ai-agent/index.mjs on its command line: stop only that one.
+# The hidden launcher (wscript running start-hidden.vbs) restarts node when it stops: end the launcher first, then node.
+function Stop-PemAgent {
+  Get-CimInstance Win32_Process -Filter "Name = 'wscript.exe'" |
+    Where-Object { $_.CommandLine -like '*start-hidden.vbs*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
     Where-Object { $_.CommandLine -like '*ai-agent*index.mjs*' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force; Write-Host "PEM AI agent stopped (pid $($_.ProcessId))." }
+}
+
+if ($Stop -or $Unregister) {
+  Stop-PemAgent
   if ($Stop) { return }
 }
 
@@ -34,10 +41,8 @@ Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settin
 Write-Host "$name registered: starts at sign-in from $repo"
 
 if ($Now) {
-  # Replace an agent already running in a window by the hidden one.
-  Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
-    Where-Object { $_.CommandLine -like '*ai-agent*index.mjs*' } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+  # Replace an agent already running (in a window, or an older hidden one) by the hidden one.
+  Stop-PemAgent
   Start-ScheduledTask -TaskName $name
   Write-Host "$name started."
 }
