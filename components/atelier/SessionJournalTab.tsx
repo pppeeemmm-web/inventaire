@@ -120,11 +120,22 @@ function JournalInventoryIdLink({
 
 type SummaryT = ReturnType<typeof useI18n>['t']
 
-/** Distinct works of the day: two items (or two sessions) on the same work count once, as on the phone day
- *  (`worksOfDay` in app/hub/today/page.tsx); an item with no work yet counts on its own here — the phone skips it (stress test 2026-11-18). */
+/** Distinct works of the day: two items (or two sessions) on the same work count once, an item with no work yet
+ *  on its own — the same rule as the phone day (`worksOfDay` in app/hub/today/page.tsx, 2026-11-19). */
 function distinctWorkCount(row: WorkSessionJournalRow): number {
   if (!row.items?.length) return row.item_count
-  return new Set(row.items.map((item) => (item.oeuvre_id != null ? `w${item.oeuvre_id}` : `i${item.id}`))).size
+  return distinctItems(row.items).length
+}
+
+/** One item per work (the first), every item with no work yet kept: the day list shows a work once (stress test 2026-11-18). */
+function distinctItems(items: WorkSessionJournalItem[]): WorkSessionJournalItem[] {
+  const seen = new Set<number>()
+  return items.filter((item) => {
+    if (item.oeuvre_id == null) return true
+    if (seen.has(item.oeuvre_id)) return false
+    seen.add(item.oeuvre_id)
+    return true
+  })
 }
 
 function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSourceDay, isAdmin = false): string {
@@ -1142,30 +1153,32 @@ export function SessionJournalTab() {
                         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 5, lineHeight: 1.4 }}>
                           {daySummaryLine(row, t, sourceByDay.get(rowDay(row)), isAdmin)}
                         </div>
-                        {row.items.length > 0 ? (
-                          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {row.items.slice(0, 3).map((item, idx) => (
-                              <div
-                                key={item.id}
-                                className="t-mono-sm"
-                                style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.35 }}
-                              >
-                                {itemTitle(item, `${t('session_painting_label')} ${idx + 1}`)}
-                                {item.oeuvre_id ? (
-                                  <>
-                                    {' · '}
+                        {row.items.length > 0 ? (() => {
+                          // One line per work; a linked work shows « #id title » once (the link carries the title).
+                          const shown = distinctItems(row.items)
+                          return (
+                            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {shown.slice(0, 3).map((item, idx) => (
+                                <div
+                                  key={item.id}
+                                  className="t-mono-sm"
+                                  style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.35 }}
+                                >
+                                  {item.oeuvre_id ? (
                                     <JournalInventoryIdLink oeuvreId={item.oeuvre_id} stopPropagation />
-                                  </>
-                                ) : null}
-                              </div>
-                            ))}
-                            {row.items.length > 3 ? (
-                              <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-                                +{row.items.length - 3}
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
+                                  ) : (
+                                    itemTitle(item, `${t('session_painting_label')} ${idx + 1}`)
+                                  )}
+                                </div>
+                              ))}
+                              {shown.length > 3 ? (
+                                <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                                  +{shown.length - 3}
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                        })() : null}
                         {row.journal_notes ? (
                           <div
                             style={{

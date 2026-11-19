@@ -45,6 +45,8 @@ const DayEntryTools = dynamic(() => import('@/components/hub/DayTools').then((m)
 const DaySessionEdit = dynamic(() => import('@/components/hub/DayTools').then((m) => m.DaySessionEdit), { ssr: false })
 
 export type TodayWork = { id: number; title: string | null; thumb: string | null }
+/** A session item with no work yet (no catalogue record): shown by its title hint, not a link. */
+export type TodayPendingItem = { key: string; title: string | null }
 
 const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
   past_due: 'field_pulse_metric_past_due',
@@ -203,13 +205,21 @@ export function TodaySeeAgain({ seeAgain }: { seeAgain: SeeAgainSlots }) {
   )
 }
 
-export function TodayWorks({ works, isToday = true }: { works: TodayWork[]; isToday?: boolean }) {
+export function TodayWorks({ works, pending = [], isToday = true }: { works: TodayWork[]; pending?: TodayPendingItem[]; isToday?: boolean }) {
   const { t } = useI18n()
   return (
     <section data-testid="hub-today-works" style={section}>
       <h2 style={heading}>{t('today_works')}</h2>
-      {works.length ? (
-        <div style={{ display: 'grid', gap: 6 }}>{works.map((w) => <WorkChip key={w.id} work={w} />)}</div>
+      {works.length || pending.length ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {works.map((w) => <WorkChip key={w.id} work={w} />)}
+          {pending.map((p, i) => (
+            <div key={p.key} data-testid="hub-today-work-pending" style={{ fontSize: 14, lineHeight: 1.4, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, overflowWrap: 'anywhere' }}>
+              <span>{p.title || `${t('session_painting_label')} ${works.length + i + 1}`}</span>
+              <span style={{ ...muted, fontSize: 12 }}>{t('today_work_no_record')}</span>
+            </div>
+          ))}
+        </div>
       ) : (
         <p style={muted}>{t(isToday ? 'today_works_empty' : 'today_works_empty_day')}</p>
       )}

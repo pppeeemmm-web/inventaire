@@ -31,6 +31,7 @@ import {
   TodaySuggestions,
   TodaySummary,
   TodayWorks,
+  type TodayPendingItem,
   type TodayWork,
 } from '@/components/hub/TodayClient'
 
@@ -41,18 +42,25 @@ function settle<T>(p: Promise<T>): Promise<T | { error: string }> {
   return p.catch((e: unknown) => ({ error: e instanceof Error ? e.message : 'load' }))
 }
 
-function worksOfDay(rows: WorkSessionJournalRow[], day: string): TodayWork[] {
+/** The day's works, each once, and the items with no work yet (each on its own) — the same rule as the
+ *  desktop Journal day (`distinctItems` in SessionJournalTab, 2026-11-19: the phone skipped those items). */
+function worksOfDay(rows: WorkSessionJournalRow[], day: string): { works: TodayWork[]; pending: TodayPendingItem[] } {
   const seen = new Set<number>()
   const works: TodayWork[] = []
+  const pending: TodayPendingItem[] = []
   for (const row of rows) {
     if (row.calendar_day !== day) continue
     for (const item of row.items) {
-      if (item.oeuvre_id == null || seen.has(item.oeuvre_id)) continue
+      if (item.oeuvre_id == null) {
+        pending.push({ key: item.id, title: item.title_hint?.trim() || null })
+        continue
+      }
+      if (seen.has(item.oeuvre_id)) continue
       seen.add(item.oeuvre_id)
       works.push({ id: item.oeuvre_id, title: item.oeuvre_title, thumb: item.work_thumb })
     }
   }
-  return works
+  return { works, pending }
 }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -132,7 +140,7 @@ async function SummarySection({ extras, sessions, day }: { extras: Promise<Extra
   return (
     <TodaySummary
       entries={ok ? x.entries.filter((e) => !e.hidden).length : 0}
-      works={Array.isArray(s) ? worksOfDay(s, day).length : 0}
+      works={Array.isArray(s) ? ((d) => d.works.length + d.pending.length)(worksOfDay(s, day)) : 0}
       voices={ok ? x.voices.length : 0}
     />
   )
@@ -156,7 +164,9 @@ async function SeeAgainSection({ seeAgain }: { seeAgain: Promise<Awaited<ReturnT
 
 async function WorksSection({ sessions, day, isToday }: { sessions: Promise<Sessions>; day: string; isToday: boolean }) {
   const s = await sessions
-  return Array.isArray(s) ? <TodayWorks works={worksOfDay(s, day)} isToday={isToday} /> : <TodayLoadError />
+  if (!Array.isArray(s)) return <TodayLoadError />
+  const { works, pending } = worksOfDay(s, day)
+  return <TodayWorks works={works} pending={pending} isToday={isToday} />
 }
 
 async function EntriesSection({ extras, isToday }: { extras: Promise<Extras>; isToday: boolean }) {

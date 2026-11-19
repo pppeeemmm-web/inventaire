@@ -41,6 +41,7 @@ export const todayMessages = defineMessages({
   today_prev_day: { fr: 'Jour précédent', en: 'Previous day' },
   today_next_day: { fr: 'Jour suivant', en: 'Next day' },
   today_works_empty_day: { fr: 'Aucune œuvre ce jour-là', en: 'No work that day' },
+  today_work_no_record: { fr: 'pas encore de fiche', en: 'no record yet' },
   today_entries_empty_day: { fr: 'Rien d’écrit ce jour-là', en: 'Nothing written that day' },
   today_suggestion_idea: { fr: 'Idée', en: 'Idea' },
   today_photographed: { fr: 'Photographiées ce jour', en: 'Photographed that day' },
