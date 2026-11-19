@@ -686,7 +686,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         if (v) out.push({ key: `m${out.length}`, glyph: '✉', aria: t('contact_links_email_fmt').replace('{label}', v), href: `mailto:${v}`, external: false })
       }
       for (const p of phoneList) {
-        const v = `${(p.country_code ?? '').trim()}${p.phone.trim()}`.replace(/[^\d+]/g, '')
+        const cc = (p.country_code ?? '').replace(/[^\d+]/g, '')
+        const num = p.phone.replace(/[^\d+]/g, '')
+        // +33 06… → +336… (the trunk 0 is dropped after a country code; a number already starting with + is kept)
+        const v = num.startsWith('+') || !cc ? num : `${cc.startsWith('+') ? cc : `+${cc}`}${num.replace(/^0/, '')}`
         if (v) out.push({ key: `p${out.length}`, glyph: '☎', aria: t('contact_links_phone_fmt').replace('{label}', `${p.country_code ?? ''} ${p.phone}`.trim()), href: `tel:${v}`, external: false })
       }
       for (const l of contactLinks(webList, socialList)) {

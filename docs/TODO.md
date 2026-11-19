@@ -8,13 +8,11 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- Until the pause (Max runs to 17 Dec 2026), in this order: a « where we stopped » note (progress per aim, what is in flight, what comes first after the pause — the first version of the progress dashboard) → the two bugs in §1 → contact merge in one transaction → one automated stress round → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
+- Until the pause (Max runs to 17 Dec 2026), in this order: contact merge in one transaction → one automated stress round → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
 
 Bugs
-- [ ] Saved social links (and the website) don't show in the contact details: two stores, `Contact.Instagram / LinkedIn / Facebook / Twitter` (3 contacts) and `contact_socials` (1 row) → one store, the website as one of the links, clickable icons in the details (SQL, Pem's OK) → [notes H1](./design/2026-11-19/CatalogueGaps.notes.md#h1-social-links-not-in-the-contact-details)
-- [ ] AI contact fill writes in the source's language (Spanish seen): suggestions must come in the app's language, proper names kept (`scripts/ai-agent/card.mjs`, `lib/ai-card-suggestion.ts`; the same for web addresses later) → [notes I](./design/2026-11-19/CatalogueGaps.notes.md#i-pems-own-pass-on-the-captures-2026-11-19-spoken)
 - [ ] Localhost: « Se déconnecter » lands back on the dev auto-login account (team, not admin), so an admin can't sign in on localhost after a sign-out → skip the auto-login after an explicit sign-out (dev only).
 
 Data safety (SQL, Pem's OK given)

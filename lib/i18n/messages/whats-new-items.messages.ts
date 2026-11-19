@@ -32,6 +32,12 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  // 3.1.83 (2026-11-19) — contact links in one row; AI contact fill in French.
+  wn_contact_links_row_t: { fr: 'Contacts : site web et réseaux en un clic', en: 'Contacts: website and socials in one click' },
+  wn_contact_links_row_d: {
+    fr: 'En haut d’une fiche contact, une rangée de boutons : écrire, appeler, ouvrir le site, Instagram, LinkedIn… Les sites et comptes enregistrés autrefois qui ne s’affichaient pas y sont maintenant. Les fiches remplies par l’IA (carte de visite, page web) arrivent en français, les noms restent tels qu’imprimés.',
+    en: 'At the top of a contact, a row of buttons: write, call, open the website, Instagram, LinkedIn… Websites and accounts saved earlier that did not show are there now. Contacts filled by the AI (business card, web page) come in French, names kept as printed.',
+  },
   wn_admin_ai_on_demand_t: { fr: 'L’IA du PC : un bouton pour la lancer, un badge pour ce qui attend', en: 'The PC’s AI: a button to start it, a badge for what waits' },
   wn_admin_ai_on_demand_d: {
     fr: 'Le badge de Bureau IA dans le menu compte ce qui attend. Sur le PC, « Lancer sur ce PC » (ou « Faire maintenant ») fait tout, puis l’IA s’arrête. Elle passe aussi à l’ouverture de session Windows.',

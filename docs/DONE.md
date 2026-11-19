@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Contact links in one row; AI contact fill in French; « where we stopped » note (TODO Now + §1 bugs, Pem « lets go », « Go, option A », « Yes, apply SQL »)
+
+- « Where we stopped » note: [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) — progress per aim, in flight, waiting on Pem, first after the pause (first version of the progress dashboard) — `1d94b3f`.
+- Social links not shown: websites live in `contact_websites`, social handles in `contact_socials`, the only stores; `Contact.Website / Instagram / LinkedIn / Facebook / Twitter` no longer read or written (columns kept; a drop needs its own OK). [`contact_links_from_columns.sql`](../supabase/sql/contact_links_from_columns.sql) applied live: 6 websites + 2 Instagram rows copied (the third was already a row), 0 left out. Contact editor « Liens » row: email, phone (trunk 0 dropped after the country code), websites, socials, 44 px links (`lib/contacts/contact-links.ts`). Work card quick add writes website / email / phone rows; merge skips the old columns; `npm run archive` keeps both tables — `814bb89`.
+- AI fill language: card prompt (`scripts/ai-agent/card.mjs`) and URL-enrich LLM prompt ask for role / country / labels in French, names and addresses as printed. Seen on the one card in the Vault (French); a Spanish source not tried yet (none captured).
+- Seen in Chrome (admin, localhost): Fernberger (5 links) and Zemma (website + Instagram from the old columns) open the right addresses. Flow review: 4 findings fixed. What's new 3.1.83.
+
 ## 2026-11-19 — The PC's AI on demand: « Lancer sur ce PC », one pass then it stops, a badge on Bureau IA (Pem « switch it on if I need to … a badge on the sidebar », « Go, build it »)
 
 - Why it was « éteint »: `start-hidden.vbs` (`026accf`) started node from `<app>\scripts`, which found no script and exited — the agent never ran from the task; « Faire maintenant » only queued. Launcher fixed (`34f89d0`), then made on demand.

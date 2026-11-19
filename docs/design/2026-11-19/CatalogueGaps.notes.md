@@ -238,6 +238,7 @@ Groups (items that share data are drafted together):
 ## H. Added by Pem on reading (2026-11-19)
 
 ### H1. Social links not in the contact details
+**Closed 2026-11-19** (option A: `contact_websites` + `contact_socials`, a « Liens » row in the editor) → [DONE](../../DONE.md).
 **Today:** two stores for the same thing — columns `Contact.Instagram / LinkedIn / Facebook / Twitter` (filled on 3 contacts) and the table `contact_socials` (platform + handle, 1 row). The editor (`ContactEditorPanel`) edits both. Pem: the social shortcuts are not in the contact details. To check in the browser: what the read view shows, and whether a handle opens the profile (link) or is plain text.
 **Pem 2026-11-19: « I couldn't see them either » → a bug** (saved links not shown in the contact details).
 **Proposal:** one store (`contact_socials`; move the 3 column values in, then stop reading the columns), the **website is one of the social links** (Pem), and a row of clickable icons in the contact details (desktop + phone), next to email / phone. After AI desk phase 3 lands (same files).
