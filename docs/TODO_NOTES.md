@@ -133,3 +133,18 @@ Fix ideas (to agree, then re-run the palette backfill `scripts/backfill-image-pa
 ## speed
 
 TODO §3 items 17–19. Measurements: [archive/SPEED_MEASURE_17-19_2026-11-18.md](./archive/SPEED_MEASURE_17-19_2026-11-18.md).
+
+## artwork-archive-gaps
+
+TODO §3 « Catalogue gaps ». Source: 39 captures of Artwork Archive (artist studio-management SaaS, trial account) in `C:\Users\pppee\Desktop\artworkarchive\`, compared with our code on 2026-11-19 (code grep only; live DB not checked).
+- Editions: Edition set (optional master piece, open / limited, initial pieces 0–1000, proofs 0–50, defaults for new pieces incl. paper / framed size, weight, circa). Runs / reproductions: piece, run name, date, medium, prints 1–1000, proofs 1–10, cost of run, sale price per print, signed prints. Ours: `supabase/sql/r6_events.sql:24` defers the edition entry + `work_order_work.copy_no`.
+- Publications: author first / last, article, publication, URL, date, type, other info (page, edition), document file, linked pieces. Ours: Pipeline « Livre » = making a book, not a bibliography.
+- Piece form: medium, subject matter, category / subcategory, tags, creation date + circa + override, price + wholesale, condition (Excellent / Very good / Good / Fair / Poor) + notes, H × W × D + override + framed / paper size, signed + notes, description (public), notes (always private), provenance notes, purchase link, collections, location, 30 images, video links, 5 audio files.
+- Statuses (17): No status, In progress, Available, Reserved, Donated, Gifted, Sold, Not for sale, On loan, Installed, In storage, In transit, Under maintenance, Work destroyed, Lost, Stolen, Deaccessioned, Returned to owner.
+- Contact: title, company, job title, image, 2 emails, 3 phones, social links, addresses tab, bio, notes, birth / death date, nationality, spouse, groups, location relation, tags; reminders synced to the calendar; report sharing logged on the contact.
+- Exhibition: show type, solo / group, description, phone, email, website, fee, curators, jurors, location type (On site / Online / Traveling) + location records for its pieces by date, start / end / reception, submission / notification / delivery / pickup deadlines, private notes.
+- Call submission: name, type (Art fair, Competition, Exhibition, Residency, Workshop, Public art proposal, Grant / fellowship, Services, Other), organization, URL, start / end, notification, entry fee, awards, submitted + date, decision (Pending …), notes, pieces; tabs My submissions / Saved calls.
+- Private room: header / logo / branding, description, show prices / buy button / sold / all statuses, piece name first, date, extra images, published, password, inventory no., subject, signature, condition, framed / paper size, cm + in, weight, wholesale, provenance, exhibition / publication history, collections, locations, viewer messages + favourites (email or instant), high-res download, video, audio, sort order.
+- Reports: artwork labels S / M / L, inventory list / tear sheet, portfolio / catalogue page, consignment / exhibition sheet, address labels / contact report, certificate of authenticity, income & expenses / sales report / invoice, cover page; templates, saved reports. Sales report columns: original price, sale price, commission, net, tax, from (location), to (buyer), totals, by location.
+- My Docs: Resume / CV, Bio, Statement, Proposal, Press, Other. Insights: art location map, inventory prices, production / sales / income over time by month / year.
+- Ahead on our side (no action): custody owner / custodian / address, orders V / D / P / C / G, shipments, insurance, condition reports, voice notes, themes / groups, pivots, calendar OAuth, phone /hub, verifiable COA, BNC fiscal, batch edit, Constellation.

@@ -71,6 +71,24 @@ Rethink leftovers
 - [ ] R1: store the ✦ match score (SQL) — only if the ✦ suggestions feel noisy.
 - [ ] R6: editions part 2 — at the first real edition.
 
+Catalogue gaps (Artwork Archive comparison → [notes](./TODO_NOTES.md#artwork-archive-gaps); each touches data: Flow trace + GO)
+- [ ] Editions and print runs: open / limited, copies, artist's proofs, master work, run cost and price per print (joins R6 editions part 2).
+- [ ] Bibliography: press and book mentions of a work (author, title, publication, date, link, page, PDF).
+- [ ] Wholesale price per work, shown on consignment papers.
+- [ ] Free-text date and size: « circa », a date override, a size override, framed size, paper size, weight.
+- [ ] Signed + signature notes per work.
+- [ ] Video links and audio files on a work.
+- [ ] A public description written by Pem, apart from private notes and the AI text.
+- [ ] Contacts: tags, birth / death dates, nationality, bio, role toward a place.
+- [ ] Condition at a glance (Excellent → Poor) beside the full condition reports.
+- [ ] Statuses Lost, Stolen, Destroyed, Deaccessioned, In transit, Installed: check which the stage / status model covers.
+- [ ] Exhibition record: juror, fee, reception date, delivery / pickup deadlines, online or travelling show.
+- [ ] Calls for entry (Prix / Résidence / Salon pipelines): entry fee, awards, decision, saved calls to apply to later.
+- [ ] Collector share kit: per-kit display switches (price, sold, password, favourites, high-res download, provenance / exhibition history).
+- [ ] Preset papers: tear sheet, consignment sheet, address labels, contact report, cover page, income by category.
+- [ ] Studio documents in one place (CV, bio, statement, press kit), shared in one click.
+- [ ] Insights: production / sales / income over time, and a map of where the works are now.
+
 Trace
 - [ ] 1. Handwriting batch (after the test) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1c. Voice notes over one upload (~4 MB) or recorded offline — only if you hit it twice → [notes](./TODO_NOTES.md#voice-limits)
