@@ -172,6 +172,8 @@ export function LoginClient() {
             className="btn ghost sm"
             style={{ marginTop: 10, minHeight: 40, display: 'inline-flex', textDecoration: 'none' }}
             data-testid="login-dev-lan-continue"
+            // « Continuer » asks for the dev auto-login again: drop the sign-out mark (AccountActions) first.
+            onClick={() => { document.cookie = 'pem_signed_out=; path=/; Max-Age=0; SameSite=Lax' }}
           >
             {t('login_dev_lan_continue')}
           </Link>
