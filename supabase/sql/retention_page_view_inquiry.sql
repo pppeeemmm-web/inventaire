@@ -1,4 +1,4 @@
--- NOT APPLIED — draft 2026-11-18, needs Pem's OK before it runs (legal A.2 n° 3, docs/WEBSITE_LEGAL_PAGES.md §C.3).
+-- APPLIED live 2026-11-19 (Pem « Go »; migration retention_page_view_inquiry; dry run: 0 rows due). Legal A.2 n° 3, docs/WEBSITE_LEGAL_PAGES.md §C.3.
 -- Retention for the public site's own data:
 --   page_view — rows older than 25 months are deleted (CNIL audience-measurement exemption: data kept 25 months max).
 --               Rows with no created_at (none expected; the column defaults to now()) are kept: their age is unknown.

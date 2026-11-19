@@ -6,8 +6,8 @@ Item numbers stay fixed (other docs point to them). A closed item moves to [DONE
 
 ## Now — being worked on (lead keeps this current; nothing here is landed until it moves to DONE)
 
-- ⏳ §0 « Privé » contacts hidden from the team: 32 of 61 contacts are marked private today (the old import marked every imported contact private; 5 own / hold / bought works; 1 is a team member) — Pem reviews them first; then the « Contact privé » labels (held in branch `worktree-agent-a998bbdf038fdc19c`) + `supabase/sql/contact_private_rls.sql` (Pem's OK) land together
-- ⏳ §3 Retention SQL (`supabase/sql/retention_page_view_inquiry.sql`, not applied: page views > 25 months, enquiries > 3 years with no follow-up) — Pem's OK, after a dry-run count
+- ⏳ §0 « Privé » contacts hidden from the team (32 of 61; 8 orders and 6 works point to them) — Pem decides what « Privé » hides (whole contact vs list / pickers only); labels patch + flow review in the shared notes (`privacy-labels-only.patch`); `supabase/sql/contact_private_rls.sql` not applied
+- ⏳ §3 Retention runs monthly once Pem adds `CRON_SECRET` on Vercel (function live 2026-11-19; nothing due before 2028)
 
 ## 0. Bugs — fix now
 
@@ -39,7 +39,6 @@ Admin
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses).
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
-- [ ] Share inbox « link to a contact » picker: family name only, no first-name / institution search, not sorted — use the one name rule (`lib/contacts/contact-display.ts`).
 - [ ] Journal / graph chips and search show « Marie Dupont » (SQL views `graph_foundation/06_entity_view.sql`, `journal_entry_search.sql`): same name rule as the screens — SQL (Pem's OK).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved — softer message for that case.
 - [ ] Retouched photos: the old file pair stays in storage for ever (logged as « backup » in `storage_object_ledger`); a work purge does not remove it, and `scripts/storage-ledger-backfill.mjs --write` relabels those rows « unidentified » — a clean-up that reads the ledger, and the backfill keeping `backup` rows.

@@ -17,6 +17,7 @@ import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { contactListLabel, sortContactsByName } from '@/lib/contacts/contact-display'
 import { resolveVaultFolder } from '@/lib/vault/folder-routing'
 import {
   S3Client,
@@ -165,16 +166,18 @@ export async function searchShareAttachTargets(
   }
 
   if (type === 'contact') {
+    // Same name rule as every picker (lib/contacts/contact-display.ts): first name, family name or institution;
+    // `DUPONT Marie · Galerie X`, sorted by family name. Commas / parentheses would break the `or` filter.
+    const like = pattern.replace(/[,()]/g, ' ')
     const { data, error } = await g.supabase.from('Contact')
-      .select('ContactID, Nom')
-      .ilike('Nom', pattern)
-      .order('ContactID', { ascending: false })
+      .select('ContactID, Nom, "Prénom", NomInstitution')
+      .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like}`)
       .limit(20)
     if (error) return { error: error.message }
-    const hits: ShareAttachSearchHit[] = (data ?? []).map((r: { ContactID: number; Nom: string | null }) => ({
+    const hits: ShareAttachSearchHit[] = sortContactsByName(data ?? []).map((r) => ({
       type: 'contact',
       id: r.ContactID,
-      label: r.Nom || `#${r.ContactID}`,
+      label: contactListLabel(r),
     }))
     return { hits }
   }
