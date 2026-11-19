@@ -39,7 +39,6 @@ Admin
 - [ ] Phone on mobile data: a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data). Needs a phone outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, the « send » running from /hub too, and the phone's capture time trusted past 24 h. Today only work text saves are kept and resent. Design first.
 - [ ] Ask the accountant: micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses).
 - [ ] Contact merge is still separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function (Pem's OK).
-- [ ] Journal / graph chips and search show « Marie Dupont » (SQL views `graph_foundation/06_entity_view.sql`, `journal_entry_search.sql`): same name rule as the screens — SQL (Pem's OK).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved — softer message for that case.
 - [ ] Retouched photos: the old file pair stays in storage for ever (logged as « backup » in `storage_object_ledger`); a work purge does not remove it, and `scripts/storage-ledger-backfill.mjs --write` relabels those rows « unidentified » — a clean-up that reads the ledger, and the backfill keeping `backup` rows.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.

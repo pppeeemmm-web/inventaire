@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-19 — Journal / search chips name contacts like the screens (Pem « OK »)
+
+- `public.contact_list_label()` + `entity` view (`supabase/sql/entity_contact_label.sql`, applied live): chips, Constellation and search hits read `DUPONT Marie · Galerie X`; #35 → « Nathalie · Galerie Patrick Reygade »; institution-only contacts no longer show blank. Share-inbox contact search uses the same rule (5e348ef).
+
 ## 2026-11-19 — Bin: a sold / given work comes back by an admin only (Pem « of course », TODO §3)
 
 - `oeuvre_soft_delete_gate` (applied live as migration `oeuvre_bin_restore_admin_only`; `supabase/sql/work_lifetime_gates.sql`) now also refuses taking a sold / given work (status 6, 11) out of the bin for a non-admin (`sold_restore_admin_only`), like putting it in. The Corbeille says why. Team members can still undo their own delete of other works.
