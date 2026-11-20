@@ -85,6 +85,11 @@ export const aiDeskMessages = defineMessages({
   ai_job_done: { fr: 'fait', en: 'done' },
   ai_job_failed: { fr: 'échoué', en: 'failed' },
   ai_job_log: { fr: 'Voir le journal', en: 'See the log' },
+  ai_job_not_started: {
+    fr: 'Le PC n’a pas démarré. Cliquez « Lancer sur ce PC » en haut, et si Chrome demande d’ouvrir l’application, acceptez.',
+    en: 'The PC has not started. Click « Run on this PC » at the top, and if Chrome asks to open the app, accept.',
+  },
+  ai_job_live_empty: { fr: 'Le PC démarre…', en: 'The PC is starting…' },
   ai_run_link: { fr: 'Lancer sur ce PC', en: 'Run on this PC' },
   ai_copy: { fr: 'Copier', en: 'Copy' },
   ai_copied: { fr: 'Copié', en: 'Copied' },

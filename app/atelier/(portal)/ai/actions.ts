@@ -38,7 +38,7 @@ export type AiDeskData = {
   }
   /** The PC agent (`npm run ai:agent`): last check-in and the models it found; null = never seen. */
   agent: { id: string; seenAt: string; models: { name: string; present: boolean }[] } | null
-  /** The 10 latest jobs, newest first (`log` tail kept for failures only). */
+  /** The 10 latest jobs, newest first, with the tail of the PC's output (live while running). */
   jobs: { id: number; kind: string; status: string; createdAt: string; doneAt: string | null; error: string | null; log: string | null }[]
 }
 
@@ -240,7 +240,7 @@ async function agentAndJobs(supabase: Awaited<ReturnType<typeof createClient>>):
         createdAt: j.created_at,
         doneAt: j.done_at,
         error: j.error,
-        log: j.status === 'failed' && typeof r?.log === 'string' ? r.log.slice(-1500) : null,
+        log: typeof r?.log === 'string' ? r.log.slice(-3000) : null,
       }
     }),
   }

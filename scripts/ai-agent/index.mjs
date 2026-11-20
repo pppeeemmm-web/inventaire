@@ -37,8 +37,27 @@ const WATCH = process.argv.includes('--watch')
 
 const sb = supabaseAdmin()
 
+/** The running job's output so far: pushed to its row every 2 s so Bureau IA shows it live (Pem 2026-11-20). */
+let live = null
+
 function log(...a) {
-  console.log(new Date().toISOString().slice(11, 19), ...a)
+  const line = [new Date().toISOString().slice(11, 19), ...a].join(' ')
+  console.log(line)
+  liveAppend(`${line}
+`)
+}
+
+function liveAppend(s) {
+  if (!live) return
+  live.out = (live.out + s).slice(-LOG_TAIL)
+  live.dirty = true
+}
+
+async function liveFlush() {
+  if (!live?.dirty) return
+  live.dirty = false
+  const { error } = await sb.from('ai_job').update({ result: { log: live.out } }).eq('id', live.id).eq('status', 'running')
+  if (error) console.log('live log failed:', error.message)
 }
 
 /** Run one command, keep the tail of its output (stdout + stderr) for the job row. */
@@ -49,6 +68,7 @@ function run(cmd, args) {
     const keep = (b) => {
       const s = b.toString()
       process.stdout.write(s)
+      liveAppend(s)
       out = (out + s).slice(-LOG_TAIL)
     }
     p.stdout.on('data', keep)
@@ -139,8 +159,12 @@ async function drainQueue() {
   for (;;) {
     const job = await claim()
     if (!job) return
+    live = { id: job.id, out: '', dirty: false }
+    const timer = setInterval(() => void liveFlush(), 2000)
     log(`job ${job.id} (${job.kind}) started`)
-    const r = await runJob(job)
+    const r = await runJob(job).catch((e) => ({ code: -1, out: e instanceof Error ? e.message : String(e) }))
+    clearInterval(timer)
+    live = null
     const ok = r.code === 0
     const { error } = await sb
       .from('ai_job')

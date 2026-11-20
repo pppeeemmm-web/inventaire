@@ -19,7 +19,12 @@ const AGENT_HREF = 'pem-ai:run'
 
 /** On the PC (not a phone): open the pem-ai: link, which starts the agent for one pass. Chrome asks the first time. */
 function startAgentHere() {
-  window.location.href = AGENT_HREF
+  // A hidden frame opens the link: changing the page's own address left it « loading » and could drop the save.
+  const f = document.createElement('iframe')
+  f.style.display = 'none'
+  f.src = AGENT_HREF
+  document.body.appendChild(f)
+  window.setTimeout(() => f.remove(), 5000)
 }
 
 function Dot({ on }: { on: boolean }) {
@@ -223,7 +228,7 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
   const hasActiveJob = !!data?.jobs.some((j) => j.status === 'waiting' || j.status === 'running')
   useEffect(() => {
     if (!isAdmin || !hasActiveJob) return
-    const id = setInterval(() => void refresh(), 10000)
+    const id = setInterval(() => void refresh(), 2000)
     return () => clearInterval(id)
   }, [isAdmin, hasActiveJob, refresh])
 
@@ -307,8 +312,19 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
                 <span style={{ color: j.status === 'failed' ? 'var(--rust)' : 'var(--tx2)', fontSize: 13 }}>{statusLabel(j.status)}</span>
                 <span style={{ color: 'var(--tx3)', fontSize: 13 }}>{new Date(j.createdAt).toLocaleString(loc, { dateStyle: 'short', timeStyle: 'short' })}</span>
               </div>
-              {j.status === 'failed' && j.log ? (
-                <details style={{ marginTop: 4 }}>
+              {j.status === 'waiting' && Date.now() - new Date(j.createdAt).getTime() > 20_000 ? (
+                <p style={{ fontSize: 13, color: 'var(--rust)', margin: '4px 0 0' }}>{t('ai_job_not_started')}</p>
+              ) : null}
+              {j.status === 'running' ? (
+                <pre
+                  data-testid="ai-desk-live-log"
+                  style={{ fontSize: 11, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 320, overflow: 'auto', margin: '6px 0 0', padding: 10, background: '#111', color: '#d8d8d8', borderRadius: 4 }}
+                >
+                  {j.log || t('ai_job_live_empty')}
+                </pre>
+              ) : null}
+              {j.status !== 'running' && j.log ? (
+                <details style={{ marginTop: 4 }} open={j.status === 'failed'}>
                   <summary style={{ fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>{t('ai_job_log')}</summary>
                   <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 240, overflow: 'auto', margin: '4px 0 0' }}>{j.log}</pre>
                 </details>
