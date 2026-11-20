@@ -179,6 +179,11 @@ async function main() {
     // One pass: the desk shows « En cours » from the running job, then « Dernier passage » from this last check-in.
     log(`PEM AI agent « ${AGENT_ID} »: one pass`)
     await drainQueue()
+    // The desk starts this pass at the click, before its job is saved: look again for a few seconds.
+    for (let i = 0; i < 4; i++) {
+      await new Promise((r) => setTimeout(r, 3000))
+      await drainQueue()
+    }
     await heartbeat()
     log('nothing left — stopping')
     return

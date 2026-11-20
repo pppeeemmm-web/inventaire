@@ -72,14 +72,14 @@ function RunButton({ kind, jobs, onDone, onPc }: { kind: AiRunKind; jobs: AiDesk
   const click = async () => {
     setPending(true)
     setErr(false)
+    // On the PC the agent is started right away, while the browser still counts this as the click (after an await
+    // Chrome may drop the pem-ai: link silently); the agent waits a few seconds for the job below to land.
+    // On a phone the job waits for the next pass on the PC.
+    if (onPc) startAgentHere()
     try {
       const res = await queueAiJob(kind)
       if ('error' in res && res.error !== 'already') setErr(true)
-      else {
-        // On the PC the job is queued AND the agent started; on a phone it waits for the next pass on the PC.
-        if (onPc) startAgentHere()
-        onDone()
-      }
+      else onDone()
     } catch (e) {
       surfaceError(String(e), e, { source: 'ai-desk.queue' })
       setErr(true)
