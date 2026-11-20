@@ -405,9 +405,11 @@ export async function routeVoiceNote(
 
   const newTitle = patch.new_concept_title?.trim()
   if (newTitle) {
+    // The new idea carries the note's text: Pem's edited transcript, else the machine transcript (Pem 2026-11-20).
+    const tx = r.transcript?.trim() || (await machineTranscripts(supabase, [r.id])).get(r.id)?.body.trim() || null
     const { data: c, error: cErr } = await supabase
       .from('concept')
-      .insert({ titre: newTitle.slice(0, 200), statut: 'idee', category: 'artistic' })
+      .insert({ titre: newTitle.slice(0, 200), statut: 'idee', category: 'artistic', description: tx ? tx.slice(0, 20_000) : null })
       .select('id, titre, statut')
       .single()
     if (cErr || !c) return { error: cErr?.message ?? 'concept_insert' }
