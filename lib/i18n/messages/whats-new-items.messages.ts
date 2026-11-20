@@ -32,6 +32,17 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Dans la Vue d’ensemble, « Pour vous » montre vos propositions : en attente, validées, ou refusées avec la raison donnée par Pem. Une photo envoyée et pas encore validée s’annonce sur la fiche. Quand Pem valide une proposition, seuls les champs que vous avez changés sont écrits.',
     en: 'In the Overview, « For you » shows your proposals: waiting, approved, or rejected with Pem’s reason. A photo sent and not yet approved shows on the card. When Pem approves a proposal, only the fields you changed are written.',
   },
+  // 3.1.85 (2026-11-20) — voice note → idea with its text; Bureau IA launch.
+  wn_voice_note_idea_text_t: { fr: 'Note vocale → idée : le texte suit', en: 'Voice note → idea: the text comes along' },
+  wn_voice_note_idea_text_d: {
+    fr: 'Dans le Journal, « Relier » une note vocale à « + nouvelle idée » copie maintenant sa transcription dans l’idée (votre version corrigée si vous en avez enregistré une). Le texte se corrige ensuite dans Idées ; le Journal garde l’original.',
+    en: 'In the Journal, « Relier » a voice note to « + new idea » now copies its transcript into the idea (your corrected version if you saved one). The text is then edited on Ideas; the Journal keeps the original.',
+  },
+  wn_ai_desk_launch_click_t: { fr: 'Bureau IA : « Lancer » démarre vraiment le PC', en: 'AI desk: « Run » really starts the PC' },
+  wn_ai_desk_launch_click_d: {
+    fr: 'Sur l’ordinateur, « Lancer » démarre l’agent du PC au moment du clic ; avant, le navigateur pouvait l’ignorer et la tâche restait « en attente ».',
+    en: 'On the computer, « Run » starts the PC agent at the click; before, the browser could ignore it and the job stayed « waiting ».',
+  },
   // 3.1.84 (2026-11-19) — contact merge in one step, admins only; Journal day lists.
   wn_journal_day_once_t: { fr: 'Journal : chaque œuvre une fois par jour', en: 'Journal: each work once per day' },
   wn_journal_day_once_d: {
