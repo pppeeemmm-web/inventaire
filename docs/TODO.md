@@ -8,6 +8,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
+- First when the credits renew (Sunday 22 Nov): the one inbox (`inbox_item`) — every input lands there, voice notes transcribed and editable, sorted later to Journal / Idées / Kaizen / Fil → [MasterPlan §3.1](./design/2026-11-20/MasterPlan.md); Flow trace + SQL OK first.
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
