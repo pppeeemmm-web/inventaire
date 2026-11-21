@@ -5,6 +5,7 @@ _Items taken off the list on purpose, with the reason, so they are not proposed 
 ## 2026-11-21 (from the review of github.com/aion88 — wiki-inspi)
 
 - **Pinterest-style boards / moodboards for inspiration pictures** — Pem 2026-11-21: « No way we are bringing in Pinterest… I'm not looking for mood boards. » Inspiration stays a picture on the Journal day with one line of text.
+- **History of the text beside an inspiration photo** (keep the old text when it is changed) — Pem 2026-11-21: « just a matter of writing a few words… not so important that it needs extra architecture. » A change replaces the text.
 - **A « doctor » command that checks the user's setup and prints fixes** — Pem 2026-11-21: not needed.
 
 ## 2026-11-14

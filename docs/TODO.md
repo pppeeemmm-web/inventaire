@@ -8,7 +8,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- First: the Journal design — one stream (a feed by day, labels and links, backlinks), the capture entry on the day's page from the desk hotkey and the phone, corrections, the desk mockup, the scenario in steps; design before code, no separate inbox → [BuildingPrinciples](./design/2026-11-21/BuildingPrinciples.md), [MasterPlan §3.1, §5](./design/2026-11-20/MasterPlan.md), surveys in `design/2026-11-21/`.
+- First: the Journal design — one stream (a feed by day, labels and links, backlinks), the capture entry on the day's page from the desk hotkey and the phone, corrections, the desk mockup, the scenario in steps; one set of cards (entry, voice note, photo) drawn once and two frames around it — phone: today opens first with a sticky record bar, speed measured before and after; desk: day list and wide page; days loaded as the stream is scrolled; a day holding only a photo listed; every capture (line, voice note, photo) can be placed on the day it happened, apart from the day it was recorded; day dividers in the stream; a work named by typing its title, with its picture, as a real link editable from the work; design before code, no separate inbox → [BuildingPrinciples](./design/2026-11-21/BuildingPrinciples.md), [MasterPlan §3.1, §5](./design/2026-11-20/MasterPlan.md), surveys in `design/2026-11-21/`.
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
