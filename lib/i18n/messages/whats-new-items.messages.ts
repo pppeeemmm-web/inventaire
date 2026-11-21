@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.86 (2026-11-21) — a text beside an inspiration photo.
+  wn_inspiration_text_t: { fr: 'Un texte à côté de chaque photo d’inspiration', en: 'A text beside each inspiration photo' },
+  wn_inspiration_text_d: {
+    fr: 'Dans le Journal, chaque photo d’inspiration a maintenant son texte : « Ajouter un texte » ou « Modifier le texte », sur l’ordinateur comme sur le téléphone, quand vous voulez. Écrivez #123 pour mentionner une œuvre. Sur l’ordinateur, laissez la souris sur la photo pour la voir en grand.',
+    en: 'In the Journal, each inspiration photo now has its text: « Add a text » or « Edit the text », on the computer and on the phone, whenever you like. Write #123 to mention a work. On the computer, rest the mouse on the photo to see it large.',
+  },
   // 3.1.72 (2026-11-18) — Pem's evening pass + the Aide finished.
   wn_admin_ai_desk_t: { fr: 'Bureau IA (admin)', en: 'AI desk (admin)' },
   wn_admin_ai_desk_d: {

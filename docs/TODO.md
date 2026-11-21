@@ -112,6 +112,8 @@ Ideas
 - Writings as an output.
 - Journal entries as Constellation nodes — big → [notes](./TODO_NOTES.md#journal-phase-2)
 - A « no year » filter in Inventory to date works in batch (641 works have no year) — only if wanted.
+- AI reading of inspiration pictures (style, technique, guessed author kept apart from the typed one) through a closed word list and a format check before anything is saved — waits on the local AI working reliably.
+- Palette likeness: works ordered by closeness to one picked colour, and works whose whole palette resembles a given work's (reads `tblImage.palette`, no new data).
 
 On hold
 - Procession layout « not working »: reopen only with repro steps.

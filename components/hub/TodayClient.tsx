@@ -32,6 +32,8 @@ import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import { WorkChip as WorkPreviewChip } from '@/components/atelier/WorkChip'
 import { WorkRefText } from '@/components/atelier/journal/WorkRefText'
+import { InspirationText } from '@/components/atelier/journal/InspirationText'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
 const VoiceNoteSheet = dynamic(
@@ -263,6 +265,7 @@ export function TodayEntries({
   isAdmin?: boolean
 }) {
   const { t, lang } = useI18n()
+  const router = useRouter()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
   const [toolsOpen, setToolsOpen] = useState<string | null>(null)
@@ -300,11 +303,15 @@ export function TodayEntries({
                   <span style={meta}>
                     {time(p.created_at)} · {p.author} · ✦ {t('pn_inspiration')}
                   </span>
-                  <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb, like the Journal */}
-                    <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
-                  </a>
-                  {p.caption?.trim() ? <WorkRefText text={p.caption} /> : null}
+                  {/* Hold = the picture large, as on the desk Journal (same piece, Pem 2026-11-21); a tap still opens it in a tab. */}
+                  <ImageLoupe file={p.image_key} alt={p.caption ?? ''} caption={p.caption?.trim() || undefined} style={{ display: 'inline-block', maxWidth: '100%', marginTop: 4 }}>
+                    <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb, like the Journal */}
+                      <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
+                    </a>
+                  </ImageLoupe>
+                  {/* The page is server-rendered: after a save, ask it again so the picture's alt, the loupe and a later « back » show the new text. */}
+                  <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin} render={(text) => <WorkRefText text={text} />} onSaved={() => router.refresh()} />
                   {p.oeuvre_id != null ? (
                     <div style={{ marginTop: 4 }}>
                       <WorkPreviewChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" />

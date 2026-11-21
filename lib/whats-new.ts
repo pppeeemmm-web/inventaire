@@ -80,7 +80,8 @@
 // '3.1.79' (2026-11-19): Thèmes — copy a theme as a working group, or a group as a theme; portfolio PDF from a working group.
 // '3.1.80' (2026-11-19): private contacts hidden from the team's lists and searches, still named where linked.
 // '3.1.85' (2026-11-20): a voice note sent to a new idea brings its transcript; Bureau IA « Lancer » starts the PC at the click.
-export const WHATS_NEW_RELEASE = '3.1.85'
+// '3.1.86' (2026-11-21): a text beside each inspiration photo, added or changed later (desk + phone); hover shows the photo large.
+export const WHATS_NEW_RELEASE = '3.1.86'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -106,6 +107,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'inspiration_text', day: '2026-11-21', spot: 'journal' },
   { id: 'voice_note_idea_text', day: '2026-11-20', spot: 'journal' },
   { id: 'ai_desk_launch_click', day: '2026-11-20', spot: 'ai', admin: true },
   { id: 'journal_day_once', day: '2026-11-19', spot: 'journal' },

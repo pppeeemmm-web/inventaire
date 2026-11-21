@@ -111,6 +111,26 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   return { ok: true, id: (data as { id: string }).id, day }
 }
 
+/**
+ * Sets the text beside an inspiration photo (admin), after the fact (Pem 2026-11-21). Empty = no text.
+ * Answers with the text as stored; a photo that is not there is `not_found`, never « ok ».
+ * No path refresh: each of the two readers takes this answer — the desk Journal day patches its list, the phone
+ * day (`TodayEntries`, server-rendered) asks its page again (`router.refresh()`).
+ */
+export async function setInspirationCaption(id: string, text: string): Promise<{ ok: true; caption: string | null } | Err> {
+  if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }
+  if (!/^[0-9a-f-]{36}$/i.test(String(id))) return { error: 'not_found' }
+  const supabase = await createClient()
+  const who = await adminUser(supabase)
+  if (!who.user) return { error: who.error ?? 'auth' }
+  const caption = String(text ?? '').trim().slice(0, MAX_CAPTION) || null
+  const { data, error } = await inspirationTable(supabase).update({ caption }).eq('id', id).select('caption')
+  if (error) return { error: error.message }
+  const rows = (data ?? []) as Array<{ caption: string | null }>
+  if (!rows.length) return { error: 'not_found' }
+  return { ok: true, caption: rows[0].caption }
+}
+
 /** Removes an inspiration photo (admin): the row goes, the image + thumb go to R2 `recycle/`. */
 export async function removeInspirationPhoto(id: string): Promise<{ ok: true } | Err> {
   if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }

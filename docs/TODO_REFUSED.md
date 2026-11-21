@@ -2,6 +2,11 @@
 
 _Items taken off the list on purpose, with the reason, so they are not proposed again by accident. Reopen only with the owner's GO._
 
+## 2026-11-21 (from the review of github.com/aion88 — wiki-inspi)
+
+- **Pinterest-style boards / moodboards for inspiration pictures** — Pem 2026-11-21: « No way we are bringing in Pinterest… I'm not looking for mood boards. » Inspiration stays a picture on the Journal day with one line of text.
+- **A « doctor » command that checks the user's setup and prints fixes** — Pem 2026-11-21: not needed.
+
 ## 2026-11-14
 
 - **"Frame only" in Export** — Pem 2026-11-14: not wanted.

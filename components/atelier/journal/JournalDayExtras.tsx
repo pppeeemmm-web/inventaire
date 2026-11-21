@@ -12,6 +12,8 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import { EntryText } from '@/components/atelier/journal/EntryText'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { WorkChip } from '@/components/atelier/WorkChip'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
+import { InspirationText } from '@/components/atelier/journal/InspirationText'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import { removeInspirationPhoto } from '@/app/atelier/capture/inspiration-actions'
 import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
@@ -455,11 +457,27 @@ export function JournalDayExtras({
                   {p.author} · {time(p.created_at)}
                 </span>
               </div>
-              <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block', maxWidth: 480 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb (400 px), like the other Journal pictures */}
-                <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
-              </a>
-              {p.caption?.trim() ? <div style={{ marginTop: 8 }}><EntryText text={p.caption} /></div> : null}
+              {/* Hover (desk) / hold (phone) = the picture large, like a work chip (Pem 2026-11-21); a click still opens it in a tab. */}
+              {/* Picture and its text side by side on the desk, stacked on the phone (Pem 2026-11-21: « a text box beside the capture »). */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-start' }}>
+                <ImageLoupe file={p.image_key} alt={p.caption ?? ''} caption={p.caption?.trim() || undefined} style={{ flex: '0 1 320px', minWidth: 0, maxWidth: '100%' }}>
+                  <a href={imageUrl(p.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb (400 px), like the other Journal pictures */}
+                    <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 6, background: 'var(--bg2)' }} />
+                  </a>
+                </ImageLoupe>
+                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                  <InspirationText
+                    id={p.id}
+                    caption={p.caption}
+                    canEdit={!!data?.isAdmin}
+                    render={(text) => <EntryText text={text} />}
+                    onSaved={(caption) =>
+                      setData((d) => (d ? { ...d, inspirations: d.inspirations.map((x) => (x.id === p.id ? { ...x, caption } : x)) } : d))
+                    }
+                  />
+                </div>
+              </div>
               {p.oeuvre_id != null || p.concept_id ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
                   {p.oeuvre_id != null ? <WorkChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" /> : null}

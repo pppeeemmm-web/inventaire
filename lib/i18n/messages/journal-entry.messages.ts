@@ -140,4 +140,15 @@ export const journalEntryMessages = defineMessages({
   },
   insp_delete_ask: { fr: 'Retirer cette photo ? Elle part à la corbeille (90 jours).', en: 'Remove this photo? It goes to the bin (90 days).' },
   insp_deleted: { fr: 'Photo retirée', en: 'Photo removed' },
+  // Text beside a capture, added or changed after the fact (Pem 2026-11-21).
+  insp_text_add: { fr: 'Ajouter un texte', en: 'Add a text' },
+  insp_text_edit: { fr: 'Modifier le texte', en: 'Edit the text' },
+  insp_text_label: { fr: 'Texte de la photo', en: 'Text for the photo' },
+  insp_text_placeholder: {
+    fr: 'Peintre, provenance, ce que vous y voyez… #123 mentionne une œuvre.',
+    en: 'Painter, where it is from, what you see in it… #123 mentions a work.',
+  },
+  insp_text_save: { fr: 'Enregistrer le texte', en: 'Save the text' },
+  insp_text_cancel: { fr: 'Annuler', en: 'Cancel' },
+  insp_text_saved: { fr: 'Texte enregistré', en: 'Text saved' },
 })
