@@ -265,6 +265,18 @@ export const workCardMessages = defineMessages({
     fr: 'Pas enregistré : cette œuvre a été enregistrée ailleurs (autre onglet, autre personne) depuis l’ouverture de la fiche. Notez vos changements, rouvrez la fiche pour voir la dernière version, puis refaites-les.',
     en: 'Not saved: this work was saved elsewhere (another tab, another person) since the card opened. Note your changes, reopen the card to see the latest version, then make them again.',
   },
+  wc_err_work_fields_changed: {
+    fr: 'Pas enregistré : {fields} a aussi été modifié ailleurs (autre onglet, autre personne, une commande) depuis l’ouverture de la fiche. Rouvrez la fiche pour voir la dernière valeur, puis refaites ce changement.',
+    en: 'Not saved: {fields} was also changed elsewhere (another tab, another person, an order) since the card opened. Reopen the card to see the latest value, then make this change again.',
+  },
+  wc_save_nothing: {
+    fr: 'Rien à enregistrer : la fiche est déjà à jour.',
+    en: 'Nothing to save: the card is already up to date.',
+  },
+  wc_save_kept_elsewhere: {
+    fr: 'Enregistré. Gardé du changement fait ailleurs : {fields}.',
+    en: 'Saved. Kept from the change made elsewhere: {fields}.',
+  },
   wc_err_work_in_bin: {
     fr: 'Pas enregistré : cette œuvre a été mise à la corbeille depuis l’ouverture de la fiche.',
     en: 'Not saved: this work was put in the bin since the card opened.',

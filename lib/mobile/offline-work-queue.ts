@@ -169,7 +169,8 @@ const first = (r: OfflineWorkSaveRecord, k: string): string | null => {
 /**
  * Rows the flush can drop unsent: an earlier save of the same work from the same card base (same `oeuvre_id` and
  * `__base_edited_at`) when a later queued row exists. The card posts every field, so the later row holds the earlier
- * one's edits plus its own; replayed in order, the earlier would win and the later be refused (`work_changed`).
+ * one's edits plus its own; replayed in order, the earlier would win and the later be refused (`work_changed`, or
+ * `work_fields_changed:` for a field both rows changed).
  * A row carrying a file (photo) is never dropped.
  */
 export function supersededOfflineSaves(rows: readonly OfflineWorkSaveRecord[]): Set<string> {

@@ -9,7 +9,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
 import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage, replaceWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
-import { workSaveErrorToastMessage, WORK_BASE_EDITED_AT_FIELD } from '@/lib/work-save-error'
+import { workFieldLabels, workSaveErrorToastMessage, WORK_BASE_EDITED_AT_FIELD } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { openReadOr, primeWorkDrawerOpen } from '@/lib/atelier/open-reads'
@@ -39,7 +39,7 @@ import {
   OFFLINE_WORK_SAVED_EVENT,
   type OfflineWorkSavedDetail,
 } from '@/lib/mobile/offline-work-queue'
-import { PENDING_LOADED_BASE_FIELD, pendingLoadedBaseFromRow } from '@/lib/work-pending-keys'
+import { CARD_SHOWN_FORM_FIELD, PENDING_LOADED_BASE_FIELD, pendingLoadedBaseFromRow, pendingPayloadFromFormData } from '@/lib/work-pending-keys'
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
 import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
@@ -261,9 +261,10 @@ export function DrawerContent({
   /** False after a session draft is restored: its Historique was edited from an older text, so the
    *  server must keep every stored line (no base sent → union). docs/WORK_RULES.md rule 14. */
   const historiqueBaseKnownRef = useRef(true)
-  /** The work as this card opened it — sent with a team member's save as the proposal's base
-   *  (`__base_json`), so a field changed elsewhere after opening is not read as proposed. Null after
-   *  a session draft is restored (its values predate this open): the server then reads the base itself. */
+  /** The work as this card has it (opened, then after each own save) — sent with every save (`__base_json`): a team
+   *  member's proposal base, and for an admin the field-by-field check (a field changed elsewhere since is kept, not
+   *  put back). Null after a session draft is restored (its values predate this open): the server then reads the
+   *  base itself / falls back to the whole-work stamp. */
   const loadedBaseRef = useRef<{ id: number; row: Record<string, unknown>; extra: Record<string, string> } | null>(null)
   const { confirmStep, confirmDialog } = useConfirmStep()
 
@@ -713,6 +714,19 @@ export function DrawerContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [o.OeuvreID])
 
+  /** Set by a save that kept fields changed elsewhere: once the list row carries the saved row, reload the form. */
+  const resyncFromRowRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (resyncFromRowRef.current !== o.OeuvreID) return
+    resyncFromRowRef.current = null
+    submittedByOeuvreRef.current.delete(o.OeuvreID)
+    setEditorBaseline(null)
+    syncFormFieldsFromOeuvre()
+    setLongTextReloadNonce((n) => n + 1)
+    // Only when the row itself changes (the save's patch).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o])
+
   // One read for the whole card (TODO 18): runs before the sections' effects, which take their slice.
   useLayoutEffect(() => {
     primeWorkDrawerOpen(o.OeuvreID, { cost: isAdmin, returnHint: ownStageFromStatusId(o.statusId) === 'sold' })
@@ -926,6 +940,21 @@ export function DrawerContent({
   }, [o.OeuvreID])
   const formDirtyRef = useRef(false)
   formDirtyRef.current = isDirty || extraDirty
+  /** The form as the card shows it with nothing edited, as it would post it — sent with a save (`__base_form`), so the
+   *  field-by-field check counts only what was really edited (an empty price is shown and posted as 0). Taken on
+   *  every render while the card is clean; long texts only once loaded. */
+  const cleanFormRef = useRef<{ id: number; form: Record<string, string> } | null>(null)
+  useEffect(() => {
+    if (!editorBaseline || isDirty || extraDirty) return
+    const fd = buildFormData()
+    const form = pendingPayloadFromFormData(fd)
+    form.themes = (fd.getAll('themes') as string[]).join(',')
+    form.groups = (fd.getAll('groups') as string[]).join(',')
+    delete form.oeuvre_id
+    delete form.historique
+    if (!longTextReady) delete form.commentaires
+    cleanFormRef.current = { id: o.OeuvreID, form }
+  })
   isDirtyRef.current = isDirty || extraDirty || lineDirty
 
   const guardDiagRef = useRef<{ cap: () => WorkFormDraftContent; base: WorkFormDraftContent | null }>({
@@ -1065,9 +1094,11 @@ export function DrawerContent({
     fd.append('admin_override_anonymity', '0')
     selThemes.forEach((id) => fd.append('themes', String(id)))
     selGroups.forEach((id) => fd.append('groups', id))
-    // A team member's save becomes a proposal: send the work as this card opened it (its base).
+    const cf = cleanFormRef.current
+    if (cf?.id === o.OeuvreID) fd.append(CARD_SHOWN_FORM_FIELD, JSON.stringify(cf.form))
+    // The work as this card has it: a team member's proposal base; an admin save is checked field by field against it.
     const lb = loadedBaseRef.current
-    if (!isAdmin && lb?.id === o.OeuvreID) {
+    if (lb?.id === o.OeuvreID) {
       fd.append(PENDING_LOADED_BASE_FIELD, JSON.stringify(pendingLoadedBaseFromRow(lb.row, lb.extra)))
     }
     return fd
@@ -1088,6 +1119,9 @@ export function DrawerContent({
       const base = baseEditedAtRef.current
       if (base?.id !== d.oeuvreId || (base.at ?? '') !== d.base) return
       adoptOwnSaveStamp(d.oeuvreId, d.editedAt)
+      // The next save is checked field by field against the work as the queued save left it.
+      const lb = loadedBaseRef.current
+      if (d.saved && lb?.id === d.oeuvreId) loadedBaseRef.current = { ...lb, row: { ...lb.row, ...d.saved } }
       if (d.saved) onWorkSaved?.(d.oeuvreId, d.saved as Parameters<NonNullable<typeof onWorkSaved>>[1])
     }
     window.addEventListener(OFFLINE_WORK_SAVED_EVENT, onFlushed)
@@ -1116,12 +1150,17 @@ export function DrawerContent({
       try {
         sessionStorage.removeItem(draftKey)
       } catch { /* ignore */ }
+      // A list kept as stored (changed elsewhere since the card opened) is told with its stored ids, not the card's.
+      const storedThemes = res.storedThemes
+      const storedGroups = res.storedGroups
       const commitEditorAfterSave = () => {
         const snap = captureDrawerDraftContent()
         submittedByOeuvreRef.current.set(oid, snap)
         setEditorBaseline(snap)
-        onJunctionSaved?.(oid, snap.selThemes, snap.selGroups)
-        emitJunctionSaved({ oeuvreId: oid, themeIds: snap.selThemes, groupIds: snap.selGroups })
+        const themeIds = storedThemes ?? snap.selThemes
+        const groupIds = storedGroups ?? snap.selGroups
+        onJunctionSaved?.(oid, themeIds, groupIds)
+        emitJunctionSaved({ oeuvreId: oid, themeIds, groupIds })
         setExtraBase(JSON.stringify(extraNow))
       }
       if (res.pending) {
@@ -1131,6 +1170,25 @@ export function DrawerContent({
         return true
       }
       if (res.editedAt) adoptOwnSaveStamp(oid, res.editedAt)
+      // Fields changed elsewhere since the card opened were kept as stored: reload the card from the saved row
+      // (the effect on `o` below), so it never shows — or later posts — the old values.
+      const kept = res.kept ?? []
+      if (kept.length > 0) resyncFromRowRef.current = oid
+      // The next save is checked against the work as it now stands.
+      if (loadedBaseRef.current?.id === oid) {
+        loadedBaseRef.current = {
+          id: oid,
+          row: { ...loadedBaseRef.current.row, ...(res.saved as Record<string, unknown> | undefined) },
+          extra: { themes: Array.from(selThemes).join(','), groups: Array.from(selGroups).join(','), Commentaires: commentaires },
+        }
+      }
+      if (res.unchanged) {
+        if (kept.length > 0 && res.saved) onWorkSaved?.(oid, res.saved)
+        commitEditorAfterSave()
+        setNoteBaseline({ c: commentaires, h: historique })
+        toast.info(kept.length > 0 ? t('wc_save_kept_elsewhere').replace('{fields}', workFieldLabels(kept, t)) : t('wc_save_nothing'))
+        return true
+      }
       const savedLevel = normalizeAnonymityLevel(anonymityLevel)
       // Patch the list row with what the DB stored (triggers included) — pill/location update, no reload.
       onWorkSaved?.(oid, { anonymity_level: savedLevel, ...res.saved })
@@ -1147,6 +1205,11 @@ export function DrawerContent({
             toast.error(t('undoFailed'))
           }
         })()
+      }
+      // Fields kept from a change made elsewhere: no undo — its snapshot predates that change and would put it back.
+      if (kept.length > 0) {
+        toast.success(t('wc_save_kept_elsewhere').replace('{fields}', workFieldLabels(kept, t)))
+        return true
       }
       const tid = toast.success(t('saveDoneUndoHint'), {
         ttlMs: 8000,

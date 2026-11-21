@@ -1,6 +1,8 @@
 import type { DictKey } from '@/lib/i18n/dictionary/keys'
 import type { DictKey as AnyDictKey } from '@/lib/i18n/dictionary'
 import type { PendingChangeInsertError } from '@/lib/pending-changes-insert'
+import { PENDING_FORM_KEY_TO_COLUMN } from '@/lib/work-pending-keys'
+import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 
 /** Server action error tokens resolved on the client via `t()`. */
 export const WORK_SAVE_SCHEMA_ERROR_KEY = 'wf_save_pending_schema_error' as const satisfies DictKey
@@ -11,6 +13,29 @@ export const WORK_BASE_EDITED_AT_FIELD = '__base_edited_at'
 export const WORK_CHANGED_ERROR = 'work_changed'
 /** `saveWork` refusal: the work was put in the bin after the card opened. */
 export const WORK_IN_BIN_ERROR = 'work_in_bin'
+/** `saveWork` refusal of a card save, field by field: `work_fields_changed:<form key>,<form key>` — those fields
+ *  were changed here and elsewhere since the card opened; nothing written. */
+const WORK_FIELDS_CHANGED_PREFIX = 'work_fields_changed:'
+
+export function workFieldsChangedError(formKeys: readonly string[]): string {
+  return `${WORK_FIELDS_CHANGED_PREFIX}${formKeys.join(',')}`
+}
+
+/** Saved elsewhere / binned since the card (or a queued phone save) opened: replaying it cannot succeed. */
+export function isWorkStaleError(error: string): boolean {
+  return error === WORK_CHANGED_ERROR || error === WORK_IN_BIN_ERROR || error.startsWith(WORK_FIELDS_CHANGED_PREFIX)
+}
+
+/** Readable names of card fields (form keys), e.g. « Prix, Statut ». */
+export function workFieldLabels(formKeys: readonly string[], t: (key: AnyDictKey) => string): string {
+  return formKeys
+    .map((k) => {
+      if (k === 'themes') return t('wc_p_themes')
+      if (k === 'groups') return t('wc_p_groups')
+      return versionFieldLabel(PENDING_FORM_KEY_TO_COLUMN[k] ?? k, t)
+    })
+    .join(', ')
+}
 
 export function pendingInsertToSaveError(
   err: PendingChangeInsertError,
@@ -74,6 +99,10 @@ export function workSaveErrorToastMessage(
   t: (key: AnyDictKey) => string,
 ): string {
   if (isWorkSaveI18nError(error)) return t(error)
+  if (error.startsWith(WORK_FIELDS_CHANGED_PREFIX)) {
+    const keys = error.slice(WORK_FIELDS_CHANGED_PREFIX.length).split(',').filter(Boolean)
+    return t('wc_err_work_fields_changed').replace('{fields}', workFieldLabels(keys, t))
+  }
   const purge = purgeBlockedMessage(error, t)
   if (purge) return purge
   const gate = gateErrorKey(error)

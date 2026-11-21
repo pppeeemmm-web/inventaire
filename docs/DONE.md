@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-21 — Work card save field by field: a change made elsewhere is no longer put back (TODO §1 Data safety, Pem « go », « GO »)
+
+- A work card left open while an order step, batch edit or stage change rewrote the work could post the old status / owner / price. Now an admin card save is checked field by field, like approving a proposal (`planPendingEdit`): a field changed only elsewhere keeps its stored value and the card reloads it (« Enregistré. Gardé du changement fait ailleurs : … », no undo); a field changed here and elsewhere is refused by name, nothing written; nothing left to write → no write. The card sends the work as it has it and its untouched form (`__base_json`, `__base_form`), refreshed after each save and after a flushed offline save. No SQL; `oeuvre_edit_stamp.sql` stays parked for the split-second gap (item kept open in TODO §1).
+- Seen: on work #2334 on the live site via localhost — title saved with a price changed elsewhere kept; a title changed on both sides refused naming « Titre »; an already-stored title not written. #2334 restored afterwards (its version history keeps the test lines).
+
 ## 2026-11-19 — Contact merge in one transaction, admins only (TODO §1 Data safety, Pem « go », « Of course. Do so », « do what's best and what preserves data »)
 
 - Contact merge is separate writes, not one transaction: a failure half-way leaves a split pair → one SQL function. Now `merge_contacts(p_keep, p_lose)` ([`merge_contacts_fn.sql`](../supabase/sql/merge_contacts_fn.sql), definer, `is_admin()` inside, EXECUTE authenticated only), applied live; `mergeContacts` makes one `rpc` call.

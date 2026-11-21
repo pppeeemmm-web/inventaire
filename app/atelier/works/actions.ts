@@ -15,13 +15,18 @@ import {
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
 import { insertPendingChange } from '@/lib/pending-changes-insert'
-import { pendingInsertToSaveError, WORK_BASE_EDITED_AT_FIELD, WORK_CHANGED_ERROR, WORK_IN_BIN_ERROR } from '@/lib/work-save-error'
+import { pendingInsertToSaveError, WORK_BASE_EDITED_AT_FIELD, WORK_CHANGED_ERROR, WORK_IN_BIN_ERROR, workFieldsChangedError } from '@/lib/work-save-error'
 import {
+  CARD_SHOWN_FORM_FIELD,
+  formDataForPendingEdit,
+  parseCardShownForm,
   parsePendingLoadedBase,
   pendingPayloadFromFormData,
+  planPendingEdit,
   PENDING_LOADED_BASE_FIELD,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
+import { loadWorkPlanState } from '@/lib/work-plan-state'
 import { historiqueToStore } from '@/lib/historique-merge'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
@@ -95,7 +100,9 @@ async function replaceOeuvreWorkGroups(
 // docs/WORK_RULES.md rules 6–7): no screen syncs them any more.
 
 /** `saved`: the row as stored after the DB triggers ran — lets the list patch one row, no reload. */
-export type SaveResult   = { error: string; editedAt?: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre>; editedAt?: string }
+/** `unchanged`: a card save with nothing left to write (no row touched). `kept`: card fields (form keys) changed
+ *  elsewhere since the card opened and left as stored — the card reloads them. */
+export type SaveResult   = { error: string; editedAt?: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre>; editedAt?: string; unchanged?: boolean; kept?: string[]; storedThemes?: number[]; storedGroups?: string[] }
 export type DeleteResult =
   | { error: string; deletedIds?: number[] }
   | { ok: true; deletedIds?: number[] }
@@ -313,6 +320,47 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if (pErr) return { error: pendingInsertToSaveError(pErr) }
     revalidatePath('/atelier/audit')
     return { ok: true, pending: true }
+  }
+
+  // Admin save from the work card, field by field (TODO §1 stale save; same plan as approving a proposal). The card
+  // sends the work as it had it (`__base_json`). A field only changed elsewhere since (an order step, a batch edit,
+  // the production board…) keeps its stored value; a field changed here and there is refused by name, nothing
+  // written; the rest is written. The rebuilt form passes through this same door once (`__card_plan`), its write
+  // guarded by the stamp read here. No base (restored draft, older queued save): the whole-work stamp check below.
+  if (!isNew && formData.get('__card_plan') !== '1') {
+    const loaded = parsePendingLoadedBase(formData.get(PENDING_LOADED_BASE_FIELD))
+    if (loaded) {
+      const oid = Number(oeuvreIdRaw)
+      if (!Number.isInteger(oid) || oid <= 0) return { error: 'ID invalide' }
+      const work = await loadWorkPlanState(supabase, oid)
+      if ('error' in work) return { error: work.error }
+      if (work.binned) return { error: WORK_IN_BIN_ERROR }
+      const payload = pendingPayloadFromFormData(formData)
+      // An emptied list is a change too (pendingPayloadFromFormData leaves an empty one out).
+      payload.themes = (formData.getAll('themes') as string[]).map((x) => x.trim()).filter(Boolean).join(',')
+      payload.groups = (formData.getAll('groups') as string[]).map((x) => x.trim()).filter(Boolean).join(',')
+      if (formData.has('historique_base')) payload.historique_base = String(formData.get('historique_base') ?? '')
+      const shown = parseCardShownForm(formData.get(CARD_SHOWN_FORM_FIELD))
+      const plan = planPendingEdit(payload, { ...work.state, ...loaded }, work.state, shown)
+      if (plan.conflicts.length > 0) return { error: workFieldsChangedError(plan.conflicts) }
+      const stamp = (work.state.edited_at as string | null | undefined) ?? null
+      // A theme / group list kept as stored: hand back the stored ids, so the card and the lists show those.
+      const ids = (v: unknown) => String(v ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+      const storedLists = {
+        ...(plan.kept.includes('themes') ? { storedThemes: ids(work.state.themes).map(Number) } : {}),
+        ...(plan.kept.includes('groups') ? { storedGroups: ids(work.state.groups) } : {}),
+      }
+      if (plan.apply.length === 0) {
+        // Nothing to write; the stored row goes back so the card can show what was kept.
+        const { themes: _themes, groups: _groups, ...row } = work.state
+        return { ok: true, unchanged: true, kept: plan.kept, ...storedLists, saved: row as Partial<Oeuvre>, ...(stamp ? { editedAt: stamp } : {}) }
+      }
+      const planned = formDataForPendingEdit(oid, payload, work.state, plan.apply)
+      planned.set('__card_plan', '1')
+      planned.set(WORK_BASE_EDITED_AT_FIELD, stamp ?? '')
+      const res = await saveWork(planned)
+      return 'error' in res ? res : { ...res, kept: plan.kept, ...storedLists }
+    }
   }
 
   const actorId = provenanceUserId(user.id, pendingAuthorId)

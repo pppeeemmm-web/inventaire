@@ -346,6 +346,26 @@ export function pendingLoadedBaseFromRow(
   return out
 }
 
+/** Form field: the card's form as it showed with nothing edited (form keys → values), for `planPendingEdit`'s `shown`. */
+export const CARD_SHOWN_FORM_FIELD = '__base_form'
+
+/** Server side: validate a `__base_form` field — known form keys with string values only; null when missing / invalid. */
+export function parseCardShownForm(raw: unknown): Record<string, string> | null {
+  if (typeof raw !== 'string' || !raw || raw.length > 200_000) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null // not a form snapshot: the plan falls back to the stored base
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (k in PENDING_FORM_KEY_TO_COLUMN && typeof v === 'string') out[k] = v
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 /**
  * Server side: validate a `__base_json` field. Known columns with plain values only; null when
  * missing or invalid (the caller then keeps reading the base at save time).
@@ -374,6 +394,8 @@ export type PendingEditPlan = {
   conflicts: string[]
   /** The row has no `baseline`: every proposed difference counts as a conflict. */
   noBaseline: boolean
+  /** Not proposed (value as in the base) but changed since by someone else: the stored value stays. */
+  kept: string[]
 }
 
 /**
@@ -386,9 +408,13 @@ export function planPendingEdit(
   payload: Record<string, string>,
   baseline: Record<string, unknown> | null,
   current: Record<string, unknown>,
+  /** Form keys → the value the card showed when nothing was edited (`__base_form`): a key whose value is still that
+   *  one is not proposed, even where the card displays a stored value differently (an empty price shown as 0). */
+  shown?: Record<string, string> | null,
 ): PendingEditPlan {
   const apply: string[] = []
   const conflicts: string[] = []
+  const kept: string[] = []
   const now = (key: string) => normalisePendingBaselineValue(key, current[PENDING_FORM_KEY_TO_COLUMN[key]])
   const base = (key: string) => normalisePendingBaselineValue(key, baseline?.[PENDING_FORM_KEY_TO_COLUMN[key]])
   const proposedValue = (key: string) => normalisePendingFormValue(key, payload[key])
@@ -417,7 +443,11 @@ export function planPendingEdit(
     const after = proposedValue(key)
     if (now(key) === after) continue // already in place
     if (baseline) {
-      if (base(key) === after) continue // not part of the proposal
+      const untouched = shown && key in shown ? normalisePendingFormValue(key, shown[key]) === after : base(key) === after
+      if (untouched) { // not part of the proposal; changed since the base: theirs stays
+        if (now(key) !== base(key)) kept.push(key)
+        continue
+      }
       apply.push(key)
       if (changedSince(key)) conflicts.push(key)
     } else {
@@ -425,7 +455,7 @@ export function planPendingEdit(
       conflicts.push(key)
     }
   }
-  return { apply, conflicts, noBaseline: baseline == null }
+  return { apply, conflicts, noBaseline: baseline == null, kept }
 }
 
 /** A stored column value as the form string saveWork() reads back to the same value; null = leave out. */

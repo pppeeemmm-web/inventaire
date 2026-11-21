@@ -16,6 +16,7 @@ import {
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
 import { contactListLabel } from '@/lib/contacts/contact-display'
+import { loadWorkPlanState } from '@/lib/work-plan-state'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
@@ -122,29 +123,6 @@ export type PendingResult = { ok: true } | { error: string }
 
 /** The work changed since the proposal on `fields` (form keys): nothing written, approve again with `force`. */
 export type PendingConflict = { conflict: { fields: string[]; noBaseline: boolean } }
-
-/** The work as `planPendingEdit` reads it: the `Oeuvres` row + theme / group ids (the baseline's shape). */
-async function loadPendingWorkState(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  oid: number,
-): Promise<{ state: Record<string, unknown> } | { error: string }> {
-  const [{ data: row, error }, { data: themeLinks, error: tErr }, { data: groupLinks, error: gErr }] = await Promise.all([
-    supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle(),
-    supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
-    supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
-  ])
-  const readErr = error ?? tErr ?? gErr
-  if (readErr) return { error: readErr.message }
-  const work = row as Record<string, unknown> | null
-  if (!work || work.deleted_at != null) return { error: 'Œuvre introuvable ou supprimée' }
-  return {
-    state: {
-      ...work,
-      themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
-      groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
-    },
-  }
-}
 
 async function ensureAdmin() {
   const supabase = await createClient()
@@ -336,8 +314,9 @@ export async function approvePendingChange(
   if (kind === 'edit') {
     const oid = row.oeuvre_id ?? Number(filtered.oeuvre_id)
     if (!Number.isInteger(oid) || oid <= 0) return { error: 'Œuvre introuvable' }
-    const work = await loadPendingWorkState(supabase, oid)
+    const work = await loadWorkPlanState(supabase, oid)
     if ('error' in work) return { error: work.error }
+    if (work.binned) return { error: 'Œuvre introuvable ou supprimée' }
     const plan = planPendingEdit(filtered, row.baseline as Record<string, unknown> | null, work.state)
     if (plan.conflicts.length > 0 && !opts?.force) {
       return { conflict: { fields: plan.conflicts, noBaseline: plan.noBaseline } }
