@@ -8,7 +8,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- First when the credits renew (Sunday 22 Nov): the one inbox (`inbox_item`) — every input lands there, voice notes transcribed and editable, sorted later to Journal / Idées / Kaizen / Fil → [MasterPlan §3.1](./design/2026-11-20/MasterPlan.md); Flow trace + SQL OK first.
+- First: the Journal design — one stream (a feed by day, labels and links, backlinks), the capture entry on the day's page from the desk hotkey and the phone, corrections, the desk mockup, the scenario in steps; design before code, no separate inbox → [BuildingPrinciples](./design/2026-11-21/BuildingPrinciples.md), [MasterPlan §3.1, §5](./design/2026-11-20/MasterPlan.md), surveys in `design/2026-11-21/`.
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
@@ -31,6 +31,7 @@ Small fixes
 
 Checks
 - [ ] One automated stress round once the contact merge transaction lands: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
+- [ ] AI desk « Lancer »: confirm on Pem's PC that a job starts; what still fails is fixed or removed.
 
 ## 2. Waiting on you, Pem
 
@@ -38,6 +39,8 @@ Checks
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.
 - [ ] **Restore drill (O4):** run it once ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
+- [ ] **Phone capture checks:** five things to try on the iPhone before the Journal design (back tap → Shortcut, a second icon, recording with the page in the background, a lock-screen shortcut, a capture with no signal) → [survey](./design/2026-11-21/Survey_JournalCapture.md).
+- [ ] **Delacroix's notebooks:** read Hannoosh's article, or allow one page fetch → [survey §3](./design/2026-11-21/Survey_DelacroixJournal.md).
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.
 - [ ] **Phone check:** open Aujourd'hui once on Wi-Fi, then airplane mode and reopen (cached copy).
@@ -50,7 +53,7 @@ Checks
 
 - [ ] **Contacts as relationships:** a four-part contact (info · addresses · about · relationships), « Sphères », reminders (birthdays first), a « Relation » timeline (works shown to whom, kits, events, enquiries); absorbs the rest of the contacts review (better autofill, one phone format E.164 shown grouped, a fixed FR / EN label list + clean-up of imported labels) → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
 - [ ] **Reverse pricing:** from the net wanted after discount, commission, taxes and costs back to the list price per channel; the wholesale price falls out of it (needs your inputs, §2) → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)
-- [ ] **Phone outbox on mobile data:** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
+- [ ] **Phone outbox on mobile data (designed with the Journal capture):** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
 - [ ] **R8 public site:** look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md)
 - [ ] **Editions:** an edition holds runs (date, medium, prints, proofs, cost, price per print), copies numbered per run, each copy you sell tracked; = R6 editions part 2 — after catalogue gaps steps 1–7 → [notes B](./design/2026-11-19/CatalogueGaps.notes.md)
 - [ ] **AI desk, web addresses:** contacts with a web address read by the PC agent and suggested on Bureau IA like the cards — which contacts, how often reread → [`AiDesk.notes.md`](./design/2026-11-18/AiDesk.notes.md)
@@ -88,6 +91,9 @@ Storage and Vault
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
+- [ ] Push-blocking checks for the building principles: no table write from a browser file, no new whole-Atelier refresh — today's files listed as the debt, the list may only shrink → [BuildingPrinciples §1](./design/2026-11-21/BuildingPrinciples.md).
+- [ ] `saveContact`: one server door for a contact and its addresses, emails, phones and links, in one transaction — before any People build.
+- [ ] Eight kinds of record the museum standards expect (inscriptions, moves with « seen on », valuations, treatments, licences / reproductions, literature, objects coming in, details of each showing): place each on the map of homes, with the catalogue-gaps steps → [survey](./design/2026-11-21/Survey_MuseumStandards.md).
 - [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
 
 ## 5. Parked — no GO

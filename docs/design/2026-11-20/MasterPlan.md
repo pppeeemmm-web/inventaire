@@ -1,5 +1,7 @@
 # PEM Hub — master plan (design, 2026-11-20)
 
+> **Amended 2026-11-21** after the architecture review: how anything is built → [`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md) (twelve commandments, the map of homes); six surveys beside it. Changed here: §2.1 (inputs), §3.1 (no inbox), §5 (marching order), §8.3, §12.3 / §14.3 (replaced by §15.2). The museum standards confirm the Moment shape of §1.1; a move and a valuation are events of the same family, and the timeline is a view on the existing graph layer (`nodes`, `tblrelations`, `edge_fact`).
+
 Design only: no code, no SQL, no commit. Written from a full read of `STRATEGY.md` (with the new « Intentions » / « What I don't want »), `ScopeInterview.notes.md`, `SystemMap.draft.md`, `TODO.md`, the design notes listed in the brief (CatalogueGaps, ContactsReview, Collector_ShareKit, Products_Engine, Supplies_Orders, AiDesk, R6, R7, R8), `WORK_CUSTODY_MODEL`, `CONSTELLATION`, `COMMERCIAL_GUIDELINES`, `ARCHITECTURE`, `WHERE_WE_STOPPED`, the speed measurements of 2026-11-18, and the live database (read only, 2026-11-20). Questions for Pem are in the chat, numbered.
 
 ---
@@ -78,25 +80,25 @@ Themes = creation / groups = business · design references in their own place ·
 | Works | `Oeuvres` + images, versions, themes junction, condition reports, `work_action` | Unchanged spine. Catalogue gaps steps 1–2 add columns, not tables. |
 | People | `Contact` + addresses / emails / phones / links; **`contact_tag`** (new: spheres and tags as one) | Display layer first (ContactsReview phase 1 — no SQL). |
 | Moments — lifecycles | `work_order` (+ lines, payments, shipment), `suivi_process` (+ steps, `event_work`, `event_contact`), `private_link` | Keep; they hold the guards. |
-| Moments — touches | **`moment`** (new, one table) | Every gate writes here for known people; unknown senders go to the inbox. |
+| Moments — touches | **`moment`** (new, one table) | Every gate writes here for known people; unknown senders wait in a review list designed with the mail gate. |
 | Ideas | `journal_entry` (+ links), `concept`, `theme`, `tblrelations` (human types), `constellation_map` | Never mixed with the office. |
-| Inbox | **`inbox_item`** (new) — replaces `share_inbox` | **The one landing zone for every input** (§3.1). Sorting moves an item to its home. |
+| Inputs | `journal_entry`, `voice_note`, `inspiration_photo`, `note_line` → one stream: one item per input, labels and links beside it | **A capture lands on the day's page** (§3.1); no separate inbox. Sorting adds a label or a link. |
 | Tasks | `studio_task` (+ contact link), `work_action` (production) | Two, not four. |
 | Papers | `document` (Vault) with the naming policy (R7) | Every paper points to its record. |
 | Money | `payments`, `expense`, `invoice` | Receipts book = a read on payments (§2.4). |
 
 ### 2.2 Gates (each is one writer with one contract)
 
-Contract for every gate: an external id (never writes twice) · a source tag · **never creates a contact by itself** (proposes in the inbox) · a known contact → a touch on that person · private / unknown → inbox only, summary + link, never the full message body · a log line in `system_log`.
+Contract for every gate: an external id (never writes twice) · a source tag · **never creates a contact by itself** (proposes it for review) · a known contact → a touch on that person · private / unknown → the review list only, summary + link, never the full message body · a log line in `system_log`.
 
 | Gate | Exists | First version |
 |---|---|---|
-| Phone `/hub` | yes | unchanged; share target → inbox |
+| Phone `/hub` | yes | « right now » icon; share sheet through a Shortcut → the day's page |
 | Desk on-top window | no | §3, before the freeze |
 | Site enquiry / kit enquiry | yes (`inquiry`) | an enquiry becomes a touch when answered |
 | Calendar | OAuth + `calendar_event_link` (0 rows) | export works; read-in of events with known people → touches |
 | Studio mailbox | no | read only, known contacts only, summary + link; **after GDPR notice + security review** |
-| Instagram / WhatsApp | no | manual « forward to inbox » first (share sheet), no API |
+| Instagram / WhatsApp | no | manual forward to the day's page first (share sheet → Shortcut), no API |
 | Payments (SumUp) | manual « Encaisser » | import of the provider's statement, matched to orders |
 
 ### 2.3 Roles
@@ -120,22 +122,17 @@ Admin (Pem) · team · nobody else. « Agents » (Pem 2026-11-20) = the stakehol
 
 ## 3. The two « Now » builds, as I would shape them
 
-### 3.1 One input system: one hotkey, one inbox, every gate (revised after Pem's reply)
+### 3.1 One input system: a capture lands on the day's page (revised 2026-11-21)
 
-**The principle: one landing zone for everything, then homes.** Today an input can land in six places depending on where you typed it: `share_inbox` (phone share sheet), `kaizen_item` (system upkeep), `studio_task`, `voice_note`, `journal_entry`, `concept` (ideas). That is the multiplication Pem wants stopped. Target:
-- **Every input lands first in one table, `inbox_item`** — idea, bug, photo, voice note, task, link, screenshot; from the desk hotkey, the phone, the share sheet, and later the gates (an unknown mail sender, a calendar invite with an unknown person).
-- **Sorting moves it to its home**, once, by a person (later an AI proposal): a journal entry, an idea (`concept`), a task, a work note, a bug report, a touch on a contact. The inbox row keeps a pointer to where it went, so nothing is lost and nothing shows twice.
-- The homes are not new landing zones; they are where things live after sorting. `share_inbox` is retired into `inbox_item`. Kaizen stays what it is (system upkeep), fed from the inbox when an item is sorted as a bug or an upkeep task.
-- Earlier wording here proposed reusing `kaizen_item` as the inbox: dropped. Kaizen means « system upkeep »; creative ideas landing there would mix the two halls.
+**Pem 2026-11-21: no separate inbox.** The Journal is the full stream of records; a capture is home the moment it is taken — a moment on that day's page. The `inbox_item` table of the earlier wording is dropped. Sorting later means adding a label (idea, process, materials…) or a link (a work, an idea, a person), never moving the item. A bug report about the app goes to Kaizen.
 
-**Inbox row (sketch, SQL later with its own OK):** id · created at / by · source (desk, phone, share, mail…) · kind as guessed (idea / bug / unknown — the hotkey's switch) · text · attachments (screenshot, photo, audio → R2 keys) · link / window title · works mentioned (`#1234`) · status (new / sorted / dropped) · sorted to (table + id) · source id (a gate never writes twice).
-
-**The desk side — AutoHotkey (Pem's choice):** one hotkey works over any application (a browser on another site, a PDF, Lightroom):
-- it grabs what is at hand: the selected text, the active window's title and the browser address when there is one, and a screenshot (region or window);
-- it opens a small capture window prefilled with all that, kept on top, with a few words, a voice-note button and the idea / bug switch; Enter sends.
-- The capture window is a tiny page that **never loads the Atelier shell or the catalogue**; AutoHotkey hands it the grabbed data. On the phone: a `/hub` capture tile + the share sheet, writing the same table.
-- **Bug items → reports for Claude:** a « Copier pour Claude » button that builds one markdown block (words, screenshot links, URL, time, build sha). This is also the after-the-pause support path (§6).
-- Consequences / scope / pluses / minuses: + one path for every input, + friction reported while it happens, + the gates later reuse the same table; − one new table and the phone share path moved onto it; − AutoHotkey runs on the PC only (the phone uses the tile); − an inbox needs a sorting habit, or it fills up — the Fil shows its count. Readers to check (Flow): `/hub` share target, Kaizen, Fil, Overview badges, sidebar counts, Journal (sorted entries), Idées, What's new. Cost without Claude: one AutoHotkey script on the PC, documented in the runbook.
+- **Today the inputs are split by medium** into four stores (`journal_entry`, `voice_note`, `inspiration_photo`, `note_line`), each linked its own way; a day is assembled from about eight reads. Target: one item per input, labels and links beside it, one ordered feed ([`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md) §2, §2b).
+- **Open design point:** a journal entry's `kind` cannot change once written, and its links reach only a work or an idea — « sort later » needs labels beside the entry or a changeable kind (SQL, own OK).
+- **Desk — AutoHotkey (Pem's choice), unchanged in intent:** one hotkey over any application grabs the selected text, the window title, the browser address and a screenshot, and opens a small capture page kept on top (a few words, a voice-note button; Enter sends). The page never loads the Atelier shell or the catalogue. It writes onto today's page.
+- **Phone:** a second icon « right now » (recorder, camera or a line, already on today's page); on the iPhone SE, Back Tap → a Shortcut; the share sheet through a Shortcut. The share path built on the web « share target » does not exist on iOS and goes nowhere on Pem's phone: it is rebuilt here and the old `share_inbox` code retired then ([`Survey_JournalCapture.md`](../2026-11-21/Survey_JournalCapture.md)).
+- **Corrections:** the original kept, the correction beside it (`corrects_id` exists in the database, no screen uses it).
+- **Bug items → reports for Claude:** « Copier pour Claude » builds one markdown block (words, screenshot links, URL, time, build sha) — also the after-the-pause support path (§6).
+- Readers to check (Flow): `/hub`, the share route and triage screens, Journal day and index, Idées, Kaizen, Fil, Overview badges, sidebar counts, search index, archive export, What's new. Cost without Claude: one AutoHotkey script and one iPhone Shortcut, both in the runbook.
 
 ### 3.2 Speed — measure on production, one fix, then the real design
 
@@ -178,25 +175,21 @@ Verdicts: **keep** · **reshape** · **merge** · **park** · **drop**. Where my
 
 Today 2026-11-20 → freeze 2026-12-10 → wind-down 2026-12-17. Three weeks of build at most; the last one is tests.
 
-### Before 2026-12-10 — builds (each with its card: aim, consequences, readers, test)
+### Marching order (revised 2026-11-21 — replaces the two « before 2026-12-10 » lists)
 
-1. **Batch A** (in progress in the main session).
-2. **One input system:** `inbox_item` + AutoHotkey capture + phone tile (§3.1).
-3. **Journal sketchbook** — mockup this week, then build behind a switch, its own data loading (§3.2). Pem: must ship.
-4. **Usage count per tab** (Pem: yes) — one quiet counter per tab open, read once a month.
-5. **AI desk: hide the broken parts.**
-6. **Receipts book export** (small; §10) and **manual « posted » record** for Instagram (small; §11).
-7. **Speed: measure live as admin, one fix** beyond the Journal (§3.2).
-8. If time remains: catalogue step 1 (read only).
+Set after the architecture review of 2026-11-21 ([`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md)). The dates give the spirit — everything built is thought through so it works; they do not shrink a build. Sizes come from reading the code of each build, not from the calendar.
 
-This is tight for three weeks. If something must slip, it is 7 and 8, never the tests.
+1. `TODO.md` §1 — the data-safety items, the stale save on the work card first.
+2. Pem, ten minutes on the phone: the five capture checks ([`Survey_JournalCapture.md`](../2026-11-21/Survey_JournalCapture.md) §2).
+3. **The Journal design** (fresh session, design before code, Pem approves): one feed, labels and links, backlinks, the capture entry on the day's page (desk hotkey + phone), corrections, the desk mockup, the scenario in steps. Opens with Hannoosh's article on Delacroix's notebooks ([`Survey_DelacroixJournal.md`](../2026-11-21/Survey_DelacroixJournal.md) §3).
+4. The checks that hold the principles: no table write from a browser file, no new whole-Atelier refresh — today's debt listed, the list may only shrink.
+5. Build the Journal; loading time measured on the live site before and after.
+6. AI desk: confirm on Pem's PC that « Lancer » starts a job; what still fails is fixed or removed (not hidden).
+7. Usage count per tab (Pem: yes).
+8. Receipts book export of existing payments (§10); « + Recette » and its kinds (§14.4, §15.1) need a change to `payments` (an order is required today) and come with their own design.
+9. Manual « posted » record for Instagram (§11); catalogue step 1 if time remains.
 
-### Before 2026-12-10 — design only (no build)
-
-- This plan agreed (or corrected).
-- People (contacts as relationships) on one page, reshaped as above.
-- Places as one shared resource (§1.1 b), sketched for after the pause.
-- Gate contract (§2.2) and the `moment` table sketched, not applied.
+Design only, before the freeze: People on one page (after `saveContact` is designed), places and storage locations (§1.1 b, §15.2), the gate contract and the `moment` table sketched.
 
 ### 2026-12-10 → 2026-12-17 — tests, fixes, runbook
 
@@ -208,7 +201,7 @@ This is tight for three weeks. If something must slip, it is 7 and 8, never the 
 ### After the pause (when building resumes — Pem learning, or a short subscription)
 
 1. Receipts book + thresholds line (small, legal value, reads existing payments).
-2. People: display layer → tags → the `moment` table → timeline → two care rules → care tasks in `studio_task`.
+2. People: **`saveContact` first** (one server door, one transaction — the contact editor writes six tables from the browser today) → display layer → tags (replacing `Type`, `TypeContact`, `Role`) → the `moment` table → « interested in » as a link person ↔ work → timeline → two care rules (a birth date field is needed first) → care tasks in `studio_task`.
 3. Calendar gate (read-in of events with known people).
 4. Catalogue steps 2–3 (work fields, papers), CV / press generated.
 5. R8: per-work page, then look decisions.
@@ -254,8 +247,8 @@ This is tight for three weeks. If something must slip, it is 7 and 8, never the 
 
 1. **SystemMap §3 « no migration needed to start »** — true but empty: the view would show nothing. Start with the contract (§1.1 c), not the view.
 2. **SystemMap §6 « reshape — first » for contacts** — agreed on the reshape, not on « first » before the freeze: it is design-only until the pause.
-3. **ScopeInterview « Speed + Journal sketchbook »** as one Now item — speed yes; the sketchbook is a mockup, not a December build.
-4. **« Care runs without Pem »** — the intention is right; before there are touches it is a rule with nothing to read. The first care tool is simpler: the inbox + the Fil seen by the whole team.
+3. **ScopeInterview « Speed + Journal sketchbook »** as one Now item — speed yes; the sketchbook: whole-screen design first, then built (Pem: must ship — §3.2, §5).
+4. **« Care runs without Pem »** — the intention is right; before there are touches it is a rule with nothing to read. The first care tool is simpler: the Fil seen by the whole team.
 5. **« The system must be ready before the first case »** — ready = **proven on the throwaway copy with a mock year**, not « more features ». That is already in the freeze plan; it should be the definition of ready.
 6. **Brief template** — Pem's « consequences, scope, pluses, minuses » becomes a fixed card on every build brief, with one new line the pause makes essential: **« cost to keep it running without Claude »**.
 7. **Places as a pillar, a fifth task store, a new approval screen, a Moment table for lifecycles, three edition designs** — each is one more layer; each is removed or merged above.
@@ -273,7 +266,7 @@ This is tight for three weeks. If something must slip, it is 7 and 8, never the 
 7. Journal sketchbook: must ship before the freeze → §3.2, §5.
 8. Desk capture: AutoHotkey, grabbing from any app → §3.1.
 9. Usage count per tab: yes. 10. Restore drill + R2 rotation this week: yes. 11. Introduction package: for whoever takes charge. 12. « Cost to keep it running without Claude » line on every brief: yes.
-13. Input system: one landing zone for everything, not a debug-only inbox → `inbox_item` (§3.1); the `kaizen_item` reuse is dropped.
+13. Input system: one landing zone for everything, not a debug-only inbox → `inbox_item` (§3.1); the `kaizen_item` reuse is dropped. **2026-11-21: the landing zone is the day's page of the Journal — no `inbox_item` table (§3.1).**
 
 ---
 
@@ -287,7 +280,7 @@ What a year alone needs, aim by aim (checked against live code 2026-11-20):
 
 | Aim | Needed next year | State | Before 12-17? |
 |---|---|---|---|
-| Trace | quick capture (desk + phone), Journal, voice notes, photos into works | `/hub`, voice, photos exist; inbox + hotkey + sketchbook planned | **yes** (§5 items 2–3) |
+| Trace | quick capture (desk + phone), Journal, voice notes, photos into works | `/hub`, voice, photos exist; capture on the day's page (hotkey, phone icon) + sketchbook planned | **yes** (§5 items 2–3) |
 | Trace | the catalogue itself | exists | — |
 | Links | Constellation linking by hand | exists | — (Pem's own work) |
 | Transmission | the website, readable and fast | live; R8 first batch built; per-work page and look decisions not done | no — the site works as it is; R8 is after the pause |
@@ -299,7 +292,7 @@ What a year alone needs, aim by aim (checked against live code 2026-11-20):
 
 **Not needed next year** (can wait without loss): contacts timeline and care rules, mail / calendar gates, editions, reverse pricing (a spreadsheet does it), matching, digests, 3D, kit switches, catalogue steps 2–8, products / licences. Each stays designed in its note; nothing is lost by waiting.
 
-**So, answering Pem:** with the five « yes » rows done and tested, nothing else is needed for a year. Everything Pem thinks of after that goes into the inbox as an idea — it is scope drift only if it gets built.
+**So, answering Pem:** with the five « yes » rows done and tested, nothing else is needed for a year. Everything Pem thinks of after that goes onto the day's page as an idea — it is scope drift only if it gets built.
 
 ---
 
@@ -315,7 +308,7 @@ What a year alone needs, aim by aim (checked against live code 2026-11-20):
 1. **A post is an output, a reel is made outside.** Video editing stays in the phone / Adobe; the hub does not store or edit video (Pem already chose video links only, CatalogueGaps A3). The hub's role: choose what to show, hold the caption draft, and **record what went out** (date, link, works, kind: post / reel / story).
 2. **The record must not depend on Make.** Today a post is recorded only when Make calls the hub. Small build before the freeze: « Ajouter une publication » on a work and in Broadcast — paste the Instagram link, tick the works, done. With Make running, nothing changes.
 3. **Each post is a line in the work's history** — transmission is trace too; later it feeds the work's « diffusion » list and the site.
-4. **Comments and messages coming in** stay a gate for later (§2.2): forward to the inbox from the phone's share sheet, no Instagram API.
+4. **Comments and messages coming in** stay a gate for later (§2.2): forward to the day's page from the phone's share sheet, no Instagram API.
 5. **Substack:** when it comes, the site's journal stays the source and the letter points back (R8 note); not before the pause.
 6. **Cost without Claude:** Make, Buffer and the AI caption are three paid services; posting by hand from the phone works with none of them. The runbook says which can be switched off.
 
@@ -354,21 +347,11 @@ What a year alone needs, aim by aim (checked against live code 2026-11-20):
 1. **Stale save on the work card** (TODO §1: a card left open can post an old status / owner / price) — the database stamp is written, not live. Should close before the freeze: it is a data-safety item.
 2. **Speed architecture** (§3.2).
 3. **Many writers of `Oeuvres`** (27 files) — safe because the triggers guard, hard to maintain alone.
-4. **Duplicate stores**: places in two tables, tasks in four, inputs in six (the inbox fixes inputs; the rest after the pause).
+4. **Duplicate stores**: places in two tables, tasks in four, inputs in six (the one stream of §3.1 fixes inputs; the rest after the pause).
 
 **Verdict:** the structure is sound where it matters most (works, custody, money). The weak points are speed, one data-safety item, and duplication — none needs a rebuild.
 
-### 12.3 Where a work is in the studio (« emplacement ») — sketch
-
-Felt often (Pem 2026-11-20). Card for the brief:
-- **Aim:** Trace (nothing lost — physically too).
-- **What:** one short field on the work, `emplacement` (« Rack A · 3 », « Boîte 12 », « Mezzanine »), with suggestions from the values already used, so the same place is always written the same way. A place is a text, not a new table (it lives inside the studio address; a full place table comes with §1.1 b after the pause).
-- **Where it shows:** work card (next to the address), Inventory column + filter (« everything in Boîte 12 »), ⌘K search, phone work view, inventory list paper.
-- **The phone is the tool:** scan a work's label QR → work view → « Emplacement » with the last values as one-tap chips. A tidy-up session = scan, tap, next.
-- **Rules:** meaningful only while Pem holds the work; when an order takes the work out, it is cleared (the version history keeps the old one); when it comes back, the phone asks for it. Versioned like every work field.
-- **Consequences / scope / pluses / minuses:** + finding any of 1,182 works in seconds, + the insurer's list (§12.1) gets a real « where »; − 1,182 works to place the first time (done gradually, as works are touched; Inventory shows « sans emplacement »); − one SQL column (own OK, Flow trace: `saveWork` + pending keys, versions, Inventory, phone, papers, search index, archive export).
-- **Cost without Claude:** none beyond the field.
-- **When:** small enough for before the freeze if Pem wants it there; it competes with the speed fix (§5 item 7).
+### 12.3 Where a work is in the studio — replaced by §15.2
 
 ---
 
@@ -427,13 +410,7 @@ Pem 2026-11-20: a record of what this is, not a to-do. Observed in live code and
   4. Later, with H2: risk notes per storage place.
 - To ask the insurer (Pem): does the policy cover works stored at home / studio, at what value (price or replacement), and what list do they want?
 
-### 14.3 Where a work is in the studio — groupings and actual place
-
-Two different needs, both real:
-- **Actual place** (physical): rack, shelf, box, plan chest, roll. Answers « where is #1234 ». → the `emplacement` field of §12.3, set from the phone by scanning the label QR, with suggestions so the same place is always written the same way.
-- **Groupings** (logical): the works of a show, a series, a selection. They exist already as themes (creation) and working groups (business); they say nothing about where a work physically is. When a group is also stored together (« everything for Montrouge is in box 4 »), that is a fact about emplacement, not a new grouping.
-- **Proposal:** emplacement only, as in §12.3; a group can be given one emplacement in one action (« move this group to Boîte 4 ») from Inventory. Later, with the one `place` table (§1.1 b), an emplacement becomes a child place of the studio.
-- To settle with Pem: how works are stored (racks, flat files, boxes, rolls, wrapped), and whether a box itself gets a label with a QR.
+### 14.3 Where a work is in the studio — replaced by §15.2
 
 ### 14.4 Every receipt, not only sales
 
