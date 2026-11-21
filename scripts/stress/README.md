@@ -12,7 +12,16 @@ The Supabase tool asks it for a database, a login service and an API, all local,
 - The scripts refuse to run in a folder that has `.env.local` (the real keys). Run them from a worktree
   without it — e.g. `app-worktrees\brave-goldberg-0cf0bd`, or a new one: `git worktree add ..\app-wt-stress main`.
 
-## Start (3 windows)
+## Start — one command (from the main checkout)
+```powershell
+& .\scripts\stress\up.ps1
+```
+Starts Docker Desktop if needed, brings `..\app-worktrees\stress-live` to this checkout's commit **with its
+uncommitted changes laid over** (a draft is tested before it is committed), starts the database, opens two windows
+(fake image storage, the app). Then http://127.0.0.1:3077, sign in as below. `-Seed` = fresh fake data first.
+Stop: `& .\scripts\stress\up.ps1 -Down` (closes both windows, stops the database, data kept).
+
+## Start by hand (3 windows)
 1. Open **Docker Desktop** and wait for « Engine running » (bottom left). Check: `docker info` answers.
 2. Window 1 — the database (first time: a few minutes to download; then ~30 s; the data is kept between runs):
    ```powershell
