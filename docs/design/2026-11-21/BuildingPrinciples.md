@@ -93,7 +93,7 @@ When Pem asks for something, the machine answers first: « this is that kind, it
 
 ## 4. Look before building — surveys to run before each domain is designed
 
-Not run. Each is web research plus a read of the hub's own code, and gives one page: what the best systems do, what the hub already has, what is missing, what is not worth copying.
+Run 2026-11-21 — one page each beside this file (`Survey_MuseumStandards`, `Survey_JournalCapture`, `Survey_LegacyArchive`, `Survey_ContactsCare`, `Survey_LinksDigests`, plus `Survey_DelacroixJournal`); contacts and links were run early and are re-read when their design starts. Each is web research plus a read of the hub's own code, and gives one page: what the best systems do, what the hub already has, what is missing, what is not worth copying.
 
 | Domain | What to look at |
 |---|---|
@@ -107,6 +107,8 @@ Not run. Each is web research plus a read of the hub's own code, and gives one p
 ---
 
 ## 5. What comes first (no build list — the order of proof)
+
+The full marching order is in [`MasterPlan.md` §5](../2026-11-20/MasterPlan.md) (revised 2026-11-21); it wins over the list below where they differ.
 
 1. The museum-standards survey (§4, first row): Pem 2026-11-21 — the proven systems are the base to build on. The hub's records, custody and orders are set against them; gaps and differences on one page.
 2. One proof of commandments 5, 6 and 9 on the screen Pem uses most: the Journal reads one ordered feed, by pages; loading time measured before and after on the live site.
