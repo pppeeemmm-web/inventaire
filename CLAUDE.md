@@ -28,6 +28,22 @@ Repo guide. Conflict → ask owner before edit. Area rules live next to their co
 - Feat / fix commit messages carry a `Flow:` line naming the readers checked (`Flow: none — copy only` is fine). `ship.ps1` refuses a push without it.
 - Before landing or committing a feat / fix: run the `flow-reviewer` agent on the diff + trace; fix every reader it reports « NOT updated », or say why not. `land.ps1` prints the diff it lands — read it.
 
+## Building principles (owner 2026-11-21) — full text `docs/design/2026-11-21/BuildingPrinciples.md`
+Read that page before any plan, brief or proposal. A proposal answers first: which kind of thing is this, which home does it live in (page §2), what changes. A new table, store, door or screen says why no existing one fits — before building.
+1. The database holds the rule; the screen only explains a refusal.
+2. One door per record, on the server: checks who asks, writes all or nothing. No table write from a browser file.
+3. A door tells the truth: refused or nothing changed is never « ok ».
+4. Only doors are exposed; helpers are not callable from outside.
+5. A screen asks for what it shows; lists come in pages, never whole.
+6. Reading is not saving: reads do not queue behind saves; a save returns the one thing that changed. No new `revalidatePath('/atelier')`.
+7. Counts are asked of the database, never computed from a loaded list.
+8. One home per kind of thing. Office facts answer: who × which works × when × kind × paper.
+9. One stream: the Journal is the full stream of records, pages by day; a capture lands on the day's page (no inbox); the phone writes into it, the desk reads and connects.
+10. Same doors, two designs: every function reachable on phone and desk through the same door; each face led by what the device does best.
+11. Look before building: survey what exists in the device, the field (proven standards) and the system.
+12. Scenario before build (steps Pem can check; mockup for anything visual), proof on the throwaway copy before live.
+A kind is a label and a view is a read: a change of mind costs a label or a view. A request that cannot be met that way → stop, redraw the map with Pem.
+
 ## Commands
 - Dev: `npm run dev` (refuses a taken port — reuse that server; `-- --force` only for your own stale one; honors `PORT`) or `pwsh scripts/dev.ps1` (prints the phone LAN URL). `/_next/static/*` 404 → restart from the real root, delete `.next`, hard reload.
 - E2E: `npm run test:e2e`; field / mobile: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
