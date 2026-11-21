@@ -39,7 +39,7 @@ Checks
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.
 - [ ] **Restore drill (O4):** run it once ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
-- [ ] **Phone capture checks:** five things to try on the iPhone before the Journal design (back tap → Shortcut, a second icon, recording with the page in the background, a lock-screen shortcut, a capture with no signal) → [survey](./design/2026-11-21/Survey_JournalCapture.md).
+- [ ] **Phone capture gesture:** on the first working Journal prototype, two minutes with the phone in hand — tap the back twice → the recorder opens on today; the Journal design states the other iPhone limits as assumptions → [survey](./design/2026-11-21/Survey_JournalCapture.md).
 - [ ] **Delacroix's notebooks:** read Hannoosh's article, or allow one page fetch → [survey §3](./design/2026-11-21/Survey_DelacroixJournal.md).
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.

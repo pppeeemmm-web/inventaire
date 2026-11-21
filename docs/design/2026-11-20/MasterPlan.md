@@ -180,7 +180,7 @@ Today 2026-11-20 → freeze 2026-12-10 → wind-down 2026-12-17. Three weeks of 
 Set after the architecture review of 2026-11-21 ([`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md)). The dates give the spirit — everything built is thought through so it works; they do not shrink a build. Sizes come from reading the code of each build, not from the calendar.
 
 1. `TODO.md` §1 — the data-safety items, the stale save on the work card first.
-2. Pem, ten minutes on the phone: the five capture checks ([`Survey_JournalCapture.md`](../2026-11-21/Survey_JournalCapture.md) §2).
+2. The Journal design states the iPhone capture limits as assumptions in its scenario (a Shortcut opens a URL; a second icon may need its own sign-in → a Shortcut icon into the one installed app; recording stops when the page leaves the front; no lock-screen widget relied on; offline queue read in the code). Pem confirms the one real gesture (tap the back twice → the recorder opens on today) on the first working prototype, two minutes, with the thing in hand ([`Survey_JournalCapture.md`](../2026-11-21/Survey_JournalCapture.md) §2; Pem 2026-11-21: no homework before something exists).
 3. **The Journal design** (fresh session, design before code, Pem approves): one feed, labels and links, backlinks, the capture entry on the day's page (desk hotkey + phone), corrections, the desk mockup, the scenario in steps. Opens with Hannoosh's article on Delacroix's notebooks ([`Survey_DelacroixJournal.md`](../2026-11-21/Survey_DelacroixJournal.md) §3).
 4. The checks that hold the principles: no table write from a browser file, no new whole-Atelier refresh — today's debt listed, the list may only shrink.
 5. Build the Journal; loading time measured on the live site before and after.
