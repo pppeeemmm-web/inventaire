@@ -82,7 +82,7 @@
 // '3.1.85' (2026-11-20): a voice note sent to a new idea brings its transcript; Bureau IA « Lancer » starts the PC at the click.
 // '3.1.86' (2026-11-21): a text beside each inspiration photo, added or changed later (desk + phone); hover shows the photo large.
 // '3.1.87' (2026-11-21): a day holding only an inspiration photo is listed in the Journal; search finds a photo by its text (desk ⌘K, phone ☰).
-export const WHATS_NEW_RELEASE = '3.1.87'
+export const WHATS_NEW_RELEASE = '3.1.88'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -108,6 +108,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'work_save_field_by_field', day: '2026-11-21', spot: 'inventory', admin: true },
   { id: 'inspiration_found', day: '2026-11-21', spot: 'journal' },
   { id: 'inspiration_text', day: '2026-11-21', spot: 'journal' },
   { id: 'voice_note_idea_text', day: '2026-11-20', spot: 'journal' },

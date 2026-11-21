@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.88 (2026-11-21) — the work card saves field by field.
+  wn_work_save_field_by_field_t: { fr: 'Une fiche restée ouverte n’efface plus un autre changement', en: 'A card left open no longer undoes another change' },
+  wn_work_save_field_by_field_d: {
+    fr: 'Quand une commande, une modification en lot ou la production change une œuvre pendant que sa fiche est ouverte, « Enregistrer » n’écrit plus que ce que vous avez modifié dans la fiche : l’autre changement est gardé et la fiche le montre. Si vous avez changé le même champ, la fiche refuse et dit lequel.',
+    en: 'When an order, a batch edit or production changes a work while its card is open, « Save » now writes only what you changed in the card: the other change is kept and the card shows it. If you changed the same field, the card refuses and says which one.',
+  },
   // 3.1.87 (2026-11-21) — inspiration photos are found: in the list of days and by their text.
   wn_inspiration_found_t: { fr: 'Les photos d’inspiration se retrouvent', en: 'Inspiration photos can be found again' },
   wn_inspiration_found_d: {
