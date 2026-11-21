@@ -117,6 +117,8 @@ export const journalEntryMessages = defineMessages({
   je_sum_creation: { fr: '{n} Création', en: '{n} Création' },
   je_sum_voice_one: { fr: '1 note vocale', en: '1 voice note' },
   je_sum_voices: { fr: '{n} notes vocales', en: '{n} voice notes' },
+  je_sum_insp_one: { fr: '1 photo d’inspiration', en: '1 inspiration photo' },
+  je_sum_insps: { fr: '{n} photos d’inspiration', en: '{n} inspiration photos' },
   je_err_empty: { fr: 'Écrivez quelque chose.', en: 'Write something.' },
   je_err_fmt: { fr: 'Échec : {msg}', en: 'Failed: {msg}' },
   // Inspiration photo (R1 / R2): Photo · doc → Inspiration; shown among the day's entries.

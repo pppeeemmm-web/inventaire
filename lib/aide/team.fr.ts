@@ -116,7 +116,7 @@ Les écrans sont rangés en groupes :
 
 Partout :
 
-- **⌘K** (Mac) ou **Ctrl+K** (PC) ouvre la recherche : une œuvre, un écran, une action.
+- **⌘K** (Mac) ou **Ctrl+K** (PC) ouvre la recherche : une œuvre, un écran, une action, le texte d’une photo d’inspiration.
 - Un clic sur une œuvre ouvre sa fiche sur le côté.
 - **?** dans l'en-tête (ou la touche **?**) ouvre l'aide de l'écran où vous êtes, par-dessus la page, avec une recherche. Échap la ferme.
 - Les boutons **FR / EN** de l'en-tête changent la langue.

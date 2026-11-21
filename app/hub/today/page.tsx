@@ -142,6 +142,7 @@ async function SummarySection({ extras, sessions, day }: { extras: Promise<Extra
       entries={ok ? x.entries.filter((e) => !e.hidden).length : 0}
       works={Array.isArray(s) ? ((d) => d.works.length + d.pending.length)(worksOfDay(s, day)) : 0}
       voices={ok ? x.voices.length : 0}
+      photos={ok ? x.inspirations.length : 0}
     />
   )
 }

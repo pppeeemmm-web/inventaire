@@ -97,12 +97,14 @@ export type JournalDayExtras = {
   inspirations: InspirationPhoto[]
 }
 
-/** One row per Paris day that has an entry, a Création item or a voice note (index of the journal). */
+/** One row per Paris day that has an entry, a Création item, a voice note or an inspiration photo (index of the journal). */
 export type JournalSourceDay = {
   day: string
   entries: number
   creation: number
   voices: number
+  /** Inspiration photos placed on that day (a day holding only a photo is listed too, Pem 2026-11-21). */
+  photos: number
   /** Open ✦ AI link suggestions on that day's entries (shown to admins, who decide them). */
   proposals: number
 }
@@ -415,14 +417,14 @@ export async function getJournalDayFolds(
   return { isAdmin: res.isAdmin, changes: res.changes, creation: res.creation }
 }
 
-/** Days that have journal entries, Création items or voice notes (Paris day), newest first. */
+/** Days that have journal entries, Création items, voice notes or inspiration photos (Paris day), newest first. */
 export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return []
-  const [entriesRes, creationRes, voicesRes, proposalsRes] = await Promise.all([
+  const [entriesRes, creationRes, voicesRes, proposalsRes, photosRes] = await Promise.all([
     supabase.from('journal_entry').select('id, event_on, hidden_at').limit(5000),
     supabase.from('kaizen_item').select('created_at').eq('section', 'creation').limit(5000),
     supabase.from('voice_note').select('created_at').limit(5000),
@@ -433,11 +435,14 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
       .is('validated_at', null)
       .is('rejected_at', null)
       .limit(5000),
+    INSPIRATION_SQL_LIVE
+      ? supabase.from('inspiration_photo').select('day').limit(5000)
+      : Promise.resolve({ data: [] as Array<{ day: string }> }),
   ])
   const byDay = new Map<string, JournalSourceDay>()
-  const bump = (day: string, key: 'entries' | 'creation' | 'voices' | 'proposals') => {
+  const bump = (day: string, key: 'entries' | 'creation' | 'voices' | 'proposals' | 'photos') => {
     if (!DAY_RE.test(day)) return
-    const row = byDay.get(day) ?? { day, entries: 0, creation: 0, voices: 0, proposals: 0 }
+    const row = byDay.get(day) ?? { day, entries: 0, creation: 0, voices: 0, proposals: 0, photos: 0 }
     row[key] += 1
     byDay.set(day, row)
   }
@@ -453,6 +458,7 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
   }
   for (const k of creationRes.data ?? []) bump(calendarDayInParisFromIso(k.created_at), 'creation')
   for (const v of voicesRes.data ?? []) bump(calendarDayInParisFromIso(v.created_at), 'voices')
+  for (const p of photosRes.data ?? []) bump(String(p.day), 'photos')
   return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day))
 }
 

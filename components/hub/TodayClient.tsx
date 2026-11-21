@@ -159,13 +159,15 @@ export function TodayLoadError() {
   return <p style={{ ...muted, padding: '0 16px 12px', color: 'var(--rust)' }}>{t('today_load_error')}</p>
 }
 
-export function TodaySummary({ entries, works, voices }: { entries: number; works: number; voices: number }) {
+export function TodaySummary({ entries, works, voices, photos = 0 }: { entries: number; works: number; voices: number; photos?: number }) {
   const { t } = useI18n()
   const part = (n: number, one: DictKey, many: DictKey) => (n === 1 ? t(one) : t(many).replace('{n}', String(n)))
   const summary = [
     part(entries, 'today_sum_entry_one', 'today_sum_entries'),
     part(works, 'today_sum_work_one', 'today_sum_works'),
     part(voices, 'today_sum_note_one', 'today_sum_notes'),
+    // Inspiration photos: named only when the day has some (the Journal's day list counts them too).
+    ...(photos > 0 ? [part(photos, 'today_sum_photo_one', 'today_sum_photos')] : []),
   ].join(' · ')
   return <p data-testid="hub-today-summary" style={{ ...muted, padding: '0 16px 8px' }}>{summary}</p>
 }

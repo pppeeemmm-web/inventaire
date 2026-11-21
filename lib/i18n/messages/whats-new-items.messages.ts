@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.87 (2026-11-21) — inspiration photos are found: in the list of days and by their text.
+  wn_inspiration_found_t: { fr: 'Les photos d’inspiration se retrouvent', en: 'Inspiration photos can be found again' },
+  wn_inspiration_found_d: {
+    fr: 'Un jour qui ne contient qu’une photo d’inspiration apparaît maintenant dans la liste des jours du Journal, avec « 1 photo d’inspiration ». Et la recherche trouve une photo par son texte : Ctrl+K sur l’ordinateur, la recherche du menu ☰ sur le téléphone ; le résultat ouvre le jour de la photo.',
+    en: 'A day that holds only an inspiration photo now shows in the Journal’s list of days, with « 1 inspiration photo ». And search finds a photo by its text: Ctrl+K on the computer, the ☰ menu search on the phone; the result opens the photo’s day.',
+  },
   // 3.1.86 (2026-11-21) — a text beside an inspiration photo.
   wn_inspiration_text_t: { fr: 'Un texte à côté de chaque photo d’inspiration', en: 'A text beside each inspiration photo' },
   wn_inspiration_text_d: {

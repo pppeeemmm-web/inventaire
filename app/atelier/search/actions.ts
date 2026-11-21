@@ -193,3 +193,30 @@ export async function searchSemanticAtelier(query: string): Promise<SemanticSear
     return { ok: true, hits: [], unavailable: true }
   }
 }
+
+export type InspirationTextHit = { id: string; day: string; caption: string }
+
+/**
+ * Inspiration photos whose text contains the words typed (plain text match, no AI): « search through this
+ * one field » (Pem 2026-11-21). Team reads through RLS; at most 6, newest day first; opens the Journal day.
+ */
+export async function searchInspirationText(query: string): Promise<InspirationTextHit[]> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return []
+  // PostgREST reads `*` as « anything » in ilike and has no way to mean a real star: drop it.
+  const q = String(query ?? '').replace(/\*/g, ' ').trim().slice(0, 80)
+  if (q.length < 2) return []
+  // `%`, `_` and the backslash are special in ILIKE: match them as typed.
+  const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
+  const { data, error } = await supabase
+    .from('inspiration_photo')
+    .select('id, day, caption')
+    .ilike('caption', pattern)
+    .order('day', { ascending: false })
+    .limit(6)
+  if (error) {
+    await logError('Inspiration text search failed', error, { source: 'search.searchInspirationText' })
+    return []
+  }
+  return (data ?? []).flatMap((r) => (r.caption ? [{ id: String(r.id), day: String(r.day), caption: r.caption }] : []))
+}

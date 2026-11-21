@@ -16,6 +16,7 @@ import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { AccountActions } from '@/components/shared/AccountActions'
 import type { PhoneNavigate } from '@/components/shared/PhoneMenu'
 import { getPhoneMenuData, getPhoneMenuFilCount, searchMenuWorks, type MenuWork, type PhoneMenuData } from '@/app/hub/menu-actions'
+import { searchInspirationText, type InspirationTextHit } from '@/app/atelier/search/actions'
 import { useWhatsNewDots } from '@/lib/whats-new-dots'
 
 /** Atelier tab key of a menu link (`/atelier/inventory` → `inventory`) — the key What's new dots use. */
@@ -85,6 +86,8 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
   const [failed, setFailed] = useState(false)
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<MenuWork[] | 'busy' | null>(null)
+  /** Inspiration photos whose text holds the words typed (same door as the desk ⌘K). */
+  const [photoHits, setPhotoHits] = useState<InspirationTextHit[]>([])
   const dragY = useRef<number | null>(null)
   const [drag, setDrag] = useState(0)
 
@@ -118,6 +121,7 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
   // Search as you type (a short pause first); a number alone also opens on Enter.
   useEffect(() => {
     const term = q.trim()
+    setPhotoHits([])
     if (!term || term === '#') {
       setHits(null)
       return
@@ -125,9 +129,13 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
     setHits('busy')
     let live = true
     const id = window.setTimeout(() => {
-      void searchMenuWorks(term)
-        .then((r) => live && setHits(r))
-        .catch(() => live && setHits([]))
+      // Both answers land together, so « nothing found » never shows while the photos are still on their way.
+      const photos = term.length >= 2 && !/^#?\d+$/.test(term) ? searchInspirationText(term).catch(() => []) : Promise.resolve([])
+      void Promise.all([searchMenuWorks(term).catch(() => [] as MenuWork[]), photos]).then(([works, found]) => {
+        if (!live) return
+        setPhotoHits(found)
+        setHits(works)
+      })
     }, 250)
     return () => {
       live = false
@@ -281,9 +289,24 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
                   )
                 })}
               </div>
-            ) : (
+            ) : photoHits.length ? null : (
               <p style={{ fontSize: 13, color: 'var(--tx3)', margin: '8px 2px 0' }}>{t('pn_search_none')}</p>
             )
+          ) : null}
+          {photoHits.length ? (
+            <div data-testid="phone-menu-photo-hits" style={{ display: 'grid', marginTop: 6 }}>
+              {photoHits.map((h) =>
+                link(
+                  `/hub?day=${h.day}`,
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
+                    <span style={{ color: 'var(--tx3)' }}>✦ {h.day} · </span>
+                    {h.caption.replace(/[#*`|_>]+/g, ' ').replace(/\s+/g, ' ').trim()}
+                  </span>,
+                  { ...row, minHeight: 48, borderBottom: '1px solid var(--bd)' },
+                  `phone-menu-photo-hit-${h.id}`,
+                ),
+              )}
+            </div>
           ) : null}
         </form>
 

@@ -116,7 +116,7 @@ Screens are sorted into groups:
 
 Everywhere:
 
-- **⌘K** (Mac) or **Ctrl+K** (PC) opens search: a work, a screen, an action.
+- **⌘K** (Mac) or **Ctrl+K** (PC) opens search: a work, a screen, an action, the text of an inspiration photo.
 - Clicking a work opens its card at the side.
 - **?** in the header (or the **?** key) opens help for the screen you are on, over the page, with a search. Esc closes it.
 - The **FR / EN** buttons in the header change the language.

@@ -145,6 +145,7 @@ function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSo
   if (src?.entries) parts.push(src.entries === 1 ? t('je_sum_entry_one') : t('je_sum_entries').replace('{n}', String(src.entries)))
   if (src?.creation) parts.push(t('je_sum_creation').replace('{n}', String(src.creation)))
   if (src?.voices) parts.push(src.voices === 1 ? t('je_sum_voice_one') : t('je_sum_voices').replace('{n}', String(src.voices)))
+  if (src?.photos) parts.push(src.photos === 1 ? t('je_sum_insp_one') : t('je_sum_insps').replace('{n}', String(src.photos)))
   if (isAdmin && src?.proposals) parts.push(t('je_sum_proposals').replace('{n}', String(src.proposals)))
   if (works > 0) {
     parts.push(
@@ -764,7 +765,7 @@ export function SessionJournalTab() {
       .finally(() => foregroundSettled())
   }, [])
 
-  // One row per day: field-session days, plus days with only entries / Création items / voice notes,
+  // One row per day: field-session days, plus days with only entries / Création items / voice notes / inspiration photos,
   // plus today (so anyone can write today). Newest first.
   const rows = useMemo(() => {
     const byDay = new Map<string, WorkSessionJournalRow>()

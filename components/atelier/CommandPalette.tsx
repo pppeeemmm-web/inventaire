@@ -7,7 +7,7 @@ import { useIsAdmin } from '@/hooks/useIsAdmin'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumbLabel } from '@/components/atelier/WorkThumbLabel'
-import { searchSemanticAtelier, type SemanticSearchHit } from '@/app/atelier/search/actions'
+import { searchInspirationText, searchSemanticAtelier, type InspirationTextHit, type SemanticSearchHit } from '@/app/atelier/search/actions'
 import { searchMenuWorks, type MenuWork } from '@/app/hub/menu-actions'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
@@ -115,6 +115,24 @@ export function CommandPalette({
       clearTimeout(timer)
     }
   }, [q, open, catalogueComplete])
+
+  // Inspiration photos by their text (plain match on the server, no AI) — each opens its Journal day.
+  const [inspHits, setInspHits] = useState<InspirationTextHit[]>([])
+  useEffect(() => {
+    const trimmed = q.trim()
+    setInspHits([])
+    if (!open || trimmed.length < 2 || /^#?\d+$/.test(trimmed)) return
+    let alive = true
+    const timer = setTimeout(() => {
+      void searchInspirationText(trimmed).then((r) => {
+        if (alive) setInspHits(r)
+      })
+    }, 250)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [q, open])
 
   useEffect(() => {
     const trimmed = q.trim()
@@ -224,6 +242,19 @@ export function CommandPalette({
       }
     }
 
+    for (const h of inspHits) {
+      const text = h.caption.replace(/[#*`|_>]+/g, ' ').replace(/\s+/g, ' ').trim()
+      result.push({
+        id: `insp:${h.id}`,
+        label: `✦ ${h.day} · ${text.length > 90 ? `${text.slice(0, 90)}…` : text}`,
+        group: tk('insp_label'),
+        action: () => {
+          window.location.href = `/atelier/journal?day=${h.day}`
+          onClose()
+        },
+      })
+    }
+
     if (semanticLoading) {
       result.push({
         id: 'semantic:loading',
@@ -278,7 +309,7 @@ export function CommandPalette({
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending, numHit,
-    catalogueComplete, serverTitleHits,
+    catalogueComplete, serverTitleHits, inspHits,
   ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))
