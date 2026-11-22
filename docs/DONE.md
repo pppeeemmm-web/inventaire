@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Contact save keeps address ids (TODO §1, Pem « fix it yes »)
+
+- Saving a contact in the editor no longer deletes and reinserts its addresses / emails / phones / websites / socials: kept rows are updated in place, new inserted, removed deleted (`syncContactRows`). The old way emptied every `Oeuvres.localisation_address_id`, `work_order.address_id`, `shipment.address_id` on the contact's addresses at each save (ON DELETE SET NULL; Pem's own card holds 1,171 works). Removing an address still used is refused in words, nothing written. Seen on the Docker copy: label change + new address kept address 17 and its 13 works; removing it was refused (13 works, 12 orders) with nothing written; removing the unused one deleted it. Found by the People design session — `c4f9f78`.
+- Building principle 13 (one way to link: `#` work / idea, `@` person, one picker, real links) and the People design draft (`design/2026-11-22/People.md` + mockup), awaiting Pem's approval — `c4f9f78`.
+
 ## 2026-11-22 — Data safety: deleted contact, Journal « Corriger », same-instant saves (TODO §1, Pem « GO », « yes go on to b », « GO, no-SQL guard »)
 
 - A contact deleted (not merged) no longer breaks restore / approve: a version restore keeps the current owner / holder / buyer / address where the version's contact or address was deleted, restores the rest and names what was kept; a proposal naming a deleted contact is refused in words, nothing written (`lib/deleted-contact-refs.ts`). Live had 0 such references; proof by a read-only probe on live — `778e180`.

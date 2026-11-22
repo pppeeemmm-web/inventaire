@@ -6,6 +6,15 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.90 (2026-11-23) — saving a contact keeps its addresses' links.
+  wn_contact_save_keeps_addresses_t: {
+    fr: 'Enregistrer un contact garde ses adresses liées',
+    en: 'Saving a contact keeps its linked addresses',
+  },
+  wn_contact_save_keeps_addresses_d: {
+    fr: 'Enregistrer une fiche contact ne détache plus les œuvres, commandes et envois de son adresse. Retirer une adresse encore utilisée est refusé, avec le nombre d’œuvres, commandes et envois concernés : donnez-leur une autre adresse d’abord.',
+    en: 'Saving a contact no longer unlinks works, orders and shipments from its address. Removing an address still in use is refused, with the number of works, orders and shipments concerned: give them another address first.',
+  },
   // 3.1.89 (2026-11-22) — « Corriger » a Journal transcript.
   wn_journal_correct_t: { fr: 'Corriger une transcription du Journal', en: 'Correct a Journal transcript' },
   wn_journal_correct_d: {

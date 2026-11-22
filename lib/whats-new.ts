@@ -84,7 +84,8 @@
 // '3.1.87' (2026-11-21): a day holding only an inspiration photo is listed in the Journal; search finds a photo by its text (desk ⌘K, phone ☰).
 // '3.1.88' (2026-11-21): the work card saves field by field.
 // '3.1.89' (2026-11-22): « Corriger » a Journal transcript; a deleted contact no longer breaks a restore or an approval; a save landing at the same instant as another change writes nothing.
-export const WHATS_NEW_RELEASE = '3.1.89'
+// '3.1.90' (2026-11-23): saving a contact keeps the works, orders and shipments linked to its addresses.
+export const WHATS_NEW_RELEASE = '3.1.90'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -110,6 +111,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'contact_save_keeps_addresses', day: '2026-11-23', spot: 'contacts' },
   { id: 'journal_correct', day: '2026-11-22', spot: 'journal', admin: true },
   { id: 'deleted_contact_restore', day: '2026-11-22', spot: 'inventory', admin: true },
   { id: 'work_save_field_by_field', day: '2026-11-21', spot: 'inventory', admin: true },
