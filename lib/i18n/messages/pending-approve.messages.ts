@@ -14,6 +14,10 @@ export const pendingApproveMessages = defineMessages({
     fr: 'Appliquer quand même',
     en: 'Apply anyway',
   },
+  pending_contact_deleted: {
+    fr: 'Le contact (ou l’adresse) proposé a été supprimé depuis : rien n’a été écrit. Rejetez la proposition.',
+    en: 'The proposed contact (or address) has been deleted since: nothing was written. Reject the proposal.',
+  },
   pending_conflict_fil: {
     fr: 'Cette œuvre a changé depuis la proposition ({fields}) : à décider dans Audit — appliquer quand même ou rejeter.',
     en: 'This work has changed since the proposal ({fields}): decide in Audit — apply anyway or reject.',

@@ -17,6 +17,8 @@ export const versionFieldsMessages = defineMessages({
   vf_comments: { fr: 'Commentaires', en: 'Comments' },
   vf_history: { fr: 'Historique', en: 'History' },
   vf_location: { fr: 'Dépositaire', en: 'Custodian' },
+  vf_buyer: { fr: 'Acheteur', en: 'Buyer' },
+  vf_location_address: { fr: 'Adresse du dépositaire', en: 'Custodian address' },
   vf_location_detail: { fr: 'Détail du lieu', en: 'Location detail' },
   vf_vat_rate: { fr: 'Taux de TVA', en: 'VAT rate' },
   vf_catalogued: { fr: 'Catalogué', en: 'Catalogued' },

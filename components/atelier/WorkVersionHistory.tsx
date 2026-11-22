@@ -9,6 +9,7 @@ import {
   type OeuvreVersion,
 } from '@/app/atelier/(portal)/audit/version-actions'
 import { OEUVRE_VERSION_FIELDS as SHOW_FIELDS, versionFieldLabel } from '@/lib/oeuvre-version-fields'
+import { gateErrorKey } from '@/lib/work-save-error'
 
 function diffSnapshots(prev: Record<string, unknown> | null, cur: Record<string, unknown>) {
   if (!prev) return SHOW_FIELDS.filter((k) => cur[k] != null).map((k) => [k, null, cur[k]] as const)
@@ -54,8 +55,15 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
     startTransition(async () => {
       const r = await restoreOeuvreVersion(v.id)
       if ('error' in r) {
-        alert(r.error === 'fate_open' ? t('history_restore_fate_open') : r.error)
+        // A kept owner / holder (its contact deleted) can be refused by the holder gates: shown in words.
+        const gate = gateErrorKey(r.error)
+        alert(r.error === 'fate_open' ? t('history_restore_fate_open') : gate ? t(gate) : r.error)
         return
+      }
+      if (r.kept?.length) {
+        const label = (f: string) =>
+          f === 'AcheteurID' ? t('vf_buyer') : f === 'localisation_address_id' ? t('vf_location_address') : versionFieldLabel(f, t)
+        alert(t('history_restore_contact_kept').replace('{fields}', r.kept.map(label).join(', ')))
       }
       onRestored?.()
       // Reload list — restore creates a new snapshot

@@ -1,7 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { deletedContactFormKeys } from '@/lib/deleted-contact-refs'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
+import { logError } from '@/lib/error-reporter'
 import { saveWork, commitWorkImage, discardPendingWorkImage } from '@/app/atelier/works/actions'
 import {
   filterPendingPayloadForReplay,
@@ -323,6 +326,8 @@ export async function approvePendingChange(
     }
     // Nothing left to write (already in place): the proposal is simply marked approved.
     if (plan.apply.length > 0) {
+      const gone = await refuseDeletedContact(filtered, plan.apply)
+      if (gone) return gone
       const fd = formDataForPendingEdit(oid, filtered, work.state, plan.apply)
       fd.set('__skip_review', '1')
       if (row.author_id) fd.set('__pending_author_id', row.author_id)
@@ -330,6 +335,8 @@ export async function approvePendingChange(
       if ('error' in result) return { error: result.error }
     }
   } else {
+    const gone = await refuseDeletedContact(filtered, Object.keys(filtered))
+    if (gone) return gone
     const created = await replayPendingCreate(filtered, row.author_id)
     if ('error' in created) return created
   }
@@ -345,6 +352,23 @@ export async function approvePendingChange(
   revalidatePath('/hub')
   revalidatePath('/works')
   return { ok: true }
+}
+
+/**
+ * A proposal naming a contact (or address) deleted since: nothing is written, the admin rejects it.
+ * Without this the save fails on the foreign key with a raw database message.
+ */
+async function refuseDeletedContact(
+  payload: Record<string, string>,
+  keys: string[],
+): Promise<{ error: string } | null> {
+  try {
+    const gone = await deletedContactFormKeys(createServiceClient(), payload, keys)
+    return gone.length ? { error: resolveMessage('fr', 'pending_contact_deleted') } : null
+  } catch (e) {
+    await logError('Pending approve: contact check failed', e, { source: 'approvePendingChange' })
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 /** A new work proposal: the whole form is the proposal, replayed as saved. */

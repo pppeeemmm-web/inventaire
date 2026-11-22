@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { unionHistorique } from '@/lib/historique-merge'
 import { provenanceTimestamp } from '@/lib/oeuvre-provenance'
+import { deletedContactColumns } from '@/lib/deleted-contact-refs'
+import { logError } from '@/lib/error-reporter'
 
 export interface OeuvreVersion {
   id:          number
@@ -14,7 +16,8 @@ export interface OeuvreVersion {
   source:      string | null
 }
 
-export type VersionResult = { ok: true } | { error: string }
+/** `kept`: snapshot columns left at the work's current value — the contact / address they named was deleted. */
+export type VersionResult = { ok: true; kept?: string[] } | { error: string }
 
 async function ensureAdmin() {
   const supabase = await createClient()
@@ -92,6 +95,17 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     'StageProduction',
     'commercial_status',
   ])
+  // A contact (or its address) deleted since the snapshot cannot be written back: that field keeps the
+  // work's current value, the rest is restored, and the reply names what was kept.
+  let kept: string[]
+  try {
+    kept = await deletedContactColumns(svc, snap)
+  } catch (e) {
+    await logError('Version restore: contact check failed', e, { source: 'restoreOeuvreVersion' })
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+  for (const k of kept) skip.add(k)
+
   const payload: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(snap)) {
     if (skip.has(k)) continue
@@ -118,5 +132,5 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
 
   revalidatePath('/atelier')
   revalidatePath('/hub')
-  return { ok: true }
+  return kept.length ? { ok: true, kept } : { ok: true }
 }

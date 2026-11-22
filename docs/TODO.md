@@ -15,6 +15,10 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 
 Data safety (SQL, Pem's OK given)
 - [ ] A deleted contact (not merged) still named in a queued work change or an old work version makes approve / restore fail (foreign key).
+- [ ] Restore / approve still fail with a raw database message when the version or proposal names something deleted since other than a contact or address: a technique, support, format or presentation, or (restore) the `created_by` account; or when a contact is deleted in the split second between the check and the write.
+- [ ] A restore that keeps the current owner or holder (its contact deleted) can be refused by the holder check when the version's status (sold, gift, consigned, loan) needs another party; the refusal is shown in words, the version stays unrestored.
+- [ ] An admin's save queued offline on the phone, or a card draft restored, that names a contact deleted meanwhile fails with the raw database message (a team member's becomes a proposal, which approve refuses in words).
+- [ ] Contact merge rewrites owner, holder and buyer inside old work versions but not the holder's address (`localisation_address_id`).
 - [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database.
 - [ ] An order step, batch edit or stage change landing in the split second between a card save's read and its write can still be overwritten (the card save is field by field; those writers don't move `edited_at`). The database stamp (`supabase/sql/oeuvre_edit_stamp.sql`, not live) needs first: the production board, Inventory broadcast toggle, constat, production dates, contact merge / delete remap and the card's « Annuler » carrying the new stamp; « Annuler » resetting the card's form; the phone offline queue keeping a refused edit; the Journal badge ignoring system stamps.
 

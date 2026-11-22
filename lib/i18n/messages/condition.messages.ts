@@ -109,6 +109,10 @@ export const conditionMessages = defineMessages({
     fr: 'Cette œuvre a un constat de destruction / perte ouvert : clore ou supprimer le constat avant de restaurer une version.',
     en: 'This work has an open destruction / loss report: close or delete it before restoring a version.',
   },
+  history_restore_contact_kept: {
+    fr: 'Version restaurée, sauf : {fields} — le contact (ou l’adresse) de cette version a été supprimé ; la valeur actuelle est gardée.',
+    en: 'Version restored, except: {fields} — the contact (or address) in this version was deleted; the current value is kept.',
+  },
   // Work lifetime gates (supabase/sql/work_lifetime_gates.sql)
   err_holder_required: {
     fr: 'Vendu / don : choisir l’acquéreur (pas Pem). Consigné / prêt : choisir le dépositaire (pas Pem).',
