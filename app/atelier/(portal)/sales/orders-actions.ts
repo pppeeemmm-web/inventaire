@@ -741,6 +741,13 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   const order = o as OrderRow
   if (!CANCEL_FROM[order.kind].includes(order.status)) return { error: 'ord_err_step' }
 
+  // The step first, only from the status read (two tabs: another step landing in between makes this one
+  // write nothing, like advanceWorkOrder); then the works. A refused work move puts the step back.
+  const { data: claimed, error } = await supabase.from('work_order').update({ status: 'cancelled' })
+    .eq('id', order.id).eq('status', order.status).select('id')
+  if (error) return { error: error.message }
+  if (!claimed?.length) return { error: 'ord_err_step' }
+
   // A signed sale had reserved its works: those still reserved for this buyer go back.
   if (order.kind === 'sale' && order.status !== 'draft') {
     const { data: lineRows } = await supabase.from('work_order_work').select('oeuvre_id').eq('order_id', order.id)
@@ -751,12 +758,13 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
       // Back to « Disponible » at Pem's, or « Consigné » if it is still at a gallery that holds it.
       const atGallery = w.LocalisationID != null && w.LocalisationID !== PEM
       const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null, is_paid: false })
-      if (err) return { error: err }
+      if (err) {
+        await supabase.from('work_order').update({ status: order.status, cancelled_at: null }).eq('id', order.id).eq('status', 'cancelled')
+        return { error: err }
+      }
     }
   }
 
-  const { error } = await supabase.from('work_order').update({ status: 'cancelled' }).eq('id', order.id)
-  if (error) return { error: error.message }
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'work_order', rowId: order.id, oldValue: order.status, newValue: 'cancelled', metadata: { ref: order.ref, kind: order.kind } })
   await releaseOrderShipments(supabase, order.id)
   await closeDateReminders(supabase, order.ref, 'all')
@@ -1041,10 +1049,12 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   const day = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
   const line = resolveMessage('fr', 'ord_return_note').replace('{date}', day).replace('{amount}', paid.toLocaleString('fr-FR'))
 
-  const { error: stepErr } = await supabase.from('work_order')
+  // Only from the status read (two tabs: another step landing in between makes this one write nothing).
+  const { data: claimed, error: stepErr } = await supabase.from('work_order')
     .update({ status: 'cancelled', returned_at: new Date().toISOString(), notes: [o.notes, line].filter(Boolean).join('\n') })
-    .eq('id', o.id)
+    .eq('id', o.id).eq('status', o.status).select('id')
   if (stepErr) return { error: stepErr.message }
+  if (!claimed?.length) return { error: 'ord_err_step' }
 
   // Only works still sold / reserved to this buyer come back.
   const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).in('statusId', [4, 6]).eq('ContactID', o.party_id)
@@ -1056,7 +1066,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   // deposit itself; both reopen and the work goes back to « Consigné » / « Prêt » at the gallery.
   const reopened = await reopenDepositsForReturn(supabase, o.id, back)
   if ('error' in reopened) {
-    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
+    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id).eq('status', 'cancelled')
     return { error: reopened.error }
   }
   const toPem = back.filter((id) => !reopened.works.has(id))
@@ -1074,7 +1084,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   }
   if (moveErr) {
     // Undo in the order the database checks allow: the sale is paid again, its works sold again, then the deposit closes.
-    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id)
+    await supabase.from('work_order').update({ status: o.status, returned_at: null, cancelled_at: null, notes: o.notes }).eq('id', o.id).eq('status', 'cancelled')
     await moveWorks(supabase, moved, { statusId: 6, ContactID: o.party_id, AcheteurID: o.party_id, is_paid: true })
     await reopened.undo()
     return { error: moveErr }
