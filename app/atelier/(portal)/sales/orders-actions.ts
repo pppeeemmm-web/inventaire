@@ -742,7 +742,8 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   if (!CANCEL_FROM[order.kind].includes(order.status)) return { error: 'ord_err_step' }
 
   // The step first, only from the status read (two tabs: another step landing in between makes this one
-  // write nothing, like advanceWorkOrder); then the works. A refused work move puts the step back.
+  // write nothing, like advanceWorkOrder); then the works. A refused work move puts the works already released
+  // back on reserve and the step back.
   const { data: claimed, error } = await supabase.from('work_order').update({ status: 'cancelled' })
     .eq('id', order.id).eq('status', order.status).select('id')
   if (error) return { error: error.message }
@@ -754,14 +755,21 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
     const ids = (lineRows ?? []).map((l) => l.oeuvre_id)
     const { data: reserved } = await supabase.from('Oeuvres').select('OeuvreID, LocalisationID')
       .in('OeuvreID', ids).eq('statusId', 4).eq('AcheteurID', order.party_id)
+    const released: number[] = []
     for (const w of reserved ?? []) {
       // Back to « Disponible » at Pem's, or « Consigné » if it is still at a gallery that holds it.
       const atGallery = w.LocalisationID != null && w.LocalisationID !== PEM
       const err = await moveWorks(supabase, [w.OeuvreID], { statusId: atGallery ? 7 : 2, AcheteurID: null, is_paid: false })
       if (err) {
-        await supabase.from('work_order').update({ status: order.status, cancelled_at: null }).eq('id', order.id).eq('status', 'cancelled')
+        const backErr = await moveWorks(supabase, released, { statusId: 4, AcheteurID: order.party_id, is_paid: false })
+        const { error: undoErr } = await supabase.from('work_order').update({ status: order.status, cancelled_at: null })
+          .eq('id', order.id).eq('status', 'cancelled')
+        if (backErr || undoErr) {
+          await logError('Order cancel: undo after a refused work move failed', backErr ?? undoErr?.message, { source: 'orders.cancelWorkOrder', metadata: { orderId: order.id, released } })
+        }
         return { error: err }
       }
+      released.push(w.OeuvreID)
     }
   }
 

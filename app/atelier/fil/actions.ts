@@ -315,7 +315,8 @@ export async function decideFil(kind: FilKind, id: string, decision: FilDecision
   if (kind === 'work_order') {
     if (decision === 'discard') {
       const res = await cancelWorkOrder(id)
-      if ('error' in res) return res
+      // The step moved meanwhile (another tab): say it in words, not the code.
+      if ('error' in res) return res.error === 'ord_err_step' ? { error: resolveMessage('fr', 'ord_err_step') } : res
     }
     revalidatePath('/hub/fil')
     return { ok: true }
