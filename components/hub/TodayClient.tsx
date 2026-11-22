@@ -32,6 +32,7 @@ import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import { WorkChip as WorkPreviewChip } from '@/components/atelier/WorkChip'
 import { WorkRefText } from '@/components/atelier/journal/WorkRefText'
+import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOriginal'
 import { InspirationText } from '@/components/atelier/journal/InspirationText'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -360,6 +361,7 @@ export function TodayEntries({
                 {e.voiceLinks?.subject?.trim() ? <b style={{ display: 'block' }}>{e.voiceLinks.subject}</b> : null}
                 {audio(e.audioKey)}
                 <WorkRefText text={e.body} />
+                <CorrectedOriginal original={e.original} />
                 {e.voiceLinks?.oeuvre_id != null ? (
                   <div style={{ marginTop: 4 }}>
                     <WorkPreviewChip id={e.voiceLinks.oeuvre_id} href={workHref(e.voiceLinks.oeuvre_id)} size="chip" />

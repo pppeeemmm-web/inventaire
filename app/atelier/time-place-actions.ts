@@ -87,7 +87,8 @@ export async function loadTimePlaceData(): Promise<TimePlaceData | Err> {
   const [ps, sesRes, jRes, vRes, lRes, oRes, owRes] = await Promise.all([
     loadPeriodSourceData(),
     supabase.from('work_session').select('id, created_at, payload').order('created_at').limit(5000),
-    supabase.from('journal_entry').select('event_on, voice_note_id').is('hidden_at', null).limit(20000),
+    // A correction (`corrects_id`) is the same moment as its original: not counted twice.
+    supabase.from('journal_entry').select('event_on, voice_note_id').is('hidden_at', null).is('corrects_id', null).limit(20000),
     supabase.from('voice_note').select('id, created_at, oeuvre_id').limit(20000),
     supabase.from('note_line').select('created_at, oeuvre_id').is('discarded_at', null).limit(20000),
     supabase.from('work_order').select('id, ref, kind, status, signed_at, start_date, delivered_at, returned_at, cancelled_at').limit(5000),

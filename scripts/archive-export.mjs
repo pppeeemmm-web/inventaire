@@ -184,7 +184,7 @@ async function main() {
   for (const [y, list] of byYear) {
     const text = list.map((e) => {
       const links = (linksBy.get(e.id) ?? []).map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : conceptName.get(l.concept_id))).filter(Boolean)
-      const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null].filter(Boolean).join(' · ')
+      const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null, e.corrects_id ? `corrects entry ${e.corrects_id}` : null].filter(Boolean).join(' · ')
       return `## ${e.event_on} — entry ${e.id}\n_${meta}_${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}\n`
     }).join('\n---\n\n')
     await writeText(`journal/${y}.md`, `# Journal ${y}\n\n${text}`)

@@ -1,5 +1,6 @@
 'use server'
 
+import { latestCorrections } from '@/lib/journal-corrections'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
@@ -147,25 +148,51 @@ async function hydrateSemanticHits(
     .filter((e) => e.node_type === 'journal_entry' && e.legacy_int_id != null)
     .map((e) => e.legacy_int_id as number)
   const dayByEntry = new Map<number, string>()
+  // A correction (« Corriger », lib/journal-corrections.ts) is found as its original: one hit per entry,
+  // labelled with the latest corrected text; a hidden entry (or a correction of one) is not listed.
+  const rootOf = new Map<number, number>()
+  const hiddenEntry = new Set<number>()
+  const fixedLabel = new Map<number, string>()
   if (journalIds.length > 0) {
-    const { data: rows } = await svc.from('journal_entry').select('id, event_on').in('id', journalIds)
-    for (const row of rows ?? []) dayByEntry.set(Number(row.id), String(row.event_on))
+    const { data: rows } = await svc.from('journal_entry').select('id, event_on, corrects_id, hidden_at').in('id', journalIds)
+    for (const row of rows ?? []) {
+      dayByEntry.set(Number(row.id), String(row.event_on))
+      rootOf.set(Number(row.id), row.corrects_id != null ? Number(row.corrects_id) : Number(row.id))
+      if (row.hidden_at) hiddenEntry.add(Number(row.id))
+    }
+    const roots = [...new Set(rootOf.values())]
+    const [{ data: rootRows }, { data: fixes }] = await Promise.all([
+      svc.from('journal_entry').select('id, hidden_at').in('id', roots),
+      svc.from('journal_entry').select('corrects_id, body, created_at, hidden_at').in('corrects_id', roots),
+    ])
+    for (const row of rootRows ?? []) if (row.hidden_at) hiddenEntry.add(Number(row.id))
+    for (const [root, body] of latestCorrections(fixes ?? [])) fixedLabel.set(root, body.replace(/\s+/g, ' ').trim().slice(0, 80))
   }
+  const seenRoots = new Set<number>()
 
   return results
     .filter((r) => !hidden(r.node_id))
-    .map((r) => {
+    .flatMap((r) => {
       const nodeId = r.node_id
       const ent = byId.get(nodeId)
-      return {
+      let entryId = ent?.legacy_int_id ?? null
+      let fixed: string | undefined
+      if (ent?.node_type === 'journal_entry' && entryId != null) {
+        const root = rootOf.get(entryId) ?? entryId
+        if (hiddenEntry.has(entryId) || hiddenEntry.has(root) || seenRoots.has(root)) return []
+        seenRoots.add(root)
+        entryId = root
+        fixed = fixedLabel.get(root)
+      }
+      return [{
         nodeId,
         nodeType: ent?.node_type ?? r.node_type,
         // Most works are untitled — show their number rather than the node uuid.
-        label: ent?.display_label ?? ent?.title ?? (ent?.legacy_int_id != null ? `#${ent.legacy_int_id}` : nodeId),
+        label: fixed ?? ent?.display_label ?? ent?.title ?? (ent?.legacy_int_id != null ? `#${ent.legacy_int_id}` : nodeId),
         score: r.score,
-        legacyIntId: ent?.legacy_int_id ?? null,
+        legacyIntId: entryId,
         day: ent?.legacy_int_id != null ? dayByEntry.get(ent.legacy_int_id) ?? null : null,
-      }
+      }]
     })
     .filter((h) => h.nodeId)
 }

@@ -56,6 +56,7 @@ import { sessionStagedMessages } from './session-staged.messages'
 import { slideshowMessages } from './slideshow.messages'
 import { whatsNewMessages } from './whats-new.messages'
 import { journalEntryMessages } from './journal-entry.messages'
+import { journalCorrectMessages } from './journal-correct.messages'
 import { batchEditMessages } from './batch-edit.messages'
 import { overviewDashMessages } from './overview-dash.messages'
 import { workDescriptionMessages } from './work-description.messages'
@@ -133,6 +134,7 @@ export const featureMessages = {
   ...slideshowMessages,
   ...whatsNewMessages,
   ...journalEntryMessages,
+  ...journalCorrectMessages,
   ...batchEditMessages,
   ...overviewDashMessages,
   ...workDescriptionMessages,

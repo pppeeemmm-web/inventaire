@@ -10,6 +10,8 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
+import { EntryCorrectAction, canCorrectEntry } from '@/components/atelier/journal/EntryCorrection'
+import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOriginal'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { WorkChip } from '@/components/atelier/WorkChip'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -33,7 +35,6 @@ import {
   fetchConceptPreview,
   getJournalDayExtras,
   setJournalEntryHidden,
-  setJournalEntryVerified,
   type ConceptPreview,
   type JournalDayExtras as Extras,
 } from '@/app/atelier/(portal)/journal/entry-actions'
@@ -227,17 +228,6 @@ export function JournalDayExtras({
   function toggleHidden(id: number, hidden: boolean) {
     startTransition(async () => {
       const res = await setJournalEntryHidden(id, hidden)
-      if ('error' in res) {
-        toast.error(t('je_err_fmt').replace('{msg}', res.error))
-        return
-      }
-      await load()
-    })
-  }
-
-  function toggleVerified(id: number, verified: boolean) {
-    startTransition(async () => {
-      const res = await setJournalEntryVerified(id, verified)
       if ('error' in res) {
         toast.error(t('je_err_fmt').replace('{msg}', res.error))
         return
@@ -551,7 +541,9 @@ export function JournalDayExtras({
                 {e.event_precision === 'month' ? <span>{t('je_roughly_month')}</span> : null}
                 {e.event_precision === 'year' ? <span>{t('je_roughly_year')}</span> : null}
                 {e.visibility === 'private' ? <span>{t('je_private_label')}</span> : null}
-                {e.engine ? (
+                {e.original ? (
+                  <span data-testid={`journal-entry-corrected-${e.id}`}>{t('je_fix_corrected')} · {t('je_verified_label')}</span>
+                ) : e.engine ? (
                   <span data-testid={`journal-entry-transcript-${e.id}`}>
                     ✦ {t('je_transcript_label')} · {e.engine} · {t(e.verification === 'unverified' ? 'je_unverified_label' : 'je_verified_label')}
                   </span>
@@ -570,6 +562,7 @@ export function JournalDayExtras({
                 <audio controls preload="none" src={imageUrl(e.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} data-testid={`journal-entry-audio-${e.id}`} />
               ) : null}
               <EntryText text={e.body} />
+              <CorrectedOriginal original={e.original} />
               {e.concepts.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                   {e.concepts.map((c) => (
@@ -619,18 +612,7 @@ export function JournalDayExtras({
               ) : null}
               {data?.isAdmin ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {e.engine ? (
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      disabled={pending}
-                      onClick={() => toggleVerified(e.id, e.verification === 'unverified')}
-                      style={{ minHeight: 44 }}
-                      data-testid={`journal-entry-verify-${e.id}`}
-                    >
-                      {t(e.verification === 'unverified' ? 'je_mark_verified' : 'je_mark_unverified')}
-                    </button>
-                  ) : null}
+                  {canCorrectEntry(e) ? <EntryCorrectAction key={`${e.id}:${e.body.length}`} entry={e} onDone={load} /> : null}
                   <button
                     type="button"
                     className="btn ghost sm"

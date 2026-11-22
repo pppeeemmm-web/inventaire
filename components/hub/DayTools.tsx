@@ -9,10 +9,10 @@ import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { VoiceNoteLinkPanel } from '@/components/atelier/journal/VoiceNoteLinkPanel'
+import { EntryCorrectAction, canCorrectEntry } from '@/components/atelier/journal/EntryCorrection'
 import { deleteVoiceNote } from '@/app/atelier/(portal)/notes/actions'
 import {
   setJournalEntryHidden,
-  setJournalEntryVerified,
   type JournalDayEntry,
   type JournalDayVoice,
   type VoiceNoteLinks,
@@ -58,11 +58,7 @@ export function DayEntryTools({ entry, voice, isAdmin }: { entry?: JournalDayEnt
             {t(linkOpen ? 'je_voice_link_close' : 'je_voice_link')}
           </button>
         ) : null}
-        {entry && isAdmin && entry.engine ? (
-          <button type="button" className="btn ghost sm" disabled={pending} onClick={() => run(() => setJournalEntryVerified(entry.id, entry.verification === 'unverified'))} style={btn}>
-            {t(entry.verification === 'unverified' ? 'je_mark_verified' : 'je_mark_unverified')}
-          </button>
-        ) : null}
+        {entry && isAdmin && canCorrectEntry(entry) ? <EntryCorrectAction entry={entry} onDone={() => router.refresh()} /> : null}
         {entry && isAdmin ? (
           <button type="button" className="btn ghost sm" disabled={pending} onClick={() => run(() => setJournalEntryHidden(entry.id, !entry.hidden))} style={btn}>
             {t(entry.hidden ? 'je_unhide' : 'je_hide')}

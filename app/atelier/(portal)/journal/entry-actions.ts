@@ -11,6 +11,7 @@ import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { changedVersionFields } from '@/lib/oeuvre-version-fields'
 import type { Tables } from '@/lib/types/supabase.generated'
 import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-photo'
+import { latestCorrections } from '@/lib/journal-corrections'
 
 export type JournalEntryKind = 'spark' | 'trigger' | 'reflection' | 'note'
 const KINDS: readonly JournalEntryKind[] = ['spark', 'trigger', 'reflection', 'note']
@@ -27,6 +28,8 @@ export type JournalDayEntry = {
   provenance: string
   verification: string
   visibility: string
+  /** Corrected (« Corriger »): `body` is the latest correction, this is the text as first written. */
+  original: string | null
   author: string
   mine: boolean
   hidden: boolean
@@ -337,18 +340,21 @@ export async function getJournalDayExtras(
     })
   }
 
+  // A correction (`corrects_id`) is shown in place of its original, never as a card of its own.
+  const latestFix = latestCorrections(rows)
   const entries: JournalDayEntry[] = rows
-    .filter((r) => !r.hidden_at || isAdmin)
+    .filter((r) => r.corrects_id == null && (!r.hidden_at || isAdmin))
     .map((r) => ({
       id: r.id,
       created_at: r.created_at,
       event_on: r.event_on,
       event_precision: r.event_precision,
       kind: r.kind,
-      body: r.body,
+      body: latestFix.get(r.id) ?? r.body,
       provenance: r.provenance,
-      verification: r.verification,
+      verification: latestFix.has(r.id) ? 'verified' : r.verification,
       visibility: r.visibility,
+      original: latestFix.has(r.id) ? r.body : null,
       author: (r.author_id && names[r.author_id]) || '—',
       mine: r.author_id === user.id,
       hidden: !!r.hidden_at,
@@ -425,7 +431,7 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
   } = await supabase.auth.getUser()
   if (!user) return []
   const [entriesRes, creationRes, voicesRes, proposalsRes, photosRes] = await Promise.all([
-    supabase.from('journal_entry').select('id, event_on, hidden_at').limit(5000),
+    supabase.from('journal_entry').select('id, event_on, hidden_at, corrects_id').limit(5000),
     supabase.from('kaizen_item').select('created_at').eq('section', 'creation').limit(5000),
     supabase.from('voice_note').select('created_at').limit(5000),
     supabase
@@ -448,7 +454,7 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
   }
   const dayByEntry = new Map<number, string>()
   for (const e of entriesRes.data ?? []) {
-    if (e.hidden_at) continue
+    if (e.hidden_at || e.corrects_id != null) continue
     dayByEntry.set(Number(e.id), e.event_on)
     bump(e.event_on, 'entries')
   }
@@ -573,7 +579,8 @@ export async function setJournalEntryHidden(id: number, hidden: boolean): Promis
   const { error } = await supabase
     .from('journal_entry')
     .update(hidden ? { hidden_at: new Date().toISOString(), hidden_by: user.id } : { hidden_at: null, hidden_by: null })
-    .eq('id', id)
+    // Its corrections follow (search, Notes and the archive read them on their own).
+    .or(`id.eq.${id},corrects_id.eq.${id}`)
   if (error) return { error: error.message.includes('journal_admin_only') ? 'admin_only' : error.message }
   revalidatePath('/atelier/journal')
   return { ok: true }
@@ -597,6 +604,93 @@ export async function setJournalEntryVerified(id: number, verified: boolean): Pr
   return { ok: true }
 }
 
+/**
+ * « Corriger » (admin, like « vérifier »): the Journal is append-only (journal_entry_guard), so a
+ * correction is a new entry pointing at the original (`corrects_id`) — same day, kind and voice note,
+ * typed and verified. Readers show it in place of the original (`latestCorrections`). The AI link
+ * proposer skips it (`ai_links_at` set at insert); works named `#1234` in the new text are linked to
+ * the original, so the links stay on one record.
+ */
+export async function correctJournalEntry(id: number, text: string): Promise<{ ok: true; id: number } | Err> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'admin_only' }
+  const body = text.trim().slice(0, MAX_BODY)
+  if (!body) return { error: 'empty' }
+
+  const { data: target, error: tErr } = await supabase
+    .from('journal_entry')
+    .select('id, kind, body, event_on, event_precision, visibility, voice_note_id, corrects_id, provenance')
+    .eq('id', id)
+    .maybeSingle()
+  if (tErr) return { error: tErr.message }
+  if (!target) return { error: 'not_found' }
+  // A correction of a correction points at the original: one chain, the latest wins.
+  let root = target
+  if (target.corrects_id != null) {
+    const r = await supabase
+      .from('journal_entry')
+      .select('id, kind, body, event_on, event_precision, visibility, voice_note_id, corrects_id, provenance')
+      .eq('id', target.corrects_id)
+      .maybeSingle()
+    if (r.error) return { error: r.error.message }
+    if (!r.data) return { error: 'not_found' }
+    root = r.data
+  }
+  if (root.corrects_id != null) return { error: 'not_found' }
+  if (root.provenance === 'typed') return { error: 'typed' }
+
+  const { data: fixes } = await supabase
+    .from('journal_entry').select('corrects_id, body, created_at, hidden_at').eq('corrects_id', root.id)
+  const current = latestCorrections(fixes ?? []).get(root.id) ?? root.body
+  if (body === current.trim()) return { error: 'unchanged' }
+
+  const { data, error } = await supabase
+    .from('journal_entry')
+    .insert({
+      kind: root.kind,
+      body,
+      event_on: root.event_on,
+      event_precision: root.event_precision,
+      visibility: root.visibility,
+      voice_note_id: root.voice_note_id,
+      corrects_id: root.id,
+      author_id: user.id,
+      provenance: 'typed',
+      verification: 'verified',
+      ai_links_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'insert' }
+
+  // A work named in the new text: already linked → nothing; an open ✦ proposal → validated (Pem named it);
+  // otherwise a new link. A proposal Pem rejected stays rejected.
+  const { data: linked } = await supabase
+    .from('journal_entry_link').select('id, oeuvre_id, validated_at, rejected_at').eq('entry_id', root.id).not('oeuvre_id', 'is', null)
+  const byWork = new Map((linked ?? []).map((l) => [Number(l.oeuvre_id), l]))
+  const now = new Date().toISOString()
+  const named = await worksMentioned(supabase, body)
+  const toValidate = named.map((w) => byWork.get(w)).filter((l) => l && !l.validated_at && !l.rejected_at).map((l) => l!.id)
+  if (toValidate.length) {
+    const { error: vErr } = await supabase.from('journal_entry_link').update({ validated_at: now }).in('id', toValidate)
+    if (vErr) await logError('journal correction: validate proposals failed', vErr, { source: 'journal.correctJournalEntry', metadata: { id: root.id } })
+  }
+  const newWorks = named.filter((w) => !byWork.has(w))
+  if (newWorks.length) {
+    const { error: linkErr } = await supabase.from('journal_entry_link').insert(
+      newWorks.map((oeuvre_id) => ({ entry_id: root.id, oeuvre_id, created_by: user.id, proposed_by: 'pem', validated_at: now })),
+    )
+    if (linkErr) await logError('journal correction links failed', linkErr, { source: 'journal.correctJournalEntry', metadata: { id: root.id } })
+  }
+  revalidatePath('/atelier/journal')
+  return { ok: true, id: data.id }
+}
+
 export type WorkJournalEntry = { id: number; day: string; kind: string; snippet: string }
 
 /** Constellation side panel: the journal entries linked to a work (validated links only). */
@@ -610,20 +704,25 @@ export async function listJournalEntriesForWork(oeuvreId: number): Promise<WorkJ
     .not('validated_at', 'is', null)
   if (error || !links?.length) return []
   const ids = [...new Set(links.map((l) => Number(l.entry_id)))]
-  const { data: rows } = await supabase
-    .from('journal_entry')
-    .select('id, event_on, kind, body, hidden_at')
-    .in('id', ids)
-    .is('hidden_at', null)
-    .order('event_on', { ascending: false })
+  const [{ data: rows }, { data: fixes }] = await Promise.all([
+    supabase
+      .from('journal_entry')
+      .select('id, event_on, kind, body, hidden_at')
+      .in('id', ids)
+      .is('hidden_at', null)
+      .order('event_on', { ascending: false }),
+    supabase.from('journal_entry').select('corrects_id, body, created_at, hidden_at').in('corrects_id', ids),
+  ])
+  const latestFix = latestCorrections(fixes ?? [])
   return (rows ?? []).map((r) => ({
     id: Number(r.id),
     day: String(r.event_on),
     kind: String(r.kind),
-    snippet: String(r.body ?? '')
+    snippet: String(latestFix.get(Number(r.id)) ?? r.body ?? '')
       .replace(/[#*`|_>]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 120),
   }))
 }
+

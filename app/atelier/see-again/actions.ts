@@ -5,6 +5,7 @@
 // (seed = the Paris date). Data: journal_entry, Oeuvres, tblrelations, nodes (pgvector).
 // Dismissals per person: supabase/sql/see_again_dismissed.sql.
 
+import { latestCorrections } from '@/lib/journal-corrections'
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
@@ -55,7 +56,7 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
   const year = Number(today.slice(0, 4))
 
   const [entriesRes, worksRes, linksRes, relsRes, dismissedRes] = await Promise.all([
-    supabase.from('journal_entry').select('id, event_on, kind, body').is('hidden_at', null).lt('event_on', today).limit(5000),
+    supabase.from('journal_entry').select('id, event_on, kind, body, corrects_id, created_at, hidden_at').is('hidden_at', null).lt('event_on', today).limit(5000),
     supabase
       .from('Oeuvres')
       .select('OeuvreID, Titre, txtImageNameLink')
@@ -91,7 +92,11 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
   const journalLinked = new Set((linksRes.data ?? []).map((l) => l.oeuvre_id as number))
 
   // 1. Then — an entry from this week of an earlier year; else an older entry (30+ days).
-  const entries = (entriesRes.data ?? []).filter((e) => !dismissed.has(`then:${e.id}:`))
+  // A correction is shown as its original's text, never as a memory of its own (lib/journal-corrections.ts).
+  const fixes = latestCorrections(entriesRes.data ?? [])
+  const entries = (entriesRes.data ?? [])
+    .filter((e) => e.corrects_id == null && !dismissed.has(`then:${e.id}:`))
+    .map((e) => ({ ...e, body: fixes.get(e.id) ?? e.body }))
   const todayDoy = dayOfYear(today)
   const sameWeek = entries.filter((e) => {
     if (Number(e.event_on.slice(0, 4)) >= year) return false
