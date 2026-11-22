@@ -6,6 +6,18 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.89 (2026-11-22) — « Corriger » a Journal transcript.
+  wn_journal_correct_t: { fr: 'Corriger une transcription du Journal', en: 'Correct a Journal transcript' },
+  wn_journal_correct_d: {
+    fr: 'Sur un texte transcrit par la machine ou importé, « Vérifier · corriger » ouvre le texte : « Le texte est juste » le marque vérifié, ou corrigez-le et « Enregistrer la correction ». Le texte d’origine est gardé (« voir le texte d’origine ») ; la correction s’affiche partout à sa place, sur l’ordinateur comme sur le téléphone.',
+    en: 'On a text transcribed by the machine or imported, « Check · correct » opens the text: « The text is right » marks it checked, or correct it and « Save the correction ». The original text is kept (« show the original text »); the correction shows everywhere in its place, on the computer and on the phone.',
+  },
+  // 3.1.89 (2026-11-22) — a deleted contact no longer breaks restore / approve; same-instant saves.
+  wn_deleted_contact_restore_t: { fr: 'Restaurer une version ou approuver malgré un contact supprimé', en: 'Restore a version or approve despite a deleted contact' },
+  wn_deleted_contact_restore_d: {
+    fr: 'Restaurer une ancienne version d’une œuvre dont le contact a été supprimé garde le propriétaire, le dépositaire ou l’acheteur actuel et restaure le reste, en le disant. Une proposition qui nomme un contact supprimé est refusée avec une phrase claire. Et un enregistrement de fiche qui tombe au même instant qu’un autre changement n’écrit rien et recommence sur l’œuvre à jour.',
+    en: 'Restoring an older version of a work whose contact was deleted keeps the current owner, custodian or buyer and restores the rest, and says so. A proposal naming a deleted contact is refused with a clear sentence. And a card save landing at the same instant as another change writes nothing and starts again on the up-to-date work.',
+  },
   // 3.1.88 (2026-11-21) — the work card saves field by field.
   wn_work_save_field_by_field_t: { fr: 'Une fiche restée ouverte n’efface plus un autre changement', en: 'A card left open no longer undoes another change' },
   wn_work_save_field_by_field_d: {

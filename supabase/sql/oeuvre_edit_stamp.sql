@@ -1,3 +1,6 @@
+-- REPLACED 2026-11-22 (not to apply): the card save and proposal approval guard their write with the values the plan
+-- read (lib/work-plan-state.ts planReadGuard, docs/DONE.md 2026-11-22). Kept as a record of the earlier design.
+--
 -- NOT LIVE. Applied 2026-11-19 and dropped the same day (Pem « Yes, drop it now »): with today's app it caused false
 -- `work_changed` refusals (production board, Inventory broadcast toggle, constat from the card, production dates,
 -- contact merge / delete remap, « Annuler ») and the phone offline queue drops a refused edit. Before re-applying:

@@ -26,7 +26,7 @@ import {
   PENDING_LOADED_BASE_FIELD,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
-import { loadWorkPlanState } from '@/lib/work-plan-state'
+import { loadWorkPlanState, PLAN_READ_FIELD, planReadGuard, planReadGuardJson } from '@/lib/work-plan-state'
 import { historiqueToStore } from '@/lib/historique-merge'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
@@ -329,7 +329,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   // guarded by the stamp read here. No base (restored draft, older queued save): the whole-work stamp check below.
   if (!isNew && formData.get('__card_plan') !== '1') {
     const loaded = parsePendingLoadedBase(formData.get(PENDING_LOADED_BASE_FIELD))
-    if (loaded) {
+    // The planned write is guarded by what this plan read (planReadGuard): a change landing in between makes it
+    // write nothing; the plan then runs once more on the fresh row (kept / refused by name as usual).
+    for (let attempt = 0; loaded && attempt < 2; attempt++) {
       const oid = Number(oeuvreIdRaw)
       if (!Number.isInteger(oid) || oid <= 0) return { error: 'ID invalide' }
       const work = await loadWorkPlanState(supabase, oid)
@@ -358,7 +360,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       const planned = formDataForPendingEdit(oid, payload, work.state, plan.apply)
       planned.set('__card_plan', '1')
       planned.set(WORK_BASE_EDITED_AT_FIELD, stamp ?? '')
+      planned.set(PLAN_READ_FIELD, planReadGuardJson(work.state))
       const res = await saveWork(planned)
+      if ('error' in res && res.error === WORK_CHANGED_ERROR && attempt === 0) continue
       return 'error' in res ? res : { ...res, kept: plan.kept, ...storedLists }
     }
   }
@@ -664,6 +668,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // (checkboxes read as false when absent, text/number keys as null).
     // Keep in sync with the form fields in WorkForm.tsx / work-drawer/DrawerContent.tsx.
     const OPTIONAL_UPDATE_COLUMNS: Record<string, string> = {
+      Commentaires:             'commentaires',        // left out by a planned save unless it is the change
       LocalisationDetail:       'localisation_detail', // sent by neither form
       DateLivraison:            'date_livraison',      // drawer only (Objet › Logistique)
       ReturnDate:               'return_date',         // drawer only (Objet › Logistique)
@@ -692,12 +697,15 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       .is('deleted_at', null)
     // Same stamp on the write itself: a save landing between the check above and here still loses nothing.
     if (baseEditedAt !== null) updateQ = baseEditedAt ? updateQ.eq('edited_at', baseEditedAt) : updateQ.is('edited_at', null)
+    // Planned write (card save, approval): every column written still holds the value the plan read.
+    const readGuard = planReadGuard(formData.get(PLAN_READ_FIELD), Object.keys(updatePayload))
+    for (const [col, v] of readGuard ?? []) updateQ = v === null ? updateQ.is(col, null) : updateQ.eq(col, v)
     const { data: savedRow, error: updateErr } = await updateQ
       .select(OEUVRES_KEYSET_SELECT)
       .maybeSingle()
 
     if (updateErr) return { error: updateErr.message }
-    if (baseEditedAt !== null && !savedRow) return { error: WORK_CHANGED_ERROR }
+    if ((baseEditedAt !== null || readGuard) && !savedRow) return { error: WORK_CHANGED_ERROR }
 
     // ── Log Significant Event: Image Upload (form) ──
     if (formUploadedNewImage) {

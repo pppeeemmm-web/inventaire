@@ -482,6 +482,9 @@ export function formDataForPendingEdit(
   fd.set('oeuvre_id', String(oeuvreId))
   for (const [key, column] of Object.entries(PENDING_FORM_KEY_TO_COLUMN)) {
     if (key === 'historique' || key === 'themes' || key === 'groups') continue
+    // Commentaires only when it is the change: other writers append to it (batch note, share triage), and a
+    // copy of the value read would put back what they added in between (saveWork leaves it alone when absent).
+    if (key === 'commentaires' && !take.has(key)) continue
     const v = take.has(key) ? payload[key] : pendingFormValueFromColumn(key, current[column])
     if (v != null) fd.append(key, v)
   }

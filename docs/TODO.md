@@ -14,12 +14,11 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 ## 1. Finish first — small, before anything new
 
 Data safety (SQL, Pem's OK given)
-- [ ] A deleted contact (not merged) still named in a queued work change or an old work version makes approve / restore fail (foreign key).
 - [ ] An admin's save queued offline on the phone, or a card draft restored, that names a contact deleted meanwhile fails with the raw database message (a team member's becomes a proposal, which approve refuses in words).
 - [ ] Contact merge rewrites owner, holder and buyer inside old work versions but not the holder's address (`localisation_address_id`).
-- [ ] Journal transcripts: « Corriger » on machine-made text (keeps the original, marks it verified) — the Journal is append-only in the database.
 - [ ] Journal corrections, rare cases: a second machine transcription of the same voice note (other engine) shows in Notes over Pem's correction; a correction of a private entry written by a team member stays unreadable to that author; search by meaning still matches the uncorrected words (the semantic index holds the original text).
-- [ ] An order step, batch edit or stage change landing in the split second between a card save's read and its write can still be overwritten (the card save is field by field; those writers don't move `edited_at`). The database stamp (`supabase/sql/oeuvre_edit_stamp.sql`, not live) needs first: the production board, Inventory broadcast toggle, constat, production dates, contact merge / delete remap and the card's « Annuler » carrying the new stamp; « Annuler » resetting the card's form; the phone offline queue keeping a refused edit; the Journal badge ignoring system stamps.
+- [ ] A theme or group list changed in the same split second as a card save that also changes that list is replaced by the card's list (the lists are written apart from the work row, outside the save's guard).
+- [ ] Cancelling an order or returning a sale writes without checking the order's status: another tab moving the same order in that split second can be overridden (order steps already check it).
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).

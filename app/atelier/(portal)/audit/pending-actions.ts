@@ -19,7 +19,8 @@ import {
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
 import { contactListLabel } from '@/lib/contacts/contact-display'
-import { loadWorkPlanState } from '@/lib/work-plan-state'
+import { loadWorkPlanState, PLAN_READ_FIELD, planReadGuardJson } from '@/lib/work-plan-state'
+import { WORK_CHANGED_ERROR } from '@/lib/work-save-error'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
@@ -317,22 +318,30 @@ export async function approvePendingChange(
   if (kind === 'edit') {
     const oid = row.oeuvre_id ?? Number(filtered.oeuvre_id)
     if (!Number.isInteger(oid) || oid <= 0) return { error: 'Œuvre introuvable' }
-    const work = await loadWorkPlanState(supabase, oid)
-    if ('error' in work) return { error: work.error }
-    if (work.binned) return { error: 'Œuvre introuvable ou supprimée' }
-    const plan = planPendingEdit(filtered, row.baseline as Record<string, unknown> | null, work.state)
-    if (plan.conflicts.length > 0 && !opts?.force) {
-      return { conflict: { fields: plan.conflicts, noBaseline: plan.noBaseline } }
-    }
-    // Nothing left to write (already in place): the proposal is simply marked approved.
-    if (plan.apply.length > 0) {
+    // The write is guarded by what the plan read (planReadGuard): a change landing in between writes nothing,
+    // and the plan runs once more on the fresh row.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const work = await loadWorkPlanState(supabase, oid)
+      if ('error' in work) return { error: work.error }
+      if (work.binned) return { error: 'Œuvre introuvable ou supprimée' }
+      const plan = planPendingEdit(filtered, row.baseline as Record<string, unknown> | null, work.state)
+      if (plan.conflicts.length > 0 && !opts?.force) {
+        return { conflict: { fields: plan.conflicts, noBaseline: plan.noBaseline } }
+      }
+      // Nothing left to write (already in place): the proposal is simply marked approved.
+      if (plan.apply.length === 0) break
       const gone = await refuseDeletedContact(filtered, plan.apply)
       if (gone) return gone
       const fd = formDataForPendingEdit(oid, filtered, work.state, plan.apply)
       fd.set('__skip_review', '1')
       if (row.author_id) fd.set('__pending_author_id', row.author_id)
+      fd.set(PLAN_READ_FIELD, planReadGuardJson(work.state))
       const result = await saveWork(fd)
-      if ('error' in result) return { error: result.error }
+      if ('error' in result && result.error === WORK_CHANGED_ERROR && attempt === 0) continue
+      if ('error' in result) {
+        return { error: result.error === WORK_CHANGED_ERROR ? resolveMessage('fr', 'wc_err_work_changed') : result.error }
+      }
+      break
     }
   } else {
     const gone = await refuseDeletedContact(filtered, Object.keys(filtered))

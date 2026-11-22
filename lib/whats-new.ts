@@ -82,7 +82,9 @@
 // '3.1.85' (2026-11-20): a voice note sent to a new idea brings its transcript; Bureau IA « Lancer » starts the PC at the click.
 // '3.1.86' (2026-11-21): a text beside each inspiration photo, added or changed later (desk + phone); hover shows the photo large.
 // '3.1.87' (2026-11-21): a day holding only an inspiration photo is listed in the Journal; search finds a photo by its text (desk ⌘K, phone ☰).
-export const WHATS_NEW_RELEASE = '3.1.88'
+// '3.1.88' (2026-11-21): the work card saves field by field.
+// '3.1.89' (2026-11-22): « Corriger » a Journal transcript; a deleted contact no longer breaks a restore or an approval; a save landing at the same instant as another change writes nothing.
+export const WHATS_NEW_RELEASE = '3.1.89'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -108,6 +110,8 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_correct', day: '2026-11-22', spot: 'journal', admin: true },
+  { id: 'deleted_contact_restore', day: '2026-11-22', spot: 'inventory', admin: true },
   { id: 'work_save_field_by_field', day: '2026-11-21', spot: 'inventory', admin: true },
   { id: 'inspiration_found', day: '2026-11-21', spot: 'journal' },
   { id: 'inspiration_text', day: '2026-11-21', spot: 'journal' },
