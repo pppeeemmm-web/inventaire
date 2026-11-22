@@ -24,6 +24,7 @@ Each one comes from something the tests or the code showed. « Check » says how
 | 10 | **Same doors, two designs.** Every function is reachable from phone and desk through the same door; each device gets its own face, led by what it does best (§3). | Each function was built twice, and the two drifted apart. | Review. |
 | 11 | **Look before building.** What already exists — in the device, in the field, in the system — is surveyed first (§4). | Features discovered late (hotkeys, existing patterns). | A line in every build brief. |
 | 12 | **Scenario before build, proof before live.** The build is first told as steps Pem can check; anything visual gets a mockup; it is proven on the throwaway copy. | Discussions that never reached a shared understanding; the AI desk. | The brief carries the scenario; `ship.ps1` already asks for the Flow line. |
+| 13 | **One way to link, everywhere.** Wherever text is typed, `#` links a work or an idea and `@` links a person, through one shared picker; picking writes a real link in that record's link table, never only text. A name that matches nothing offers « + Personne » / « + Œuvre » through their doors, never a silent new record. (Pem 2026-11-22/23, [`People.md`](../2026-11-22/People.md) §8.) | Links typed three ways (`#1234` in the Journal, pickers on the work card, free text in notes); a person named in a note was never linked to them. | Review; one picker component, its use listed per screen. |
 
 ---
 

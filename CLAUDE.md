@@ -42,6 +42,7 @@ Read that page before any plan, brief or proposal. A proposal answers first: whi
 10. Same doors, two designs: every function reachable on phone and desk through the same door; each face led by what the device does best.
 11. Look before building: survey what exists in the device, the field (proven standards) and the system.
 12. Scenario before build (steps Pem can check; mockup for anything visual), proof on the throwaway copy before live.
+13. One way to link: wherever text is typed, `#` links a work or an idea, `@` a person — one shared picker, a real link in that record's link table, never only text; no match → « + Personne / + Œuvre » through their doors (owner 2026-11-23).
 A kind is a label and a view is a read: a change of mind costs a label or a view. A request that cannot be met that way → stop, redraw the map with Pem.
 
 ## Commands

@@ -129,6 +129,43 @@ type AddrForm = {
   shipping_notes: string
 }
 
+type ContactChildTable = 'contact_addresses' | 'contact_emails' | 'contact_phones' | 'contact_websites' | 'contact_socials'
+
+/**
+ * Write one contact's child rows by id: rows the form kept are updated in place (their id never changes — works, orders and
+ * shipments point at an address id), new rows are inserted, rows the form removed are deleted. Every error stops the save.
+ * Returns the rows as stored, in the form's order.
+ */
+async function syncContactRows<T>(
+  sb: ReturnType<typeof createClient>,
+  table: ContactChildTable,
+  contactId: number,
+  rows: ({ id?: number } & Record<string, unknown>)[],
+): Promise<T[]> {
+  const keptIds = rows.map((r) => r.id).filter((id): id is number => typeof id === 'number')
+  let del = sb.from(table).delete().eq('contact_id', contactId)
+  if (keptIds.length) del = del.not('id', 'in', `(${keptIds.join(',')})`)
+  const { error: delErr } = await del
+  if (delErr) throw new Error(`${table}: ${delErr.message}`)
+
+  const out: T[] = []
+  for (const { id, ...fields } of rows) {
+    if (typeof id === 'number') {
+      const { data, error } = await sb.from(table).update(fields).eq('id', id).eq('contact_id', contactId).select().maybeSingle()
+      if (error) throw new Error(`${table}: ${error.message}`)
+      if (data) {
+        out.push(data as T)
+        continue
+      }
+      // The row was removed meanwhile (another tab): write it again rather than lose what the form holds.
+    }
+    const { data, error } = await sb.from(table).insert({ ...fields, contact_id: contactId }).select().single()
+    if (error) throw new Error(`${table}: ${error.message}`)
+    out.push(data as T)
+  }
+  return out
+}
+
 function emptyAddr(): AddrForm {
   return { label: '', adresse: '', code_postal: '', ville: '', pays: '', shipping_notes: '' }
 }
@@ -426,6 +463,42 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             : {}),
         }
 
+        // Child rows keep their ids: works, orders and shipments point at an address id (ON DELETE SET NULL),
+        // so a delete-and-reinsert used to empty those pointers on every save (Pem's own card: 1,171 works).
+        // An address removed here while something still uses it is refused before anything is written.
+        if (!isNew) {
+          const keptAddrIds = new Set(validAddrs.map((a) => a.id).filter((id): id is number => typeof id === 'number'))
+          // What the database holds, not what this editor loaded: a row added meanwhile (another tab) or not yet
+          // loaded when the editor opened would otherwise be removed without this check.
+          const { data: stored, error: storedErr } = await sb
+            .from('contact_addresses')
+            .select('id, label, ville')
+            .eq('contact_id', contact!.ContactID)
+          if (storedErr) throw new Error(storedErr.message)
+          const removed = ((stored ?? []) as { id: number; label: string | null; ville: string | null }[]).filter(
+            (a) => !keptAddrIds.has(a.id),
+          )
+          for (const a of removed) {
+            const [w, o, s] = await Promise.all([
+              sb.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).eq('localisation_address_id', a.id),
+              sb.from('work_order').select('id', { count: 'exact', head: true }).eq('address_id', a.id),
+              sb.from('shipment').select('id', { count: 'exact', head: true }).eq('address_id', a.id),
+            ])
+            const countErr = w.error ?? o.error ?? s.error
+            if (countErr) throw new Error(countErr.message)
+            if ((w.count ?? 0) + (o.count ?? 0) + (s.count ?? 0) > 0) {
+              setErr(
+                t('contact_editor_addr_in_use_fmt')
+                  .replace('{label}', a.label || a.ville || String(a.id))
+                  .replace('{works}', String(w.count ?? 0))
+                  .replace('{orders}', String(o.count ?? 0))
+                  .replace('{shipments}', String(s.count ?? 0)),
+              )
+              return false
+            }
+          }
+        }
+
         let contactId: number
         const normalizedRole = form.Role === 'Encadreur' ? 'Framer' : form.Role
         payload.Role = normalizedRole
@@ -441,18 +514,12 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           if (error) throw new Error((error as { message?: string }).message)
         }
 
-        await Promise.all([
-          sb.from('contact_addresses').delete().eq('contact_id', contactId),
-          sb.from('contact_emails').delete().eq('contact_id', contactId),
-          sb.from('contact_phones').delete().eq('contact_id', contactId),
-          sb.from('contact_websites').delete().eq('contact_id', contactId),
-          sb.from('contact_socials').delete().eq('contact_id', contactId),
-        ])
-
-        let savedAddrs: ContactAddress[] = []
-        if (validAddrs.length > 0) {
-          const insertRows = validAddrs.map((a, i) => ({
-            contact_id: contactId,
+        const savedAddrs = await syncContactRows<ContactAddress>(
+          sb,
+          'contact_addresses',
+          contactId,
+          validAddrs.map((a, i) => ({
+            id: a.id,
             label: a.label || (validAddrs.length === 1 ? 'Principal' : `Adresse ${i + 1}`),
             adresse: a.adresse || null,
             code_postal: a.code_postal || null,
@@ -460,54 +527,32 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             pays: a.pays || null,
             position: i,
             shipping_notes: a.shipping_notes || null,
-          }))
-          const { data, error } = await sb.from('contact_addresses').insert(insertRows).select()
-          if (error) throw error
-          savedAddrs = data || []
-        }
-
-        let savedEmails: ContactEmail[] = []
-        if (emailList.length > 0) {
-          const rows = emailList.map((e) => ({
-            contact_id: contactId,
-            email: e.email,
-            label: e.label,
-            is_primary: e.is_primary,
-          }))
-          const { data, error } = await sb.from('contact_emails').insert(rows).select()
-          if (error) throw error
-          savedEmails = data || []
-        }
-
-        let savedPhones: ContactPhone[] = []
-        if (phoneList.length > 0) {
-          const rows = phoneList.map((p) => ({
-            contact_id: contactId,
-            phone: p.phone,
-            country_code: p.country_code,
-            label: p.label,
-            is_primary: p.is_primary,
-          }))
-          const { data, error } = await sb.from('contact_phones').insert(rows).select()
-          if (error) throw error
-          savedPhones = data || []
-        }
-
-        let savedWebs: ContactWebsite[] = []
-        if (webList.length > 0) {
-          const rows = webList.map((w) => ({ contact_id: contactId, url: w.url, label: w.label }))
-          const { data, error } = await sb.from('contact_websites').insert(rows).select()
-          if (error) throw error
-          savedWebs = data || []
-        }
-
-        let savedSocials: ContactSocial[] = []
-        if (socialList.length > 0) {
-          const rows = socialList.map((s) => ({ contact_id: contactId, platform: s.platform, handle: s.handle }))
-          const { data, error } = await sb.from('contact_socials').insert(rows).select()
-          if (error) throw error
-          savedSocials = data || []
-        }
+          })),
+        )
+        const savedEmails = await syncContactRows<ContactEmail>(
+          sb,
+          'contact_emails',
+          contactId,
+          emailList.map((e) => ({ id: e.id, email: e.email, label: e.label, is_primary: e.is_primary })),
+        )
+        const savedPhones = await syncContactRows<ContactPhone>(
+          sb,
+          'contact_phones',
+          contactId,
+          phoneList.map((p) => ({ id: p.id, phone: p.phone, country_code: p.country_code, label: p.label, is_primary: p.is_primary })),
+        )
+        const savedWebs = await syncContactRows<ContactWebsite>(
+          sb,
+          'contact_websites',
+          contactId,
+          webList.map((w) => ({ id: w.id, url: w.url, label: w.label })),
+        )
+        const savedSocials = await syncContactRows<ContactSocial>(
+          sb,
+          'contact_socials',
+          contactId,
+          socialList.map((s) => ({ id: s.id, platform: s.platform, handle: s.handle })),
+        )
 
         const savedContact = {
           ContactID: contactId,
@@ -555,6 +600,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       webList,
       aiSuggestion,
       onAiSuggestionDone,
+      t,
     ])
 
     const inviteEmail = useMemo(

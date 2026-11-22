@@ -1137,7 +1137,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         {showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
           <ContactEditorPanel
             // Remounted once when the junction rows arrive: an editor opened from a link before them started with
-            // empty lists, and its Save (delete + reinsert) would have dropped the contact's emails / phones / addresses.
+            // empty lists, and its Save (rows not in the form are removed) would have dropped the contact's emails / phones / addresses.
             key={`${isCreating ? 'new' : activeId}-${editorNonce}-${junctionsLoaded ? 1 : 0}`}
             ref={editorRef}
             contact={isCreating ? null : editorContactResolved}

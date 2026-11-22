@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personnes — maquette</title>
+<style>
+:root{
+  --bg:#f4f2ee; --panel:#fff; --ink:#1d1c1a; --mute:#6f6b64; --faint:#a7a29a; --line:#e3dfd8; --line2:#d3cec5;
+  --acc:#2f5d50; --acc-ink:#fff; --soft:#eef3f1; --warn:#9a3b1f; --warn-bg:#fbeee8; --chip:#f0ede8;
+  --k-order:#7a4b9c; --k-money:#2f7d4a; --k-kit:#b07a1d; --k-event:#2e6aa8; --k-mail:#5a6470; --k-touch:#2f5d50; --k-journal:#a8476e; --k-paper:#6b5b3e; --k-work:#8a6d2f;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#161614; --panel:#201f1d; --ink:#ebe8e2; --mute:#a39e95; --faint:#6f6b64; --line:#33312d; --line2:#45423d;
+  --acc:#7fb8a6; --acc-ink:#0f1a17; --soft:#1f2b27; --warn:#f0a07f; --warn-bg:#3a2219; --chip:#2b2a27; }}
+:root[data-theme="dark"]{ --bg:#161614; --panel:#201f1d; --ink:#ebe8e2; --mute:#a39e95; --faint:#6f6b64; --line:#33312d; --line2:#45423d;
+  --acc:#7fb8a6; --acc-ink:#0f1a17; --soft:#1f2b27; --warn:#f0a07f; --warn-bg:#3a2219; --chip:#2b2a27; }
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top h1{font-size:15px;margin:0}
+.top .note{color:var(--mute);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 10px}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.stage{display:flex;gap:20px;padding:16px;align-items:flex-start;flex-wrap:wrap}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+
+/* ---------- desk ---------- */
+.desk{flex:1 1 900px;min-width:0;max-width:1240px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;grid-template-columns:230px minmax(0,1fr) 270px;height:760px;position:relative}
+.col{min-width:0;overflow:auto;border-right:1px solid var(--line)}
+.col:last-child{border-right:0}
+.listhead{position:sticky;top:0;background:var(--panel);padding:8px;border-bottom:1px solid var(--line);z-index:2}
+.search{width:100%;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{border:1px solid var(--line2);background:transparent;border-radius:20px;padding:1px 8px;font-size:11px;color:var(--mute)}
+.tag.on{background:var(--soft);border-color:var(--acc);color:var(--ink)}
+.letter{font-size:11px;color:var(--faint);padding:6px 10px 2px;position:sticky;top:76px;background:var(--panel)}
+.row{display:flex;align-items:center;gap:6px;padding:5px 10px;border:0;background:transparent;width:100%;text-align:left;border-left:3px solid transparent}
+.row:hover{background:var(--bg)} .row.sel{background:var(--soft);border-left-color:var(--acc)}
+.row .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .ct{font-size:11px;color:var(--faint)}
+.fam{font-weight:600;letter-spacing:.02em}
+.lock{font-size:10px;color:var(--warn)}
+.listfoot{padding:8px 10px;color:var(--faint);font-size:11px;border-top:1px solid var(--line)}
+
+.phead{padding:14px 16px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:3}
+.pname{font-size:19px;margin:0}
+.psub{color:var(--mute);margin-top:2px}
+.actions{display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line2);background:transparent;border-radius:6px;padding:5px 10px}
+.btn.main{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn.quiet{border-color:transparent;color:var(--mute)}
+.btn.warn{color:var(--warn);border-color:var(--warn)}
+.menu{position:absolute;background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:4px;z-index:20;min-width:190px}
+.menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:6px 10px;border-radius:5px}
+.menu button:hover{background:var(--bg)}
+.menu .sep{border-top:1px solid var(--line);margin:4px 0}
+
+.works{padding:10px 16px;border-bottom:1px solid var(--line)}
+.wgroups{display:flex;gap:14px;flex-wrap:wrap}
+.wg{min-width:0}
+.wg .h{font-size:11px;color:var(--mute);margin-bottom:4px}
+.thumbs{display:flex;gap:4px}
+.th{width:38px;height:38px;border-radius:3px;position:relative;border:1px solid var(--line)}
+.th span{position:absolute;inset:auto 0 0 0;font-size:8px;color:#fff;background:rgba(0,0,0,.45);padding:0 2px;white-space:nowrap;overflow:hidden}
+.th.more{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mute);background:var(--bg)}
+
+.tlbar{display:flex;gap:4px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--line);position:sticky;top:97px;background:var(--panel);z-index:2}
+.kf{border:1px solid var(--line2);background:transparent;border-radius:20px;padding:1px 8px;font-size:11px}
+.kf.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.kf b{font-weight:600;margin-left:3px}
+.kf i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.kf.on i{box-shadow:0 0 0 1.5px var(--bg)}
+.th em{position:absolute;top:1px;right:1px;font-style:normal;font-size:8px;background:var(--panel);color:var(--ink);border-radius:3px;padding:0 2px}
+.dead{color:var(--mute);font-weight:400;font-size:.8em}
+.row.arch .nm{color:var(--faint)}
+.timeline{padding:4px 16px 16px}
+.day{font-size:11px;color:var(--faint);margin:12px 0 4px;display:flex;gap:8px;align-items:center}
+.day:after{content:"";flex:1;border-top:1px solid var(--line)}
+.card{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-bottom:4px;background:var(--panel)}
+.card .bar{border-radius:3px}
+.card .k{font-size:11px;color:var(--mute)}
+.card .t{margin-top:1px}
+.card .meta{font-size:11px;color:var(--faint);text-align:right;white-space:nowrap}
+.card .chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.pill{font-size:11px;border-radius:4px;padding:0 5px;background:var(--chip)}
+.pill.w:before{content:"#";color:var(--faint)} .pill.p:before{content:"@";color:var(--faint)}
+.card.new{outline:2px solid var(--acc)}
+.more{display:block;margin:10px auto 0}
+.endnote{color:var(--faint);font-size:11px;text-align:center;margin-top:8px}
+
+.rail{padding:12px}
+.sec{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+.sec:last-child{border:0}
+.sec h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px;display:flex;justify-content:space-between}
+.kv{display:grid;grid-template-columns:70px minmax(0,1fr);gap:2px 8px;font-size:12px}
+.kv .k{color:var(--faint)}
+.kv a{color:var(--ink)}
+.rel{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+.rel .r{color:var(--faint)}
+
+/* drawers */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:30}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--panel);border-left:1px solid var(--line2);z-index:31;display:flex;flex-direction:column}
+.dh{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.db{padding:12px 14px;overflow:auto;flex:1}
+.df{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:6px;justify-content:flex-end;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:-4px 0 10px}
+.tabs button{border:0;background:transparent;padding:6px 8px;color:var(--mute);border-bottom:2px solid transparent}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--acc)}
+.f{display:block;margin-bottom:8px}
+.f span{display:block;font-size:11px;color:var(--mute);margin-bottom:2px}
+.f input,.f select,.f textarea{width:100%;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.f textarea{min-height:70px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addr{border:1px solid var(--line);border-radius:7px;padding:8px;margin-bottom:6px;font-size:12px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.addr .u{font-size:11px;color:var(--mute)}
+.refuse{background:var(--warn-bg);color:var(--warn);border-radius:7px;padding:8px 10px;font-size:12px;margin:8px 0}
+.ok{background:var(--soft);border-radius:7px;padding:8px 10px;font-size:12px;margin:8px 0}
+.kinds{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.kinds button{border:1px solid var(--line2);background:transparent;border-radius:20px;padding:4px 10px;min-height:32px}
+.kinds button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.sugg{border:1px solid var(--line2);border-radius:6px;background:var(--panel);margin-top:-6px;margin-bottom:8px;overflow:hidden}
+.sugg button{display:flex;gap:8px;width:100%;border:0;background:transparent;text-align:left;padding:6px 8px;min-height:36px;align-items:center}
+.sugg button:hover,.sugg button.hi{background:var(--soft)}
+.picked{display:flex;flex-wrap:wrap;gap:4px;margin:-2px 0 8px}
+.hint{font-size:11px;color:var(--faint)}
+.toggle{display:flex;gap:6px;align-items:center;font-size:12px;margin:6px 0}
+
+/* ---------- phone ---------- */
+.phonewrap{flex:0 0 auto}
+.phone{width:375px;height:740px;border:10px solid #111;border-radius:36px;background:var(--panel);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.pbar{height:22px;flex:0 0 22px}
+.ptop{padding:6px 14px 8px;border-bottom:1px solid var(--line)}
+.ptop h2{font-size:20px;margin:0 0 6px}
+.pscroll{flex:1;overflow:auto}
+.prow{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 14px;border:0;border-bottom:1px solid var(--line);background:transparent;width:100%;text-align:left}
+.prow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .sub{font-size:11px;color:var(--faint)}
+.back{border:0;background:transparent;color:var(--acc);min-height:44px;padding:0 4px;font-size:15px}
+.qa{display:flex;gap:8px;margin-top:8px}
+.qa button{flex:1;min-height:44px;border:1px solid var(--line2);border-radius:10px;background:transparent;font-size:12px}
+.pfoot{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line);display:flex;gap:8px}
+.pfoot .btn{min-height:46px;flex:1;border-radius:10px;font-size:15px}
+.pfoot .btn.quiet{flex:0 0 56px}
+.psec{padding:10px 14px;border-bottom:1px solid var(--line)}
+.psec summary{list-style:none;cursor:pointer;min-height:32px;display:flex;align-items:center;justify-content:space-between;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.hscroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.hscroll .th{flex:0 0 52px;height:52px}
+.ptl{padding:0 14px 90px}
+.ptl .card{grid-template-columns:6px minmax(0,1fr)}
+.ptl .card .meta{display:none}
+.kfs{display:flex;gap:4px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line)}
+.kfs .kf{flex:0 0 auto;min-height:32px}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92%;background:var(--panel);border-radius:16px 16px 0 0;z-index:31;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+.sheet .db{padding:12px 14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line2);margin:8px auto 2px}
+.rec{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:1px dashed var(--line2);border-radius:10px;margin-bottom:8px;width:100%;background:transparent}
+.legend{font-size:12px;color:var(--mute);max-width:1240px;padding:0 16px 24px}
+.legend li{margin:2px 0}
+@media (max-width:1000px){ .desk{grid-template-columns:200px minmax(0,1fr);} .desk .rail{display:none} }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Personnes sur une page — maquette</h1>
+  <span class="note">Données inventées. Rien n'est enregistré. Bureau à gauche, téléphone (iPhone SE, 375 px) à droite — mêmes portes, deux visages.</span>
+  <span style="flex:1"></span>
+  <div class="seg" id="theme"><button data-t="light">Clair</button><button data-t="auto" class="on">Auto</button><button data-t="dark">Sombre</button></div>
+</div>
+<div class="stage">
+  <div style="flex:1 1 900px;min-width:0">
+    <p class="lbl">Bureau</p>
+    <div class="desk" id="desk"></div>
+  </div>
+  <div class="phonewrap">
+    <p class="lbl">Téléphone</p>
+    <div class="phone" id="phone"></div>
+  </div>
+</div>
+<ul class="legend">
+  <li><b>À essayer :</b> choisir une personne · filtrer la chronologie par sorte · « + Moment » (tapez <b>@</b> pour une personne, <b>#</b> pour une œuvre) · « Modifier » → onglet Adresses → retirer l'adresse utilisée par des œuvres (refus en mots) · « ⋯ » → Supprimer sur une personne liée à une commande (refus en mots) · « Charger plus ancien » (pages par date).</li>
+  <li><b>Nouveau (réponses de Pem, 23 nov.) :</b> pastilles de couleur sur chaque sorte · sur le téléphone les sortes passent à la ligne (seule la bande d'œuvres défile) · « Itinéraire » retiré : toucher l'adresse ouvre Plans · « Intéressée par » montre d'où vient l'intérêt (kit, visite, événement, dit) · ⋯ → Archiver / Rappeler (« Archivées » en bas de la liste) · Jean MOREL † 2025.</li>
+  <li>Bouton principal en couleur (un seul par écran), le reste discret ou sous « ⋯ ». Les compteurs de la chronologie viennent de la base (jamais d'une liste chargée).</li>
+</ul>
+
+<script>
+(function(){
+/* ---------------- invented data ---------------- */
+const TAGS=['collectionneur','galerie','commissaire','presse','artiste','fournisseur','penseur'];
+const P=[
+ {id:1,fam:'Vasseur',first:'Claire',inst:null,role:'Collectionneuse',tags:['collectionneur'],priv:true,
+  emails:[['claire@example.fr','perso']],phones:[['+33 6 12 34 56 78','mobile']],
+  addrs:[{id:11,label:'Domicile',line:'12 rue des Tilleuls, 69002 Lyon',works:0,also:[]},{id:12,label:'Maison de campagne',line:'Le Mas, 26110 Nyons',works:3,also:['Paul VASSEUR']}],
+  born:'14 mars',notes:'Préfère un appel le matin. Suit la série « Lisières » depuis 2019.',
+  rels:[['Galerie Lumen','cliente de'],['Hugo MARTIN','présentée par']],
+  works:{own:['Lisière IV','Lisière VII','Nuit claire'],held:['Lisière IV','Lisière VII','Nuit claire'],bought:['Nuit claire'],shown:['Lisière IX','Seuil','Lisière X','Fougères'],interest:[['Lisière IX','kit'],['Nuit claire','visite']]},
+  blockers:{orders:2}},
+ {id:2,fam:null,first:null,inst:'Galerie Lumen',role:'Galerie, Bruxelles',tags:['galerie'],priv:false,
+  emails:[['contact@lumen.example','pro']],phones:[['+32 2 555 01 02','pro']],
+  addrs:[{id:21,label:'Galerie',line:'4 rue du Marché, 1000 Bruxelles',works:2,also:['Inès DUVAL']}],born:null,notes:'Dépôt-vente 40 %. Contact : Inès DUVAL.',
+  rels:[['Inès DUVAL','directrice'],['Claire VASSEUR','cliente']],
+  works:{own:[],held:['Seuil','Fougères'],bought:[],shown:['Seuil','Fougères','Lisière X'],interest:[]},blockers:{orders:1}},
+ {id:3,fam:'Duval',first:'Inès',inst:null,role:'Commissaire',tags:['commissaire','galerie'],priv:false,
+  emails:[['ines@example.be','pro']],phones:[],addrs:[{id:21,label:'Travail',line:'4 rue du Marché, 1000 Bruxelles',works:2,also:['Galerie Lumen']}],born:null,notes:'',rels:[['Galerie Lumen','directrice de']],
+  works:{own:[],held:[],bought:[],shown:['Seuil'],interest:[['Seuil','événement']]},blockers:{}},
+ {id:4,fam:'Martin',first:'Hugo',inst:null,role:'Encadreur',tags:['fournisseur'],priv:false,
+  emails:[['atelier.hm@example.fr','pro']],phones:[['+33 4 78 00 11 22','atelier']],
+  addrs:[{id:41,label:'Atelier',line:'3 quai Arloing, 69009 Lyon',works:1}],born:null,notes:'Caisses américaines chêne.',
+  rels:[['Claire VASSEUR','a présenté']],works:{own:[],held:['Lisière X'],bought:[],shown:[],interest:[]},blockers:{}},
+ {id:5,fam:'Leroy',first:'Marc',inst:null,role:'Journaliste',tags:['presse'],priv:false,
+  emails:[['m.leroy@example.com','pro']],phones:[],addrs:[],born:null,notes:'',rels:[],
+  works:{own:[],held:[],bought:[],shown:['Lisière IX'],interest:[['Lisière IX','dit']]},blockers:{}},
+ {id:6,fam:'Ribeiro',first:'Sofia',inst:null,role:'Artiste',tags:['artiste','penseur'],priv:true,
+  emails:[],phones:[['+351 91 234 5678','mobile']],addrs:[],born:'2 août',notes:'Échanges sur la lumière rasante.',rels:[],
+  works:{own:[],held:[],bought:[],shown:[],interest:[]},blockers:{}},
+ {id:7,fam:null,first:null,inst:'Fonderie Ferrand',role:'Fondeur',tags:['fournisseur'],priv:false,
+  emails:[['devis@ferrand.example','devis']],phones:[['+33 3 80 00 00 00','pro']],addrs:[{id:71,label:'Fonderie',line:'ZA Sud, 21000 Dijon',works:0}],
+  born:null,notes:'',rels:[],works:{own:[],held:[],bought:[],shown:[],interest:[]},blockers:{supplyOrders:1}},
+ {id:8,fam:'Morel',first:'Jean',inst:null,role:'Collectionneur',tags:['collectionneur'],priv:true,died:'2025',
+  emails:[],phones:[],addrs:[],born:'9 janvier',notes:'Premier acheteur. Collection suivie par sa fille.',rels:[],
+  works:{own:['Rivage'],held:['Rivage'],bought:['Rivage'],shown:[],interest:[]},blockers:{}},
+ {id:9,fam:'Petit',first:'Laure',inst:null,role:'Ancienne assistante',tags:[],priv:false,archived:true,
+  emails:[],phones:[],addrs:[],born:null,notes:'',rels:[],works:{own:[],held:[],bought:[],shown:[],interest:[]},blockers:{}},
+];
+const COL={death:'var(--ink)',order:'var(--k-order)',money:'var(--k-money)',kit:'var(--k-kit)',event:'var(--k-event)',mail:'var(--k-mail)',touch:'var(--k-touch)',journal:'var(--k-journal)',paper:'var(--k-paper)',work:'var(--k-work)',enquiry:'var(--k-mail)'};
+const KN={death:'Décès',order:'Commande',money:'Paiement',kit:'Kit',event:'Événement',touch:'Moment',journal:'Journal',paper:'Papier',work:'Garde / propriété',enquiry:'Demande'};
+const TL={1:[
+ ['2026-11-19','touch','Appel','Veut voir Lisière IX en vrai avant Noël.',['Lisière IX'],['Claire VASSEUR'],'Pem'],
+ ['2026-11-12','kit','Kit envoyé','« Lisières 2026 » — 4 œuvres, prix visibles. Ouvert 3 fois.',['Lisière IX','Seuil','Lisière X','Fougères'],[],'équipe'],
+ ['2026-11-12','journal','Journal','« Penser à Claire pour la grande Lisière — elle parle de la lumière du matin. »',['Lisière IX'],[],'Pem'],
+ ['2026-10-30','money','Paiement reçu','Acompte 30 % — virement',['Nuit claire'],[],'équipe'],
+ ['2026-10-28','order','Vente signée','Bon de commande n° 7 — Nuit claire',['Nuit claire'],[],'Pem'],
+ ['2026-10-21','touch','Visite d\'atelier','Avec Hugo MARTIN. A longuement regardé Nuit claire.',['Nuit claire'],['Hugo MARTIN'],'Pem'],
+ ['2026-09-03','paper','Papier','Acte de don — Lisière VII (scan au Coffre)',['Lisière VII'],[],'Pem'],
+ ['2026-09-03','order','Don','Lisière VII offerte (anniversaire)',['Lisière VII'],[],'Pem'],
+ ['2026-06-14','enquiry','Demande du site','« Est-ce que Lisière IV est encore visible à l\'atelier ? »',['Lisière IV'],[],'site'],
+ ['2026-05-02','touch','Merci','Carte de remerciement pour le prêt à Nyons.',[],[],'Pem'],
+ ['2025-12-10','work','Garde','Lisière IV : détentrice → Claire VASSEUR (Maison de campagne)',['Lisière IV'],[],'historique'],
+ ['2025-11-30','order','Vente','Lisière IV — vente reconstituée',['Lisière IV'],[],'Pem'],
+ ['2025-03-08','event','Événement','Invitée — vernissage « Seuils » (Lyon)',[],[],'équipe'],
+ ['2024-04-20','touch','Présentation','Présentée par Hugo MARTIN',[],['Hugo MARTIN'],'Pem'],
+ ['2019-09-15','touch','Première rencontre','Salon de Lyon — a laissé sa carte.',[],[],'Pem'],
+],
+8:[['2025-04-02','death','Décès','† avril 2025 — la collection passe à sa fille (à régler).',[],[],'Pem'],
+ ['2024-12-20','touch','Merci','Carte de vœux.',[],[],'Pem'],
+ ['2012-06-01','order','Vente','Rivage — vente reconstituée',['Rivage'],[],'Pem']],
+9:[['2026-01-15','touch','Autre','Fin de mission à l\'atelier.',[],[],'Pem']]};
+const WCOL=['#8b6f47','#4f6d7a','#a3573a','#6b7f4e','#3d4a63','#9a8457','#5e4b6b','#b08d6a','#476b5c','#7a5c3e'];
+const ALLW=['Lisière IV','Lisière VII','Lisière IX','Lisière X','Nuit claire','Seuil','Fougères','Rivage','Oubli bleu','Grande lisière'];
+const wc=t=>WCOL[Math.abs([...t].reduce((a,c)=>a+c.charCodeAt(0),0))%WCOL.length];
+const label=p=>p.inst?p.inst:(p.fam.toUpperCase()+' '+p.first);
+const listName=p=>(p.inst?`<span>${p.inst}</span>`:`<span class="fam">${p.fam.toUpperCase()}</span> ${p.first}`)+(p.died?` <span class="dead">† ${p.died}</span>`:'');
+const headName=p=>(p.inst?esc(p.inst):`${esc(p.first)} <span class="fam">${esc(p.fam.toUpperCase())}</span>`)+(p.died?` <span class="dead">† ${p.died}</span>`:'');
+const sortKey=p=>(p.inst||p.fam).toLowerCase();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDay=d=>{const x=new Date(d+'T12:00');return x.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'})};
+
+function tlFor(id){ if(!TL[id]) TL[id]=[['2026-10-02','touch','Mail envoyé','Premier contact.',[],[],'Pem']]; return TL[id]; }
+
+/* ---------------- shared state per face ---------------- */
+function makeState(){return {arch:false,sel:1,q:'',tag:null,kind:null,shown:6,drawer:null,dtab:'info',msg:null,menu:false,view:'list',draft:null,moved:{}}}
+const S={desk:makeState(),phone:makeState()};
+S.phone.view='list';
+
+/* ---------------- pieces ---------------- */
+function filtered(st){
+  return P.filter(p=>(!!p.archived===st.arch)&&(!st.tag||p.tags.includes(st.tag))&&(!st.q||label(p).toLowerCase().includes(st.q.toLowerCase())))
+          .sort((a,b)=>sortKey(a).localeCompare(sortKey(b),'fr'));
+}
+function counts(id){const c={};tlFor(id).forEach(e=>c[e[1]]=(c[e[1]]||0)+1);return c}
+function thumbs(list,max){
+  if(!list.length) return '<span class="hint">—</span>';
+  const h=list.slice(0,max).map(t=>`<div class="th" title="${esc(t)}" style="background:${wc(t)}"><span>${esc(t)}</span></div>`).join('');
+  return h+(list.length>max?`<div class="th more">+${list.length-max}</div>`:'');
+}
+function intThumbs(list,big){
+  if(!list.length) return big?'':'<span class="hint">—</span>';
+  return list.map(([t,src])=>`<div class="th" title="${esc(t)} — intérêt venu de : ${src}" style="background:${wc(t)}"><em>${src}</em><span>${esc(t)}</span></div>`).join('');
+}
+function worksBlock(p,phone){
+  const g=[['Possède',p.works.own],['Détient',p.works.held],['A acheté',p.works.bought],['Vues (kits, événements, visites)',p.works.shown]];
+  if(phone){ const ints=p.works.interest.map(x=>x[0]); const all=[...new Set([...p.works.own,...p.works.held,...p.works.shown])].filter(t=>!ints.includes(t));
+    return `<div class="hscroll">${(all.length||ints.length)?intThumbs(p.works.interest,true)+all.map(t=>`<div class="th" style="background:${wc(t)}" title="${esc(t)}"><span>${esc(t)}</span></div>`).join(''):'<span class="hint">Aucune œuvre liée</span>'}</div>`; }
+  return `<div class="wgroups">${g.map(([h,l])=>`<div class="wg"><div class="h">${h} · ${l.length}</div><div class="thumbs">${thumbs(l,4)}</div></div>`).join('')}<div class="wg"><div class="h">Intéressée par · ${p.works.interest.length} <span class="hint">— d'où vient l'intérêt</span></div><div class="thumbs">${intThumbs(p.works.interest,false)}</div></div></div>`;
+}
+function timeline(st,p,phone){
+  const all=tlFor(p.id).filter(e=>!st.kind||e[1]===st.kind);
+  const page=all.slice(0,st.shown); let last='',h='';
+  page.forEach((e,i)=>{ if(e[0]!==last){h+=`<div class="day">${fmtDay(e[0])}</div>`;last=e[0];}
+    h+=`<div class="card ${e.isNew?'new':''}"><div class="bar" style="background:${COL[e[1]]}"></div><div><div class="k">${KN[e[1]]===e[2]?esc(e[2]):KN[e[1]]+' · '+esc(e[2])}</div><div class="t">${esc(e[3])}</div>
+    ${(e[4].length||e[5].length)?`<div class="chips">${e[4].map(w=>`<span class="pill w">${esc(w)}</span>`).join('')}${e[5].map(x=>`<span class="pill p">${esc(x)}</span>`).join('')}</div>`:''}</div>
+    <div class="meta">${esc(e[6])}</div></div>`; });
+  if(!page.length) h='<p class="endnote">Rien de cette sorte.</p>';
+  if(all.length>st.shown) h+=`<button class="btn more" data-a="more">Charger plus ancien</button>`;
+  else if(page.length) h+=`<p class="endnote">Début de la relation.</p>`;
+  return h;
+}
+function kindBar(st,p){
+  const c=counts(p.id); const tot=Object.values(c).reduce((a,b)=>a+b,0);
+  return `<button class="kf ${!st.kind?'on':''}" data-k="">Tout<b>${tot}</b></button>`+
+    Object.keys(KN).filter(k=>c[k]).map(k=>`<button class="kf ${st.kind===k?'on':''}" data-k="${k}"><i style="background:${COL[k]}"></i>${KN[k]}<b>${c[k]}</b></button>`).join('');
+}
+function rail(p){
+  return `<div class="sec"><h3>Coordonnées</h3><div class="kv">
+    ${p.emails.map(e=>`<span class="k">${e[1]}</span><a href="#" onclick="return false">${esc(e[0])}</a>`).join('')}
+    ${p.phones.map(e=>`<span class="k">${e[1]}</span><a href="#" onclick="return false">${esc(e[0])}</a>`).join('')}
+    ${p.addrs.map(a=>`<span class="k">${esc(a.label)}</span><span><a href="#" onclick="return false" title="Ouvre Plans">${esc(a.line)}</a>${a.works?` <span class="hint">· ${a.works} œuvre${a.works>1?'s':''} ici</span>`:''}</span>`).join('')}
+    ${!p.emails.length&&!p.phones.length&&!p.addrs.length?'<span class="k">—</span><span class="hint">Rien encore</span>':''}</div></div>
+  <div class="sec"><h3>Relations</h3>${p.rels.length?p.rels.map(r=>`<div class="rel"><span>${esc(r[0])}</span><span class="r">${esc(r[1])}</span></div>`).join(''):'<span class="hint">Aucune</span>'}</div>
+  <div class="sec"><h3>À ne pas oublier</h3><div class="kv"><span class="k">Anniversaire</span><span>${p.born||'<span class="hint">—</span>'}</span><span class="k">Rappel</span><span class="hint">aucun (seulement si vous le demandez)</span></div></div>
+  <div class="sec"><h3>Notes</h3><div style="font-size:12px">${p.notes?esc(p.notes):'<span class="hint">—</span>'}</div></div>`;
+}
+
+/* ---------------- drawers ---------------- */
+function editDrawer(st,p){
+  const t=st.dtab; const tabs=[['info','Identité'],['addr','Adresses'],['about','À propos'],['rel','Relations']];
+  let body='';
+  if(t==='info') body=`<div class="grid2"><label class="f"><span>Prénom</span><input value="${esc(p.first||'')}"></label><label class="f"><span>Nom</span><input value="${esc(p.fam||'')}"></label></div>
+   <label class="f"><span>Institution</span><input value="${esc(p.inst||'')}"></label>
+   <label class="f"><span>Étiquettes</span><input value="${esc(p.tags.join(', '))}"></label>
+   ${p.emails.map(e=>`<label class="f"><span>Email · ${e[1]}</span><input value="${esc(e[0])}"></label>`).join('')}
+   ${p.phones.map(e=>`<label class="f"><span>Téléphone · ${e[1]}</span><input value="${esc(e[0])}"></label>`).join('')}
+   <div class="toggle"><input type="checkbox" ${p.priv?'checked':''} disabled> Privé <span class="hint">(admin seulement — la porte refuse ce champ à l'équipe)</span></div>`;
+  if(t==='addr') body=(p.addrs.length?p.addrs.map(a=>`<div class="addr"><div><b>${esc(a.label)}</b><br>${esc(a.line)}<div class="u">${(a.also||[]).length?'Aussi : '+a.also.map(esc).join(', ')+' · ':''}${a.works?`${a.works} œuvre${a.works>1?'s':''} gardée${a.works>1?'s':''} ici`:'aucune œuvre ici'}</div></div><button class="btn quiet" data-a="rmaddr" data-id="${a.id}">Retirer de cette fiche</button></div>`).join(''):'<p class="hint">Aucune adresse.</p>')+
+    `<label class="f"><span>+ Adresse — tapez la rue (les adresses déjà connues sont proposées)</span><input placeholder="ex. 4 rue du Marché → « adresse déjà connue — la reprendre ? »"></label>
+    <div class="grid2"><label class="f"><span>Son lien avec ce lieu (obligatoire)</span><select><option value="">— choisir —</option><option>y habite</option><option>y travaille</option><option>œuvres gardées là</option><option>livraisons</option><option>autre</option></select></label><label class="f"><span>Complément</span><input placeholder="bâtiment, étage, appt."></label></div><p class="hint">Une adresse est un lieu partagé : plusieurs personnes, des œuvres, des envois peuvent y pointer. La retirer d'une fiche défait seulement le lien de cette personne ; le lieu reste, pour les autres et pour l'histoire.</p>`;
+  if(t==='about') body=`<label class="f"><span>Anniversaire</span><input placeholder="jour mois (année facultative)" value="${esc(p.born||'')}"></label>
+    <label class="f"><span>Nationalité</span><input></label><label class="f"><span>Biographie courte</span><textarea></textarea></label><label class="f"><span>Notes</span><textarea>${esc(p.notes)}</textarea></label>`;
+  if(t==='rel') body=`${p.rels.map(r=>`<div class="addr"><div>@ ${esc(r[0])}<div class="u">${esc(r[1])}</div></div><button class="btn quiet">Retirer</button></div>`).join('')}
+    <label class="f"><span>Lier une personne</span><input placeholder="@ nom…"></label><label class="f"><span>Sorte de lien</span><select><option>a présenté</option><option>conjoint·e</option><option>conseille</option><option>directrice / directeur de</option><option>travaille avec</option></select></label>`;
+  return `<div class="scrim" data-a="close"></div><div class="drawer"><div class="dh"><b>Modifier — ${esc(label(p))}</b><button class="btn quiet" data-a="close">✕</button></div>
+   <div class="db"><div class="tabs">${tabs.map(([k,n])=>`<button class="${t===k?'on':''}" data-tab="${k}">${n}</button>`).join('')}</div>${st.msg?st.msg:''}${body}</div>
+   <div class="df"><button class="btn quiet" data-a="close">Annuler</button><button class="btn main" data-a="save">Enregistrer</button></div></div>`;
+}
+function momentForm(st,p,phone){
+  const d=st.draft;
+  const kinds=['Appel','Visite','Mail reçu','Mail envoyé','Présentation','Presse','Merci','Autre'];
+  return `${phone?`<button class="rec" type="button">● Dicter</button>`:''}
+   <div class="kinds">${kinds.map(k=>`<button class="${d.kind===k?'on':''}" data-kind="${k}">${k}</button>`).join('')}</div>
+   <div class="grid2"><label class="f"><span>Date</span><input type="date" value="${d.date}" data-f="date"></label><label class="f"><span>Précision</span><select><option>jour</option><option>mois</option><option>année</option></select></label></div>
+   <label class="f"><span>En quelques mots — <b>@</b> personne, <b>#</b> œuvre</span><textarea data-f="text" placeholder="ex. Appel de @Claire, veut revoir #Lisière IX">${esc(d.text)}</textarea></label>
+   <div id="sugg-${phone?'p':'d'}"></div>
+   <div class="picked">${d.people.map(x=>`<span class="pill p">${esc(x)}</span>`).join('')}${d.works.map(x=>`<span class="pill w">${esc(x)}</span>`).join('')}</div>
+   <div class="toggle"><input type="checkbox" ${d.priv?'checked':''} data-f="priv"> Privé (admin seulement)</div>
+   <p class="hint">Va sur la page de chaque personne nommée et sur la page du jour du Journal (une lecture, pas une copie).</p>`;
+}
+function momentDrawer(st,p){
+  return `<div class="scrim" data-a="close"></div><div class="drawer"><div class="dh"><b>+ Moment</b><button class="btn quiet" data-a="close">✕</button></div>
+   <div class="db">${momentForm(st,p,false)}</div><div class="df"><button class="btn quiet" data-a="close">Annuler</button><button class="btn main" data-a="savemoment">Enregistrer</button></div></div>`;
+}
+function newDraft(p){return {kind:'Appel',date:'2026-11-22',text:'',people:[label(p)],works:[],priv:false}}
+
+/* ---------------- desk ---------------- */
+function renderDesk(){
+  const st=S.desk, el=document.getElementById('desk'); const list=filtered(st); const p=P.find(x=>x.id===st.sel)||list[0]||P[0];
+  let lastL='',rows='';
+  list.forEach(x=>{const L=sortKey(x)[0].toUpperCase(); if(L!==lastL){rows+=`<div class="letter">${L}</div>`;lastL=L;}
+    rows+=`<button class="row ${x.id===p.id?'sel':''} ${x.archived?'arch':''}" data-sel="${x.id}"><span class="nm">${listName(x)}</span>${x.priv?'<span class="lock" title="Privé">🔒</span>':''}<span class="ct">${tlFor(x.id).length}</span></button>`});
+  el.innerHTML=`<div class="col"><div class="listhead"><input class="search" placeholder="Chercher une personne…" value="${esc(st.q)}" data-f="q">
+    <div class="tags">${TAGS.slice().sort((a,b)=>a.localeCompare(b,'fr')).map(t=>`<button class="tag ${st.tag===t?'on':''}" data-tag="${t}">${t}</button>`).join('')}</div></div>
+    ${rows||'<p class="hint" style="padding:10px">Personne.</p>'}<div class="listfoot">${list.length} ${st.arch?'archivée(s)':'sur 61'} · triés par nom de famille<br><button class="btn quiet" style="padding:4px 0">+ Personne</button> · <button class="btn quiet" style="padding:4px 0" data-a="arch">${st.arch?'‹ Actives':'Archivées ('+P.filter(x=>x.archived).length+')'}</button></div></div>
+  <div class="col" style="position:relative">
+    <div class="phead"><h2 class="pname">${headName(p)} ${p.priv?'<span class="lock">🔒 Privé</span>':''}</h2>
+     <div class="psub">${esc(p.role)} · ${p.tags.map(t=>`<span class="pill">${t}</span>`).join(' ')}</div>
+     <div class="actions"><button class="btn main" data-a="moment">+ Moment</button><button class="btn" data-a="edit">Modifier</button><button class="btn quiet" data-a="menu">⋯</button></div>
+     ${st.menu?`<div class="menu" style="left:230px;top:92px"><button data-a="x">Nouvelle commande…</button><button data-a="x">Préparer un kit…</button><button data-a="x">Fiche contact (PDF)</button><div class="sep"></div><button data-a="x">Fusionner avec…</button><button data-a="x">Noter un décès…</button><button data-a="del">${p.archived?'Rappeler':'Archiver…'}</button></div>`:''}
+     ${st.msg&&!st.drawer?st.msg:''}</div>
+    <div class="works">${worksBlock(p,false)}</div>
+    <div class="tlbar">${kindBar(st,p)}</div>
+    <div class="timeline">${timeline(st,p,false)}</div>
+  </div>
+  <div class="col rail">${rail(p)}</div>
+  ${st.drawer==='edit'?editDrawer(st,p):''}${st.drawer==='moment'?momentDrawer(st,p):''}`;
+  wire(el,'desk');
+}
+
+/* ---------------- phone ---------------- */
+function renderPhone(){
+  const st=S.phone, el=document.getElementById('phone'); const list=filtered(st); const p=P.find(x=>x.id===st.sel);
+  let h='<div class="pbar"></div>';
+  if(st.view==='list'){
+    h+=`<div class="ptop"><h2>Personnes</h2><input class="search" style="min-height:40px;font-size:16px" placeholder="Chercher…" value="${esc(st.q)}" data-f="q"></div>
+     <div class="kfs">${TAGS.slice().sort((a,b)=>a.localeCompare(b,'fr')).map(t=>`<button class="kf ${st.tag===t?'on':''}" data-tag="${t}">${t}</button>`).join('')}<button class="kf ${st.arch?'on':''}" data-a="arch">archivées</button></div>
+     <div class="pscroll">${list.map(x=>`<button class="prow" data-sel="${x.id}"><span class="nm">${listName(x)}<div class="sub">${esc(x.role)}</div></span>${x.priv?'<span class="lock">🔒</span>':''}<span class="ct">${tlFor(x.id)[0]?fmtDay(tlFor(x.id)[0][0]).replace(/ \d{4}$/,''):''}</span></button>`).join('')}<div style="height:80px"></div></div>
+     <div class="pfoot"><button class="btn main" data-a="pmoment0">+ Moment</button></div>`;
+  } else {
+    h+=`<div class="ptop"><button class="back" data-a="plist">‹ Personnes</button>
+      <h2>${headName(p)} ${p.priv?'<span class="lock">🔒</span>':''}</h2>
+      <div class="psub">${esc(p.role)}</div>
+      <div class="qa"><button ${p.phones.length?'':'disabled'}>Appeler</button><button ${p.emails.length?'':'disabled'}>Écrire</button></div></div>
+     <div class="pscroll">
+      ${st.msg?`<div style="padding:0 14px">${st.msg}</div>`:''}
+      <div class="psec">${worksBlock(p,true)}</div>
+      <details class="psec"><summary>Coordonnées, relations, notes <span>▸</span></summary>${rail(p)}</details>
+      <div class="kfs">${kindBar(st,p)}</div>
+      <div class="ptl">${timeline(st,p,true)}</div>
+     </div>
+     <div class="pfoot"><button class="btn main" data-a="moment">+ Moment</button><button class="btn quiet" data-a="edit" title="Modifier">✎</button></div>`;
+  }
+  if(st.drawer==='moment') h+=`<div class="scrim" data-a="close"></div><div class="sheet"><div class="grab"></div><div class="dh"><b>+ Moment${p?' — '+esc(label(p)):''}</b><button class="btn quiet" data-a="close">✕</button></div><div class="db">${momentForm(st,p||P[0],true)}</div><div class="df"><button class="btn main" style="flex:1;min-height:46px" data-a="savemoment">Enregistrer</button></div></div>`;
+  if(st.drawer==='edit') h+=`<div class="scrim" data-a="close"></div><div class="sheet" style="height:92%"><div class="grab"></div>${editDrawer(st,p).replace('<div class="scrim" data-a="close"></div><div class="drawer">','<div style="display:flex;flex-direction:column;height:100%">')}</div>`;
+  el.innerHTML=h; wire(el,'phone');
+}
+
+/* ---------------- events ---------------- */
+function rerender(face){face==='desk'?renderDesk():renderPhone()}
+function suggestions(face){
+  const st=S[face], box=document.getElementById('sugg-'+(face==='phone'?'p':'d')); if(!box) return;
+  const m=st.draft.text.match(/([@#])([^@#\n]*)$/); if(!m){box.innerHTML='';return}
+  const q=m[2].trim().toLowerCase(); const isP=m[1]==='@';
+  const pool=isP?P.map(label):ALLW; const hits=pool.filter(x=>x.toLowerCase().includes(q)).slice(0,5);
+  box.innerHTML=hits.length?`<div class="sugg">${hits.map((x,i)=>`<button class="${i?'':'hi'}" data-pick="${esc(x)}" data-type="${m[1]}">${isP?'@':'<span class="th" style="width:24px;height:24px;background:'+wc(x)+'"></span>'} ${esc(x)}</button>`).join('')}</div>`:`<div class="sugg"><button disabled>${isP?'Personne de ce nom — « + Personne » la crée par la porte':'Aucune œuvre de ce titre'}</button></div>`;
+  box.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.pick; st.draft.text=st.draft.text.replace(/([@#])([^@#\n]*)$/,b.dataset.type+v+' ');
+    const arr=b.dataset.type==='@'?st.draft.people:st.draft.works; if(!arr.includes(v)) arr.push(v);
+    rerender(face); const ta=document.querySelector(`#${face} [data-f="text"]`); if(ta){ta.focus();ta.selectionStart=ta.value.length}});
+}
+function wire(el,face){
+  const st=S[face];
+  el.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{st.sel=+b.dataset.sel;st.kind=null;st.shown=6;st.msg=null;st.menu=false;if(face==='phone')st.view='person';rerender(face)});
+  el.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{st.tag=st.tag===b.dataset.tag?null:b.dataset.tag;rerender(face)});
+  el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{st.kind=b.dataset.k||null;st.shown=6;rerender(face)});
+  el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{st.dtab=b.dataset.tab;st.msg=null;rerender(face)});
+  el.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{st.draft.kind=b.dataset.kind;rerender(face)});
+  const q=el.querySelector('[data-f="q"]'); if(q) q.oninput=e=>{st.q=e.target.value;rerender(face);const n=document.querySelector(`#${face} [data-f="q"]`);n.focus();n.selectionStart=n.value.length};
+  const ta=el.querySelector('[data-f="text"]'); if(ta){ ta.oninput=e=>{st.draft.text=e.target.value;suggestions(face)}; suggestions(face); }
+  const dt=el.querySelector('[data-f="date"]'); if(dt) dt.onchange=e=>st.draft.date=e.target.value;
+  const pv=el.querySelector('[data-f="priv"]'); if(pv) pv.onchange=e=>st.draft.priv=e.target.checked;
+  el.querySelectorAll('[data-a]').forEach(b=>b.onclick=ev=>{
+    const a=b.dataset.a, p=P.find(x=>x.id===st.sel);
+    if(a==='more'){st.shown+=6}
+    if(a==='menu'){st.menu=!st.menu}
+    if(a==='x'){st.menu=false;st.msg=`<div class="ok">Ouvre l'écran existant (commande, kit, PDF) avec cette personne déjà choisie.</div>`}
+    if(a==='del'){st.menu=false; if(p.archived){p.archived=false;st.arch=false;st.msg=`<div class="ok">${esc(label(p))} est de retour dans la liste, avec tout son historique.</div>`}
+      else{p.archived=true;st.msg=`<div class="ok">${esc(label(p))} est archivée : hors des listes et des choix ; ses ${tlFor(p.id).length} moments, commandes et papiers restent. « Archivées » → Rappeler.</div>`}}
+    if(a==='arch'){st.arch=!st.arch;const l=filtered(st);if(l[0]&&!l.find(x=>x.id===st.sel))st.sel=l[0].id;st.msg=null}
+    if(a==='edit'){st.drawer='edit';st.dtab='info';st.msg=null}
+    if(a==='moment'){st.drawer='moment';st.draft=newDraft(p)}
+    if(a==='pmoment0'){st.drawer='moment';st.draft={kind:'Appel',date:'2026-11-22',text:'',people:[],works:[],priv:false}}
+    if(a==='plist'){st.view='list';st.msg=null}
+    if(a==='close'){st.drawer=null;st.msg=null}
+    if(a==='rmaddr'){const ad=p.addrs.find(x=>x.id===+b.dataset.id);
+      st.msg=`<div class="ok">${esc(label(p))} ne sera plus liée à « ${esc(ad.label)} » (lien gardé avec sa date de fin). Le lieu reste${(ad.also||[]).length?' pour '+ad.also.map(esc).join(', '):''}${ad.works?` et pour les ${ad.works} œuvre${ad.works>1?'s':''} gardée${ad.works>1?'s':''} là`:''} ; les envois et papiers qui le citent ne changent pas.</div>`}
+    if(a==='save'){st.drawer=null;st.msg=`<div class="ok">Enregistré : 1 champ changé (Notes). Tout ou rien — la porte renvoie la fiche telle qu'elle est maintenant.</div>`}
+    if(a==='savemoment'){const d=st.draft; if(!d.text.trim()){st.msg=null;const t=document.querySelector(`#${face} [data-f="text"]`);t.placeholder='Quelques mots d\'abord';t.focus();return}
+      const target=P.find(x=>d.people.includes(label(x)))||p||P[0];
+      const e=['2026-11-22','touch',d.kind,d.text.replace(/[@#]/g,''),d.works,d.people.filter(x=>x!==label(target)),'Pem']; e.isNew=true;
+      tlFor(target.id).unshift(e); st.sel=target.id; st.kind=null; st.drawer=null; if(face==='phone')st.view='person';
+      st.msg=`<div class="ok">Moment enregistré — sur la page de ${d.people.map(esc).join(', ')||'cette personne'} et sur la page du jour du Journal.</div>`;
+      rerender(face==='desk'?'phone':'desk')}
+    rerender(face);
+  });
+}
+document.querySelectorAll('#theme button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#theme button').forEach(x=>x.classList.toggle('on',x===b));
+  if(b.dataset.t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',b.dataset.t)});
+renderDesk(); renderPhone();
+})();
+</script>
+</body>
+</html>

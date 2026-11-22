@@ -97,4 +97,8 @@ export const contactsUiMessages = defineMessages({
     fr: 'Les deux contacts ont des factures : la fusion est impossible (une facture émise ne change jamais de destinataire).',
     en: 'Both contacts have invoices: they can’t be merged (an issued invoice never changes hands).',
   },
+  contact_editor_addr_in_use_fmt: {
+    fr: 'Rien n’a été enregistré : l’adresse « {label} » est encore celle de {works} œuvre(s), {orders} commande(s) et {shipments} envoi(s). Donnez-leur une autre adresse d’abord, ou gardez celle-ci.',
+    en: 'Nothing was saved: the address “{label}” is still used by {works} work(s), {orders} order(s) and {shipments} shipment(s). Give them another address first, or keep this one.',
+  },
 })
