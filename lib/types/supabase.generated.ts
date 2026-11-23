@@ -125,6 +125,13 @@ export type Database = {
             foreignKeyName: "broadcast_events_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "broadcast_events_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -313,6 +320,13 @@ export type Database = {
             foreignKeyName: "concept_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "concept_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -454,6 +468,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "condition_report_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "condition_report_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -956,6 +977,13 @@ export type Database = {
             foreignKeyName: "document_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "document_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -1088,6 +1116,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "event_work_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -1255,6 +1290,13 @@ export type Database = {
             foreignKeyName: "expense_oeuvre_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "expense_oeuvre_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -1326,6 +1368,13 @@ export type Database = {
             foreignKeyName: "forest_pins_work_id_fkey"
             columns: ["work_id"]
             isOneToOne: true
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "forest_pins_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: true
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -1388,6 +1437,13 @@ export type Database = {
             foreignKeyName: "inquiry_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "inquiry_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -1445,6 +1501,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "concept"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspiration_photo_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "inspiration_photo_oeuvre_id_fkey"
@@ -1517,6 +1580,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "condition_report"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claim_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "insurance_claim_oeuvre_id_fkey"
@@ -1859,6 +1929,13 @@ export type Database = {
             foreignKeyName: "journal_entry_link_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "journal_entry_link_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -2034,6 +2111,13 @@ export type Database = {
             foreignKeyName: "note_line_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "note_line_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -2084,6 +2168,13 @@ export type Database = {
             foreignKeyName: "oeuvre_broadcasts_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "oeuvre_broadcasts_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -2103,6 +2194,13 @@ export type Database = {
           theme_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "OeuvreTheme_OeuvreID_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "OeuvreTheme_OeuvreID_fkey"
             columns: ["oeuvre_id"]
@@ -2172,18 +2270,18 @@ export type Database = {
           Format: number | null
           Hauteur: string | null
           Historique: string | null
+          home_place_id: number | null
           is_paid: boolean | null
           is_public: boolean
           IsCommission: boolean | null
           Largeur: string | null
           localisation_address_id: number | null
-          place_id: number | null
-          home_place_id: number | null
           LocalisationDetail: string | null
           LocalisationID: number | null
           Montee: boolean | null
           NeedsPhotograph: boolean | null
           OeuvreID: number
+          place_id: number | null
           PresentationID: number | null
           Prix: number | null
           PrixFinal: number | null
@@ -2227,18 +2325,18 @@ export type Database = {
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
+          home_place_id?: number | null
           is_paid?: boolean | null
           is_public?: boolean
           IsCommission?: boolean | null
           Largeur?: string | null
           localisation_address_id?: number | null
-          place_id?: number | null
-          home_place_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID: number
+          place_id?: number | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -2282,18 +2380,18 @@ export type Database = {
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
+          home_place_id?: number | null
           is_paid?: boolean | null
           is_public?: boolean
           IsCommission?: boolean | null
           Largeur?: string | null
           localisation_address_id?: number | null
-          place_id?: number | null
-          home_place_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID?: number
+          place_id?: number | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -2349,6 +2447,13 @@ export type Database = {
             referencedColumns: ["ContactID"]
           },
           {
+            foreignKeyName: "Oeuvres_home_place_id_fkey"
+            columns: ["home_place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "Oeuvres_localisation_address_id_fkey"
             columns: ["localisation_address_id"]
             isOneToOne: false
@@ -2361,6 +2466,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "Oeuvres_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "Oeuvres_PresentationID_fkey"
@@ -2530,6 +2642,13 @@ export type Database = {
             foreignKeyName: "pending_changes_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "pending_changes_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -2683,6 +2802,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "place_address_map_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "contact_place_lines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "place_address_map_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
@@ -2789,6 +2915,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "private_link_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "private_link_work_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -2937,7 +3070,6 @@ export type Database = {
       shipment: {
         Row: {
           address_id: number | null
-          place_id: number | null
           cancelled_at: string | null
           carrier: string | null
           charged_to: string | null
@@ -2960,6 +3092,7 @@ export type Database = {
           photos_at: string | null
           picked_at: string | null
           pickup_process_id: string | null
+          place_id: number | null
           policy_ref: string | null
           scheduled_for: string | null
           shipped_at: string | null
@@ -2970,7 +3103,6 @@ export type Database = {
         }
         Insert: {
           address_id?: number | null
-          place_id?: number | null
           cancelled_at?: string | null
           carrier?: string | null
           charged_to?: string | null
@@ -2993,6 +3125,7 @@ export type Database = {
           photos_at?: string | null
           picked_at?: string | null
           pickup_process_id?: string | null
+          place_id?: number | null
           policy_ref?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
@@ -3003,7 +3136,6 @@ export type Database = {
         }
         Update: {
           address_id?: number | null
-          place_id?: number | null
           cancelled_at?: string | null
           carrier?: string | null
           charged_to?: string | null
@@ -3026,6 +3158,7 @@ export type Database = {
           photos_at?: string | null
           picked_at?: string | null
           pickup_process_id?: string | null
+          place_id?: number | null
           policy_ref?: string | null
           scheduled_for?: string | null
           shipped_at?: string | null
@@ -3057,6 +3190,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shipment_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shipment_to_contact_id_fkey"
             columns: ["to_contact_id"]
             isOneToOne: false
@@ -3085,6 +3225,13 @@ export type Database = {
           shipment_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shipment_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "shipment_work_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -3335,6 +3482,13 @@ export type Database = {
             foreignKeyName: "studio_task_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "studio_task_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -3492,6 +3646,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suivi_process"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suivi_process_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "suivi_process_oeuvre_id_fkey"
@@ -3782,6 +3943,13 @@ export type Database = {
             foreignKeyName: "fk_tblimage_oeuvre"
             columns: ["OeuvreID"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "fk_tblimage_oeuvre"
+            columns: ["OeuvreID"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -3841,6 +4009,13 @@ export type Database = {
             foreignKeyName: "tblrelations_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -3857,6 +4032,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "tblrelations_target_id_fkey"
@@ -4030,6 +4212,13 @@ export type Database = {
             foreignKeyName: "voice_note_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "voice_note_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4094,6 +4283,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "work_action_type"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_action_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "work_action_oeuvre_id_fkey"
@@ -4173,6 +4369,13 @@ export type Database = {
             foreignKeyName: "work_creation_step_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "work_creation_step_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4240,6 +4443,13 @@ export type Database = {
             foreignKeyName: "work_description_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "work_description_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4248,7 +4458,6 @@ export type Database = {
       work_order: {
         Row: {
           address_id: number | null
-          place_id: number | null
           balance_due: string | null
           cancelled_at: string | null
           commission_amount: number | null
@@ -4270,6 +4479,7 @@ export type Database = {
           parent_order_id: string | null
           party_id: number
           payment_method: string | null
+          place_id: number | null
           price_catalogue: number | null
           price_final: number | null
           process_id: string | null
@@ -4290,7 +4500,6 @@ export type Database = {
         }
         Insert: {
           address_id?: number | null
-          place_id?: number | null
           balance_due?: string | null
           cancelled_at?: string | null
           commission_amount?: number | null
@@ -4312,6 +4521,7 @@ export type Database = {
           parent_order_id?: string | null
           party_id: number
           payment_method?: string | null
+          place_id?: number | null
           price_catalogue?: number | null
           price_final?: number | null
           process_id?: string | null
@@ -4332,7 +4542,6 @@ export type Database = {
         }
         Update: {
           address_id?: number | null
-          place_id?: number | null
           balance_due?: string | null
           cancelled_at?: string | null
           commission_amount?: number | null
@@ -4354,6 +4563,7 @@ export type Database = {
           parent_order_id?: string | null
           party_id?: number
           payment_method?: string | null
+          place_id?: number | null
           price_catalogue?: number | null
           price_final?: number | null
           process_id?: string | null
@@ -4393,6 +4603,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "work_order_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "work_order_process_id_fkey"
@@ -4520,6 +4737,13 @@ export type Database = {
             foreignKeyName: "work_order_work_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "work_order_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4593,6 +4817,13 @@ export type Database = {
           set_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "work_period_override_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: true
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "work_period_override_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -4678,6 +4909,13 @@ export type Database = {
             foreignKeyName: "work_session_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "work_session_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4718,6 +4956,13 @@ export type Database = {
           source_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "work_source_link_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
           {
             foreignKeyName: "work_source_link_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
@@ -4807,6 +5052,13 @@ export type Database = {
             foreignKeyName: "working_group_work_oeuvre_id_fkey"
             columns: ["oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "working_group_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4814,39 +5066,53 @@ export type Database = {
       }
     }
     Views: {
-      oeuvre_place_unlinked: {
-        Row: {
-          holder_id: number | null
-          oeuvre_id: number
-          place_id: number
-        }
-        Relationships: []
-      }
       contact_place_lines: {
         Row: {
           adresse: string | null
-          building_id: number
+          building_id: number | null
           code_postal: string | null
           complement: string | null
-          contact_id: number
-          id: number
-          is_primary: boolean
+          contact_id: number | null
+          id: number | null
+          is_primary: boolean | null
           kind: string | null
           label: string | null
           latitude: number | null
           longitude: number | null
-          others: number
+          others: number | null
           parent_id: number | null
           pays: string | null
-          place_id: number
+          place_id: number | null
           place_name: string | null
           position: number | null
-          role: string
+          role: string | null
           shipping_notes: string | null
           since: string | null
           ville: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contact_place_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "contact_place_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       edge_fact: {
         Row: {
@@ -4875,6 +5141,13 @@ export type Database = {
             foreignKeyName: "tblrelations_source_id_fkey"
             columns: ["legacy_source_oeuvre_id"]
             isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_source_id_fkey"
+            columns: ["legacy_source_oeuvre_id"]
+            isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
@@ -4891,6 +5164,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "nodes"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_id_fkey"
+            columns: ["legacy_target_oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
           },
           {
             foreignKeyName: "tblrelations_target_id_fkey"
@@ -4964,8 +5244,49 @@ export type Database = {
           },
         ]
       }
+      oeuvre_place_unlinked: {
+        Row: {
+          holder_id: number | null
+          oeuvre_id: number | null
+          place_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Oeuvres_LocalisationID_fkey"
+            columns: ["holder_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "Oeuvres_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _contact_card: { Args: { p_id: number }; Returns: Json }
+      _contact_rows_norm: {
+        Args: { p_cols: string[]; p_rows: Json }
+        Returns: Json
+      }
+      _contact_rows_stored: {
+        Args: { p_contact: number; p_table: string }
+        Returns: Json
+      }
+      _contact_rows_write: {
+        Args: {
+          p_cols: string[]
+          p_contact: number
+          p_rows: Json
+          p_table: string
+        }
+        Returns: undefined
+      }
       audit_log_prune: {
         Args: never
         Returns: {
@@ -5067,10 +5388,6 @@ export type Database = {
         Args: { p_keep: number; p_lose: number }
         Returns: number
       }
-      save_contact_places: {
-        Args: { p_contact: number; p_rows: Json }
-        Returns: Json
-      }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
       oeuvre_contact_label: {
@@ -5090,6 +5407,8 @@ export type Database = {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string
       }
+      places_backfill_from_addresses: { Args: never; Returns: Json }
+      places_check: { Args: never; Returns: Json }
       private_link_count_open: { Args: { p_token: string }; Returns: undefined }
       private_link_count_pdf: { Args: { p_token: string }; Returns: undefined }
       receive_supply_order: {
@@ -5110,6 +5429,11 @@ export type Database = {
           deleted_inquiry: number
           deleted_page_view: number
         }[]
+      }
+      save_contact: { Args: { p: Json }; Returns: Json }
+      save_contact_places: {
+        Args: { p_contact: number; p_rows: Json }
+        Returns: Json
       }
     }
     Enums: {
