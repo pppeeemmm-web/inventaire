@@ -36,9 +36,32 @@ import type {
 } from '@/components/atelier/contact-editor-types'
 import { ContactKitsSection } from '@/components/atelier/kits/ContactKitsSection'
 import { ContactJournalSection } from '@/components/atelier/ContactJournalSection'
+import { PersonSpheres } from '@/components/atelier/PersonSpheres'
+import { PersonLinks } from '@/components/atelier/PersonLinks'
+
 import { decideAiJob } from '@/app/atelier/(portal)/ai/actions'
 import { sameAddress, sameEmail, samePhone, sameUrl, type CardSuggestion } from '@/lib/ai-card-suggestion'
 import { contactLinks, LINK_GLYPH } from '@/lib/contacts/contact-links'
+import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
+import { useRouter } from 'next/navigation'
+
+type EditorTab = 'identity' | 'addresses' | 'about' | 'relations'
+const TAB_IDS: EditorTab[] = ['identity', 'addresses', 'about', 'relations']
+const TAB_LABEL = {
+  identity: 'contact_editor_tab_identity',
+  addresses: 'contact_editor_tab_addresses',
+  about: 'contact_editor_tab_about',
+  relations: 'contact_editor_tab_relations',
+} as const
+
+/** Which tab holds a field named in a save refusal (save_contact `detail`): addresses, notes, else identity. */
+const ADDRESS_FIELDS = new Set(['addresses', 'Adresse', 'CodePostal', 'Ville', 'Pays'])
+function tabOfField(field: unknown): EditorTab {
+  const f = String(field ?? '')
+  if (ADDRESS_FIELDS.has(f)) return 'addresses'
+  if (f === 'Notes') return 'about'
+  return 'identity'
+}
 
 export type ContactEditorPanelHandle = {
   save: () => Promise<boolean>
@@ -176,6 +199,8 @@ export type ContactEditorPanelProps = {
   narrow: boolean
   oeuvres: Oeuvre[]
   onDirtyChange?: (dirty: boolean) => void
+  /** After the person's spheres were saved (Relations tab), so list counts refresh. */
+  onSpheresChanged?: () => void
   onCreated: (
     c: ContactRow,
     addrs: ContactAddress[],
@@ -220,6 +245,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       narrow,
       oeuvres,
       onDirtyChange,
+      onSpheresChanged,
       onCreated,
       onUpdated,
       onDismissEditor,
@@ -234,6 +260,21 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
   ) {
     const { t } = useI18n()
     const isNew = !contact
+    const router = useRouter()
+    const [tab, setTab] = useState<EditorTab>('identity')
+    // Spheres draft / half-done link on the Relations tab: saved by their own buttons, never by this Save.
+    const [spheresPending, setSpheresPending] = useState(false)
+    const [linkPending, setLinkPending] = useState(false)
+    const relationsPending = spheresPending || linkPending
+    const relationsPendingRef = useRef(false)
+    relationsPendingRef.current = relationsPending
+    // AI card fill added address rows while another tab was shown: marker on the Addresses tab until opened.
+    const [addrBadge, setAddrBadge] = useState(0)
+    useEffect(() => {
+      if (tab === 'addresses' && addrBadge > 0) setAddrBadge(0)
+    }, [tab, addrBadge])
+    // Every panel stays mounted (form state, dirty baseline); the inactive ones are only hidden.
+    const panelStyle = (k: EditorTab): React.CSSProperties => ({ display: tab === k ? 'block' : 'none' })
 
     const [form, setForm] = useState<FormState>({
       NomInstitution: contact?.NomInstitution ?? '',
@@ -289,6 +330,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
 
     // AI desk phase 3: pre-fill once per card job; the form turns dirty, nothing is written until Save.
     const aiAppliedJob = useRef<number | null>(null)
+    const addrListRef = useRef(addrList)
+    addrListRef.current = addrList
     useEffect(() => {
       if (!aiSuggestion || isNew || aiAppliedJob.current === aiSuggestion.jobId) return
       aiAppliedJob.current = aiSuggestion.jobId
@@ -315,6 +358,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         ...prev,
         ...s.websites.filter((w) => !prev.some((x) => sameUrl(x.url, w.url))).map((w) => ({ contact_id: cid, url: w.url, label: w.label })),
       ])
+      const addedAddrs = s.addresses.filter((a) => !addrListRef.current.some((x) => sameAddress(x, a))).length
+      if (addedAddrs > 0) setAddrBadge(addedAddrs)
       setAddrList((prev) => {
         const add = s.addresses.filter((a) => !prev.some((x) => sameAddress(x, a)))
         if (add.length === 0) return prev
@@ -454,7 +499,14 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     const handleSave = useCallback(async (): Promise<boolean> => {
       setBusy(true)
       setErr(null)
+      if (relationsPendingRef.current) {
+        setTab('relations')
+        setErr(t('contact_editor_relations_pending'))
+        setBusy(false)
+        return false
+      }
       if (form.born_on && form.died_on && form.died_on < form.born_on) {
+        setTab('identity')
         setErr(t('contact_editor_died_before_born'))
         setBusy(false)
         return false
@@ -568,6 +620,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             toast.error(refusal)
             onUpdated(fresh.contact, fresh.addresses, fresh.emails, fresh.phones, fresh.websites, fresh.socials)
           } else {
+            if ('refused' in res && (res.refused === 'bad_field' || res.refused === 'admin_only')) setTab(tabOfField(res.detail))
             setErr(refusal)
           }
           return false
@@ -702,7 +755,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       setBaselinePayload(formPayload)
       // eslint-disable-next-line react-hooks/exhaustive-deps -- baseline when contact or post-save remount
     }, [contactKey, baselineEpoch])
-    const isDirty = baselinePayload != null && formPayload !== baselinePayload
+    // An open spheres draft / half-done link counts as unsaved for every guard (not part of formPayload).
+    const isDirty = (baselinePayload != null && formPayload !== baselinePayload) || relationsPending
 
     useEffect(() => {
       onDirtyChange?.(isDirty)
@@ -729,6 +783,23 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       onClose: onDismissEditor,
       performSave,
     })
+
+    // A person / work opened from the Relations tab goes through the same Save / Discard / Cancel as closing.
+    const openHrefRef = useRef<string | null>(null)
+    const { attemptAction: attemptOpen, unsavedDialog: openDialog } = useUnsavedActionGuard({
+      isDirty,
+      getIsDirty: () => isDirtyRef.current,
+      onProceed: () => {
+        const href = openHrefRef.current
+        openHrefRef.current = null
+        if (href) router.push(href)
+      },
+      performSave,
+    })
+    const openFromRelations = (href: string) => {
+      openHrefRef.current = href
+      attemptOpen()
+    }
 
     const mergedRoleOptions = useMemo(() => {
       const s = new Set(roleOptions)
@@ -768,6 +839,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     return (
       <>
         {unsavedDialog}
+        {openDialog}
         <div
           data-testid="contact-editor-root"
           style={{
@@ -838,6 +910,46 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               </div>
             ) : null}
 
+            <div role="tablist" aria-label={t('contact_editor_tabs_label')} data-testid="contact-editor-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--bd)', marginBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              {TAB_IDS.map((tb) => {
+                const on = tab === tb
+                return (
+                  <button
+                    key={tb}
+                    type="button"
+                    role="tab"
+                    id={`contact-tabbtn-${tb}`}
+                    aria-selected={on}
+                    aria-controls={`contact-tab-${tb}`}
+                    data-testid={`contact-editor-tab-${tb}`}
+                    onClick={() => setTab(tb)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: on ? '2px solid var(--ac)' : '2px solid transparent',
+                      marginBottom: -1,
+                      color: on ? 'var(--tx1)' : 'var(--tx3)',
+                      fontWeight: on ? 600 : 400,
+                      fontSize: narrow ? 12 : 13,
+                      padding: narrow ? '0 10px' : '0 14px',
+                      minHeight: 44,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flex: narrow ? '1 0 auto' : undefined,
+                    }}
+                  >
+                    {t(TAB_LABEL[tb])}
+                    {tb === 'addresses' && addrBadge > 0 && !on ? (
+                      <span data-testid="contact-editor-addresses-badge" aria-label={String(addrBadge)} style={{ marginLeft: 6, fontSize: 10, color: 'var(--ac)' }}>
+                        ● {addrBadge}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div role="tabpanel" id="contact-tab-identity" aria-labelledby="contact-tabbtn-identity" data-testid="contact-tab-identity" style={panelStyle('identity')}>
             <Section title={t('contactEditorSectionIdentity')} />
             <Grid2 narrow={narrow}>
               <FRow label={t('contactEditorInstitution')}>
@@ -1205,6 +1317,9 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               )}
             </div>
 
+            </div>
+
+            <div role="tabpanel" id="contact-tab-addresses" aria-labelledby="contact-tabbtn-addresses" data-testid="contact-tab-addresses" style={panelStyle('addresses')}>
             <Section title={t('contactEditorSectionAddresses')} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {addrList.map((addr, i) => (
@@ -1219,22 +1334,24 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                   }}
                 >
                   {addrList.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-8px -8px 0 0' }}>
                     <button
                       type="button"
                       onClick={() => removeAddr(i)}
+                      aria-label={t('contact_editor_addr_remove_aria')}
                       style={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
                         background: 'none',
                         border: 'none',
                         color: 'var(--tx3)',
                         cursor: 'pointer',
-                        fontSize: 10,
+                        fontSize: 11,
+                        minHeight: 44,
+                        padding: '0 8px',
                       }}
                     >
-                      ✕
+                      {t('contact_editor_addr_remove')}
                     </button>
+                    </div>
                   )}
                   <Grid2 narrow={narrow}>
                     <FRow label={t('contactEditorAddrLabel')}>
@@ -1325,6 +1442,9 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               </button>
             </div>
 
+            </div>
+
+            <div role="tabpanel" id="contact-tab-about" aria-labelledby="contact-tabbtn-about" data-testid="contact-tab-about" style={panelStyle('about')}>
             <Section title={t('contactEditorSectionNotes')} />
             <textarea
               value={form.Notes}
@@ -1361,6 +1481,23 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                 <ContactJournalSection contactId={contact!.ContactID} />
               </>
             )}
+            </div>
+
+            <div role="tabpanel" id="contact-tab-relations" aria-labelledby="contact-tabbtn-relations" data-testid="contact-tab-relations" style={panelStyle('relations')}>
+              {isNew || contact == null ? (
+                <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '8px 0' }}>
+                  {t('contact_editor_relations_save_first')}
+                </p>
+              ) : (
+                <>
+                  <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 8px' }}>
+                    {t('contact_editor_relations_hint')}
+                  </p>
+                  <PersonSpheres contactId={contact.ContactID} narrow={narrow} onChanged={() => onSpheresChanged?.()} onPendingChange={setSpheresPending} />
+                  <PersonLinks contactId={contact.ContactID} narrow={narrow} onOpen={openFromRelations} onPendingChange={setLinkPending} />
+                </>
+              )}
+            </div>
 
             {err && (
               <div style={{ fontSize: 11, color: 'var(--rust)', marginTop: 10 }}>{err}</div>

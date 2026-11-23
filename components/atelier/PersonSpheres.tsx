@@ -3,7 +3,7 @@
 // Spheres of one person (People.md §1): chips + an inline panel of toggles. Reads / writes through the
 // doors in contacts/people-actions.ts (set_contact_spheres); a refusal is explained, nothing is guessed.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { readContactSpheres, setContactSpheres, type Sphere } from '@/app/atelier/(portal)/contacts/people-actions'
@@ -25,7 +25,18 @@ const REFUSED: Record<string, DictKey> = {
   bad_field: 'pp_refused_bad_field' as DictKey,
 }
 
-export function PersonSpheres({ contactId, narrow, onChanged }: { contactId: number; narrow: boolean; onChanged?: (spheres: string[]) => void }) {
+export function PersonSpheres({
+  contactId,
+  narrow,
+  onChanged,
+  onPendingChange,
+}: {
+  contactId: number
+  narrow: boolean
+  onChanged?: (spheres: string[]) => void
+  /** True while the open draft differs from the saved spheres. */
+  onPendingChange?: (pending: boolean) => void
+}) {
   const { t, lang } = useI18n()
   const [all, setAll] = useState<Sphere[]>([])
   const [mine, setMine] = useState<string[]>([])
@@ -58,6 +69,14 @@ export function PersonSpheres({ contactId, narrow, onChanged }: { contactId: num
       live = false
     }
   }, [contactId])
+
+  const pending = open && (draft.length !== mine.length || draft.some((k) => !mine.includes(k)))
+  const pendingCb = useRef(onPendingChange)
+  pendingCb.current = onPendingChange
+  useEffect(() => {
+    pendingCb.current?.(pending)
+  }, [pending])
+  useEffect(() => () => pendingCb.current?.(false), [])
 
   const label = (s: Sphere) => (lang === 'en' ? s.en : s.fr)
   const shown = all.filter((s) => mine.includes(s.key))

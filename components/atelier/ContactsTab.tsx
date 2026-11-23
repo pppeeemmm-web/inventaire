@@ -1305,6 +1305,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             narrow={narrow}
             oeuvres={oeuvres}
             onDirtyChange={setEditorDirty}
+            onSpheresChanged={refreshSpheres}
             onCreated={handleCreated}
             onUpdated={handleUpdated}
             onTeamAccessUpdated={handleTeamAccessUpdated}

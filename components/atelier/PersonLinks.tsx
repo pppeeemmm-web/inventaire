@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { thumbUrl } from '@/lib/data'
@@ -40,7 +40,19 @@ function sentenceKey(l: PersonLink): DictKey {
   }
 }
 
-export function PersonLinks({ contactId, narrow }: { contactId: number; narrow: boolean }) {
+export function PersonLinks({
+  contactId,
+  narrow,
+  onOpen,
+  onPendingChange,
+}: {
+  contactId: number
+  narrow: boolean
+  /** When given, a person / work click hands the target path here instead of navigating (the caller guards unsaved edits). */
+  onOpen?: (href: string) => void
+  /** True while the add form holds a half-done link. */
+  onPendingChange?: (pending: boolean) => void
+}) {
   const { t, lang } = useI18n()
   const router = useRouter()
   const [items, setItems] = useState<PersonLink[]>([])
@@ -131,7 +143,11 @@ export function PersonLinks({ contactId, narrow }: { contactId: number; narrow: 
                   <button
                     type="button"
                     className="btn ghost sm"
-                    onClick={() => router.push(`/atelier/contacts?contact=${l.otherContactId}`)}
+                    onClick={() => {
+                      const href = `/atelier/contacts?contact=${l.otherContactId}`
+                      if (onOpen) onOpen(href)
+                      else router.push(href)
+                    }}
                     style={{ minHeight: tap, padding: '0 4px', fontWeight: 600 }}
                   >
                     {name}
@@ -155,6 +171,14 @@ export function PersonLinks({ contactId, narrow }: { contactId: number; narrow: 
                     <div key={`${l.workId}-${i}`} style={{ flex: '0 0 auto', width: TILE }}>
                       <Link
                         href={`/atelier/inventory?work=${l.workId}`}
+                        onClick={
+                          onOpen
+                            ? (e) => {
+                                e.preventDefault()
+                                onOpen(`/atelier/inventory?work=${l.workId}`)
+                              }
+                            : undefined
+                        }
                         aria-label={t('pl_work_open_fmt').replace('{id}', String(l.workId))}
                         title={`#${l.workId}${l.workTitle ? ` ${l.workTitle}` : ''}${l.sourceRef ? ` · ${l.sourceRef}` : ''}`}
                         style={{ display: 'block', color: 'inherit', textDecoration: 'none', minHeight: 44 }}
@@ -189,6 +213,7 @@ export function PersonLinks({ contactId, narrow }: { contactId: number; narrow: 
           narrow={narrow}
           lang={lang}
           refusedText={refusedText}
+          onPendingChange={onPendingChange}
           onClose={() => setAdding(false)}
           onSaved={async () => {
             setAdding(false)
@@ -209,6 +234,7 @@ function AddForm({
   narrow,
   lang,
   refusedText,
+  onPendingChange,
   onClose,
   onSaved,
 }: {
@@ -216,6 +242,7 @@ function AddForm({
   narrow: boolean
   lang: string
   refusedText: (code: string) => string
+  onPendingChange?: (pending: boolean) => void
   onClose: () => void
   onSaved: () => Promise<void>
 }) {
@@ -231,6 +258,14 @@ function AddForm({
   const [error, setError] = useState<string | null>(null)
 
   const isWork = kind === 'interested_in'
+
+  const pending = picked != null || q.trim() !== '' || source !== '' || note.trim() !== ''
+  const pendingCb = useRef(onPendingChange)
+  pendingCb.current = onPendingChange
+  useEffect(() => {
+    pendingCb.current?.(pending)
+  }, [pending])
+  useEffect(() => () => pendingCb.current?.(false), [])
 
   useEffect(() => {
     const term = q.trim()
