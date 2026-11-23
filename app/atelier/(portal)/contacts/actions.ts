@@ -5,7 +5,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMissingTableError } from '@/lib/supabase/missing-table'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 import type { ImportedContact } from '@/lib/contact-import-types'
-import { callSaveContactPlaces } from '@/lib/contacts/save-contact-places'
+import { saveContact, type SaveContactResult } from './save-contact'
 import { logError } from '@/lib/error-reporter/server'
 import {
   assertSafePublicUrl,
@@ -22,7 +22,8 @@ export type { UrlEnrichMeta } from '@/lib/contact-url-enrich'
 // ── Google Contacts CSV Import ────────────────────────────────────────────────
 
 export type ImportResult =
-  | { ok: true; imported: number; skipped: number; contactIds: number[] }
+  /** skipped = a duplicate email or no name; failed = refused or errored by the door (nothing written for it, logged). */
+  | { ok: true; imported: number; skipped: number; failed: number; contactIds: number[] }
   | { error: string }
 
 export async function importGoogleContacts(contacts: ImportedContact[]): Promise<ImportResult> {
@@ -35,11 +36,12 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
   // Imported contacts are « Privé » (admin-only) when an admin imports; a team member's import stays
   // visible to the team, or they could not see what they just imported (private RLS,
-  // supabase/sql/contact_private_rls.sql). Service client for the writes and the duplicate check.
+  // supabase/sql/contact_private_rls.sql). Writes through the door `saveContact` (signed-in user); the service
+  // client only for the duplicate check (it must see private cards too).
   const { data: isAdmin } = await supabase.rpc('is_admin')
   const svc = createServiceClient()
 
-  if (!contacts.length) return { ok: true, imported: 0, skipped: 0, contactIds: [] }
+  if (!contacts.length) return { ok: true, imported: 0, skipped: 0, failed: 0, contactIds: [] }
 
   // Collect all emails from the batch to check for duplicates (via service client to see all)
   const allEmails = contacts
@@ -63,6 +65,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
   let imported = 0
   let skipped  = 0
+  let failed   = 0
   const contactIds: number[] = []
 
   for (const c of contacts) {
@@ -72,94 +75,50 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
     const hasIdentity = c.prenom || c.nom || c.institution
     if (isDupe || !hasIdentity) { skipped++; continue }
 
-    const primaryEmail = c.emails[0]?.email ?? null
     const primaryPhone = c.phones[0] ?? null
 
-    const { data: inserted, error: insertErr } = await svc
-      .from('Contact')
-      .insert({
-        Prénom:          c.prenom,
-        Nom:             c.nom,
-        NomInstitution:  c.institution,
-        Role:            c.role,
-        Email:           primaryEmail,
-        Téléphone1:      (primaryPhone?.phone ?? null)?.slice(0, 20) ?? null,
-        IndicatifPays1:  (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
-        Notes:           c.notes,
-        is_private:      !!isAdmin,
-        Actif:           true,
+    // One door, one transaction (BuildingPrinciples 2): the card, its emails, phones, websites and addresses (places,
+    // through save_contact_places) are written together or not at all.
+    const res = await saveContact({
+      id: null,
+      fields: {
+        Prénom:         c.prenom,
+        Nom:            c.nom,
+        NomInstitution: c.institution,
+        Role:           c.role,
+        Téléphone1:     (primaryPhone?.phone ?? null)?.slice(0, 20) ?? null,
+        IndicatifPays1: (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
+        Notes:          c.notes,
+        Actif:          true,
+        ...(isAdmin ? { is_private: true } : {}),
+      },
+      lists: {
+        emails:    c.emails.map((e, i) => ({ email: e.email, label: e.label || 'Personnel', is_primary: i === 0 })),
+        phones:    c.phones.map((p, i) => ({ phone: p.phone, country_code: p.country_code, label: p.label || 'Mobile', is_primary: i === 0 })),
+        websites:  c.websites.map((w) => ({ url: w.url, label: w.label || 'Web' })),
+        addresses: c.addresses.map((a, i) => ({
+          label: a.label || 'Principal', adresse: a.adresse, code_postal: a.code_postal, ville: a.ville, pays: a.pays,
+          is_primary: i === 0, position: i,
+        })),
+      },
+    })
+    // A refusal or an error writes nothing: counted as « not saved » (never as imported, never as a duplicate).
+    if (!('ok' in res)) {
+      await logError('Contact import: not saved', 'error' in res ? res.error : `refused: ${'refused' in res ? res.refused : 'unchanged'}`, {
+        source: 'importGoogleContacts',
       })
-      .select('ContactID')
-      .single()
-
-    if (insertErr || !inserted) {
-      console.error('Contact insert failed:', insertErr?.message, JSON.stringify({ prenom: c.prenom, nom: c.nom }))
-      skipped++; continue
+      failed++; continue
     }
 
-    const cid = inserted.ContactID
-
-    // Emails
-    if (c.emails.length > 0) {
-      await svc.from('contact_emails').insert(
-        c.emails.map((e, i) => ({
-          contact_id: cid,
-          email:      e.email,
-          label:      e.label || 'Personnel',
-          is_primary: i === 0,
-        }))
-      )
-      c.emails.forEach(e => existingEmails.add(e.email.toLowerCase()))
-    }
-
-    // Phones
-    if (c.phones.length > 0) {
-      await svc.from('contact_phones').insert(
-        c.phones.map((p, i) => ({
-          contact_id:   cid,
-          phone:        p.phone,
-          country_code: p.country_code,
-          label:        p.label || 'Mobile',
-          is_primary:   i === 0,
-        }))
-      )
-    }
-
-    // Addresses: places linked to the new card (Places phase B), through the address door; a known street is reused.
-    if (c.addresses.length > 0) {
-      const placesRes = await callSaveContactPlaces(supabase, cid, c.addresses.map((a, i) => ({
-        label:       a.label || 'Principal',
-        adresse:     a.adresse,
-        code_postal: a.code_postal,
-        ville:       a.ville,
-        pays:        a.pays,
-        is_primary:  i === 0,
-      })))
-      // The card is imported either way; a refused address is said, not swallowed (principle 3).
-      if ('error' in placesRes) {
-        await logError('Contact import: address not saved', placesRes.error, {
-          source: 'importGoogleContacts', metadata: { contactId: cid },
-        })
-      }
-    }
-
-    // Websites
-    if (c.websites.length > 0) {
-      await svc.from('contact_websites').insert(
-        c.websites.map(w => ({
-          contact_id: cid,
-          url:        w.url,
-          label:      w.label || 'Web',
-        }))
-      )
-    }
+    const cid = res.card.contact.ContactID
+    c.emails.forEach(e => existingEmails.add(e.email.toLowerCase()))
 
     imported++
     contactIds.push(cid)
   }
 
   revalidatePath('/atelier')
-  return { ok: true, imported, skipped, contactIds }
+  return { ok: true, imported, skipped, failed, contactIds }
 }
 
 /** Why a contact cannot be deleted: rows that point at it with no ON DELETE rule, or a login. */
@@ -436,10 +395,13 @@ export async function checkOllamaListening(): Promise<OllamaListenResult> {
 /**
  * Quick contact creation (Contacts quick add, R7 « + Nouveau contact » in an order's party picker).
  * Optional `phone` and `adresse` / `code_postal` / `ville` / `pays` are written as the contact editor
- * writes them: the Contact columns plus one primary row each in `contact_phones` / `contact_emails` /
+ * writes them, through the same door `saveContact`: one primary row each in `contact_phones` / `contact_emails` /
  * a place linked to the card (label « Principal », Places phase B). Returns that place's id when one was written.
+ * The screen asks `findSimilarContacts` first (a warning, not a refusal).
  */
-export async function saveContactWithConflictCheck(formData: FormData): Promise<{ ok: true; id: number; addressId: number | null } | { error: string }> {
+export async function saveContactWithConflictCheck(
+  formData: FormData,
+): Promise<{ ok: true; id: number; addressId: number | null } | { error: string; door?: SaveContactResult }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
@@ -482,41 +444,33 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
     }
   }
 
-  // 3. Create the Contact (Public/Private as requested)
-  const { data: contact, error: insertErr } = await supabase.from('Contact').insert({
-    Nom: nom,
-    Prénom: prenom,
-    Email: email,
-    NomInstitution: inst,
-    is_private: is_private,
-    ...(phone ? { Téléphone1: phone } : {}),
-    ...(hasAddr ? { Adresse: addr.adresse, CodePostal: addr.code_postal, Ville: addr.ville, Pays: addr.pays } : {}),
-  }).select('ContactID').single()
-
-  if (insertErr || !contact) return { error: insertErr?.message ?? 'Insert failed' }
-
-  // The child rows the contact card reads. The address is a place linked to the card (Places phase B); `addressId`
-  // = that place (what a work or an order points at).
-  let addressId: number | null = null
-  if (hasAddr) {
-    const res = await callSaveContactPlaces(supabase, contact.ContactID, [{ label: 'Principal', is_primary: true, ...addr }])
-    if ('error' in res) return { error: res.error }
-    const { data: link } = await supabase.from('contact_place_lines').select('place_id').eq('contact_id', contact.ContactID).limit(1).maybeSingle()
-    addressId = link?.place_id ?? null
-  }
-  if (email) {
-    const { error: eErr } = await supabase.from('contact_emails').insert({ contact_id: contact.ContactID, email, label: 'Personnel', is_primary: true })
-    if (eErr) return { error: eErr.message }
-  }
-  if (phone) {
-    const { error: pErr } = await supabase.from('contact_phones').insert({ contact_id: contact.ContactID, phone, label: 'Mobile', is_primary: true })
-    if (pErr) return { error: pErr.message }
-  }
+  // 3. Create the card through the one door (BuildingPrinciples 2): the Contact row, its primary email / phone and
+  // the address (a place linked to the card, through save_contact_places) in one transaction — all or nothing.
+  const res = await saveContact({
+    id: null,
+    fields: {
+      Nom: nom || null,
+      Prénom: prenom || null,
+      NomInstitution: inst || null,
+      ...(phone ? { Téléphone1: phone } : {}),
+      ...(is_private ? { is_private: true } : {}),
+    },
+    lists: {
+      ...(email ? { emails: [{ email, label: 'Personnel', is_primary: true }] } : {}),
+      ...(phone ? { phones: [{ phone, country_code: null, label: 'Mobile', is_primary: true }] } : {}),
+      ...(hasAddr ? { addresses: [{ label: 'Principal', is_primary: true, position: 0, ...addr }] } : {}),
+    },
+  })
+  // A refusal is never « ok » (principle 3): the screen words it from `door`.
+  if (!('ok' in res)) return { error: 'error' in res ? res.error : `refused: ${'refused' in res ? res.refused : 'unchanged'}`, door: res }
+  const contactId = res.card.contact.ContactID
+  // `addressId` = the place the new card is linked to (what a work or an order points at).
+  const addressId = hasAddr ? (res.card.addresses[0]?.place_id ?? null) : null
 
   // 4. Record Conflict if detected
   if (conflictWithId && !is_private) {
     const { error: ccInsErr } = await serviceClient.from('contact_conflicts').insert({
-      public_contact_id: contact.ContactID,
+      public_contact_id: contactId,
       private_contact_id: conflictWithId
     })
     if (ccInsErr && !isSupabaseMissingTableError(ccInsErr)) {
@@ -525,5 +479,75 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   }
 
   revalidatePath('/atelier')
-  return { ok: true, id: contact.ContactID, addressId }
+  return { ok: true, id: contactId, addressId }
+}
+
+export type SimilarContact = { id: number; label: string; by: 'email' | 'name' }
+
+/** `ilike` without wildcards: the typed text matched as is, case-insensitive. */
+function ilikeExact(s: string): string {
+  return s.replace(/[\\%_]/g, (m) => `\\${m}`)
+}
+
+/**
+ * Cards that look like the one about to be created (quick add, manual create): the same email — the check the
+ * Google import uses (`Contact.Email` or any `contact_emails` row) — or the same name. A warning for the screen,
+ * never a refusal. Read under RLS: only cards this user may see are named (a « Privé » one stays hidden).
+ */
+export async function findSimilarContacts(input: {
+  nom?: string | null
+  prenom?: string | null
+  institution?: string | null
+  email?: string | null
+}): Promise<{ matches: SimilarContact[] } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
+
+  const nom = input.nom?.trim() || null
+  const prenom = input.prenom?.trim() || null
+  const inst = input.institution?.trim() || null
+  const email = input.email?.trim() || null
+  const cols = 'ContactID, NomInstitution, Nom, "Prénom"'
+  type Hit = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }
+  const byId = new Map<number, SimilarContact>()
+  const add = (rows: Hit[] | null, by: SimilarContact['by']) => {
+    for (const r of rows ?? []) if (!byId.has(r.ContactID)) byId.set(r.ContactID, { id: r.ContactID, label: contactListLabel(r), by })
+  }
+
+  if (email) {
+    const e = ilikeExact(email)
+    const [main, extra] = await Promise.all([
+      supabase.from('Contact').select(cols).ilike('Email', e).limit(5),
+      supabase.from('contact_emails').select('contact_id').ilike('email', e).limit(5),
+    ])
+    if (main.error) return { error: main.error.message }
+    if (extra.error) return { error: extra.error.message }
+    add(main.data as Hit[], 'email')
+    const ids = [...new Set((extra.data ?? []).map((r) => r.contact_id))].filter((id) => !byId.has(id))
+    if (ids.length) {
+      const { data, error } = await supabase.from('Contact').select(cols).in('ContactID', ids)
+      if (error) return { error: error.message }
+      add(data as Hit[], 'email')
+    }
+  }
+
+  if (nom || prenom || inst) {
+    let q = supabase.from('Contact').select(cols)
+    if (nom) q = q.ilike('Nom', ilikeExact(nom))
+    if (prenom) q = q.ilike('Prénom', ilikeExact(prenom))
+    if (!nom && !prenom) q = q.ilike('NomInstitution', ilikeExact(inst!))
+    const { data, error } = await q.limit(50)
+    if (error) return { error: error.message }
+    // A part of the name left empty must be empty on the card too (null, or '' on older quick-add rows).
+    const blank = (v: string | null) => !v?.trim()
+    add(
+      (data as Hit[]).filter((r) => (nom || blank(r.Nom)) && (prenom || blank(r.Prénom))),
+      'name',
+    )
+  }
+
+  return { matches: [...byId.values()].slice(0, 5) }
 }

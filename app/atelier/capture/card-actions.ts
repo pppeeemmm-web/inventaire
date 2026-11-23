@@ -202,7 +202,8 @@ export async function commitBusinessCardCapture(
   const res = await importGoogleContacts([contact])
   if ('error' in res) return { error: res.error }
   if (res.imported === 0) {
-    return { error: res.skipped > 0 ? 'duplicate' : 'insert' }
+    // A card the door refused is « insert » (not saved), never « duplicate ».
+    return { error: res.failed > 0 ? 'insert' : res.skipped > 0 ? 'duplicate' : 'insert' }
   }
 
   const contactId = res.contactIds[0]

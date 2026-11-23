@@ -125,6 +125,16 @@ export const contactsUiMessages = defineMessages({
     fr: 'Rien n’a été enregistré : {msg}',
     en: 'Nothing was saved: {msg}',
   },
+  contact_similar_warn_fmt: {
+    fr: 'Une fiche semblable existe déjà :\n{list}\n\nCréer quand même une nouvelle fiche ?',
+    en: 'A similar contact already exists:\n{list}\n\nCreate a new contact anyway?',
+  },
+  contact_similar_by_email: { fr: 'même e-mail', en: 'same email' },
+  contact_similar_by_name: { fr: 'même nom', en: 'same name' },
+  contacts_import_failed_fmt: {
+    fr: '✕ {n} non enregistré(s) : refusé(s) par l’enregistrement (rien n’a été écrit pour eux)',
+    en: '✕ {n} not saved: refused when saving (nothing was written for them)',
+  },
   contact_editor_complement: { fr: 'Étage / appartement', en: 'Floor / flat' },
   contact_editor_complement_ph: { fr: '3e étage, rez-de-chaussée… (facultatif)', en: '3rd floor, ground floor… (optional)' },
   contact_editor_place_others_fmt: { fr: 'Aussi : {n} autre(s) personne(s) à ce lieu', en: 'Also: {n} other person(s) at this place' },

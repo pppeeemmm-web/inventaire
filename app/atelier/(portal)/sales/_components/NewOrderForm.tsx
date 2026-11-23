@@ -23,6 +23,8 @@ import {
   type WorkOrderKind,
 } from '@/app/atelier/(portal)/sales/orders-actions'
 import { saveContactWithConflictCheck } from '@/app/atelier/(portal)/contacts/actions'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
+import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
 export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null }
@@ -181,8 +183,17 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     try {
       const fd = new FormData()
       for (const [k, v] of Object.entries(newC)) if (v.trim()) fd.append(k, v)
+      // Same email or name as a card already there: warn first (not a refusal).
+      const go = await confirmIfSimilarContact(
+        { nom: newC.nom, prenom: newC.prenom, institution: newC.institution, email: newC.email },
+        t,
+      )
+      if (!go) return
       const res = await saveContactWithConflictCheck(fd)
-      if ('error' in res) { setErr(`${t('error_prefix')} ${res.error}`); return }
+      if ('error' in res) {
+        setErr(res.door ? (saveContactRefusalText(res.door, t) ?? res.error) : `${t('error_prefix')} ${res.error}`)
+        return
+      }
       partyPicked.current = true
       setParty({ ContactID: res.id, NomInstitution: newC.institution?.trim() || null, Nom: newC.nom?.trim() || null, Prénom: newC.prenom?.trim() || null, Ville: newC.ville?.trim() || null })
       setNewC(null); setPartyQ('')

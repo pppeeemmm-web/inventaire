@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
@@ -1562,6 +1563,12 @@ export function DrawerContent({
 
   async function handleCreateContact() {
     if (!newC.inst && !newC.prenom && !newC.nom) return
+    // Same email or name as a card already there: warn first (not a refusal).
+    const go = await confirmIfSimilarContact(
+      { nom: newC.nom, prenom: newC.prenom, institution: newC.inst, email: newC.email },
+      t,
+    )
+    if (!go) return
     setCreatingContact(true)
     // Through the contact door (saveContact): the database gives the id (« max + 1 » read here could collide), the
     // email / phone / city get their rows and the old single columns are written from them.

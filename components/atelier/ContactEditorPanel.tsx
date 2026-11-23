@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { saveContact, type ContactCard, type ContactFields } from '@/app/atelier/(portal)/contacts/save-contact'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { useI18n } from '@/lib/i18n/context'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -448,6 +449,16 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               Email: contact!.Email ?? null,
               is_private: contact!.is_private ?? null,
             }
+
+        // A new card with the same email or name as one already there: warn first (not a refusal).
+        if (isNew) {
+          const email = emailList.find((e) => e.is_primary)?.email || emailList[0]?.email || form.Email
+          const go = await confirmIfSimilarContact(
+            { nom: form.Nom, prenom: form.Prénom, institution: form.NomInstitution, email },
+            t,
+          )
+          if (!go) return false
+        }
 
         const res = await saveContact({
           id: isNew ? null : contact!.ContactID,

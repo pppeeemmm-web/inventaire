@@ -18,6 +18,7 @@ import { WorkThumb } from './WorkThumb'
 
 import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { toast } from '@/lib/ui/toast'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
@@ -1463,6 +1464,12 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   async function handleSave(): Promise<boolean> {
     if (!form.NomInstitution && !form.Nom) return false
+    // Same email or name as a card already there: warn first (not a refusal).
+    const go = await confirmIfSimilarContact(
+      { nom: form.Nom, prenom: form.Prénom, institution: form.NomInstitution, email: form.Email },
+      t,
+    )
+    if (!go) return false
     setBusy(true)
     // Through the contact door (saveContact): the contact and its address / email / phone / website rows in one
     // transaction; the old single columns (Email, Ville…) are written by the door from those rows.

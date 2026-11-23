@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 
 import { saveContact } from '@/app/atelier/(portal)/contacts/save-contact'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import {
   checkOllamaListening,
   deleteContacts,
@@ -649,10 +650,24 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     const form = e.currentTarget
     setQuickBusy(true)
     const fd = new FormData(form)
-    const res = await saveContactWithConflictCheck(fd)
-    setQuickBusy(false)
+    const val = (k: string) => (fd.get(k) as string | null) ?? null
+    // Same email or name as a card already there: warn first (not a refusal).
+    let res: Awaited<ReturnType<typeof saveContactWithConflictCheck>>
+    try {
+      const go = await confirmIfSimilarContact(
+        { nom: val('nom'), prenom: val('prenom'), institution: val('institution'), email: val('email') },
+        t,
+      )
+      if (!go) return
+      res = await saveContactWithConflictCheck(fd)
+    } catch (err) {
+      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+      return
+    } finally {
+      setQuickBusy(false)
+    }
     if ('error' in res) {
-      toast.error(`${t('error_prefix')} ${res.error}`)
+      toast.error(res.door ? (saveContactRefusalText(res.door, t) ?? res.error) : `${t('error_prefix')} ${res.error}`)
       return
     }
     toast.success(t('saveDoneUndoHint'))
@@ -1427,7 +1442,7 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
   const [parsed, setParsed] = useState<ImportedContact | null>(null)
   const [meta, setMeta] = useState<UrlEnrichMeta | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{ imported: number; skipped: number; failed: number } | null>(null)
   const [showOllamaTip, setShowOllamaTip] = useState(true)
   const [scriptBusy, setScriptBusy] = useState(false)
   const [scriptOut, setScriptOut] = useState<string | null>(null)
@@ -1494,7 +1509,7 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
       setErr(res.error)
       return
     }
-    setResult({ imported: res.imported, skipped: res.skipped })
+    setResult({ imported: res.imported, skipped: res.skipped, failed: res.failed })
   }
 
   async function handleOllamaScript() {
@@ -1724,6 +1739,11 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
                   {t('contacts_url_done_skipped_fmt').replace('{n}', String(result.skipped))}
                 </div>
               )}
+              {result.failed > 0 && (
+                <div style={{ color: 'var(--rust)' }}>
+                  {t('contacts_import_failed_fmt').replace('{n}', String(result.failed))}
+                </div>
+              )}
             </div>
             <button type="button" className="btn sm" onClick={onDone} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
               {t('close')}
@@ -1795,7 +1815,7 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
   const { t } = useI18n()
   const [parsed,  setParsed]  = useState<ImportedContact[] | null>(null)
   const [busy,    setBusy]    = useState(false)
-  const [result,  setResult]  = useState<{ imported: number; skipped: number } | null>(null)
+  const [result,  setResult]  = useState<{ imported: number; skipped: number; failed: number } | null>(null)
   const [err,     setErr]     = useState<string | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1817,7 +1837,7 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
     const res = await importGoogleContacts(parsed)
     setBusy(false)
     if ('error' in res) { setErr(res.error); return }
-    setResult({ imported: res.imported, skipped: res.skipped })
+    setResult({ imported: res.imported, skipped: res.skipped, failed: res.failed })
   }
 
   return (
@@ -1887,6 +1907,11 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
               {result.skipped > 0 && (
                 <div style={{ color: 'var(--tx3)' }}>
                   {t('contacts_import_skipped_fmt').replace('{n}', String(result.skipped))}
+                </div>
+              )}
+              {result.failed > 0 && (
+                <div style={{ color: 'var(--rust)' }}>
+                  {t('contacts_import_failed_fmt').replace('{n}', String(result.failed))}
                 </div>
               )}
             </div>
