@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.95 (2026-11-23) — phone new work keeps the draft on « Tous les champs ».
+  wn_work_record_all_fields_t: { fr: '« Tous les champs » garde ce qui est saisi', en: '« All fields » keeps what was typed' },
+  wn_work_record_all_fields_d: {
+    fr: 'Sur le téléphone, en enregistrant une nouvelle œuvre, « Tous les champs » emporte le titre, la technique, le support, le format, les dimensions et les photos dans le formulaire complet au lieu de les perdre. Le lieu, la source, la période et « peint sur » s’ajoutent ensuite depuis la fiche : un message le rappelle.',
+    en: 'On the phone, when recording a new work, « All fields » carries the title, technique, support, format, size and photos into the full form instead of losing them. The place, source, period and « painted on » are added afterwards from the card: a message says so.',
+  },
   // 3.1.94 (2026-11-23) — the Journal day shows its ideas.
   wn_journal_idea_lines_t: { fr: 'Les idées du jour dans le Journal', en: 'The day’s ideas in the Journal' },
   wn_journal_idea_lines_d: {

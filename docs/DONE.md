@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Phone new work: « Tous les champs » keeps the draft (Pem bug report, « Land the Tous les champs fix and push it »)
+
+- « Tous les champs » in the phone recording drawer carries the title, technique, support, format, size, photos and lookups added there into the full form; the toggle then only folds / unfolds. An empty drawer field never wipes a value the full form restored; the kept « Brouillon » is cleared only when the drawer loaded it; Reprise no longer offers the button (its photos could have become a new work); place, source, period and « peint sur » are named in a message. Seen in a 390 px frame on localhost: title carried, no sideways scroll, no button in Reprise; photos through the handoff not tried — `9c5771b`.
+
 ## 2026-11-23 — Idées as a tree fed by the Journal (Pem « Yes, apply it », « Yes, land it »)
 
 - Idées become a tree: trunk and branches, stage graine / pousse / mûre moved by the idea's author (or an admin), one idea's desk (Fil of Journal moments newest first, Texte with versions in `concept_change`, documents, works, branches, linked ideas), phone list by last moment, `GET /api/ideas`. « 🌰 En faire une idée » and the label Idée plant from a Journal card; reminders, Notes routing and share triage go through `idea_plant` (`ideas_tree.sql`, live). Built and checked on live data (desk + 390 px, nothing written) in the Idées session — `bce018b`.

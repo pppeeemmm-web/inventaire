@@ -89,7 +89,8 @@
 // '3.1.92' (2026-11-23): the Journal opens on the stream of days for everyone (?stream=0 keeps the old screens).
 // '3.1.93' (2026-11-23): Idées become a tree fed by the Journal.
 // '3.1.94' (2026-11-23): the Journal day shows its ideas (planted, moved, reworked, grafted).
-export const WHATS_NEW_RELEASE = '3.1.94'
+// '3.1.95' (2026-11-23): phone new work — « Tous les champs » keeps what was typed.
+export const WHATS_NEW_RELEASE = '3.1.95'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -115,6 +116,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'work_record_all_fields', day: '2026-11-23', spot: 'inventory' },
   { id: 'journal_idea_lines', day: '2026-11-23', spot: 'journal' },
   { id: 'ideas_tree', day: '2026-11-23', spot: 'concepts' },
   { id: 'idea_from_moment', day: '2026-11-23', spot: 'journal' },
