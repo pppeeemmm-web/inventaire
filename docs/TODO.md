@@ -24,11 +24,11 @@ Data safety (SQL, Pem's OK given)
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table.
-- [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
 - [ ] Pipeline « créer » (auto-create of a contact from a project) has no « same email / same name » warning, unlike the five other create screens.
+- [ ] The desk order form and the Pipeline still list team accounts as a sale buyer (the server refuses them at submit); a Pipeline « vente » refused by `createWorkOrder` leaves its process row without an order.
 - [ ] Bureau IA « Faire maintenant » opens the `pem-ai:` link from a hidden frame, which Chrome may drop; « Lancer sur ce PC » (a plain link) works.
 - [ ] After a contact merge the desk keeps the merged contact's duplicate address links until a reload (pickers show a place twice; a save there answers « stale »).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.

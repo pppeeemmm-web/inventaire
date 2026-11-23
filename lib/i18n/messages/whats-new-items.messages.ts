@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.102 (2026-11-23) — phone sale buyer step.
+  wn_phone_sale_buyer_search_t: { fr: 'Vente au téléphone : chercher l’acheteur', en: 'Phone sale: find the buyer' },
+  wn_phone_sale_buyer_search_d: {
+    fr: 'À l’étape « Acheteur » d’une vente au téléphone, une recherche remplace la longue liste : tapez un nom, touchez la bonne ligne. Si la personne n’existe pas, « + Nouveau contact » la crée (prévient si une fiche semblable existe) et la choisit. Un compte de l’équipe ne peut pas être l’acheteur.',
+    en: 'At the « Buyer » step of a phone sale, a search replaces the long list: type a name, tap the right row. If the person does not exist, « + New contact » creates them (warns if a similar card exists) and picks them. A team account cannot be the buyer.',
+  },
   // 3.1.101 (2026-11-23) — similar contact warning; quick add / import in one go.
   wn_contact_similar_warning_t: { fr: 'Fiche en double : un avertissement avant de créer', en: 'Duplicate contact: a warning before creating' },
   wn_contact_similar_warning_d: {
