@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
-import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
+import { calendarDayInParisFromIso, todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import { INSPIRATION_MAX_EDGE, INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 
 type Err = { error: string }
@@ -53,6 +53,15 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   const who = await adminUser(supabase)
   if (!who.user) return { error: who.error ?? 'auth' }
 
+  // One-time id from the phone (lib/mobile/capture-queue.ts): it becomes the photo's id, so a resend
+  // after a lost answer finds the photo already saved and writes nothing twice.
+  const clientIdRaw = String(formData.get('client_id') ?? '').trim()
+  const clientId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientIdRaw) ? clientIdRaw.toLowerCase() : null
+  if (clientId) {
+    const { data: already } = await inspirationTable(supabase).select('id, day').eq('id', clientId).maybeSingle()
+    if (already) return { ok: true, id: clientId, day: String((already as { day: string }).day) }
+  }
+
   const file = formData.get('photo')
   if (!(file instanceof File) || file.size === 0) return { error: 'empty' }
   if (file.size > MAX_BYTES) return { error: 'too_large' }
@@ -71,9 +80,18 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
     if (!w) return { error: 'no_work' }
   }
 
-  const day = todayCalendarDayInParis()
+  // The day a queued capture was taken (`taken_at`, sent only by the capture queue: last 14 days, not in the
+  // future); an online upload lands on today.
+  const today = todayCalendarDayInParis()
+  const takenRaw = String(formData.get('taken_at') ?? '').trim()
+  const takenMs = takenRaw ? new Date(takenRaw).getTime() : NaN
+  const takenDay =
+    clientId && Number.isFinite(takenMs) && takenMs <= Date.now() + 5 * 60_000 && takenMs >= Date.now() - 14 * 86_400_000
+      ? calendarDayInParisFromIso(new Date(takenMs).toISOString())
+      : null
+  const day = takenDay && takenDay <= today ? takenDay : today
   const hash8 = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)
-  const base = `I_${day.replace(/-/g, '')}_${crypto.randomUUID().slice(0, 8)}_${hash8}`
+  const base = `I_${day.replace(/-/g, '')}_${(clientId ?? crypto.randomUUID()).slice(0, 8)}_${hash8}`
   const mainKey = `inspiration/${base}.avif`
   const thumbKey = `thumbs/inspiration/${base}.avif`
   try {
@@ -98,9 +116,11 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   }
 
   const { data, error } = await inspirationTable(supabase)
-    .insert({ day, author_id: who.user.id, image_key: mainKey, caption, oeuvre_id, concept_id })
+    .insert({ ...(clientId ? { id: clientId } : {}), day, author_id: who.user.id, image_key: mainKey, caption, oeuvre_id, concept_id })
     .select('id')
     .single()
+  // Two sends of the same one-time id at once: the other one saved it (same image keys) — not an error.
+  if (error && clientId && error.code === '23505') return { ok: true, id: clientId, day }
   if (error || !data) {
     await recycle([mainKey, thumbKey])
     return { error: error?.message ?? 'insert' }

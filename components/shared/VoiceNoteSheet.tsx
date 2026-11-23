@@ -17,6 +17,7 @@ import {
   type MicFailure,
 } from '@/lib/voice/mic-permission'
 import { toast } from '@/lib/ui/toast'
+import { enqueueCapture, isNetworkFailure, newCaptureId } from '@/lib/mobile/capture-queue'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
 /**
@@ -69,7 +70,7 @@ const emptyDetails = (oeuvreId: string): Details => ({
   nextAction: 'none',
 })
 
-type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date; transcript: string }
+type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date; transcript: string; clientId: string }
 type SavedNote = { id: string; durationMs: number | null; recordedAt: Date }
 
 function nextActionLabelKey(k: NextActionKey): DictKey {
@@ -322,23 +323,47 @@ export function VoiceNoteSheet({
       fail('voice_note_err_audio_size')
       return
     }
+    const d = detailsRef.current
+    const ext = p.mime.includes('mp4') ? 'm4a' : p.mime.includes('ogg') ? 'ogg' : 'webm'
+    const fields: Record<string, string> = {
+      subject: '',
+      transcript: p.transcript,
+      duration_ms: String(Math.round(p.durationMs)),
+      recorded_at: p.recordedAt.toISOString(),
+      client_id: p.clientId,
+      ...(d.oeuvreId.trim() ? { oeuvre_id: d.oeuvreId.trim() } : {}),
+    }
+    // No network: the note stays on the phone and is sent when the network returns (capture queue).
+    const keepOnPhone = async () => {
+      try {
+        await enqueueCapture({ id: p.clientId, kind: 'voice', fields, blob: p.blob, blobName: `note.${ext}`, createdAt: p.recordedAt.getTime() })
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- shown: the sheet stays on « échec » with Réessayer
+      } catch {
+        fail('vc_err_offline')
+        return
+      }
+      pendingRef.current = null
+      setHasPending(false)
+      toast.success(t('cq_kept'))
+      onSaved?.()
+      if (!background && gen === genRef.current) onClose()
+    }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      fail('vc_err_offline')
+      await keepOnPhone()
       return
     }
     const fd = new FormData()
-    const d = detailsRef.current
-    fd.append('subject', '')
-    fd.append('transcript', p.transcript)
-    if (d.oeuvreId.trim()) fd.append('oeuvre_id', d.oeuvreId.trim())
-    const ext = p.mime.includes('mp4') ? 'm4a' : p.mime.includes('ogg') ? 'ogg' : 'webm'
+    for (const [k, v] of Object.entries(fields)) fd.append(k, v)
     fd.append('audio', p.blob, `note.${ext}`)
-    fd.append('duration_ms', String(Math.round(p.durationMs)))
-    fd.append('recorded_at', p.recordedAt.toISOString())
     let res: Awaited<ReturnType<typeof createVoiceNote>>
     try {
       res = await createVoiceNote(fd)
-    } catch {
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- network → kept on the phone; otherwise shown by fail()
+    } catch (err) {
+      if (isNetworkFailure(err)) {
+        await keepOnPhone()
+        return
+      }
       fail('vc_err_network')
       return
     }
@@ -367,7 +392,7 @@ export function VoiceNoteSheet({
     setBaseline(savedDetails)
     setDetails(savedDetails)
     setPhase('saved')
-  }, [onSaved, t])
+  }, [onClose, onSaved, t])
 
   const stopAndSave = useCallback(
     async (reason: StopReason) => {
@@ -399,7 +424,7 @@ export function VoiceNoteSheet({
         } else toast.error(`${t('vc_failed_title')} — ${t('vc_err_empty')}`)
         return
       }
-      pendingRef.current = { blob, mime, durationMs, recordedAt: started?.at ?? new Date(), transcript: heard }
+      pendingRef.current = { blob, mime, durationMs, recordedAt: started?.at ?? new Date(), transcript: heard, clientId: newCaptureId() }
       setHasPending(true)
       if (reason !== 'closed') {
         revokeAudioUrl()

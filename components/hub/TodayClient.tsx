@@ -29,9 +29,11 @@ import { imageUrl, thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
+import { CaptureQueueFlusher } from '@/components/journal/CaptureQueue'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import { WorkChip as WorkPreviewChip } from '@/components/atelier/WorkChip'
 import { WorkRefText } from '@/components/atelier/journal/WorkRefText'
+import { isNothingHeard, isWaitingTranscript } from '@/lib/journal/nothing-heard'
 import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOriginal'
 import { InspirationText } from '@/components/atelier/journal/InspirationText'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -86,7 +88,8 @@ function WorkChip({ work }: { work: SeeAgainWork | TodayWork }) {
   return <WorkPreviewChip id={work.id} href={workHref(work.id)} title={work.title ?? null} image={file ?? null} style={{ fontSize: 14 }} />
 }
 
-export function TodayFrame({ day, today, children }: { day: string; today: string; children: ReactNode }) {
+/** `stream`: the Journal stream (components/journal/JournalPhone.tsx) brings its own header; the frame keeps the record bar. */
+export function TodayFrame({ day, today, children, stream = false }: { day: string; today: string; children: ReactNode; stream?: boolean }) {
   const { t, lang } = useI18n()
   const router = useRouter()
   const pathname = usePathname() || '/hub'
@@ -121,9 +124,9 @@ export function TodayFrame({ day, today, children }: { day: string; today: strin
   const isToday = day >= today
 
   return (
-    <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: 'hidden', paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
+    <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: stream ? 'clip' : 'hidden', paddingBottom: stream ? 'max(104px, calc(100px + env(safe-area-inset-bottom)))' : 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
       {/* One header row: ☰ · date · ‹ › · 📅 (the signed-in badge is off on the phone: the account is in the menu). */}
-      <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 8px 4px 8px' }}>
+      {stream ? null : <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 8px 4px 8px' }}>
         <PhoneMenuButton />
         <h1 data-testid="hub-today-date" data-day={day} style={{ fontSize: sameYear ? 22 : 18, margin: '0 4px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</h1>
         <Link href={dayHref(shiftDay(day, -1))} aria-label={t('today_prev_day')} data-testid="hub-today-prev" style={iconLink}>‹</Link>
@@ -133,11 +136,13 @@ export function TodayFrame({ day, today, children }: { day: string; today: strin
           <Link href={dayHref(shiftDay(day, 1))} aria-label={t('today_next_day')} data-testid="hub-today-next" style={iconLink}>›</Link>
         )}
         <Link href="/atelier/journal" aria-label={t('today_days')} style={{ ...iconLink, fontSize: 18 }}>📅</Link>
-      </header>
+      </header>}
 
       {children}
 
-      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" writeDay={day} />
+      {/* Captures kept on the phone with no network are sent from here too (the stream mounts its own). */}
+      {stream ? null : <CaptureQueueFlusher onSent={() => router.refresh()} />}
+      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" writeDay={day} stream={stream} />
 
       {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
     </div>
@@ -360,7 +365,7 @@ export function TodayEntries({
                 </span>
                 {e.voiceLinks?.subject?.trim() ? <b style={{ display: 'block' }}>{e.voiceLinks.subject}</b> : null}
                 {audio(e.audioKey)}
-                <WorkRefText text={e.body} />
+                {isNothingHeard(e) ? <span style={{ color: 'var(--tx3)' }}>{t('js_nothing_heard')}</span> : isWaitingTranscript(e) ? <span style={{ color: 'var(--tx3)' }}>{t('js_waiting')}</span> : <WorkRefText text={e.body} />}
                 <CorrectedOriginal original={e.original} />
                 {e.voiceLinks?.oeuvre_id != null ? (
                   <div style={{ marginTop: 4 }}>

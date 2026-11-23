@@ -114,7 +114,7 @@ async function main() {
     Oeuvres: 'OeuvreID', tblImage: 'ImageID', Technique: 'TechniqueID', Support: 'SupportID', Format: null,
     OeuvreStatus: 'id', theme: 'id', oeuvre_theme: 'oeuvre_id', work_period: 'id', work_period_override: 'oeuvre_id',
     work_source: 'id', work_source_link: 'oeuvre_id', working_group: null, working_group_work: null,
-    tblrelations: null, journal_entry: 'id', journal_entry_link: 'id', concept: null, voice_note: 'created_at',
+    tblrelations: null, journal_entry: 'id', journal_entry_link: 'id', journal_entry_label: 'id', journal_entry_day_change: 'id', concept: null, voice_note: 'created_at',
     condition_report: 'id', condition_issue: 'id', kaizen_item: 'id', document: 'created_at', work_session: 'created_at',
     work_order: 'created_at', work_order_work: null, payments: 'payment_date', suivi_process: null, suivi_etape: null, expense: null, stock_item: null,
   }
@@ -179,13 +179,20 @@ async function main() {
   // ── Journal as text ─────────────────────────────────────────────────────────────────────────
   const linksBy = group(db.journal_entry_link.filter((l) => !l.rejected_at && (l.proposed_by !== 'ai' || l.validated_at)), 'entry_id')
   const conceptName = label(db.concept, 'id', 'titre')
+  // Labels (live ones) and day moves beside each entry (journal_step_b.sql); the tables are also in data/json.
+  const labelsBy = group(db.journal_entry_label.filter((l) => !l.removed_at), 'entry_id')
+  const movesBy = group(db.journal_entry_day_change, 'entry_id')
   const entries = db.journal_entry.filter((e) => !e.hidden_at).sort((a, b) => String(a.event_on).localeCompare(String(b.event_on)) || a.id - b.id)
   const byYear = group(entries.map((e) => ({ ...e, y: year(e.event_on) })), 'y')
   for (const [y, list] of byYear) {
     const text = list.map((e) => {
-      const links = (linksBy.get(e.id) ?? []).map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : conceptName.get(l.concept_id))).filter(Boolean)
-      const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null, e.corrects_id ? `corrects entry ${e.corrects_id}` : null].filter(Boolean).join(' · ')
-      return `## ${e.event_on} — entry ${e.id}\n_${meta}_${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}\n`
+      const links = (linksBy.get(e.id) ?? [])
+        .map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : l.target_entry_id ? `${l.relation === 'suite' ? 'suite of' : 'cites'} entry ${l.target_entry_id}` : conceptName.get(l.concept_id)))
+        .filter(Boolean)
+      const labels = (labelsBy.get(e.id) ?? []).map((l) => l.label)
+      const moved = (movesBy.get(e.id) ?? []).map((m) => `moved from ${m.from_day} on ${String(m.changed_at).slice(0, 10)}`)
+      const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null, e.corrects_id ? `corrects entry ${e.corrects_id}` : null, ...moved].filter(Boolean).join(' · ')
+      return `## ${e.event_on} — entry ${e.id}\n_${meta}_${labels.length ? `\nLabels: ${labels.join(', ')}` : ''}${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}\n`
     }).join('\n---\n\n')
     await writeText(`journal/${y}.md`, `# Journal ${y}\n\n${text}`)
   }

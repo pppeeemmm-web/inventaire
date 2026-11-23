@@ -9,6 +9,10 @@
 // Phone navigation (docs/design/2026-11-18/PhoneNav.notes.md): the phone Journal day page opens here,
 // so the day also shows its voice notes, inspiration photos, the session note (+ admin « Modifier la
 // séance ») and, for an admin, hidden entries dimmed with their tools.
+import { cookies } from 'next/headers'
+import { readJournalStreamPage } from '@/lib/journal/stream'
+import { JournalPhone } from '@/components/journal/JournalPhone'
+import { JOURNAL_STREAM_COOKIE } from '@/lib/journal/stream-switch'
 import { Suspense } from 'react'
 import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
@@ -74,9 +78,22 @@ function requestedDay(raw: string | string[] | undefined, today: string): string
   return day > today ? today : day
 }
 
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ day?: string | string[] }> }) {
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ day?: string | string[]; stream?: string | string[] }> }) {
   const today = todayCalendarDayInParis()
-  const day = requestedDay((await searchParams).day, today)
+  const sp = await searchParams
+  // The Journal stream (design 2026-11-22), behind a switch while it is tried: `?stream=1` / a cookie.
+  const streamParam = Array.isArray(sp.stream) ? sp.stream[0] : sp.stream
+  const stream = streamParam === '1' || (streamParam !== '0' && (await cookies()).get(JOURNAL_STREAM_COOKIE)?.value === '1')
+  if (stream && !sp.day) {
+    return (
+      <TodayFrame day={today} today={today} stream>
+        <Suspense fallback={<TodaySkeleton rows={3} />}>
+          <StreamSection />
+        </Suspense>
+      </TodayFrame>
+    )
+  }
+  const day = requestedDay(sp.day, today)
   const isToday = day === today
   // All reads start now, together; no section waits on another. Today-only reads are skipped for another day.
   const pulse = isToday ? settle(getFieldPulseData()) : null
@@ -129,6 +146,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </Suspense>
     </TodayFrame>
   )
+}
+
+async function StreamSection() {
+  const page = await readJournalStreamPage(null, 5)
+  return 'error' in page ? <TodayLoadError /> : <JournalPhone initial={page} />
 }
 
 type Extras = Awaited<ReturnType<typeof getJournalDayExtras>> | { error: string }

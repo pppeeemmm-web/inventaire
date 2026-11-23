@@ -1,8 +1,10 @@
 'use server'
 
+import { WAITING_TRANSCRIPT, isPlaceholderText } from '@/lib/journal/nothing-heard'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import crypto from 'crypto'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { r2PutObject } from '@/lib/r2-s3-object'
 import type { VoiceNoteRow } from '@/lib/types/database'
@@ -56,7 +58,8 @@ async function machineTranscripts(
     return out
   }
   for (const r of data ?? []) {
-    if (!r.voice_note_id || out.has(r.voice_note_id) || !r.body?.trim()) continue
+    // « (rien entendu) » / « (transcription à venir) » are placeholders, not transcripts: never shown or copied.
+    if (!r.voice_note_id || out.has(r.voice_note_id) || !r.body?.trim() || isPlaceholderText(r.body)) continue
     out.set(r.voice_note_id, { body: r.body, engine: r.engine, verification: r.verification })
   }
   return out
@@ -99,19 +102,30 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     if (Number.isFinite(d) && d >= 0 && d < 24 * 60 * 60 * 1000) duration_ms = d
   }
 
-  // When the recording started (client clock): the note's date/time. Kept only when plausible
-  // (last 24 h, not ahead of the server by more than 5 min); otherwise the DB default (now).
+  // One-time id from the phone (lib/mobile/capture-queue.ts): it becomes the note's id, so a resend after
+  // a lost answer finds the note already saved and writes nothing twice.
+  const clientIdRaw = String(formData.get('client_id') ?? '').trim()
+  const clientId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientIdRaw) ? clientIdRaw.toLowerCase() : null
+  if (clientId) {
+    const { data: already } = await voiceNoteTable(supabase).select('id').eq('id', clientId).maybeSingle()
+    if (already) return { ok: true, id: clientId, followUpOk: true }
+  }
+
+  // When the recording started (client clock): the note's date/time. Kept only when plausible (last 24 h;
+  // 14 days for a note that waited on the phone with no network; not ahead of the server by more than
+  // 5 min); otherwise the DB default (now).
   const recordedAtRaw = (formData.get('recorded_at') as string | null)?.trim() || null
   let created_at: string | undefined
   if (recordedAtRaw) {
     const ts = new Date(recordedAtRaw).getTime()
     const now = Date.now()
-    if (Number.isFinite(ts) && ts <= now + 5 * 60_000 && ts >= now - 24 * 60 * 60_000) {
+    const back = (clientId ? 14 * 24 : 24) * 60 * 60_000
+    if (Number.isFinite(ts) && ts <= now + 5 * 60_000 && ts >= now - back) {
       created_at = new Date(ts).toISOString()
     }
   }
 
-  const id = crypto.randomUUID()
+  const id = clientId ?? crypto.randomUUID()
   let audio_r2_key: string | null = null
 
   if (audioBuf && audioMime) {
@@ -144,6 +158,8 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     ...(created_at ? { created_at } : {}),
   })
 
+  // Two sends of the same one-time id at once: the other one saved it (same audio key) — not an error.
+  if (error && clientId && error.code === '23505') return { ok: true, id, followUpOk: true }
   if (error) {
     if (audio_r2_key) {
       try {
@@ -156,12 +172,80 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     return { error: error.message }
   }
 
+  // The Journal entry, at once (Pem 2026-11-23): a recording becomes a Journal note the moment it is saved,
+  // with the words the phone heard (or a placeholder until the PC transcribes; its transcript then arrives
+  // as a correction of this entry). A typed note (no audio) is a typed entry. A failure here keeps the
+  // voice note: the PC transcript then creates the entry as before.
+  await addVoiceNoteEntry(supabase, {
+    noteId: id,
+    userId: user.id,
+    text: transcript,
+    hasAudio: !!audio_r2_key,
+    createdAt: created_at ?? new Date().toISOString(),
+  })
+
   const followUpOk = await insertFollowUp(supabase, formData, subjectRaw)
 
   revalidatePath('/atelier')
   revalidatePath('/hub')
   revalidatePath('/atelier/field-inbox')
   return { ok: true, id, followUpOk }
+}
+
+async function correctVoiceNoteEntry(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  noteId: string,
+  userId: string,
+  text: string,
+): Promise<{ ok: true } | { error: string }> {
+  const { data: rows, error } = await supabase
+    .from('journal_entry')
+    .select('id, kind, event_on, event_precision, body, corrects_id, created_at, hidden_at')
+    .eq('voice_note_id', noteId)
+    .order('created_at', { ascending: true })
+  if (error) return { error: error.message }
+  const root = (rows ?? []).find((r) => r.corrects_id == null)
+  if (!root) return { ok: true }
+  const latest = [...(rows ?? [])].filter((r) => r.corrects_id === root.id && !r.hidden_at).pop()
+  if ((latest?.body ?? root.body).trim() === text) return { ok: true }
+  const { error: insErr } = await supabase.from('journal_entry').insert({
+    kind: root.kind,
+    body: text.slice(0, 20_000),
+    event_on: root.event_on,
+    event_precision: root.event_precision,
+    author_id: userId,
+    provenance: 'typed',
+    verification: 'verified',
+    corrects_id: root.id,
+    voice_note_id: noteId,
+    ai_links_at: new Date().toISOString(),
+  })
+  return insErr ? { error: insErr.message } : { ok: true }
+}
+
+/** Engine name of an entry written from the phone's live words (the PC script skips none: it corrects it). */
+const PHONE_ENGINE = 'téléphone (mots en direct)'
+
+async function addVoiceNoteEntry(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  v: { noteId: string; userId: string; text: string; hasAudio: boolean; createdAt: string },
+): Promise<void> {
+  const words = v.text.trim().slice(0, 20_000)
+  if (!words && !v.hasAudio) return
+  const { error } = await supabase.from('journal_entry').insert({
+    kind: v.hasAudio ? 'voice' : 'note',
+    body: words || WAITING_TRANSCRIPT,
+    event_on: calendarDayInParisFromIso(v.createdAt),
+    event_precision: 'day',
+    author_id: v.userId,
+    provenance: v.hasAudio ? 'voice' : 'typed',
+    verification: v.hasAudio ? 'unverified' : 'verified',
+    voice_note_id: v.noteId,
+    engine: v.hasAudio ? PHONE_ENGINE : null,
+    // No AI link proposals on the waiting placeholder (the embed worker would propose from it once, then never).
+    ...(words ? {} : { ai_links_at: new Date().toISOString() }),
+  })
+  if (error) await logError('voice note journal entry failed', error, { source: 'notes.createVoiceNote', metadata: { noteId: v.noteId } })
 }
 
 /**
@@ -242,6 +326,12 @@ export async function updateVoiceNoteDetails(
     const { error: upErr } = await voiceNoteTable(supabase).update(patch).eq('id', id)
     if (upErr) return { error: upErr.message }
   }
+  // Words changed in the sheet after saving: they become the author's correction of the note's Journal entry
+  // (append-only; the words first saved stay as its original).
+  if (typeof patch.transcript === 'string' && patch.transcript.trim()) {
+    const fixed = await correctVoiceNoteEntry(supabase, id, user.id, patch.transcript.trim())
+    if ('error' in fixed) await logError('voice note entry correction failed', fixed.error, { source: 'notes.updateVoiceNoteDetails', metadata: { id } })
+  }
 
   const subject = typeof patch.subject === 'string' ? patch.subject : null
   const followUpOk = await insertFollowUp(supabase, formData, subject)
@@ -258,7 +348,9 @@ export async function updateVoiceNoteDetails(
  * - A PC transcript entry carries it: the Journal is append-only and `journal_entry.voice_note_id`
  *   restricts the delete (supabase/sql/journal_entry.sql), so an admin hides the entry (as « Masquer »)
  *   and the note row is emptied in place: no audio, no text, no links. The entry's own links stay on
- *   the hidden entry. A non-admin author gets `admin_only` there (only an admin hides an entry).
+ *   the hidden entry. Since every note has its Journal entry at once (2026-11-23), the author may also
+ *   delete their own note while only their own words are on it (no PC transcript, nobody else's
+ *   correction); the hide is then done by the server for them. Otherwise a non-admin gets `admin_only`.
  * What the note created earlier (an idea, a constat, a reminder) are records of their own and stay.
  */
 export async function deleteVoiceNote(id: string): Promise<{ ok: true } | NotesActionErr> {
@@ -279,15 +371,19 @@ export async function deleteVoiceNote(id: string): Promise<{ ok: true } | NotesA
 
   const { data: carried, error: entErr } = await supabase
     .from('journal_entry')
-    .select('id, hidden_at')
+    .select('id, hidden_at, author_id, engine')
     .eq('voice_note_id', id)
   if (entErr) return { error: entErr.message }
 
   if ((carried ?? []).length > 0) {
-    if (!admin) return { error: 'admin_only' }
+    const ownWordsOnly = (carried ?? []).every((e) => e.author_id === user.id && !(e.engine ?? '').startsWith('faster-whisper'))
+    if (!admin && !ownWordsOnly) return { error: 'admin_only' }
     const open = (carried ?? []).filter((e) => !e.hidden_at).map((e) => e.id)
     if (open.length) {
-      const { error: hideErr } = await supabase
+      // An author is not an admin: the hide (admin-only in the database) is done by the server, after the
+      // checks above (own note, own words only).
+      const writer = admin ? supabase : createServiceClient()
+      const { error: hideErr } = await writer
         .from('journal_entry')
         .update({ hidden_at: new Date().toISOString(), hidden_by: user.id })
         .in('id', open)

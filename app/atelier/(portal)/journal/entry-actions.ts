@@ -8,10 +8,10 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
-import { changedVersionFields } from '@/lib/oeuvre-version-fields'
-import type { Tables } from '@/lib/types/supabase.generated'
 import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-photo'
 import { latestCorrections } from '@/lib/journal-corrections'
+import { readJournalDays } from '@/lib/journal/day-read'
+import { isPlaceholderText } from '@/lib/journal/nothing-heard'
 
 export type JournalEntryKind = 'spark' | 'trigger' | 'reflection' | 'note'
 const KINDS: readonly JournalEntryKind[] = ['spark', 'trigger', 'reflection', 'note']
@@ -30,6 +30,12 @@ export type JournalDayEntry = {
   visibility: string
   /** Corrected (« Corriger »): `body` is the latest correction, this is the text as first written. */
   original: string | null
+  /** The row whose text is shown (the latest correction, else the entry): « Le texte est juste » checks it. */
+  textId?: number
+  /** The PC's transcript kept beside a person's words (hidden correction, engine « … → proposition »), not yet decided. */
+  pcProposal?: { id: number; body: string } | null
+  /** The PC wrote on this entry (a transcript, nothing heard, or a hidden proposal): its author can no longer delete the note alone. */
+  pcTouched?: boolean
   author: string
   mine: boolean
   hidden: boolean
@@ -37,10 +43,18 @@ export type JournalDayEntry = {
   voiceNoteId: string | null
   audioKey: string | null
   engine: string | null
+  /** A voice note's words as the phone heard them live (shown beside the PC transcript when correcting). */
+  liveWords?: string | null
   /** The voice note's own links (work / idea / project / constat), when RLS lets this user read the note. */
   voiceLinks: VoiceNoteLinks | null
-  works: Array<{ id: number; title: string | null }>
+  works: Array<{ id: number; title: string | null; thumb?: string | null }>
   concepts: Array<{ id: string; title: string | null }>
+  /** Labels beside the entry (journal_step_b.sql); empty until that SQL is live. */
+  labels?: Array<{ id: number; label: string }>
+  /** This entry is a suite of an earlier one (« suite de … »). */
+  suiteOf?: { id: number; day: string; snippet: string } | null
+  /** Later entries written as suites of this one, each with its own day. */
+  suites?: Array<{ id: number; day: string; created_at: string; body: string }>
   /** AI link proposals (✦), not yet validated or rejected (supabase/sql/journal_entry_nodes.sql). */
   proposals: Array<{ linkId: number; workId: number | null; conceptId: string | null; title: string | null; thumb: string | null }>
 }
@@ -88,10 +102,28 @@ export type JournalDayCreation = {
   works: number[]
 }
 
+/** A remark on a work or an idea (`note_line`) written that day — read from its home, never copied (Journal design 2026-11-22 §1). */
+export type JournalDayRemark = {
+  id: number
+  created_at: string
+  body: string
+  imageKey: string | null
+  oeuvreId: number | null
+  workTitle: string | null
+  workThumb: string | null
+  conceptId: string | null
+  conceptTitle: string | null
+  author: string
+}
+
 export type JournalDayExtras = {
   isAdmin: boolean
+  /** Remarks on works / ideas written that day (empty when entries are not read). */
+  remarks: JournalDayRemark[]
   entries: JournalDayEntry[]
   changes: JournalDayChange[]
+  /** Works changed that day, all of them (`changes` details at most 100 of them; admin only by RLS). */
+  changedWorks?: number
   voices: JournalDayVoice[]
   creation: JournalDayCreation[]
   /** Concepts (Recherche) the entry form can link to. */
@@ -116,11 +148,6 @@ type Err = { error: string }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
-/** UTC window that surely contains the Paris calendar day (rows are then filtered by Paris day). */
-function utcWindow(day: string): { from: string; to: string } {
-  const start = new Date(`${day}T00:00:00Z`).getTime()
-  return { from: new Date(start - 3 * 3600_000).toISOString(), to: new Date(start + 27 * 3600_000).toISOString() }
-}
 
 async function worksMentioned(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -145,11 +172,9 @@ export async function getJournalDayExtras(
   opts: { folds?: boolean; entries?: boolean } = {},
 ): Promise<JournalDayExtras | Err> {
   if (!DAY_RE.test(day)) return { error: 'day' }
-  const withFolds = opts.folds !== false
-  const withEntries = opts.entries !== false
   const supabase = await createClient()
-  // Wave 1. The admin flag is read with the same session as the user (false when signed out); a
-  // missing user still stops here before any data is read.
+  // The admin flag is read with the same session as the user (false when signed out); a missing user
+  // still stops here before any data is read.
   const [
     {
       data: { user },
@@ -157,261 +182,10 @@ export async function getJournalDayExtras(
     { data: adminFlag },
   ] = await Promise.all([supabase.auth.getUser(), supabase.rpc('is_admin')])
   if (!user) return { error: 'auth' }
-
-  const isAdmin = adminFlag === true
-  const win = utcWindow(day)
-
-  type VoiceRow = Omit<JournalDayVoice, 'audioKey' | 'author' | 'mine' | 'hasEntry'> & { audio_r2_key: string | null; user_id: string }
-  type InspirationRow = Omit<InspirationPhoto, 'conceptTitle' | 'author'> & { author_id: string }
-
-  // Wave 2: the day's own rows.
-  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes, inspirationsRes] = await Promise.all([
-    withEntries
-      ? supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500)
-      : Promise.resolve({ data: [] as Array<Tables<'journal_entry'>>, error: null }),
-    withEntries
-      ? supabase
-          .from('voice_note')
-          .select('id, subject, created_at, oeuvre_id, concept_id, process_id, condition_report_id, transcript, audio_r2_key, duration_ms, user_id')
-          .gte('created_at', win.from)
-          .lt('created_at', win.to)
-          .order('created_at', { ascending: true })
-          .limit(200)
-      : Promise.resolve({ data: [] as VoiceRow[], error: null }),
-    // Admin only by RLS (oeuvre_versions_admin_select): team members get no rows. Ids only: the
-    // snapshots come once, below, with the later versions of the changed works.
-    isAdmin && withFolds
-      ? supabase
-          .from('oeuvre_versions')
-          .select('oeuvre_id, changed_at')
-          .gte('changed_at', win.from)
-          .lt('changed_at', win.to)
-          .order('changed_at', { ascending: true })
-          .limit(1000)
-      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string }>, error: null }),
-    withFolds
-      ? supabase
-          .from('kaizen_item')
-          .select('id, created_at, title, body, author_id, done_at, work_ids')
-          .eq('section', 'creation')
-          .gte('created_at', win.from)
-          .lt('created_at', win.to)
-          .order('created_at', { ascending: true })
-          .limit(200)
-      : Promise.resolve({
-          data: [] as Array<Pick<Tables<'kaizen_item'>, 'id' | 'created_at' | 'title' | 'body' | 'author_id' | 'done_at' | 'work_ids'>>,
-          error: null,
-        }),
-    withEntries
-      ? supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500)
-      : Promise.resolve({ data: [] as Array<{ id: string; titre: string | null }>, error: null }),
-    withEntries && INSPIRATION_SQL_LIVE
-      ? supabase
-          .from('inspiration_photo')
-          .select('id, created_at, day, image_key, caption, oeuvre_id, concept_id, author_id')
-          .eq('day', day)
-          .order('created_at', { ascending: true })
-          .limit(100)
-      : Promise.resolve({ data: [] as InspirationRow[], error: null }),
-  ])
-  if (entriesRes.error) {
-    await logError('journal day entries failed', entriesRes.error, { source: 'journal.getJournalDayExtras' })
-    return { error: entriesRes.error.message }
-  }
-
-  const rows = entriesRes.data ?? []
-  const entryIds = rows.map((r) => r.id)
-  type LinkRow = {
-    id: number
-    entry_id: number
-    oeuvre_id: number | null
-    concept_id: string | null
-    validated_at: string | null
-    proposed_by: string
-    rejected_at?: string | null
-  }
-  const conceptTitles = new Map((conceptsRes.data ?? []).map((c) => [c.id, c.titre as string | null]))
-
-  // Field changes: each version row is the work BEFORE a save; the state after is the next
-  // version row of that work, or the current row.
-  const versions = (versionsRes.data ?? []).filter((v) => calendarDayInParisFromIso(v.changed_at) === day)
-  const changedIds = [...new Set(versions.map((v) => v.oeuvre_id))].slice(0, 100)
-
-  const creationRows = (creationRes.data ?? []).filter((k) => calendarDayInParisFromIso(k.created_at) === day)
-  const voiceRows = ((voicesRes.data ?? []) as VoiceRow[]).filter((v) => calendarDayInParisFromIso(v.created_at) === day)
-  const inspirationRows = (inspirationsRes.data ?? []) as InspirationRow[]
-  const authorIds = [
-    ...new Set(
-      [
-        ...rows.map((r) => r.author_id),
-        ...creationRows.map((k) => k.author_id),
-        ...voiceRows.map((v) => v.user_id),
-        ...inspirationRows.map((p) => p.author_id),
-      ].filter(
-        (x): x is string => !!x,
-      ),
-    ),
-  ]
-  const voiceIds = [...new Set(rows.map((r) => r.voice_note_id).filter((v): v is string => !!v))]
-  // Day voice notes not carried by today's entries: their transcript entry may sit on another day.
-  const carriedHere = new Set(voiceIds)
-  const voiceIdsToCheck = voiceRows.map((v) => v.id).filter((id) => !carriedHere.has(id))
-
-  // Wave 3: what the day's rows point to, all at once (links → works is the only chain left).
-  const linksAndWorks = (async () => {
-    const links = entryIds.length
-      ? (((await supabase.from('journal_entry_link').select('*').in('entry_id', entryIds)).data ?? []) as LinkRow[])
-      : []
-    const workIds = [...new Set([...links.filter((l) => l.oeuvre_id != null).map((l) => l.oeuvre_id as number), ...changedIds])]
-    const works = workIds.length
-      ? (((await supabase.from('Oeuvres').select('*').in('OeuvreID', workIds)).data ?? []) as Array<Record<string, unknown>>)
-      : []
-    return { links, works }
-  })()
-  const [{ links: linkRows, works }, laterRes, contactsRes, audioRes, carriedRes] = await Promise.all([
-    linksAndWorks,
-    changedIds.length
-      ? supabase
-          .from('oeuvre_versions')
-          .select('oeuvre_id, changed_at, snapshot')
-          .in('oeuvre_id', changedIds)
-          .gte('changed_at', win.from)
-          .order('changed_at', { ascending: true })
-          .limit(2000)
-      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string; snapshot: unknown }> }),
-    // `select('*')`: the typed select parser rejects the accented `Prénom` column name.
-    authorIds.length ? supabase.from('Contact').select('*').in('auth_user_id', authorIds) : Promise.resolve({ data: [] }),
-    voiceIds.length
-      ? supabase
-          .from('voice_note')
-          .select('id, audio_r2_key, subject, oeuvre_id, concept_id, process_id, condition_report_id')
-          .in('id', voiceIds)
-      : Promise.resolve({ data: [] as Array<VoiceNoteLinks & { id: string; audio_r2_key: string | null }> }),
-    voiceIdsToCheck.length
-      ? supabase.from('journal_entry').select('voice_note_id').in('voice_note_id', voiceIdsToCheck)
-      : Promise.resolve({ data: [] as Array<{ voice_note_id: string | null }> }),
-  ])
-
-  const titles = new Map<number, string | null>()
-  const covers = new Map<number, string | null>()
-  const current = new Map<number, Record<string, unknown>>()
-  for (const w of works) {
-    titles.set(w.OeuvreID as number, (w.Titre as string | null) ?? null)
-    covers.set(w.OeuvreID as number, (w.txtImageNameLink as string | null) ?? null)
-    current.set(w.OeuvreID as number, w)
-  }
-
-  const changes: JournalDayChange[] = []
-  if (changedIds.length) {
-    const later = laterRes.data
-    const byWork = new Map<number, Array<{ changed_at: string; snapshot: Record<string, unknown> }>>()
-    for (const v of (later ?? []) as Array<{ oeuvre_id: number; changed_at: string; snapshot: Record<string, unknown> }>) {
-      const list = byWork.get(v.oeuvre_id) ?? []
-      list.push(v)
-      byWork.set(v.oeuvre_id, list)
-    }
-    for (const oid of changedIds) {
-      const list = byWork.get(oid) ?? []
-      const fields = new Set<string>()
-      list.forEach((v, i) => {
-        if (calendarDayInParisFromIso(v.changed_at) !== day) return
-        const after = list[i + 1]?.snapshot ?? current.get(oid) ?? null
-        for (const c of changedVersionFields(v.snapshot, after)) fields.add(c.field)
-      })
-      if (fields.size) changes.push({ oeuvre_id: oid, title: titles.get(oid) ?? null, fields: [...fields] })
-    }
-  }
-
-  const names: Record<string, string> = {}
-  for (const c of (contactsRes.data ?? []) as { auth_user_id: string | null; Prénom: string | null; Nom: string | null }[]) {
-    if (c.auth_user_id) names[c.auth_user_id] = [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || '—'
-  }
-
-  const audioKeys = new Map<string, string | null>()
-  const voiceLinks = new Map<string, VoiceNoteLinks>()
-  for (const v of audioRes.data ?? []) {
-    audioKeys.set(v.id, v.audio_r2_key)
-    voiceLinks.set(v.id, {
-      subject: v.subject,
-      oeuvre_id: v.oeuvre_id,
-      concept_id: v.concept_id,
-      process_id: v.process_id,
-      condition_report_id: v.condition_report_id,
-    })
-  }
-
-  // A correction (`corrects_id`) is shown in place of its original, never as a card of its own.
-  const latestFix = latestCorrections(rows)
-  const entries: JournalDayEntry[] = rows
-    .filter((r) => r.corrects_id == null && (!r.hidden_at || isAdmin))
-    .map((r) => ({
-      id: r.id,
-      created_at: r.created_at,
-      event_on: r.event_on,
-      event_precision: r.event_precision,
-      kind: r.kind,
-      body: latestFix.get(r.id) ?? r.body,
-      provenance: r.provenance,
-      verification: latestFix.has(r.id) ? 'verified' : r.verification,
-      visibility: r.visibility,
-      original: latestFix.has(r.id) ? r.body : null,
-      author: (r.author_id && names[r.author_id]) || '—',
-      mine: r.author_id === user.id,
-      hidden: !!r.hidden_at,
-      voiceNoteId: r.voice_note_id ?? null,
-      audioKey: r.voice_note_id ? audioKeys.get(r.voice_note_id) ?? null : null,
-      voiceLinks: r.voice_note_id ? voiceLinks.get(r.voice_note_id) ?? null : null,
-      engine: r.engine ?? null,
-      works: linkRows
-        .filter((l) => l.entry_id === r.id && l.oeuvre_id != null && l.validated_at)
-        .map((l) => ({ id: l.oeuvre_id as number, title: titles.get(l.oeuvre_id as number) ?? null })),
-      concepts: linkRows
-        .filter((l) => l.entry_id === r.id && l.concept_id != null && l.validated_at)
-        .map((l) => ({ id: l.concept_id as string, title: conceptTitles.get(l.concept_id as string) ?? null })),
-      proposals: linkRows
-        .filter((l) => l.entry_id === r.id && l.proposed_by === 'ai' && !l.validated_at && !l.rejected_at)
-        .map((l) => ({
-          linkId: l.id,
-          workId: l.oeuvre_id,
-          conceptId: l.concept_id,
-          title: l.oeuvre_id != null ? titles.get(l.oeuvre_id) ?? null : conceptTitles.get(l.concept_id as string) ?? null,
-          thumb: l.oeuvre_id != null ? covers.get(l.oeuvre_id) ?? null : null,
-        })),
-    }))
-
-  const withEntry = new Set([
-    ...carriedHere,
-    ...(carriedRes.data ?? []).map((r) => r.voice_note_id).filter((v): v is string => !!v),
-  ])
-  const voices: JournalDayVoice[] = voiceRows.map(({ audio_r2_key, user_id, ...v }) => ({
-    ...v,
-    audioKey: audio_r2_key,
-    author: names[user_id] || '—',
-    mine: user_id === user.id,
-    hasEntry: withEntry.has(v.id),
-  }))
-
-  const creation: JournalDayCreation[] = creationRows.map((k) => ({
-    id: k.id,
-    created_at: k.created_at,
-    title: k.title,
-    body: k.body ?? '',
-    author: (k.author_id && names[k.author_id]) || '—',
-    done: !!k.done_at,
-    works: (k.work_ids ?? []) as number[],
-  }))
-
-  const conceptOptions = (conceptsRes.data ?? [])
-    .filter((c) => (c.titre ?? '').trim())
-    .map((c) => ({ id: c.id, title: (c.titre as string).trim() }))
-
-  const inspirations: InspirationPhoto[] = inspirationRows.map(({ author_id, ...p }) => ({
-    ...p,
-    conceptTitle: p.concept_id ? conceptTitles.get(p.concept_id) ?? null : null,
-    author: names[author_id] || '—',
-  }))
-
-  return { isAdmin, entries, changes, voices, creation, conceptOptions, inspirations }
+  // One day = a run of one day: the same read as the stream (lib/journal/day-read.ts).
+  const res = await readJournalDays(supabase, { userId: user.id, isAdmin: adminFlag === true }, day, day, opts)
+  if ('error' in res) return res
+  return res.get(day) as JournalDayExtras
 }
 
 /** The two folds of a day (« Attributs d'œuvres modifiés », « Création (Kaizen) »), read when one opens on « Aujourd'hui ». */
@@ -595,11 +369,17 @@ export async function setJournalEntryVerified(id: number, verified: boolean): Pr
   if (!user) return { error: 'auth' }
   const { data: isAdmin } = await supabase.rpc('is_admin')
   if (isAdmin !== true) return { error: 'admin_only' }
-  const { error } = await supabase
+  // A voice-note placeholder is no text to confirm (it would stop the PC from transcribing the note).
+  const { data: row } = await supabase.from('journal_entry').select('body').eq('id', id).maybeSingle()
+  if (!row) return { error: 'not_found' }
+  if (verified && isPlaceholderText(row.body)) return { error: 'placeholder' }
+  const { data: changed, error } = await supabase
     .from('journal_entry')
     .update({ verification: verified ? 'verified' : 'unverified' })
     .eq('id', id)
+    .select('id')
   if (error) return { error: error.message }
+  if (!changed?.length) return { error: 'not_found' }
   revalidatePath('/atelier/journal')
   return { ok: true }
 }

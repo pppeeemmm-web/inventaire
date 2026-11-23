@@ -9,7 +9,15 @@ journal entry (kind voice, provenance voice, unverified, engine named); the dict
 note is never touched; a note already transcribed by the same engine is skipped.
 An empty result (short clip: the voice filter cut everything) is retried once without the filter. Still
 empty -> the phone's dictation text, when there is one, becomes the entry (engine « <engine> → dictée
-téléphone »), so the note leaves the backlog instead of waiting forever (Pem 2026-11-18).
+téléphone »), so the note leaves the backlog instead of waiting forever (Pem 2026-11-18). No dictation
+either -> an entry « (rien entendu) » (engine « <engine> → rien entendu », no AI link proposals): the
+Journal shows it as « Rien entendu » with « Écrire ce qui a été dit », and the note stops being « to do »
+(Pem 2026-11-22: one note stayed « 1 waiting » forever).
+Since 2026-11-23 the phone writes the note's Journal entry at once (its live words, or « (transcription à
+venir) »). The transcript is then ADDED as a correction of that entry (corrects_id; unverified, engine named;
+the phone's words stay as its original). A note Pem already checked or corrected is never touched: a machine
+never writes over a person. Nothing heard on a note that has phone words: the words stand; a correction with the same words (engine
+« … → rien entendu (mots du téléphone gardés) ») marks the note done in the database.
 
 --write needs supabase/sql/journal_entry_source.sql applied (voice_note_id / engine columns).
 Options: --model large-v3 (folder under the models dir)  --words words.txt (names, art terms)
@@ -26,6 +34,10 @@ import time
 from common import MODELS_DIR, OUT_ROOT, Supabase, add_cuda_dll_dirs, download, load_env, paris_date, quote_key
 
 SOURCE_COLUMNS = ["voice_note_id", "engine"]
+# Must match lib/journal/nothing-heard.ts (the Journal draws such an entry as « Rien entendu »).
+NOTHING_HEARD = "(rien entendu)"
+NOTHING_HEARD_ENGINE = "rien entendu"
+WAITING_TRANSCRIPT = "(transcription à venir)"  # must match lib/journal/nothing-heard.ts
 # Replacement character + C0 controls except newline (owner 2026-11-13: "a few unusable characters").
 _BAD_CHARS = re.compile("[�\x00-\x09\x0b-\x1f\x7f]")
 
@@ -55,14 +67,27 @@ def main() -> None:
     )
     if args.only:
         query += f"&id=eq.{args.only}"
-    notes = sb.select("voice_note", query)
+    notes = sb.select_all("voice_note", query)
 
     has_source = sb.has_columns("journal_entry", SOURCE_COLUMNS)
     done: set[str] = set()
+    human_notes: set[str] = set()
     if has_source:
         # « like engine* » also counts the phone-dictation fallback written under this engine's name.
-        rows = sb.select("journal_entry", f"select=voice_note_id&engine=like.{engine.replace(' ', '%20')}*&voice_note_id=not.is.null")
+        rows = sb.select_all("journal_entry", f"select=voice_note_id&engine=like.{engine.replace(' ', '%20')}*&voice_note_id=not.is.null&order=id.asc")
         done = {r["voice_note_id"] for r in rows}
+        # A person already checked or corrected the note's entry: never written over by a machine. The PC
+        # still transcribes it, and keeps its text as a PROPOSAL beside Pem's (a hidden correction, engine
+        # « … → proposition »): Pem takes it or keeps his words (Pem 2026-11-23: « show the suggestion and I'll decide »).
+        human = sb.select_all(
+            "journal_entry",
+            "select=voice_note_id,corrects_id,verification,provenance&voice_note_id=not.is.null&verification=eq.verified&order=id.asc",
+        )
+        human_notes = {r["voice_note_id"] for r in human}
+    roots: dict[str, dict] = {}
+    if has_source:
+        for r in sb.select_all("journal_entry", "select=id,voice_note_id,kind,event_on,event_precision,body,corrects_id&voice_note_id=not.is.null&corrects_id=is.null&order=created_at.asc"):
+            roots.setdefault(r["voice_note_id"], r)
 
     todo = [n for n in notes if n["id"] not in done]
     total_s = sum((n.get("duration_ms") or 0) for n in todo) / 1000
@@ -140,29 +165,69 @@ def main() -> None:
         (out_dir / f"{n['id']}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  {result['event_on']}  {info.language}  {result['seconds_audio']} s audio in {result['seconds_taken']} s  -> {len(text)} chars")
 
+        root = roots.get(n["id"])
+        now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         entry_engine = engine
+        if root and n["id"] in human_notes:
+            # Pem's words stand: the PC text is kept as a proposal (hidden correction), never shown in place.
+            if args.write:
+                fresh = sb.select("journal_entry", f"select=event_on,event_precision&id=eq.{root['id']}")
+                day = fresh[0] if fresh else root
+                entry = sb.insert(
+                    "journal_entry",
+                    {
+                        "kind": root["kind"],
+                        "body": text or NOTHING_HEARD,
+                        "provenance": "voice",
+                        "verification": "unverified",
+                        "event_on": day["event_on"],
+                        "event_precision": day.get("event_precision") or "day",
+                        "author_id": n.get("user_id"),
+                        "voice_note_id": n["id"],
+                        "engine": f"{engine} → proposition",
+                        "corrects_id": root["id"],
+                        "hidden_at": now_iso,
+                        "ai_links_at": now_iso,
+                    },
+                )
+                print(f"    proposal {entry['id']} kept beside Pem's words (entry {root['id']})")
+            continue
         if not text:
             phone = clean_text(n.get("transcript") or "")
-            if not phone:
-                print("    empty transcript, no phone dictation either — nothing written")
-                continue
-            text, entry_engine = phone, f"{engine} → dictée téléphone"
-            print(f"    empty transcript — the phone's dictation is used ({len(text)} chars)")
+            if root and root.get("body", "").strip() != WAITING_TRANSCRIPT:
+                # The phone's words stand: a correction with the same words, engine « … → rien entendu (mots du
+                # téléphone gardés) », marks the note as done in the database (readers show no « original »).
+                text, entry_engine = root["body"], f"{engine} → {NOTHING_HEARD_ENGINE} (mots du téléphone gardés)"
+                print("    empty transcript — the phone's words are kept; the note is marked done")
+            elif phone and not root:
+                text, entry_engine = phone, f"{engine} → dictée téléphone"
+                print(f"    empty transcript — the phone's dictation is used ({len(text)} chars)")
+            else:
+                text, entry_engine = NOTHING_HEARD, f"{engine} → {NOTHING_HEARD_ENGINE}"
+                print("    empty transcript, no phone words either — written as « rien entendu » for Pem to fill")
         if args.write:
-            entry = sb.insert(
-                "journal_entry",
-                {
-                    "kind": "voice",
-                    "body": text,
-                    "provenance": "voice",
-                    "verification": "unverified",
-                    "event_on": result["event_on"],
-                    "author_id": n.get("user_id"),
-                    "voice_note_id": n["id"],
-                    "engine": entry_engine,
-                },
-            )
-            print(f"    journal entry {entry['id']} added")
+            row = {
+                "kind": root["kind"] if root else "voice",
+                "body": text,
+                "provenance": "voice",
+                "verification": "unverified",
+                "event_on": root["event_on"] if root else result["event_on"],
+                "author_id": n.get("user_id"),
+                "voice_note_id": n["id"],
+                "engine": entry_engine,
+            }
+            if root:
+                # A correction of the phone's entry: same day — read again now, the entry may have been moved
+                # meanwhile (« Placer sur un autre jour ») — and no AI link proposals of its own.
+                fresh = sb.select("journal_entry", f"select=event_on,event_precision&id=eq.{root['id']}")
+                if fresh:
+                    row["event_on"] = fresh[0]["event_on"]
+                    root["event_precision"] = fresh[0].get("event_precision") or "day"
+                row.update({"corrects_id": root["id"], "event_precision": root.get("event_precision") or "day", "ai_links_at": now_iso})
+            elif text == NOTHING_HEARD:
+                row["ai_links_at"] = now_iso
+            entry = sb.insert("journal_entry", row)
+            print(f"    journal entry {entry['id']} added" + (f" (correction of {root['id']})" if root else ""))
 
     print(f"\nLocal files: {out_dir}")
     if args.write:

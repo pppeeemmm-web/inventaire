@@ -15,6 +15,7 @@ import { WorkChip } from '@/components/atelier/WorkChip'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { INSPIRATION_MAX_EDGE, INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 import { addInspirationPhoto } from '@/app/atelier/capture/inspiration-actions'
+import { enqueueCapture, isNetworkFailure, newCaptureId } from '@/lib/mobile/capture-queue'
 import { listNoteRouteTargets } from '@/app/atelier/(portal)/notes/actions'
 
 export function CaptureInspirationClient() {
@@ -22,6 +23,7 @@ export function CaptureInspirationClient() {
   const narrow = useMediaQuery('(max-width: 767px)')
   const [busy, startBusy] = useTransition()
   const [file, setFile] = useState<File | null>(null)
+  const [clientId, setClientId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [caption, setCaption] = useState('')
   const [workNo, setWorkNo] = useState('')
@@ -50,6 +52,7 @@ export function CaptureInspirationClient() {
     e.target.value = ''
     if (!f || !f.type.startsWith('image/')) return
     setFile(f)
+    setClientId(newCaptureId())
     setPreview(URL.createObjectURL(f))
   }
 
@@ -61,12 +64,40 @@ export function CaptureInspirationClient() {
     }
     startBusy(async () => {
       const small = await downscaleImageFileForMobileIfNeeded(file, narrow, INSPIRATION_MAX_EDGE)
+      // One-time id (capture queue): a resend after a lost answer never saves the photo twice.
+      const fields: Record<string, string> = {
+        caption,
+        client_id: clientId,
+        ...(workId != null ? { oeuvre_id: String(workId) } : {}),
+        ...(conceptId ? { concept_id: conceptId } : {}),
+      }
+      // No network: the photo stays on the phone and is sent when the network returns.
+      const keepOnPhone = async () => {
+        // Taken now with no network: it keeps today's date when it is sent later (an online pick lands on today,
+        // as before; only a capture that waited carries its day).
+        await enqueueCapture({ id: clientId, kind: 'photo', fields: { ...fields, taken_at: new Date().toISOString() }, blob: small, blobName: small instanceof File ? small.name : 'photo.jpg', createdAt: file.lastModified || Date.now() })
+        toast.success(t('cq_kept'))
+        window.location.href = '/hub'
+      }
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        await keepOnPhone()
+        return
+      }
       const fd = new FormData()
       fd.set('photo', small)
-      fd.set('caption', caption)
-      if (workId != null) fd.set('oeuvre_id', String(workId))
-      if (conceptId) fd.set('concept_id', conceptId)
-      const res = await addInspirationPhoto(fd)
+      for (const [k, v] of Object.entries(fields)) fd.set(k, v)
+      let res: Awaited<ReturnType<typeof addInspirationPhoto>>
+      try {
+        res = await addInspirationPhoto(fd)
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- network → kept on the phone; otherwise a toast
+      } catch (err) {
+        if (isNetworkFailure(err)) {
+          await keepOnPhone()
+          return
+        }
+        toast.error(t('je_err_fmt').replace('{msg}', err instanceof Error ? err.message : String(err)))
+        return
+      }
       if ('error' in res) {
         toast.error(t('je_err_fmt').replace('{msg}', res.error))
         return

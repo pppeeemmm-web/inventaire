@@ -63,21 +63,39 @@ export async function countEmbeddingBacklog(): Promise<number | null> {
   return count ?? 0
 }
 
-/** Voice notes with audio and no transcript entry yet (Overview "Local jobs" card). */
+/**
+ * Voice notes with audio the PC has not transcribed yet (Overview "Local jobs" card, Bureau IA, sidebar
+ * badge). Same rule as `scripts/transcribe/voice_batch.py`: done when an entry of the note was written by
+ * the PC (engine `faster-whisper…`: a transcript, nothing heard, or a proposal beside Pem's words). Since
+ * 2026-11-23 every note has its phone entry at once, so « has an entry » no longer means « transcribed ».
+ */
 export async function countVoiceTranscriptBacklog(): Promise<number | null> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return null
 
+  // Paged: each note now carries 2–3 entry rows, and one read stops at 1000 rows (flow review 2026-11-23).
+  const page = 1000
+  async function all<T>(read: (lo: number, hi: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
+    const out: T[] = []
+    for (let lo = 0; ; lo += page) {
+      const { data, error } = await read(lo, lo + page - 1)
+      if (error) return { error }
+      out.push(...(data ?? []))
+      if ((data ?? []).length < page) return { data: out }
+    }
+  }
   const [notes, done] = await Promise.all([
-    supabase.from('voice_note').select('id').not('audio_r2_key', 'is', null),
-    supabase.from('journal_entry').select('voice_note_id').not('voice_note_id', 'is', null),
+    all<{ id: string }>((lo, hi) => supabase.from('voice_note').select('id').not('audio_r2_key', 'is', null).order('id').range(lo, hi)),
+    all<{ voice_note_id: string | null }>((lo, hi) =>
+      supabase.from('journal_entry').select('voice_note_id').not('voice_note_id', 'is', null).like('engine', 'faster-whisper%').order('id').range(lo, hi),
+    ),
   ])
-  if (notes.error || done.error) {
-    console.error('[voice-backlog]', notes.error?.message ?? done.error?.message)
+  if ('error' in notes || 'error' in done) {
+    console.error('[voice-backlog]', ('error' in notes ? notes.error : null)?.message ?? ('error' in done ? done.error : null)?.message)
     return null
   }
-  const transcribed = new Set((done.data ?? []).map(r => r.voice_note_id))
-  return (notes.data ?? []).filter(n => !transcribed.has(n.id)).length
+  const transcribed = new Set(done.data.map((r) => r.voice_note_id))
+  return notes.data.filter((n) => !transcribed.has(n.id)).length
 }
 
 /** When the PC archive (`npm run archive`) last ran — `system_log` ARCHIVE_RUN row stamped by the script. */

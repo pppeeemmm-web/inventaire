@@ -1,5 +1,6 @@
 'use server'
 
+import { isPlaceholderText } from '@/lib/journal/nothing-heard'
 import { latestCorrections } from '@/lib/journal-corrections'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -183,6 +184,8 @@ async function hydrateSemanticHits(
         seenRoots.add(root)
         entryId = root
         fixed = fixedLabel.get(root)
+        // A voice-note placeholder (« rien entendu », « transcription à venir »): not a search hit.
+        if (isPlaceholderText(fixed ?? (ent.display_label ?? ent.title ?? ''))) return []
       }
       return [{
         nodeId,

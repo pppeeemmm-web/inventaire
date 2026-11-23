@@ -5,6 +5,7 @@
 // (seed = the Paris date). Data: journal_entry, Oeuvres, tblrelations, nodes (pgvector).
 // Dismissals per person: supabase/sql/see_again_dismissed.sql.
 
+import { isPlaceholderText } from '@/lib/journal/nothing-heard'
 import { latestCorrections } from '@/lib/journal-corrections'
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -97,6 +98,8 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
   const entries = (entriesRes.data ?? [])
     .filter((e) => e.corrects_id == null && !dismissed.has(`then:${e.id}:`))
     .map((e) => ({ ...e, body: fixes.get(e.id) ?? e.body }))
+    // A voice-note placeholder (« rien entendu », « transcription à venir ») is no memory.
+    .filter((e) => !isPlaceholderText(e.body))
   const todayDoy = dayOfYear(today)
   const sameWeek = entries.filter((e) => {
     if (Number(e.event_on.slice(0, 4)) >= year) return false

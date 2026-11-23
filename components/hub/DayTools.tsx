@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { VoiceNoteLinkPanel } from '@/components/atelier/journal/VoiceNoteLinkPanel'
 import { EntryCorrectAction, canCorrectEntry } from '@/components/atelier/journal/EntryCorrection'
+import { isNothingHeard } from '@/lib/journal/nothing-heard'
 import { deleteVoiceNote } from '@/app/atelier/(portal)/notes/actions'
 import {
   setJournalEntryHidden,
@@ -35,7 +36,8 @@ export function DayEntryTools({ entry, voice, isAdmin }: { entry?: JournalDayEnt
     ? { subject: voice.subject, oeuvre_id: voice.oeuvre_id, concept_id: voice.concept_id, process_id: voice.process_id, condition_report_id: voice.condition_report_id }
     : entry?.voiceLinks ?? null
   // The author or an admin for a note no entry carries yet; an admin once a transcript entry carries it.
-  const canDelete = voice ? voice.mine || isAdmin : isAdmin && !!entry && !entry.hidden
+  // An entry's note: an admin, or its author while only their own words are on it (no correction shown).
+  const canDelete = voice ? voice.mine || isAdmin : !!entry && !entry.hidden && (isAdmin || (entry.mine && !entry.original && !entry.pcTouched && !entry.engine?.startsWith('faster-whisper')))
 
   function run(fn: () => Promise<{ ok: true } | { error: string }>, done?: string) {
     startTransition(async () => {
@@ -58,7 +60,7 @@ export function DayEntryTools({ entry, voice, isAdmin }: { entry?: JournalDayEnt
             {t(linkOpen ? 'je_voice_link_close' : 'je_voice_link')}
           </button>
         ) : null}
-        {entry && isAdmin && canCorrectEntry(entry) ? <EntryCorrectAction entry={entry} onDone={() => router.refresh()} /> : null}
+        {entry && isAdmin && canCorrectEntry(entry) ? <EntryCorrectAction entry={entry} onDone={() => router.refresh()} startEmpty={isNothingHeard(entry)} label={isNothingHeard(entry) ? t('js_write_said') : undefined} /> : null}
         {entry && isAdmin ? (
           <button type="button" className="btn ghost sm" disabled={pending} onClick={() => run(() => setJournalEntryHidden(entry.id, !entry.hidden))} style={btn}>
             {t(entry.hidden ? 'je_unhide' : 'je_hide')}

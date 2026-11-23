@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
 import { EntryCorrectAction, canCorrectEntry } from '@/components/atelier/journal/EntryCorrection'
+import { isNothingHeard, isWaitingTranscript } from '@/lib/journal/nothing-heard'
 import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOriginal'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { WorkChip } from '@/components/atelier/WorkChip'
@@ -541,7 +542,7 @@ export function JournalDayExtras({
                 {e.event_precision === 'month' ? <span>{t('je_roughly_month')}</span> : null}
                 {e.event_precision === 'year' ? <span>{t('je_roughly_year')}</span> : null}
                 {e.visibility === 'private' ? <span>{t('je_private_label')}</span> : null}
-                {e.original ? (
+                {e.original && e.verification !== 'unverified' ? (
                   <span data-testid={`journal-entry-corrected-${e.id}`}>{t('je_fix_corrected')} · {t('je_verified_label')}</span>
                 ) : e.engine ? (
                   <span data-testid={`journal-entry-transcript-${e.id}`}>
@@ -561,7 +562,7 @@ export function JournalDayExtras({
               {e.audioKey ? (
                 <audio controls preload="none" src={imageUrl(e.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} data-testid={`journal-entry-audio-${e.id}`} />
               ) : null}
-              <EntryText text={e.body} />
+              {isNothingHeard(e) ? <p style={{ margin: '4px 0', color: 'var(--tx3)' }}>{t('js_nothing_heard')}</p> : isWaitingTranscript(e) ? <p style={{ margin: '4px 0', color: 'var(--tx3)' }}>{t('js_waiting')}</p> : <EntryText text={e.body} />}
               <CorrectedOriginal original={e.original} />
               {e.concepts.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
@@ -612,7 +613,7 @@ export function JournalDayExtras({
               ) : null}
               {data?.isAdmin ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {canCorrectEntry(e) ? <EntryCorrectAction key={`${e.id}:${e.body.length}`} entry={e} onDone={load} /> : null}
+                  {canCorrectEntry(e) ? <EntryCorrectAction key={`${e.id}:${e.body.length}`} entry={e} onDone={load} startEmpty={isNothingHeard(e)} label={isNothingHeard(e) ? t('js_write_said') : undefined} /> : null}
                   <button
                     type="button"
                     className="btn ghost sm"

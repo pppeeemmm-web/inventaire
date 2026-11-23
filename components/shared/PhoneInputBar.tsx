@@ -82,7 +82,8 @@ function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choic
   )
 }
 
-export function PhoneInputBar({ onVoice, workHref, writeDay }: { onVoice: () => void; workHref: string; writeDay?: string }) {
+/** `stream` (the Journal stream, design 2026-11-22): ✍️ · 📷 · 🎤 large in the middle · 🖼️ — same doors, ranked for the thumb. */
+export function PhoneInputBar({ onVoice, workHref, writeDay, stream = false }: { onVoice: () => void; workHref: string; writeDay?: string; stream?: boolean }) {
   const { t } = useI18n()
   const [docOpen, setDocOpen] = useState(false)
   const [workOpen, setWorkOpen] = useState(false)
@@ -138,13 +139,28 @@ export function PhoneInputBar({ onVoice, workHref, writeDay }: { onVoice: () => 
         }}
       >
         <button type="button" onClick={() => setWriting('')} aria-expanded={writing != null} data-testid="phone-bar-write" style={btn}><span aria-hidden="true" style={icon}>✍️</span>{t('today_bar_write')}</button>
-        <button type="button" onClick={onVoice} data-testid="phone-bar-voice" style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
+        {stream ? (
+          <>
+            <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📷</span>{t('js_bar_photo')}</button>
+            <button
+              type="button"
+              onClick={onVoice}
+              data-testid="phone-bar-voice"
+              aria-label={t('today_bar_voice')}
+              style={{ ...btn, alignSelf: 'start', justifySelf: 'center', width: 68, height: 68, minHeight: 68, marginTop: -22, borderRadius: '50%', background: 'var(--ac)', color: 'var(--bg0)', boxShadow: '0 4px 16px rgba(0,0,0,.4)', fontSize: 26 }}
+            >
+              <span aria-hidden="true">🎙️</span>
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={onVoice} data-testid="phone-bar-voice" style={btn}><span aria-hidden="true" style={icon}>🎙️</span>{t('today_bar_voice')}</button>
+        )}
         {workSheet ? (
           <button type="button" onClick={() => setWorkOpen(true)} aria-expanded={workOpen} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</button>
         ) : (
           <Link href={workHref} data-testid="phone-bar-work" style={btn}><span aria-hidden="true" style={icon}>🖼️</span>{t('today_bar_work')}</Link>
         )}
-        <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>
+        {stream ? null : <button type="button" onClick={() => setDocOpen(true)} aria-expanded={docOpen} data-testid="phone-bar-doc" style={btn}><span aria-hidden="true" style={icon}>📄</span>{t('today_bar_doc')}</button>}
       </nav>
 
       {docOpen ? (
