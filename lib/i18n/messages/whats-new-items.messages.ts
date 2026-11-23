@@ -7,6 +7,12 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.105 (2026-11-23) — reverse pricing (admin).
+  wn_reverse_pricing_t: { fr: 'Prix inverse sur la fiche d’une œuvre', en: 'Reverse pricing on a work card' },
+  wn_reverse_pricing_d: {
+    fr: 'Dans la fiche d’une œuvre, « Prix inverse » (replié) part du net que vous voulez garder et donne le prix de liste par canal (atelier, galerie avec sa commission, foire, en ligne, mécène), le net gardé et la remise maximale de chacun, et le prix de vente en gros. Calcul seulement : rien n’est enregistré. Le taux de cotisations est à confirmer avec le comptable.',
+    en: 'On a work card, « Reverse price » (folded) starts from the net you want to keep and gives the list price per channel (studio, gallery with its commission, fair, online, patron), the net kept and the largest discount for each, and the wholesale price. Calculation only: nothing is saved. The contributions rate is to be confirmed with the accountant.',
+  },
   // 3.1.105 (2026-11-23) — the Overview at a glance.
   wn_overview_glance_t: { fr: 'Vue d’ensemble : tout d’un coup d’œil', en: 'Overview: everything at a glance' },
   wn_overview_glance_d: {

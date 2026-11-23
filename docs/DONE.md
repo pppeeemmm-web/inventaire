@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Reverse pricing, first slice (Pem « Ok for the draft », answers in [ReversePricing](./design/2026-11-23/ReversePricing.md) §9)
+
+- `254e7d2`: folded admin-only « Prix inverse » on the work card — from the net wanted to the list price per channel, net kept, max discount, wholesale; one list price by default; 10 € steps under 5 000 €. Read only (its two cost reads start on open). Worked example run through the code; checked on the copy (net 1 000 € → studio floor 1 267 €, gallery 2 112 €, list 2 120 €). Open: the contributions rate to confirm with the accountant; the running-cost rate sums expenses in the app (≤ 1 000 rows, refuses above) — a database sum later.
+
 ## 2026-11-23 — Overview « coup d'œil » (Pem « Go, go, go! », design [OverviewGlance](./design/2026-11-23/OverviewGlance.md))
 
 - `1f867fe`: each signal once (card grid, one widens at a time), Fil compact with its sections and « refroidies », a month calendar with multi-day events drawn on each day (existing `suivi_process` select + `date_debut`; Pipeline's end-date rules respected), one source per number (deadlines, reminders, events), phone rows kept. No SQL. Flow review's 10 points fixed before landing; checked on the copy at 1280 px, 375 px (no sideways scroll, taps ≥ 44 px) and as a team member (admin-only cards hidden). What's new 3.1.105. Left: the desk tally counts the empty Fil as one more « OK » than the phone (6 vs 5).

@@ -123,6 +123,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'reverse_pricing', day: '2026-11-23', spot: 'inventory', admin: true },
   { id: 'overview_glance', day: '2026-11-23', spot: 'overview' },
   { id: 'journal_at_person', day: '2026-11-23', spot: 'journal' },
   { id: 'journal_desk_capture', day: '2026-11-23', spot: 'journal', admin: true },

@@ -122,7 +122,7 @@ export function WorkReversePriceBlock({
                   <span><span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{t('rp_col_floor')}</span><span className="t-mono-sm">{eur(r.floor)}</span></span>
                   <span><span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{t('rp_col_list')}</span><span className="t-mono-sm" style={{ fontWeight: 700 }}>{eur(r.list)}</span></span>
                   <span><span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{t('rp_col_net')}</span><span className="t-mono-sm" style={{ color: low ? 'var(--rust)' : undefined }}>{eur(r.netKept)}</span></span>
-                  <span><span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{t('rp_col_maxdisc')}</span><span className="t-mono-sm">{Number.isFinite(r.maxDiscount) ? `${r.maxDiscount.toFixed(1)} %` : t('rp_na')}</span></span>
+                  <span><span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{t('rp_col_maxdisc')}</span><span className="t-mono-sm">{Number.isFinite(r.maxDiscount) ? `${r.maxDiscount.toLocaleString(loc, { maximumFractionDigits: 1 })} %` : t('rp_na')}</span></span>
                 </div>
               </div>
             )
