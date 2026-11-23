@@ -39,6 +39,12 @@ import {
   type ContactEditorPanelHandle,
 } from '@/components/atelier/ContactEditorPanel'
 import { PersonPage } from '@/components/atelier/PersonPage'
+import {
+  readContactIdsWithSphere,
+  readSphereCounts,
+  readSpheres,
+  type Sphere,
+} from '@/app/atelier/(portal)/contacts/people-actions'
 import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
 import type {
   ContactAddress,
@@ -137,7 +143,49 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [role,       setRole]       = useState('all')
   /** Admin only: show only « Privé » contacts. */
   const [privateOnly, setPrivateOnly] = useState(false)
-  const [sortKey,    setSortKey]    = useState<string>('alpha')
+  /** Sphere filter: '' = all; sphereIds = contacts carrying the chosen sphere (asked of the database). */
+  const [sphere, setSphere] = useState('')
+  const [sphereIds, setSphereIds] = useState<Set<number> | null>(null)
+  const [spheres, setSpheres] = useState<Sphere[]>([])
+  const [sphereCounts, setSphereCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let alive = true
+    void Promise.all([readSpheres(), readSphereCounts()]).then(([s, c]) => {
+      if (!alive) return
+      if ('ok' in s) setSpheres(s.all)
+      if ('ok' in c) setSphereCounts(c.counts)
+    })
+    return () => { alive = false }
+  }, [])
+  /** A person's spheres changed on the page: counts and the active filter's ids are asked again. */
+  const sphereRef = useRef(sphere)
+  sphereRef.current = sphere
+  const refreshSpheres = useCallback(() => {
+    void readSphereCounts().then((c) => {
+      if ('ok' in c) setSphereCounts(c.counts)
+    })
+    const key = sphereRef.current
+    if (!key) return
+    void readContactIdsWithSphere(key).then((r) => {
+      if ('ok' in r && sphereRef.current === key) setSphereIds(new Set(r.ids))
+    })
+  }, [])
+  const pickSphere = useCallback((key: string) => {
+    setSphere(key)
+    if (!key) { setSphereIds(null); return }
+    void readContactIdsWithSphere(key).then((r) => {
+      if ('ok' in r) setSphereIds(new Set(r.ids))
+      else { setSphere(''); setSphereIds(null) }
+    })
+  }, [])
+  const sphereOptions = useMemo(
+    () =>
+      spheres
+        .map((s) => ({ key: s.key, label: lang === 'fr' ? s.fr : s.en }))
+        .sort((a, b) => a.label.localeCompare(b.label, lang === 'fr' ? 'fr-FR' : 'en-GB')),
+    [spheres, lang],
+  )
+  const [sortKey,   setSortKey]    = useState<string>('alpha')
   const [sortDir,    setSortDir]    = useState<'asc' | 'desc'>('asc')
   const toggleSort = (k: string) => {
     if (sortKey === k) {
@@ -215,7 +263,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private')
           .order('ContactID'),
         sb.from('Contact')
-          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Adresse, CodePostal, Ville, Pays, Notes, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id'),
+          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Adresse, CodePostal, Ville, Pays, Notes, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id, born_on, born_precision, died_on, died_precision'),
         sb.from('contact_place_lines')
           .select(ADDRESS_LINE_COLS)
           .order('position'),
@@ -370,6 +418,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     const base = browsable.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
       if (isAdmin && privateOnly && !c.is_private) return false
+      if (sphere && sphereIds && !sphereIds.has(c.ContactID)) return false
       if (sq) {
         const id = c.ContactID
         const ex = extra[id]
@@ -453,7 +502,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [browsable, q, role, isAdmin, privateOnly, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
+  }, [browsable, q, role, isAdmin, privateOnly, sphere, sphereIds, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
 
   const privateCount = useMemo(() => contacts.filter((c) => c.is_private).length, [contacts])
 
@@ -815,6 +864,24 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           <option value="all">{t('allRoles')}</option>
           {roles.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
+        {sphereOptions.length > 0 && (
+          <select
+            value={sphere}
+            onChange={(e) => pickSphere(e.target.value)}
+            data-testid="contacts-sphere-filter"
+            style={{
+              ...FIS,
+              width: narrow ? '100%' : 'auto',
+              minWidth: narrow ? 0 : 150,
+              minHeight: narrow ? 44 : undefined,
+            }}
+          >
+            <option value="">{t('cs_sphere_all')}</option>
+            {sphereOptions.map((s) => (
+              <option key={s.key} value={s.key}>{`${s.label} (${sphereCounts[s.key] ?? 0})`}</option>
+            ))}
+          </select>
+        )}
         {isAdmin && (
           <button
             type="button"
@@ -1188,6 +1255,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             onEdit={() => setEditing(true)}
             onBack={() => setActiveId(null)}
             onDelete={requestDeleteActive}
+            onSpheresChanged={refreshSpheres}
           />
         ) : showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
           <ContactEditorPanel

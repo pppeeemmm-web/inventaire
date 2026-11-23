@@ -1,7 +1,7 @@
 'use server'
 
 // One picker for `#` (a work or an idea) and `@` (a person), wherever text is typed (principle 13).
-// Reads only; RLS hides private contacts. Team only.
+// Reads only. Contact RLS lets the team read private cards; this search drops them for non-admins. Team only.
 
 import { createClient } from '@/lib/supabase/server'
 import { contactListLabel } from '@/lib/contacts/contact-display'
@@ -30,11 +30,14 @@ export async function searchLinkTargets(kind: 'hash' | 'at', q: string): Promise
   if (!isTeam) return []
 
   if (kind === 'at') {
-    const { data } = await supabase
+    const { data: isAdmin } = await supabase.rpc('is_admin')
+    let query = supabase
       .from('Contact')
       .select('ContactID, "Prénom", Nom, NomInstitution')
       .or(`"Prénom".ilike.%${term}%,Nom.ilike.%${term}%,NomInstitution.ilike.%${term}%`)
-      .limit(MAX_RESULTS)
+    // Team RLS can read private cards; only an admin may see their names.
+    if (!isAdmin) query = query.or('is_private.is.null,is_private.eq.false')
+    const { data } = await query.limit(MAX_RESULTS)
     return (data ?? [])
       .map((c) => ({
         kind: 'contact' as const,

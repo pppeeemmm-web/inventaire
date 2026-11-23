@@ -24,6 +24,8 @@ import {
   type PersonWork,
 } from '@/app/atelier/(portal)/contacts/person-page'
 import { PersonTimeline } from '@/components/atelier/PersonTimeline'
+import { PersonSpheres } from '@/components/atelier/PersonSpheres'
+import { PersonLinks } from '@/components/atelier/PersonLinks'
 import type {
   ContactAddress,
   ContactEmail,
@@ -45,6 +47,8 @@ type Props = {
   onEdit: () => void
   onBack: () => void
   onDelete: () => void
+  /** A save of this person's spheres was answered ok (the list's sphere filter re-reads). */
+  onSpheresChanged?: () => void
 }
 
 type Paged<T> = { items: T[]; count: number; failed: boolean; loading: boolean }
@@ -239,7 +243,7 @@ function telHref(p: ContactPhone): string {
   return num.startsWith('+') || !cc ? num : `${cc.startsWith('+') ? cc : `+${cc}`}${num.replace(/^0/, '')}`
 }
 
-export function PersonPage({ contact, emails, phones, addresses, websites, socials, isAdmin, narrow, onEdit, onBack, onDelete }: Props) {
+export function PersonPage({ contact, emails, phones, addresses, websites, socials, isAdmin, narrow, onEdit, onBack, onDelete, onSpheresChanged }: Props) {
   const { t, lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const id = contact.ContactID
@@ -261,6 +265,16 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
   const phone = phones.find((p) => p.is_primary && p.phone.trim()) ?? phones.find((p) => p.phone.trim())
   const links = contactLinks(websites, socials)
   const day = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+  const dated = contact as ContactRow & { born_on?: string | null; born_precision?: string | null; died_on?: string | null; died_precision?: string | null }
+  const byPrecision = (d: string, precision: string | null | undefined) => {
+    const date = new Date(`${d.slice(0, 10)}T12:00:00`)
+    if (precision === 'year') return String(date.getFullYear())
+    if (precision === 'month') return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  const bornText = dated.born_on ? t('pp_born_fmt').replace('{d}', byPrecision(dated.born_on, dated.born_precision)) : ''
+  const diedText = dated.died_on ? t('pp_died_fmt').replace('{d}', byPrecision(dated.died_on, dated.died_precision)) : ''
+  const diedYear = dated.died_on ? t('pp_died_fmt').replace('{d}', String(new Date(`${dated.died_on.slice(0, 10)}T12:00:00`).getFullYear())) : ''
   const key = (prefix: string, v: string, list: string[]) => (list.includes(v) ? t(`${prefix}${v}` as DictKey) : v)
 
   const detailRows = (
@@ -341,6 +355,7 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <h2 data-testid="person-name" style={{ margin: 0, fontSize: narrow ? 20 : 22, lineHeight: 1.2, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
           {name}
+          {diedYear ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: 'var(--tx2)' }}>{diedYear}</span> : null}
           {isAdmin && contact.is_private ? (
             <span
               title={t('contacts_private_chip_title')}
@@ -361,6 +376,12 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
       <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 4 }}>
         {[sub, contact.Role?.trim(), contact.Actif === false ? t('pp_inactive') : ''].filter(Boolean).join(' · ')}
       </div>
+      {bornText || diedText ? (
+        <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
+          {[bornText, diedText].filter(Boolean).join(' — ')}
+        </div>
+      ) : null}
+      <PersonSpheres contactId={id} narrow={narrow} onChanged={onSpheresChanged ? () => onSpheresChanged() : undefined} />
       {narrow ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
           {phone ? <a className="btn sm" href={`tel:${telHref(phone)}`} style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{t('pp_call')}</a> : <button type="button" className="btn sm" disabled style={{ minHeight: 44 }}>{t('pp_call')}</button>}
@@ -377,6 +398,8 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
       <WorkStrip contactId={id} rel="bought" label={t('pp_works_bought')} narrow={narrow} reader={(o) => readPersonWorks(id, 'bought', o)} />
       <WorkStrip contactId={id} rel="seen-kit" label={t('pp_works_seen_kit')} narrow={narrow} reader={(o) => readPersonSeen(id, 'kit', o)} />
       <WorkStrip contactId={id} rel="seen-event" label={t('pp_works_seen_event')} narrow={narrow} reader={(o) => readPersonSeen(id, 'event', o)} />
+
+      <PersonLinks contactId={id} narrow={narrow} />
 
       {narrow ? (
         <div style={{ marginTop: 8, borderTop: '1px solid var(--bd)', paddingTop: 4 }}>

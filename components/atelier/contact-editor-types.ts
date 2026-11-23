@@ -18,6 +18,10 @@ export interface ContactRow {
   Ville?: string | null
   Pays?: string | null
   Notes?: string | null
+  born_on?: string | null
+  born_precision?: string | null
+  died_on?: string | null
+  died_precision?: string | null
   PersonneResponsable?: string | null
   RoleResponsable?: string | null
   Actif?: boolean | null

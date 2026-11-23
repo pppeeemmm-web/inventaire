@@ -516,9 +516,13 @@ export type Database = {
           Actif: boolean | null
           Adresse: string | null
           auth_user_id: string | null
+          born_on: string | null
+          born_precision: string | null
           CodePostal: string | null
           Connecté: boolean | null
           ContactID: number
+          died_on: string | null
+          died_precision: string | null
           Email: string | null
           Facebook: string | null
           "GDPR Requête": boolean | null
@@ -553,9 +557,13 @@ export type Database = {
           Actif?: boolean | null
           Adresse?: string | null
           auth_user_id?: string | null
+          born_on?: string | null
+          born_precision?: string | null
           CodePostal?: string | null
           Connecté?: boolean | null
           ContactID?: number
+          died_on?: string | null
+          died_precision?: string | null
           Email?: string | null
           Facebook?: string | null
           "GDPR Requête"?: boolean | null
@@ -590,9 +598,13 @@ export type Database = {
           Actif?: boolean | null
           Adresse?: string | null
           auth_user_id?: string | null
+          born_on?: string | null
+          born_precision?: string | null
           CodePostal?: string | null
           Connecté?: boolean | null
           ContactID?: number
+          died_on?: string | null
+          died_precision?: string | null
           Email?: string | null
           Facebook?: string | null
           "GDPR Requête"?: boolean | null
@@ -840,6 +852,66 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+        ]
+      }
+      contact_sphere: {
+        Row: {
+          id: number
+          key: string
+          label_en: string
+          label_fr: string
+          position: number
+        }
+        Insert: {
+          id?: never
+          key: string
+          label_en: string
+          label_fr: string
+          position?: number
+        }
+        Update: {
+          id?: never
+          key?: string
+          label_en?: string
+          label_fr?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      contact_tag: {
+        Row: {
+          contact_id: number
+          created_at: string
+          created_by: string | null
+          sphere_id: number
+        }
+        Insert: {
+          contact_id: number
+          created_at?: string
+          created_by?: string | null
+          sphere_id: number
+        }
+        Update: {
+          contact_id?: number
+          created_at?: string
+          created_by?: string | null
+          sphere_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tag_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "contact_tag_sphere_id_fkey"
+            columns: ["sphere_id"]
+            isOneToOne: false
+            referencedRelation: "contact_sphere"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4037,10 +4109,13 @@ export type Database = {
       tblrelations: {
         Row: {
           created_at: string | null
+          created_by: string | null
           description: string | null
           id: string
           relation_type: string | null
           source_id: number | null
+          source_kind: string | null
+          source_ref: string | null
           source_uid: string | null
           strength: number | null
           target_id: number | null
@@ -4048,10 +4123,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           id?: string
           relation_type?: string | null
           source_id?: number | null
+          source_kind?: string | null
+          source_ref?: string | null
           source_uid?: string | null
           strength?: number | null
           target_id?: number | null
@@ -4059,10 +4137,13 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           id?: string
           relation_type?: string | null
           source_id?: number | null
+          source_kind?: string | null
+          source_ref?: string | null
           source_uid?: string | null
           strength?: number | null
           target_id?: number | null
@@ -5334,6 +5415,7 @@ export type Database = {
     }
     Functions: {
       _contact_card: { Args: { p_id: number }; Returns: Json }
+      _contact_node: { Args: { p_contact: number }; Returns: string }
       _contact_rows_norm: {
         Args: { p_cols: string[]; p_rows: Json }
         Returns: Json
@@ -5351,6 +5433,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      _merge_person_links: {
+        Args: { p_keep: number; p_lose: number }
+        Returns: undefined
+      }
+      _oeuvre_node: { Args: { p_oeuvre: number }; Returns: string }
       audit_log_prune: {
         Args: never
         Returns: {
@@ -5476,6 +5563,18 @@ export type Database = {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string
       }
+      person_links: {
+        Args: { p_contact: number }
+        Returns: {
+          created_at: string
+          kind: string
+          other_contact_id: number
+          other_work_id: number
+          outgoing: boolean
+          source_kind: string
+          source_ref: string
+        }[]
+      }
       places_backfill_from_addresses: { Args: never; Returns: Json }
       places_check: { Args: never; Returns: Json }
       private_link_count_open: { Args: { p_token: string }; Returns: undefined }
@@ -5502,6 +5601,11 @@ export type Database = {
       save_contact: { Args: { p: Json }; Returns: Json }
       save_contact_places: {
         Args: { p_contact: number; p_rows: Json }
+        Returns: Json
+      }
+      save_person_link: { Args: { p: Json }; Returns: Json }
+      set_contact_spheres: {
+        Args: { p_contact: number; p_keys: string[] }
         Returns: Json
       }
     }

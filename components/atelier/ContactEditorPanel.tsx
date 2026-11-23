@@ -118,6 +118,10 @@ type FormState = {
   PersonneResponsable: string
   RoleResponsable: string
   Notes: string
+  born_on: string
+  born_precision: string
+  died_on: string
+  died_precision: string
   Actif: boolean
   is_private: boolean
 }
@@ -245,6 +249,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       PersonneResponsable: contact?.PersonneResponsable ?? '',
       RoleResponsable: contact?.RoleResponsable ?? '',
       Notes: contact?.Notes ?? '',
+      born_on: contact?.born_on ?? '',
+      born_precision: contact?.born_precision ?? 'year',
+      died_on: contact?.died_on ?? '',
+      died_precision: contact?.died_precision ?? 'year',
       Actif: contact?.Actif ?? true,
       is_private: contact?.is_private ?? false,
     })
@@ -355,10 +363,55 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       }
     }
 
-    function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Notes'>) {
+    function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Notes' | 'born_on' | 'born_precision' | 'died_on' | 'died_precision'>) {
       return (e: React.FocusEvent<HTMLInputElement>) => {
         setForm((p) => ({ ...p, [k]: cap(e.target.value) }))
       }
+    }
+
+    /** Precision select + an input whose type follows it; stored 'YYYY-01-01' / 'YYYY-MM-01' / 'YYYY-MM-DD'. */
+    function dateField(dk: 'born_on' | 'died_on', pk: 'born_precision' | 'died_precision') {
+      const prec = form[pk] || 'year'
+      const val = form[dk]
+      const h = narrow ? 44 : undefined
+      const toInput = (v: string) => (prec === 'year' ? v.slice(0, 4) : prec === 'month' ? v.slice(0, 7) : v)
+      const fromInput = (v: string) => {
+        if (!v) return ''
+        if (prec === 'year') return /^\d{4}$/.test(v) ? `${v}-01-01` : ''
+        if (prec === 'month') return /^\d{4}-\d{2}$/.test(v) ? `${v}-01` : ''
+        return v
+      }
+      return (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <select
+            value={prec}
+            onChange={(e) => {
+              const np = e.target.value
+              setForm((p) => {
+                const cur = p[dk]
+                const next = !cur ? '' : np === 'year' ? `${cur.slice(0, 4)}-01-01` : np === 'month' ? `${cur.slice(0, 7)}-01` : cur
+                return { ...p, [pk]: np, [dk]: next }
+              })
+            }}
+            style={{ ...FIS, width: narrow ? '100%' : 90, minHeight: h }}
+          >
+            <option value="day">{t('contact_editor_prec_day')}</option>
+            <option value="month">{t('contact_editor_prec_month')}</option>
+            <option value="year">{t('contact_editor_prec_year')}</option>
+          </select>
+          <input
+            key={prec}
+            type={prec === 'year' ? 'number' : prec === 'month' ? 'month' : 'date'}
+            {...(prec === 'year' ? { min: 1000, max: 9999, step: 1, inputMode: 'numeric' as const } : {})}
+            value={toInput(val)}
+            onChange={(e) => {
+              const v = e.target.value
+              setForm((p) => ({ ...p, [dk]: fromInput(v) }))
+            }}
+            style={{ ...FIS, flex: 1, minWidth: 0, width: narrow ? '100%' : undefined, minHeight: h }}
+          />
+        </div>
+      )
     }
 
     function addAddr() {
@@ -401,6 +454,11 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     const handleSave = useCallback(async (): Promise<boolean> => {
       setBusy(true)
       setErr(null)
+      if (form.born_on && form.died_on && form.died_on < form.born_on) {
+        setErr(t('contact_editor_died_before_born'))
+        setBusy(false)
+        return false
+      }
       try {
         const validAddrs = addrList.filter((a) => a.adresse || a.ville || a.pays || a.code_postal)
         // The primary address stays the one stored when it is still on the card, else the first row (no « primary » control yet).
@@ -424,6 +482,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           PersonneResponsable: form.PersonneResponsable,
           RoleResponsable: form.RoleResponsable,
           Notes: form.Notes,
+          born_on: form.born_on || null,
+          born_precision: form.born_on ? form.born_precision : null,
+          died_on: form.died_on || null,
+          died_precision: form.died_on ? form.died_precision : null,
           Actif: form.Actif,
           // With email rows the door writes `Email` from the primary row; without any, the old single field is kept.
           ...(emailList.length === 0 ? { Email: form.Email } : {}),
@@ -446,6 +508,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               PersonneResponsable: contact!.PersonneResponsable ?? null,
               RoleResponsable: contact!.RoleResponsable ?? null,
               Notes: contact!.Notes ?? null,
+              born_on: contact!.born_on ?? null,
+              born_precision: contact!.born_precision ?? null,
+              died_on: contact!.died_on ?? null,
+              died_precision: contact!.died_precision ?? null,
               Actif: contact!.Actif ?? null,
               Email: contact!.Email ?? null,
               is_private: contact!.is_private ?? null,
@@ -803,6 +869,13 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                   <option value="Mme">Mme</option>
                   <option value="Mx">Mx</option>
                 </select>
+              </FRow>
+              <FRow label={t('contact_editor_born')}>
+                {dateField('born_on', 'born_precision')}
+              </FRow>
+              <FRow label={t('contact_editor_died')}>
+                {dateField('died_on', 'died_precision')}
+                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{t('contact_editor_died_hint')}</div>
               </FRow>
               <FRow label={t('contactEditorActive')}>
                 <label

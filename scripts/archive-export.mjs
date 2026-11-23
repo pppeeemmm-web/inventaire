@@ -10,8 +10,8 @@
  *   journal/YYYY.md     journal entries as plain text, by year
  *   images/             every image, named as in the catalogue (+ thumbs/)
  *   vault/              documents (certificates, orders…)
- *   data/json/*.json    every table, complete
- *   private/            contacts — NOT for sharing
+ *   data/json/*.json    every table except the private ones
+ *   private/            contacts, their spheres and the link graph (tblrelations) — NOT for sharing
  *   LISEZ-MOI.txt       what is what
  *
  * Reads only: nothing is changed in the database or in R2. Prices, notes and contacts are in the
@@ -114,11 +114,11 @@ async function main() {
     Oeuvres: 'OeuvreID', tblImage: 'ImageID', Technique: 'TechniqueID', Support: 'SupportID', Format: null,
     OeuvreStatus: 'id', theme: 'id', oeuvre_theme: 'oeuvre_id', work_period: 'id', work_period_override: 'oeuvre_id',
     work_source: 'id', work_source_link: 'oeuvre_id', working_group: null, working_group_work: null,
-    tblrelations: null, journal_entry: 'id', journal_entry_link: 'id', journal_entry_label: 'id', journal_entry_day_change: 'id', concept: null, concept_change: 'id', voice_note: 'created_at',
+    journal_entry: 'id', journal_entry_link: 'id', journal_entry_label: 'id', journal_entry_day_change: 'id', concept: null, concept_change: 'id', voice_note: 'created_at',
     condition_report: 'id', condition_issue: 'id', kaizen_item: 'id', document: 'created_at', work_session: 'created_at',
     work_order: 'created_at', work_order_work: null, payments: 'payment_date', suivi_process: null, suivi_etape: null, expense: null, stock_item: null,
   }
-  const privateTables = { Contact: 'ContactID', contact_addresses: null, place: 'id', contact_place: 'id', place_address_map: null, contact_emails: null, contact_phones: null, contact_websites: null, contact_socials: null }
+  const privateTables = { Contact: 'ContactID', contact_addresses: null, place: 'id', contact_place: 'id', place_address_map: null, contact_emails: null, contact_phones: null, contact_websites: null, contact_socials: null, contact_tag: null, contact_sphere: null, tblrelations: null }
   const db = {}
   for (const [t, order] of Object.entries({ ...tables, ...privateTables })) {
     db[t] = await all(t, order)
@@ -285,8 +285,8 @@ q.oninput=show;show();
     'journal/        le journal en texte, par année, et les photos d’inspiration',
     'images/         toutes les images (format AVIF) ; images/thumbs = vignettes',
     'vault/          documents (certificats, commandes…)',
-    'data/json/      toutes les tables, complètes',
-    'private/        contacts — NE PAS DIFFUSER',
+    'data/json/      toutes les tables, sauf les privées',
+    'private/        contacts, leurs sphères et le graphe des liens (tblrelations) — NE PAS DIFFUSER',
     '',
     'Archive of the work of Pierre Emmanuel Moulin. Open index.html in a browser. Prices, notes and',
     'contacts are inside: keep this folder private unless you remove works.csv, data/ and private/.',

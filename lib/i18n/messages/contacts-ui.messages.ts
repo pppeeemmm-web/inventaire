@@ -138,4 +138,12 @@ export const contactsUiMessages = defineMessages({
   contact_editor_complement: { fr: 'Étage / appartement', en: 'Floor / flat' },
   contact_editor_complement_ph: { fr: '3e étage, rez-de-chaussée… (facultatif)', en: '3rd floor, ground floor… (optional)' },
   contact_editor_place_others_fmt: { fr: 'Aussi : {n} autre(s) personne(s) à ce lieu', en: 'Also: {n} other person(s) at this place' },
+  contact_editor_born: { fr: 'Naissance', en: 'Born' },
+  contact_editor_died: { fr: 'Décès', en: 'Died' },
+  contact_editor_prec_day: { fr: 'Jour', en: 'Day' },
+  contact_editor_prec_month: { fr: 'Mois', en: 'Month' },
+  contact_editor_prec_year: { fr: 'Année', en: 'Year' },
+  contact_editor_died_before_born: { fr: 'Le décès précède la naissance.', en: 'Death is before birth.' },
+  contact_editor_died_hint: { fr: 'La personne reste dans les listes.', en: 'The person stays in the lists.' },
+  cs_sphere_all: { fr: 'Toutes sphères', en: 'All spheres' },
 })

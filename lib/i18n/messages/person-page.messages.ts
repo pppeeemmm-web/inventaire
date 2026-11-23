@@ -49,4 +49,13 @@ export const personPageMessages = defineMessages({
   pp_map_open: { fr: 'Ouvrir dans Plans', en: 'Open in Maps' },
   pp_notes: { fr: 'Notes', en: 'Notes' },
   pp_responsible: { fr: 'Personne responsable', en: 'Responsible person' },
+  pp_spheres_edit: { fr: 'Sphères', en: 'Spheres' },
+  pp_spheres_save: { fr: 'Enregistrer', en: 'Save' },
+  pp_cancel: { fr: 'Annuler', en: 'Cancel' },
+  pp_refused_forbidden: { fr: 'Action non autorisée', en: 'Not allowed' },
+  pp_refused_not_found: { fr: 'Personne introuvable', en: 'Person not found' },
+  pp_refused_bad_field: { fr: 'Valeur refusée', en: 'Value refused' },
+  pp_refused_error: { fr: 'Enregistrement impossible', en: 'Could not save' },
+  pp_born_fmt: { fr: '° {d}', en: '° {d}' },
+  pp_died_fmt: { fr: '† {d}', en: '† {d}' },
 })
