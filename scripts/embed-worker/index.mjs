@@ -63,6 +63,10 @@ async function processNode(supabase, row) {
       .from('nodes')
       .update({
         embedding_status: 'skipped',
+        // No text any more (hidden, placeholder, a correction folded into its entry): drop the old vector so
+        // it no longer feeds suggestions or search (flow review 2026-11-23).
+        embedding: null,
+        embedding_text_hash: null,
         embedding_error: null,
         embedded_at: new Date().toISOString(),
       })
