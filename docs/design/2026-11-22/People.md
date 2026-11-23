@@ -148,7 +148,7 @@ Person ↔ person links (kinds confirmed: introduced by · spouse · works at / 
 |---|---|---|
 | Header | `Contact`, `contact_tag` | Name (desk: « Claire VASSEUR »; lists: « VASSEUR Claire », family-name sort), role, tags, 🔒 private. |
 | Works | `Oeuvres` (owner, holder, buyer), kit works, event works, touch works, `tblrelations interested_in` | Five strips: owns · holds · bought · seen (kits, events, visits) · interested in. Counts from the database. |
-| Timeline | **`person_timeline(contact_id, before, limit)`** — one SQL read, a union: touches · order steps + payments · shipments · event membership (process dates) · kits sent / opened · enquiries · papers · validated journal `@` links · custody / ownership changes from work versions · the death date | Keyset by (date, kind, id), 20 per page, « Charger plus ancien ». Kind chips with counts from one count query, each chip in its kind's colour (the same colour as the card's bar). Private rows only for admins. |
+| Timeline | **`person_timeline(contact_id, before, limit)`** — one SQL read, a union: touches · order steps + payments · shipments · event membership (process dates) · kits sent / opened · enquiries · papers · journal entries **written by** the person (author = a team member's login, linked to their card through `Contact.auth_user_id`) and entries that **link** them (`@`), ideas they planted included (`idea_plant` writes the planting as an entry — IdeasDesign.md §2) · custody / ownership changes from work versions · the death date | Keyset by (date, kind, id), 20 per page, « Charger plus ancien ». Kind chips with counts from one count query, each chip in its kind's colour (the same colour as the card's bar). Private rows only for admins. |
 | Enquiries (Pem 2026-11-23: « link them ») | an enquiry whose email matches a card's email is linked to that person automatically (new `inquiry.contact_id`, set by the enquiry door, shown « relié par l'email », undoable); no match → it waits as today, « + Personne » creates the card through `saveContact` | The gate rule « never creates a contact by itself » holds: it only links to an existing one. |
 | Rail (desk) / « Coordonnées » (phone, folded) | child tables, person ↔ person links, birthday, notes | Click to call / mail / map. |
 | Care | birth date (new field), `studio_task` + contact link | Memory first: no reminder unless asked; two rules at most (enquiry unanswered 3 days, birthday in 7 days) — later, master plan §1.2. |
@@ -200,7 +200,7 @@ Triggers on the path (live): `ensure_admin_flags_protected`, graph node register
 | Map (`WorldMapTab:395`) | no | — |
 | Reports, pivots, audit rules / pending (`report-sources.ts`, `rules-actions.ts`, `pending-actions.ts`) | tags | `Type` / `Role` pivots move to tags when tags land |
 | Search, graph (`node_search_text`, embeddings) | tags, bio | add tags / bio to the search text when they exist |
-| Journal (step B `@person`) | **new link** | timeline reads validated `@` links; Journal day reads touches |
+| Journal (step B `@person`) | **new link** | timeline reads validated `@` links + entries authored by the person; Idées plantings; Journal day reads touches |
 | Fil (`fil/actions.ts`) | later | « enquiry unanswered » rule, if Pem wants it |
 | AI card suggestion (`lib/ai-card-suggestion.ts`, `ai/actions.ts:146`) | yes | « Ouvrir et vérifier » saves through the door |
 | Public collector / gallery pages, page views, session user, calendar sync | no | — |
