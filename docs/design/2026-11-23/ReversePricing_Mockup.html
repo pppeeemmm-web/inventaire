@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reverse pricing — mockup (invented numbers)</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#dcdad4;--acc:#2f5d50;--accbg:#e4efe9;--warn:#a4471f;--warnbg:#f8e9e1}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#201f1e;--ink:#ecebe7;--mute:#9c9a94;--line:#363532;--acc:#7fc1ad;--accbg:#22332d;--warn:#e29a77;--warnbg:#38251c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,sans-serif;padding:12px}
+h1{font-size:14px;margin:0 0 2px}
+.sub{color:var(--mute);font-size:11px;margin-bottom:8px}
+.bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer}
+button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+button.primary{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.frame{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:980px}
+.frame.phone{max-width:390px}
+.fold{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--line);align-items:center}
+.fold b{font-weight:600}
+.fold .sum{color:var(--mute);font-size:12px}
+.body{display:grid;grid-template-columns:230px 1fr}
+.phone .body{grid-template-columns:1fr}
+.left{padding:8px 10px;border-right:1px solid var(--line)}
+.phone .left{border-right:0;border-bottom:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 0}
+.row label{color:var(--mute);font-size:12px}
+input[type=number]{width:74px;text-align:right;border:1px solid var(--line);background:var(--bg);border-radius:4px;padding:3px 5px;min-height:26px}
+.phone input[type=number],.phone button,.phone select{min-height:44px}
+select{border:1px solid var(--line);background:var(--bg);border-radius:4px;padding:3px}
+.sep{border-top:1px solid var(--line);margin:6px 0}
+.hd{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:4px 0 2px}
+table{border-collapse:collapse;width:100%}
+th,td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;color:var(--mute);font-weight:400}
+thead th{position:sticky;top:0;background:var(--card);font-weight:600;color:var(--ink);border-bottom:2px solid var(--line)}
+td input[type=number]{width:58px}
+tr.grp td{border-top:2px solid var(--line);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);padding-top:6px}
+tr.key td{font-weight:600;background:var(--accbg)}
+tr.key td:first-child{color:var(--acc)}
+.bind{outline:2px solid var(--acc);outline-offset:-2px}
+.low{color:var(--warn);background:var(--warnbg)}
+.foot{padding:8px 10px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.note{color:var(--mute);font-size:11px}
+.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:7px 12px;border-radius:6px;display:none}
+.pch{padding:8px 10px;border-bottom:1px solid var(--line)}
+.pch .t{display:flex;justify-content:space-between;align-items:center;min-height:44px;cursor:pointer}
+.pch .knobs{display:none;padding-top:4px}
+.pch.open .knobs{display:block}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<h1>Prix inverse — work card block (mockup)</h1>
+<div class="sub">Invented numbers. Nothing is saved. Click: the fold, the face switch, the knobs, « un seul prix », « Appliquer ».</div>
+<div class="bar">
+  <button id="bDesk" class="on">Desk</button><button id="bPhone">Phone 390</button>
+  <button id="bOne" class="on" title="the dearest channel sets one list price">un seul prix</button>
+  <span class="note">Painting « Sans titre, 2026 » — 80 × 100 cm — today's Prix: 2 400 €</span>
+</div>
+
+<div class="frame" id="frame">
+  <div class="fold" id="fold"><b>Prix inverse</b><span class="sum" id="sum"></span></div>
+  <div id="panel">
+    <div class="body">
+      <div class="left">
+        <div class="hd">Target</div>
+        <div class="row"><label>Net wanted €</label><input type="number" id="N" value="1000" step="50"></div>
+        <div class="sep"></div>
+        <div class="hd">Costs of the work</div>
+        <div class="row"><label>Materials €</label><input type="number" id="mat" value="120"></div>
+        <div class="row"><label>Framing € (planned)</label><input type="number" id="fr" value="180"></div>
+        <div class="sep"></div>
+        <div class="hd">Running-cost share</div>
+        <div class="row"><label>Rule</label><select id="rule"><option value="flat">flat per work</option><option value="m2">per m²</option><option value="hour">per hour</option></select></div>
+        <div class="row" id="rowH"><label>Size H × W cm</label><span><input type="number" id="H" value="80" style="width:48px"> <input type="number" id="W" value="100" style="width:48px"></span></div>
+        <div class="row" id="rowRate"><label id="rateLbl">Rate €/m²</label><input type="number" id="rate" value="150"></div>
+        <div class="row hidden" id="rowHrs"><label>Hours</label><input type="number" id="hrs" value="20"></div>
+        <div class="note" id="srcNote">= frais 2025 6 000 € ÷ 40 m² made</div>
+        <div class="sep"></div>
+        <div class="hd">Rates</div>
+        <div class="row"><label>Contributions % (to confirm)</label><input type="number" id="r" value="21.1" step="0.1"></div>
+        <div class="row"><label>VAT %</label><input type="number" id="v" value="0"></div>
+        <div class="row"><label>Round up to €</label><span>10 · 50 from 5 000</span></div>
+      </div>
+      <div class="right" id="deskRight">
+        <table id="tbl"></table>
+      </div>
+      <div class="right hidden" id="phoneRight"></div>
+    </div>
+    <div class="foot">
+      <span class="note" id="foot"></span>
+      <button class="primary" id="apply">Appliquer ce prix</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CH=[
+ {k:'studio',n:'Studio',c:0,d:10,x:0},
+ {k:'gallery',n:'Gallery (consign.)',c:40,d:10,x:60},
+ {k:'fair',n:'Fair',c:0,d:0,x:140},
+ {k:'online',n:'Online',c:15,d:0,x:80},
+ {k:'inst',n:'Mécène / institution',c:0,d:0,x:0}
+];
+const $=id=>document.getElementById(id);
+const eur=n=>Math.round(n).toLocaleString('fr-FR').replace(/ /g,' ')+' €';
+let one=true, phone=false, open=true, openCh=null;
+const num=id=>parseFloat($(id).value)||0;
+
+function compute(){
+  const N=num('N'),r=num('r')/100,v=num('v')/100;
+  const m2=num('H')*num('W')/10000;
+  const rule=$('rule').value;
+  const S= rule==='m2'? num('rate')*m2 : rule==='hour'? num('rate')*num('hrs') : num('rate');
+  const M=num('mat')+num('fr');
+  const rows=CH.map(ch=>{
+    const c=ch.c/100,d=ch.d/100,K=M+S+ch.x;
+    const P=(N+K)/((1-c)*(1-r));
+    const L=P/(1-d);
+    return {ch,c,d,K,P,L,Lr:(st=>Math.ceil(L/st-1e-9)*st)(L>=5000?50:10)};
+  });
+  const Lone=Math.max(...rows.map(x=>x.Lr));
+  rows.forEach(x=>{
+    x.Ls= one? Lone : x.Lr;
+    x.net=x.Ls*(1-x.d)*(1-x.c)*(1-r)-x.K;
+    x.dmax=(1-x.P/x.Ls)*100;
+  });
+  const g=rows[1];
+  const W=(N+M+S+g.ch.x)/(1-r);
+  return {N,r,v,S,M,m2,rows,Lone,W};
+}
+
+function render(){
+  const R=compute();
+  const bindL=Math.max(...R.rows.map(x=>x.Lr));
+  $('sum').textContent='Floor '+eur(R.W)+' wholesale · list '+eur(R.Lone)+' · target '+eur(R.N);
+  const f=(label,fn,cls)=>'<tr'+(cls?' class="'+cls+'"':'')+'><td>'+label+'</td>'+R.rows.map(x=>'<td'+(x.Lr===bindL&&one&&label.startsWith('List n')?' class="bind"':'')+'>'+fn(x)+'</td>').join('')+'</tr>';
+  const knob=(i,key,suffix)=>'<input type="number" data-i="'+i+'" data-k="'+key+'" value="'+CH[i][key]+'">'+suffix;
+  let h='<thead><tr><th></th>'+R.rows.map(x=>'<th>'+x.ch.n+'</th>').join('')+'</tr></thead><tbody>';
+  h+='<tr class="grp"><td colspan="6">Knobs</td></tr>';
+  h+='<tr><td>Commission %</td>'+CH.map((c,i)=>'<td>'+knob(i,'c','')+'</td>').join('')+'</tr>';
+  h+='<tr><td>Discount %</td>'+CH.map((c,i)=>'<td>'+knob(i,'d','')+'</td>').join('')+'</tr>';
+  h+='<tr><td>Channel cost €</td>'+CH.map((c,i)=>'<td>'+knob(i,'x','')+'</td>').join('')+'</tr>';
+  h+='<tr class="grp"><td colspan="6">Backwards</td></tr>';
+  h+=f('All costs K',x=>eur(x.K));
+  h+=f('Floor price paid',x=>eur(x.P));
+  h+=f('List needed',x=>eur(x.L));
+  h+=f('List needed, rounded',x=>eur(x.Lr),'key');
+  h+='<tr class="grp"><td colspan="6">At the chosen list'+(one?' ('+eur(R.Lone)+' everywhere)':' (per channel)')+'</td></tr>';
+  h+='<tr class="key"><td>Net kept</td>'+R.rows.map(x=>'<td class="'+(x.net<R.N-1?'low':'')+'">'+eur(x.net)+'</td>').join('')+'</tr>';
+  h+=f('Max discount keeping target',x=>x.dmax.toFixed(1).replace('.',',')+' %');
+  if(R.v>0) h+=f('List incl. VAT',x=>eur(x.Ls*(1+R.v)));
+  h+='</tbody>';
+  $('tbl').innerHTML=h;
+  $('foot').textContent='Wholesale (sold outright to a gallery, no commission): '+eur(R.W)+' = '+Math.round(R.W/R.Lone*100)+' % of list. Running share S = '+eur(R.S)+' ('+R.m2.toFixed(2).replace('.',',')+' m²).';
+  // phone
+  let p='<div class="pch"><div class="row"><label>Net wanted €</label><b>'+eur(R.N)+'</b></div></div>';
+  p+=R.rows.map((x,i)=>'<div class="pch'+(openCh===i?' open':'')+'" data-ch="'+i+'"><div class="t"><span>'+x.ch.n+'</span><span><b>'+eur(x.Ls)+'</b> · net '+eur(x.net)+'</span></div><div class="knobs">'+
+   ['c|Commission %','d|Discount %','x|Channel cost €'].map(s=>{const [k,l]=s.split('|');return '<div class="row"><label>'+l+'</label><input type="number" data-i="'+i+'" data-k="'+k+'" value="'+CH[i][k]+'"></div>'}).join('')+
+   '<div class="note">floor '+eur(x.P)+' · max discount '+x.dmax.toFixed(1).replace('.',',')+' %</div></div></div>').join('');
+  p+='<div class="pch note">Wholesale '+eur(R.W)+' · running share '+eur(R.S)+'</div>';
+  $('phoneRight').innerHTML=p;
+  $('phoneRight').querySelectorAll('.t').forEach(t=>t.onclick=()=>{const i=+t.parentNode.dataset.ch;openCh=openCh===i?null:i;render();});
+  document.querySelectorAll('input[data-i]').forEach(inp=>inp.onchange=()=>{CH[+inp.dataset.i][inp.dataset.k]=parseFloat(inp.value)||0;render();});
+  return R;
+}
+function layout(){
+  $('frame').classList.toggle('phone',phone);
+  $('deskRight').classList.toggle('hidden',phone);
+  $('phoneRight').classList.toggle('hidden',!phone);
+  $('panel').classList.toggle('hidden',!open);
+  $('bDesk').classList.toggle('on',!phone);$('bPhone').classList.toggle('on',phone);
+  $('bOne').classList.toggle('on',one);
+}
+$('bDesk').onclick=()=>{phone=false;layout();render();};
+$('bPhone').onclick=()=>{phone=true;layout();render();};
+$('bOne').onclick=()=>{one=!one;layout();render();};
+$('fold').onclick=()=>{open=!open;layout();};
+$('rule').onchange=()=>{
+  const m=$('rule').value;
+  $('rowH').classList.toggle('hidden',m!=='m2');
+  $('rowHrs').classList.toggle('hidden',m!=='hour');
+  if(m==='m2'){$('rateLbl').textContent='Rate €/m²';$('rate').value=150;$('srcNote').textContent='= frais 2025 6 000 € ÷ 40 m² made';}
+  if(m==='flat'){$('rateLbl').textContent='Share € per work';$('rate').value=120;$('srcNote').textContent='= frais 2025 6 000 € ÷ 50 works made';}
+  if(m==='hour'){$('rateLbl').textContent='Rate €/hour';$('rate').value=6;$('srcNote').textContent='typed: no hours are stored today';}
+  render();
+};
+['N','mat','fr','H','W','rate','hrs','r','v'].forEach(id=>$(id).onchange=render);
+$('apply').onclick=()=>{const R=render();const t=$('toast');t.textContent='Mock: Prix would become '+eur(R.Lone)+' through saveWork (nothing saved).';t.style.display='block';setTimeout(()=>t.style.display='none',2600);};
+$('rule').onchange();layout();
+</script>
+</body>
+</html>

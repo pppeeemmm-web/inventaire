@@ -67,6 +67,7 @@ import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
 import { WorkCostBlock } from './WorkCostBlock'
+import { WorkReversePriceBlock } from './WorkReversePriceBlock'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { WorkNoteLines } from './WorkNoteLines'
 import { ConditionReportsSection } from './ConditionReportsSection'
@@ -2077,6 +2078,7 @@ export function DrawerContent({
               <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
             </details>
           ) : null}
+          <WorkReversePriceBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} narrow={narrow} />
         </Part>
         <Part label={t('wc_p_groups')} stacked={stacked} muted={selGroups.size === 0}>
           <PickChips

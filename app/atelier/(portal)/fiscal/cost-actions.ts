@@ -144,3 +144,51 @@ async function workOrderSalePrice(supabase: Awaited<ReturnType<typeof createClie
   const { count } = await supabase.from('work_order_work').select('id', { count: 'exact', head: true }).eq('order_id', sold.order_id)
   return count === 1 && sold.o?.price_final != null ? Number(sold.o.price_final) : null
 }
+
+export type RunningCostRate = {
+  year: number
+  /** The year's expenses (TTC) not attributed to any work, €. */
+  pool: number
+  /** Works made that year (`Oeuvres.Année`). */
+  works: number
+  /** pool ÷ works, €: the flat running-cost share per work. */
+  perWork: number
+}
+
+/**
+ * Running-cost share for reverse pricing (admin only, read only): last year's expenses minus what is
+ * already attributed to works (`expense_oeuvre`, same split rule as `fetchWorkCost`), divided by the
+ * works made that year. Null when there is nothing to compute (no expenses, no works, or more rows
+ * than one page, which would give a wrong sum).
+ */
+export async function fetchRunningCostRate(year?: number): Promise<RunningCostRate | null> {
+  const { error, supabase } = await guardAdmin()
+  if (error || !supabase) return null
+  const y = year ?? new Date().getFullYear() - 1
+
+  const PAGE = 1000
+  const { data } = await supabase
+    .from('expense')
+    .select('montant_ttc, expense_oeuvre(amount)')
+    .eq('fiscal_year', y)
+    .range(0, PAGE - 1)
+  const rows = (data ?? []) as unknown as { montant_ttc: number | null; expense_oeuvre: { amount: number | null }[] | null }[]
+  if (!rows.length || rows.length >= PAGE) return null
+
+  let pool = 0
+  for (const r of rows) {
+    const ttc = Number(r.montant_ttc ?? 0)
+    const links = r.expense_oeuvre ?? []
+    const attributed = links.reduce((s, l) => s + (l.amount == null ? ttc / Math.max(1, links.length) : Number(l.amount)), 0)
+    pool += Math.max(0, ttc - attributed)
+  }
+
+  const { count } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID', { count: 'exact', head: true })
+    .gte('Année', `${y}-01-01`)
+    .lte('Année', `${y}-12-31`)
+  const works = count ?? 0
+  if (works <= 0 || pool <= 0) return null
+  return { year: y, pool: Math.round(pool), works, perWork: Math.round(pool / works) }
+}
