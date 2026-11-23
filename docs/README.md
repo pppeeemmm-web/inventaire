@@ -3,7 +3,7 @@
 **Truth order:** live code → [`CLAUDE.md`](../CLAUDE.md) → [`SITE_MAP.md`](../SITE_MAP.md) → files below.
 **DB schema:** always live (Supabase MCP / `lib/types/supabase.generated.ts`) — never from guides.
 
-**Read order for a cold session:** CLAUDE.md (auto-loaded) → this table → `TODO.md` (live checklist; the « First: » line = the current step) → `design/2026-11-21/BuildingPrinciples.md` (read before any plan) → `design/2026-11-20/MasterPlan.md` §5 (marching order) → `STRATEGY.md` (owner intent). **No open handoff** since 2026-11-15: a new batch gets a `HANDOFF_<date>.md` here, listed in this table; a closed one moves to `archive/` the same day.
+**Read order for a cold session:** CLAUDE.md (auto-loaded) → this table → `TODO.md` (live checklist; the « First: » line = the current step) → `design/2026-11-21/BuildingPrinciples.md` (read before any plan) → `design/2026-11-20/MasterPlan.md` §5 (marching order) → `STRATEGY.md` (owner intent). **Open handoff:** [`HANDOFF_2026-11-23.md`](./HANDOFF_2026-11-23.md) — land Places phase B on top of saveContact (read it first). A closed one moves to `archive/` the same day.
 
 | Doc | Use when | Verified |
 |-----|----------|----------|
