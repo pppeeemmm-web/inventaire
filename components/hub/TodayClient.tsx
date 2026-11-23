@@ -442,7 +442,7 @@ export function TodaySuggestions({ rows, canDecide }: { rows: Suggestion[]; canD
               </div>
             ) : (
               <Link
-                href="/atelier/concepts"
+                href={p.conceptId ? `/atelier/concepts?concept=${p.conceptId}` : '/atelier/concepts'}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, flex: 1, minWidth: 0, color: 'var(--tx)', textDecoration: 'none' }}
               >
                 <Thumb file={p.thumb} size={44} />

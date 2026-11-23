@@ -114,7 +114,7 @@ async function main() {
     Oeuvres: 'OeuvreID', tblImage: 'ImageID', Technique: 'TechniqueID', Support: 'SupportID', Format: null,
     OeuvreStatus: 'id', theme: 'id', oeuvre_theme: 'oeuvre_id', work_period: 'id', work_period_override: 'oeuvre_id',
     work_source: 'id', work_source_link: 'oeuvre_id', working_group: null, working_group_work: null,
-    tblrelations: null, journal_entry: 'id', journal_entry_link: 'id', journal_entry_label: 'id', journal_entry_day_change: 'id', concept: null, voice_note: 'created_at',
+    tblrelations: null, journal_entry: 'id', journal_entry_link: 'id', journal_entry_label: 'id', journal_entry_day_change: 'id', concept: null, concept_change: 'id', voice_note: 'created_at',
     condition_report: 'id', condition_issue: 'id', kaizen_item: 'id', document: 'created_at', work_session: 'created_at',
     work_order: 'created_at', work_order_work: null, payments: 'payment_date', suivi_process: null, suivi_etape: null, expense: null, stock_item: null,
   }

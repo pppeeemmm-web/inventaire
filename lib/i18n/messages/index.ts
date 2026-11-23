@@ -5,6 +5,7 @@ import { todayCacheMessages } from './today-cache.messages'
 import { swipeDeckMessages } from './swipe-deck.messages'
 import { filMessages } from './fil.messages'
 import { ideasMessages } from './ideas.messages'
+import { ideaTreeMessages } from './idea-tree.messages'
 import { noteLinesMessages } from './note-lines.messages'
 import { mobileSaleMessages } from './mobile-sale.messages'
 import { portfolioPdfMessages } from './portfolio-pdf.messages'
@@ -86,6 +87,7 @@ export const featureMessages = {
   ...swipeDeckMessages,
   ...filMessages,
   ...ideasMessages,
+  ...ideaTreeMessages,
   ...noteLinesMessages,
   ...portfolioPdfMessages,
   ...mobileSaleMessages,

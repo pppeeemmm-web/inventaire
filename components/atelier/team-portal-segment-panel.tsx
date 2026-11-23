@@ -40,7 +40,8 @@ const OrdersTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components
 const PipelineTab = dynamic(() => import('@/app/atelier/(portal)/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
 const Fiscal = dynamic(() => import('@/app/atelier/(portal)/fiscal/_components/Fiscal').then((m) => ({ default: m.Fiscal })), { loading: () => <TabPanelFallback />, ssr: false })
 const Kaizen = dynamic(() => import('@/app/atelier/(portal)/kaizen/_components/Kaizen').then((m) => ({ default: m.Kaizen })), { loading: () => <TabPanelFallback />, ssr: false })
-const Concepts = dynamic(() => import('@/app/atelier/(portal)/concepts/_components/Concepts').then((m) => ({ default: m.Concepts })), { loading: () => <TabPanelFallback />, ssr: false })
+// Idées: the tree of ideas fed by the Journal (docs/design/2026-11-23/IdeasDesign.md).
+const IdeasHome = dynamic(() => import('@/components/atelier/concepts/IdeasHome').then((m) => ({ default: m.IdeasHome })), { loading: () => <TabPanelFallback />, ssr: false })
 // R6: « Expositions & événements » replaces the former Exhibitions screen (docs/design/2026-11-17/R6_Events.notes.md).
 const EventsTab = dynamic(() => import('@/components/atelier/events/EventsTab').then((m) => ({ default: m.EventsTab })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
 const Themes = dynamic(() => import('@/app/atelier/(portal)/themes/_components/Themes').then((m) => ({ default: m.Themes })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -440,7 +441,9 @@ export function SegmentRoutePanel({
     case 'concepts':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <Concepts isAdmin={isAdmin} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <IdeasHome isAdmin={isAdmin} />
+          </div>
         </div>
       )
     case 'audit':

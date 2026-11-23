@@ -19,6 +19,9 @@ import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import { contactListLabel, sortContactsByName } from '@/lib/contacts/contact-display'
 import { resolveVaultFolder } from '@/lib/vault/folder-routing'
+import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
+import { momentLinkedToIdea } from '@/lib/ideas/link-check'
+import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import {
   S3Client,
   PutObjectCommand,
@@ -402,7 +405,7 @@ export async function attachShareInboxToConcept(
   const { payload } = loaded
   const block = formatShareInboxText(payload)
 
-  const { data: concept } = await g.supabase.from('concept').select('id, notes').eq('id', conceptId).maybeSingle()
+  const { data: concept } = await g.supabase.from('concept').select('id').eq('id', conceptId).maybeSingle()
   if (!concept) return { error: 'not_found' }
 
   for (const f of payload.files) {
@@ -453,18 +456,19 @@ export async function attachShareInboxToConcept(
     if (docErr) return { error: docErr.message }
   }
 
-  if (payload.files.length === 0 && payload.urls.length === 0) {
-    if (!block) return { error: 'no_files' }
-    const { error: upErr } = await g.supabase.from('concept')
-      .update({ notes: appendBlock(concept.notes as string | null, block) })
-      .eq('id', conceptId)
-    if (upErr) return { error: upErr.message }
-  }
+  // What was shared becomes a moment of the idea on today (Idées design 2026-11-23, Pem « let's try that »):
+  // the text and the links, linked to the idea; files and links are also kept in the Vault above. The idea's old
+  // notes box no longer grows.
+  const momentText = [block, ...payload.urls].map((x) => x?.trim()).filter(Boolean).join('\n').trim() || payload.files.map((f) => f.name).join(', ')
+  if (!momentText) return { error: 'no_files' }
+  const moment = await createJournalEntry({ day: todayCalendarDayInParis(), kind: 'note', body: momentText, conceptIds: [conceptId] })
+  if ('error' in moment) return { error: moment.error }
+  if (!(await momentLinkedToIdea(moment.id, conceptId))) return { error: 'link_failed' }
 
   revalidatePath('/atelier/concepts')
   const fin = await finishInbox(inboxId, { target: 'concept', conceptId })
   if (fin) return fin
-  return { ok: true, href: '/atelier/concepts' }
+  return { ok: true, href: `/atelier/concepts?concept=${conceptId}` }
 }
 
 export async function attachShareInboxToVoiceNote(inboxId: string): Promise<ShareActionOk | ShareActionErr> {

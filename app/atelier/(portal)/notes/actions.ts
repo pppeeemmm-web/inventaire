@@ -502,17 +502,34 @@ export async function routeVoiceNote(
   const newTitle = patch.new_concept_title?.trim()
   if (newTitle) {
     // The new idea carries the note's text: Pem's edited transcript, else the machine transcript (Pem 2026-11-20).
+    // Planted through the one door (Idées design 2026-11-23 §2): the note's Journal entry becomes the idea's first
+    // moment and stays on its day; a note no entry carries yet gets a moment on today with its text.
     const tx = r.transcript?.trim() || (await machineTranscripts(supabase, [r.id])).get(r.id)?.body.trim() || null
-    const { data: c, error: cErr } = await supabase
-      .from('concept')
-      .insert({ titre: newTitle.slice(0, 200), statut: 'idee', category: 'artistic', description: tx ? tx.slice(0, 20_000) : null })
-      .select('id, titre, statut')
-      .single()
-    if (cErr || !c) return { error: cErr?.message ?? 'concept_insert' }
-    createdConcept = c as { id: string; titre: string; statut: string }
+    const { data: carrier } = await supabase.from('journal_entry').select('id').eq('voice_note_id', r.id).is('corrects_id', null).limit(1).maybeSingle()
+    const { data: planted, error: cErr } = await supabase.rpc('idea_plant', {
+      p_title: newTitle.slice(0, 200),
+      p_body: carrier ? undefined : tx ?? undefined,
+      p_from_entry: carrier?.id ?? undefined,
+    })
+    if (cErr || !planted) return { error: cErr?.message ?? 'concept_insert' }
+    createdConcept = { id: (planted as { concept_id: string }).concept_id, titre: newTitle.slice(0, 200), statut: 'idee' }
     update.concept_id = createdConcept.id
   } else if (patch.concept_id !== undefined) {
     update.concept_id = patch.concept_id
+    // Routed to an existing idea: its Journal entry becomes a moment of the idea (Idées 2026-11-23), so the idea's
+    // Fil and counts show it. A link is never removed (append-only); unlinking only clears the note's own column.
+    if (patch.concept_id) {
+      const { data: carrier } = await supabase.from('journal_entry').select('id').eq('voice_note_id', r.id).is('corrects_id', null).limit(1).maybeSingle()
+      if (carrier) {
+        const { data: have } = await supabase.from('journal_entry_link').select('id, validated_at').eq('entry_id', carrier.id).eq('concept_id', patch.concept_id).limit(1).maybeSingle()
+        if (!have) {
+          const { error: linkErr } = await supabase
+            .from('journal_entry_link')
+            .insert({ entry_id: carrier.id, concept_id: patch.concept_id, created_by: user.id, proposed_by: 'pem', validated_at: new Date().toISOString() })
+          if (linkErr) return { error: linkErr.message }
+        }
+      }
+    }
   }
   if (patch.oeuvre_id !== undefined) update.oeuvre_id = patch.oeuvre_id
   if (patch.process_id !== undefined) update.process_id = patch.process_id

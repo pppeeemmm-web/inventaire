@@ -473,7 +473,7 @@ export function JournalDayExtras({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
                   {p.oeuvre_id != null ? <WorkChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" /> : null}
                   {p.concept_id ? (
-                    <Link href="/atelier/concepts" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                    <Link href={`/atelier/concepts?concept=${p.concept_id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       {t('je_concept_prefix')} {p.conceptTitle ?? '—'}
                     </Link>
                   ) : null}
@@ -567,7 +567,7 @@ export function JournalDayExtras({
               {e.concepts.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                   {e.concepts.map((c) => (
-                    <Link key={c.id} href="/atelier/concepts" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                    <Link key={c.id} href={`/atelier/concepts?concept=${c.id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       {t('je_concept_prefix')} {c.title ?? '—'}
                     </Link>
                   ))}
@@ -861,7 +861,7 @@ function ConceptPreviewToggle({ conceptId, title }: { conceptId: string | null; 
               {data.description ? <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: 'var(--tx2)' }}>{data.description}</p> : null}
               {data.notes ? <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', color: 'var(--tx3)', fontSize: 13 }}>{data.notes.length > 600 ? `${data.notes.slice(0, 600)}…` : data.notes}</p> : null}
               {!data.description && !data.notes ? <div style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 4 }}>{t('je_concept_preview_empty')}</div> : null}
-              <Link href="/atelier/concepts" className="t-mono-sm" style={{ display: 'inline-block', marginTop: 8, color: 'var(--ac)' }}>
+              <Link href={`/atelier/concepts?concept=${data.id}`} className="t-mono-sm" style={{ display: 'inline-block', marginTop: 8, color: 'var(--ac)' }}>
                 {t('je_concept_open_ideas')}
               </Link>
             </>

@@ -143,7 +143,7 @@ export function VoiceNoteLinkPanel({
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('je_voice_link_idea')}</div>
         {links.concept_id ? (
-          linked(linkedConcept?.titre ?? links.concept_id.slice(0, 8), '/atelier/concepts', () => void run({ concept_id: null }))
+          linked(linkedConcept?.titre ?? links.concept_id.slice(0, 8), `/atelier/concepts?concept=${links.concept_id}`, () => void run({ concept_id: null }))
         ) : (
           <div style={row}>
             <select

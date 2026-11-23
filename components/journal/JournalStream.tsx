@@ -25,6 +25,7 @@ import { isNothingHeard, isPlaceholderText, isWaitingTranscript } from '@/lib/jo
 import { CaptureQueueFlusher, QueuedCaptureCards } from '@/components/journal/CaptureQueue'
 import { addJournalLabel, addJournalSuite, moveJournalEntry, removeJournalLabel } from '@/app/atelier/(portal)/journal/step-b-actions'
 import { JOURNAL_LABELS } from '@/lib/journal/labels'
+import { PlantIdeaSheet } from '@/components/atelier/concepts/PlantIdeaSheet'
 import {
   decideJournalLink,
   setJournalEntryHidden,
@@ -195,7 +196,7 @@ function originLabel(e: JournalDayEntry, t: (k: never) => string): string {
 }
 
 /** A Journal entry (typed, dictated, imported; a voice note's transcript). */
-function EntryCard({
+export function EntryCard({
   e,
   isAdmin,
   run,
@@ -217,7 +218,7 @@ function EntryCard({
   const [linkOpen, setLinkOpen] = useState(false)
   const [fixOpen, setFixOpen] = useState(false)
   const [asking, setAsking] = useState(false)
-  const [panel, setPanel] = useState<'labels' | 'suite' | 'move' | null>(null)
+  const [panel, setPanel] = useState<'labels' | 'suite' | 'move' | 'idea' | null>(null)
   const [suiteText, setSuiteText] = useState('')
   const [moveDay, setMoveDay] = useState(e.event_on)
   const [movePrecision, setMovePrecision] = useState<'day' | 'month' | 'year'>((e.event_precision as 'day' | 'month' | 'year') || 'day')
@@ -290,6 +291,8 @@ function EntryCard({
   if (!e.hidden) menu.push({ key: 'suite', label: t('js_menu_suite'), on: () => setPanel('suite') })
   if (canMove) menu.push({ key: 'move', label: t('js_menu_move'), on: () => setPanel('move') })
   if (!e.hidden) menu.push({ key: 'labels', label: t('js_menu_labels'), on: () => setPanel('labels') })
+  // Idées (design 2026-11-23 §2): the moment stays on its day and becomes the idea's first page.
+  if (!e.hidden && !nothing && !waiting) menu.push({ key: 'idea', label: t('js_menu_make_idea'), on: () => setPanel('idea') })
   if (correctable && !nothing && !waiting && !(unchecked && main)) menu.push({ key: 'fix', label: t('js_menu_fix'), on: () => setFixOpen(true) })
   if (noteId && links) menu.push({ key: 'link', label: t('js_menu_link'), on: () => setLinkOpen(true) })
   if (isAdmin) menu.push({ key: 'hide', label: t(e.hidden ? 'js_menu_unhide' : 'js_menu_hide'), on: () => run(() => setJournalEntryHidden(e.id, !e.hidden)) })
@@ -352,7 +355,8 @@ function EntryCard({
                 type="button"
                 aria-pressed={!!on}
                 disabled={busy}
-                onClick={() => void step(() => (on ? removeJournalLabel(on.id) : addJournalLabel(e.id, l)), null, refresh)}
+                // The label Idée and the idea are one gesture (Pem 2026-11-23): choosing it plants the idea.
+                onClick={() => (l === 'idea' && !on ? setPanel('idea') : void step(() => (on ? removeJournalLabel(on.id) : addJournalLabel(e.id, l)), null, refresh))}
                 style={{ ...chipStyle, padding: '6px 12px', minHeight: 36, cursor: 'pointer', background: on ? 'var(--ac)' : 'none', color: on ? 'var(--bg0)' : 'var(--tx2)', borderColor: on ? 'var(--ac)' : 'var(--bd2)' }}
               >
                 {labelName(l)}
@@ -420,6 +424,11 @@ function EntryCard({
           <button type="button" className="btn ghost sm" onClick={() => setPanel(null)} style={{ minHeight: 44 }}>
             {t('js_cancel')}
           </button>
+        </div>
+      ) : null}
+      {panel === 'idea' ? (
+        <div style={{ marginTop: 8 }}>
+          <PlantIdeaSheet fromEntry={{ id: e.id, text: e.body }} onClose={() => setPanel(null)} onPlanted={async () => { setPanel(null); await refresh() }} />
         </div>
       ) : null}
       {fixOpen && correctable ? (
