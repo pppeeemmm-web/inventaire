@@ -70,6 +70,8 @@ const csp = [
 const lanDevHost = process.env.DEV_LAN_HOST?.trim()
 
 const nextConfig: NextConfig = {
+  // Throwaway copy only (run-stress-dev): the dev-tools button sits over the phone bar's left button and eats test clicks.
+  ...(process.env.STRESS_COPY === '1' ? { devIndicators: false as const } : {}),
   /** The PDF guide reads its font files at run time (lib/aide/pdf.ts): ship them with that route. */
   outputFileTracingIncludes: {
     '/atelier/aide/guide.pdf': ['./lib/aide/pdf/fonts/**'],

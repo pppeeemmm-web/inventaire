@@ -14,10 +14,13 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
-  async function openHub(page: Page) {
-    await page.goto('/hub')
+  async function openHub(page: Page, path = '/hub') {
+    await page.goto(path)
     await expect(page.getByTestId('hub-today-root')).toBeVisible({ timeout: 45_000 })
   }
+
+  /** The old day page: `?stream=0` (the Journal stream is the default since 2026-11-22). */
+  const OLD_DAY = '/hub?stream=0'
 
   /** ☰ → menu sheet → « Actions » fold (ex-Bureau). */
   async function openBureau(page: Page) {
@@ -38,8 +41,13 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     expect(overflow).toBe(false)
   })
 
-  test('day sections stream in', async ({ page }) => {
+  test('/hub opens on the Journal stream', async ({ page }) => {
     await openHub(page)
+    await expect(page.getByTestId('journal-phone')).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('day sections stream in (old day page)', async ({ page }) => {
+    await openHub(page, OLD_DAY)
     await expect(page.getByTestId('hub-today-summary')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByTestId('hub-today-works')).toBeVisible()
     await expect(page.getByTestId('hub-today-entries')).toBeVisible()
@@ -53,8 +61,8 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     }
   })
 
-  test('Écrire opens the writing sheet over the day (no page change)', async ({ page }) => {
-    await openHub(page)
+  test('Écrire opens the writing sheet over the day (no page change, old day page)', async ({ page }) => {
+    await openHub(page, OLD_DAY)
     await page.getByTestId('phone-bar-write').click()
     await expect(page.getByTestId('day-write-sheet')).toBeVisible({ timeout: 45_000 })
     await expect(page).toHaveURL(/\/hub/)

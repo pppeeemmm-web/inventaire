@@ -13,8 +13,14 @@ test.describe('Work session (Verb 1)', () => {
 
   test('session new page shows root shell', async ({ page }) => {
     await page.goto('/atelier/session/new')
-    await expect(page.getByTestId('session-new-root')).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByTestId('session-date-input')).toBeVisible()
+    // Field capture is admin only: a team account (the throwaway copy's login) gets the gate, an admin the form.
+    const form = page.getByTestId('session-date-input')
+    const gate = page.getByTestId('session-capture-admin-gate')
+    await expect(form.or(gate)).toBeVisible({ timeout: 45_000 })
+    if (await gate.isVisible()) {
+      await expect(gate.getByRole('link')).toHaveAttribute('href', '/atelier/journal')
+      return
+    }
     // Location & weather is folded (owner 2026-11-12): open it, then the button shows.
     await page.getByTestId('session-field-context').locator('summary').click()
     await expect(page.getByTestId('session-field-context-capture')).toBeVisible()
