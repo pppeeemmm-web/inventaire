@@ -7,6 +7,14 @@ import { PEM_CONTACT_ID } from '@/lib/data'
 
 type OeuvreInsert = Database['public']['Tables']['Oeuvres']['Insert']
 
+/** Origin of a work at creation (owner 2026-11-23): stated 'new' / 'found' wins; not stated → 'new', unless a year earlier than the current Paris year was typed (an old work: nothing invented). */
+export function creationOrigin(stated: string | null | undefined, year: number | null | undefined, todayParisYear: number): 'new' | 'found' | null {
+  const s = (stated ?? '').trim()
+  if (s === 'new' || s === 'found') return s
+  if (year != null && Number.isFinite(year) && year < todayParisYear) return null
+  return 'new'
+}
+
 /** Column payload for a new Oeuvres row — provenance stamps are added by insertOeuvreRow. */
 export type OeuvreCreateColumns = Partial<
   Omit<OeuvreInsert, 'OeuvreID' | 'created_by' | 'edited_by' | 'edited_at'>

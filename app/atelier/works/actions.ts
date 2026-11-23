@@ -29,7 +29,7 @@ import {
 import { loadWorkPlanState, PLAN_READ_FIELD, planReadGuard, planReadGuardJson } from '@/lib/work-plan-state'
 import { historiqueToStore } from '@/lib/historique-merge'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
-import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
+import { allocateOeuvreId, creationOrigin, insertOeuvreRow } from '@/lib/work-create-core'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import { logError } from '@/lib/error-reporter/server'
@@ -484,10 +484,13 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       ? `${originEntry}\n${historiqueAppend}`
       : originEntry
 
-    // New / found (TODO 4, like the session's choice): a work started now starts production today
-    // (studio day, Paris); a found work has an unknown start. Not stated → nothing recorded.
+    // Origin (owner 2026-11-23): a work created without being marked old is new, production starts
+    // today (studio day, Paris). Stated 'new' / 'found' wins. A typed year earlier than the current
+    // Paris year means an old work: nothing recorded.
     const originRaw = (formData.get('production_origin') as string | null)?.trim()
-    const productionOrigin = originRaw === 'new' || originRaw === 'found' ? originRaw : null
+    const typedYear = annéeFinal && /^\d{4}/.test(annéeFinal) ? Number(annéeFinal.slice(0, 4)) : null
+    const parisYear = Number(calendarDayInParisFromIso(new Date().toISOString()).slice(0, 4))
+    const productionOrigin = creationOrigin(originRaw, typedYear, parisYear)
 
     // INSERT
     const insertRes = await insertOeuvreRow(supabase, oid, {
@@ -583,11 +586,14 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       anonymity_level: string | null
       admin_override_anonymity: boolean | null
       fate: string | null
+      production_origin: string | null
+      production_started_on: string | null
+      production_completed_on: string | null
     }
 
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, ContactID, LocalisationID, Prix, PrixFinal, txtImageNameLink, Historique, "Catalogué", "NeedsPhotograph", is_public, anonymity_level, admin_override_anonymity, fate')
+      .select('statusId, ContactID, LocalisationID, Prix, PrixFinal, txtImageNameLink, Historique, "Catalogué", "NeedsPhotograph", is_public, anonymity_level, admin_override_anonymity, fate, production_origin, production_started_on, production_completed_on')
       .eq('OeuvreID', oid)
       .single<CurrentOeuvre>()
 
@@ -681,6 +687,19 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     }
 
     if (finalHistorique !== undefined) updatePayload.Historique = finalHistorique
+
+    // A year earlier than the recorded start means an old work (owner 2026-11-23): the automatic « new » start is cleared.
+    const savedYear = annéeFinal && /^\d{4}/.test(annéeFinal) ? Number(annéeFinal.slice(0, 4)) : null
+    const startedYear = current?.production_started_on && /^\d{4}/.test(current.production_started_on)
+      ? Number(current.production_started_on.slice(0, 4))
+      : null
+    if (
+      savedYear !== null && startedYear !== null && savedYear < startedYear &&
+      current?.production_origin === 'new' && !current.production_completed_on
+    ) {
+      updatePayload.production_origin = null
+      updatePayload.production_started_on = null
+    }
 
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName

@@ -27,7 +27,8 @@ import {
 } from '@/lib/work-session-payload'
 import type { WorkSessionRow } from '@/lib/types/database'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
-import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
+import { allocateOeuvreId, creationOrigin, insertOeuvreRow } from '@/lib/work-create-core'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { changedVersionFields } from '@/lib/oeuvre-version-fields'
 
 /** Until `work_session` is in generated Supabase types (run `supabase gen types` after migration). */
@@ -528,6 +529,8 @@ async function createWorkFromSessionFields(
 
   const actorId = provenanceUserId(actorUserId, null)
   const editedAt = provenanceTimestamp()
+  const parisYear = Number(calendarDayInParisFromIso(new Date().toISOString()).slice(0, 4))
+  const origin = creationOrigin(fields.production_origin, null, parisYear)
   const inserted = await insertOeuvreRow(
     supabase,
     oid,
@@ -544,8 +547,8 @@ async function createWorkFromSessionFields(
       Exposable: false,
       Catalogué: false,
       // A real new work starts production on the session day; a found one has no known start.
-      production_origin: fields.production_origin ?? null,
-      production_started_on: fields.production_origin === 'new' ? dateStr.replace(/\//g, '-') : null,
+      production_origin: origin,
+      production_started_on: origin === 'new' ? dateStr.replace(/\//g, '-') : null,
     },
     { actorId, editedAt },
   )

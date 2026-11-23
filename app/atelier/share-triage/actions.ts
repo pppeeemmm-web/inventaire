@@ -15,7 +15,7 @@ import { shareImageFiles, titreSeedFromSharePayload } from '@/lib/share-inbox-ti
 import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
-import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
+import { allocateOeuvreId, creationOrigin, insertOeuvreRow } from '@/lib/work-create-core'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import { contactListLabel, sortContactsByName } from '@/lib/contacts/contact-display'
 import { resolveVaultFolder } from '@/lib/vault/folder-routing'
@@ -651,6 +651,8 @@ export async function createDraftWorkFromShareInbox(
   const oid = oidRes
   const actorId = provenanceUserId(g.user.id, null)
   const editedAt = provenanceTimestamp()
+  const parisToday = todayCalendarDayInParis()
+  const origin = creationOrigin(null, null, Number(parisToday.slice(0, 4)))
 
   const insertRes = await insertOeuvreRow(
     g.supabase,
@@ -663,6 +665,8 @@ export async function createDraftWorkFromShareInbox(
       Catalogué: false,
       NeedsPhotograph: false,
       Exposable: false,
+      production_origin: origin,
+      production_started_on: origin === 'new' ? parisToday : null,
     },
     { actorId, editedAt },
   )

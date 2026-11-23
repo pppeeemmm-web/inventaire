@@ -87,8 +87,8 @@ export const workFormMessages = defineMessages({
     en: 'Year, month or day: 2021, 2024-06, 2026-08-22. The end fills itself in when the work is catalogued or archived; it can also be corrected here.',
   },
   wf_origin_hint: {
-    fr: 'Nouvelle : la production démarre aujourd’hui. Ancienne : début inconnu. Sans choix, rien n’est noté.',
-    en: 'New: production starts today. Older: start unknown. No choice, nothing recorded.',
+    fr: 'Nouvelle : la production démarre aujourd’hui. Ancienne : début inconnu. Sans choix : nouvelle, commencée aujourd’hui — sauf si l’année saisie est antérieure (œuvre ancienne).',
+    en: 'New: production starts today. Older: start unknown. No choice: new, started today — unless the year typed is earlier (an old work).',
   },
   wf_production_end_label: { fr: 'Fin de production', en: 'Production ended' },
   wf_production_end_saved: { fr: 'Date de fin enregistrée', en: 'End date saved' },
