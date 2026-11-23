@@ -1,6 +1,6 @@
 # People on one page — design (2026-11-22)
 
-Status: **approved by Pem 2026-11-23** (« If it needs to be built, we start building »). Steps 0–3 of §10 are live (saveContact, places, display, the person page 26f48d3); the next steps need SQL, each with its own OK.
+Status: **Built 2026-11-23** (commits 26f48d3, 75699a5, 414ea8c, dece9b1, 4f8b360, fbd1e95, 81e526b, four-tab editor cdda771). Not built: birthday reminders and the two care rules, journal entries naming the person in the timeline, « feu » on papers for a deceased person, phones as E.164.
 Read for this page: root `CLAUDE.md`; [`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md); [`MasterPlan.md`](../2026-11-20/MasterPlan.md) §1.1, §2, §5; [`Survey_ContactsCare.md`](../2026-11-21/Survey_ContactsCare.md), [`Survey_LinksDigests.md`](../2026-11-21/Survey_LinksDigests.md); [`CatalogueGaps.notes.md`](../2026-11-19/CatalogueGaps.notes.md) E and I; [`ContactsReview.notes.md`](../2026-11-18/ContactsReview.notes.md); `docs/TODO.md` §3. The Journal design of today (main checkout, `JournalDesign.md`) for its `@person` links.
 Code read: `app/atelier/(portal)/contacts/actions.ts`, `components/atelier/ContactEditorPanel.tsx` (save path), a scout list of every writer and reader (§7). Live database read only, 2026-11-22: foreign keys, triggers, RLS policies and counts — no names or other personal data copied here.
 Mockup: [`People_Mockup.html`](./People_Mockup.html) — desk and phone side by side, clickable, invented people.

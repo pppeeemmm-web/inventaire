@@ -7,6 +7,12 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.107 (2026-11-23) — custody and life dates in the person timeline; four-tab contact editor.
+  wn_person_custody_tabs_t: { fr: 'Garde et onglets', en: 'Custody and tabs' },
+  wn_person_custody_tabs_d: {
+    fr: 'Sur la page d’une personne, la chronologie montre aussi quand elle est devenue (ou a cessé d’être) propriétaire, gardienne ou acheteuse d’une œuvre, et sa naissance / son décès. « Modifier » s’ouvre en quatre onglets : Identité, Adresses, À propos, Relations (sphères et liens).',
+    en: 'On a person’s page, the timeline also shows when they became (or stopped being) the owner, holder or buyer of a work, and their birth / death. « Edit » opens in four tabs: Identity, Addresses, About, Relations (spheres and links).',
+  },
   // 3.1.106 (2026-11-23) — people: spheres, dates, links, timeline, moments, archive; capture date.
   wn_people_crm_t: { fr: 'Les personnes : sphères, liens, moments', en: 'People: spheres, links, moments' },
   wn_people_crm_d: {

@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — People built (Pem « If it needs to be built, we start building », design [People.md](./design/2026-11-22/People.md))
+
+- `75699a5` person timeline + « Vu » strips; `414ea8c` a captured work counts as new; `dece9b1` spheres, birth / death dates, links between people (SQL live); `4f8b360` moments, archive instead of delete, team changes in Pem's Fil with Vu / Revenir, privacy of moments; `fbd1e95` phone day counts moments, Fil names, phone « Revenir » confirm; `81e526b` custody history « Garde » + « Vie » in the timeline (SQL live); four-tab contact editor cdda771. Duplicate warning on create already live (`de5ce66`). What's new 3.1.106, 3.1.107. Relation-type labels in pivots / graph CSV: nothing to change, every relation type is shown raw there and the new kinds behave like the rest. Open: birthday reminders, journal entries naming the person in the timeline, « feu » on papers for a deceased person; E.164 phones and the autofill / label clean-up stay in TODO.
+
 ## 2026-11-23 — People step 3: the person page (Pem « If it needs to be built, we start building »)
 
 - `26f48d3`: opening a contact shows its page — works strips owns / holds / bought (counts from the database, paged), orders and papers folded (read on open), « Dans le Journal », coordinates rail (desk) / folded (phone, call / mail); « Modifier » opens the unchanged editor (saveContact); ⋯ = new order / merge / delete on phone and desk. Reads only, no SQL. Checked on the copy: desk 1280 px, phone 375 px (no sideways scroll except the works strip, taps ≥ 44 px), team account (page opens, no « Privé » chip). What's new 3.1.105. Next People steps need SQL (People.md §10: tags, `moment`, person ↔ person, birthdays, the timeline read) — each with Pem's OK.

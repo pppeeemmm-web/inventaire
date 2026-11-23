@@ -9,7 +9,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
-- People: steps 0–3 live (person page 26f48d3); next steps need SQL (People.md §10: tags, `moment` touches, person ↔ person, birthdays, `person_timeline`) — design approved, each SQL with Pem's OK.
+- People: the design is built (timeline, spheres, dates, links, moments, archive, Fil, custody, four-tab editor); open: birthday reminders and the two care rules, journal entries that name the person in the timeline, « feu » on papers for a deceased person → [People.md](./design/2026-11-22/People.md).
 - Reverse pricing: first slice live (admin block on the work card); open: the contributions rate and how a consignment receipt is declared (accountant), a database sum for the running-cost rate.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
 - Pem's order « 1 3 2 » is done (see DONE); next if time remains before the pause (Max runs to 17 Dec 2026): the reverse pricing design draft (§3, no build).
@@ -25,6 +25,7 @@ Data safety (SQL, Pem's OK given)
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table.
+- [ ] Contacts: the « n / total » counter counts archived cards in the total.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
@@ -57,7 +58,7 @@ Checks
 
 ## 3. Big designs — one at a time, design first (whole screen before code)
 
-- [ ] **Contacts as relationships:** design draft [`People.md`](./design/2026-11-22/People.md) (+ mockup) waits for Pem's approval. A four-part contact (info · addresses · about · relationships), « Sphères », reminders (birthdays first), a « Relation » timeline (works shown to whom, kits, events, enquiries); absorbs the rest of the contacts review (better autofill, one phone format E.164 shown grouped, a fixed FR / EN label list + clean-up of imported labels) → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
+- [ ] **Contacts, rest of the review:** better autofill, one phone format E.164 shown grouped, a fixed FR / EN label list + clean-up of imported labels → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
 - [ ] **Reverse pricing:** from the net wanted after discount, commission, taxes and costs back to the list price per channel; the wholesale price falls out of it (needs your inputs, §2) → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)
 - [ ] **Phone outbox on mobile data (designed with the Journal capture):** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
 - [ ] **R8 public site:** look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md)
@@ -97,7 +98,7 @@ Storage and Vault
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
-- [ ] `saveContact` v2: duplicates on create (« a card may already exist », « créer quand même »), team edits in Pem's Fil with « Revenir », phones stored E.164, archive instead of delete, a death recorded; the server writers still outside the door (quick add / import / order party, supplier inline, share-triage notes, team access, signature) → [People.md §3](./design/2026-11-22/People.md).
+- [ ] `saveContact` v2: phones stored E.164; the server writers still outside the door (quick add / import / order party, supplier inline, share-triage notes, team access, signature) → [People.md §3](./design/2026-11-22/People.md).
 - [ ] Eight kinds of record the museum standards expect (inscriptions, moves with « seen on », valuations, treatments, licences / reproductions, literature, objects coming in, details of each showing): place each on the map of homes, with the catalogue-gaps steps → [survey](./design/2026-11-21/Survey_MuseumStandards.md).
 - [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
 

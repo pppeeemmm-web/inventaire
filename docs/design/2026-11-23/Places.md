@@ -1,6 +1,6 @@
 # Places and storage locations — design (2026-11-23)
 
-Status: **local draft**, uncommitted, design only — no code, no SQL. Pem answered every question 2026-11-23 (four rounds, §12). Design complete — waiting for Pem's approval.
+Status: **phase A and phase B live** (phase B e45f620, 2026-11-23; see DONE). Pem answered every question 2026-11-23 (four rounds, §12).
 Brief: master plan §1.1 b (one place store) + §15.2 (where a work is — the storage map), held to People §4d (addresses are shared places).
 Read for this page: root `CLAUDE.md`; [`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md); [`MasterPlan.md`](../2026-11-20/MasterPlan.md) §1.1 b, §14.2, §15.2; `docs/design/2026-11-22/People.md` §0, §3, §4d, §7 (worktree `scope-interview-d46685`, not landed yet).
 Live database read only, 2026-11-23: columns, foreign keys, triggers, functions, RLS, counts — **no names, streets or other personal data copied here.** Code read: the files named in §10.
@@ -279,9 +279,9 @@ Pem is right: there is no problem to protect against. The database still refuses
 
 Proof on the throwaway copy: `scripts/stress/` chains run before and after (order to a party, return from loan, stage change, merge two contacts, archive a place), counts compared.
 
-### 7b. Written and proven on the copy (2026-11-23, after Pem's « approved, go ahead ») — local draft, not live
+### 7b. Written and proven on the copy (2026-11-23, after Pem's « approved, go ahead ») — phase A and phase B live
 
-Two files, split so that nothing the app reads changes until the readers switch:
+History — two files, split so that nothing the app reads changes until the readers switch:
 
 | File | Does | Live? |
 |---|---|---|
@@ -294,7 +294,7 @@ Two files, split so that nothing the app reads changes until the readers switch:
 - Tree: a loop refused (`place_cycle`), a duplicate code refused, an unknown kind refused; moving a meuble to another address moved its drawer's root; the app's creation-place insert still works (kind `other`) and a duplicate name is still refused; deleting a leaf creation place still works.
 - The copy keeps phase A's shape (throwaway; its data unchanged).
 
-**Not done, not proven:** phase B is not live; the readers (§10) are not switched; `Oeuvres.place_id` / `work_order.place_id` / `shipment.place_id` do not exist yet. Setting `Oeuvres.place_id` on 1,176 works fires the work's history triggers (`oeuvre_version_snap`, `trg_zz_oeuvre_history` run on every update) — **1,176 version rows** unless the landing writes it another way: to decide with the reader switch (phase B, step 2).
+**Now:** phase B is live (e45f620): readers switched, `place_id` columns exist, works / orders / shipments point at places. **History (before the switch):** phase B was not live; the readers (§10) are not switched; `Oeuvres.place_id` / `work_order.place_id` / `shipment.place_id` do not exist yet. Setting `Oeuvres.place_id` on 1,176 works fires the work's history triggers (`oeuvre_version_snap`, `trg_zz_oeuvre_history` run on every update) — **1,176 version rows** unless the landing writes it another way: to decide with the reader switch (phase B, step 2).
 
 ---
 
