@@ -14,6 +14,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { thumbUrl } from '@/lib/data'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { AccountActions } from '@/components/shared/AccountActions'
+import { PemThemeToggle } from '@/components/PemThemeToggle'
 import type { PhoneNavigate } from '@/components/shared/PhoneMenu'
 import { getPhoneMenuData, getPhoneMenuFilCount, searchMenuWorks, type MenuWork, type PhoneMenuData } from '@/app/hub/menu-actions'
 import { searchInspirationText, type InspirationTextHit } from '@/app/atelier/search/actions'
@@ -32,7 +33,7 @@ type Tile = { key: string; icon: string; label: DictKey; href: string; sub: (d: 
 
 /** « Tout le reste »: today's menu groups minus the tiles (Pem 2026-11-18, answer 3). */
 const REST: Array<{ label: DictKey; items: Array<{ label: DictKey; href: string; admin?: boolean }> }> = [
-  { label: 'tab_kaizen', items: [{ label: 'tab_audit', href: '/atelier/audit', admin: true }, { label: 'ai_tab', href: '/atelier/ai', admin: true }, { label: 'kaizen_group_ops', href: '/atelier/kaizen-ops' }, { label: 'aide_tab', href: '/atelier/aide' }] },
+  { label: 'tab_kaizen', items: [{ label: 'tab_audit', href: '/atelier/audit', admin: true }, { label: 'ai_tab', href: '/atelier/ai', admin: true }, { label: 'kaizen_group_ops', href: '/atelier/kaizen-ops' }, { label: 'hub_suggestions', href: '/atelier/system' }, { label: 'aide_tab', href: '/atelier/aide' }] },
   { label: 'nav_group_studio', items: [{ label: 'overview', href: '/atelier/overview' }, { label: 'pipeline', href: '/atelier/pipeline' }, { label: 'tab_stock', href: '/atelier/stock' }] },
   {
     label: 'nav_group_catalogue',
@@ -59,6 +60,8 @@ const REST: Array<{ label: DictKey; items: Array<{ label: DictKey; href: string;
       { label: 'portfolio_subtab_portfolio', href: '/atelier/portfolio' },
       { label: 'portfolio_subtab_analytics', href: '/atelier/analytics' },
       { label: 'tab_broadcast', href: '/atelier/broadcast', admin: true },
+      { label: 'pn_public_works', href: '/works' },
+      { label: 'hub_public_site', href: '/' },
     ],
   },
 ]
@@ -392,6 +395,7 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <span style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data?.name ?? ''}</span>
             <span role="group" aria-label={t('pn_lang')} style={{ display: 'inline-flex', border: '1px solid var(--bd2)', borderRadius: 6, overflow: 'hidden', flex: 'none' }}>
+              <PemThemeToggle showLabels={false} minTap />
               {(['fr', 'en'] as const).map((l) => (
                 <button
                   key={l}

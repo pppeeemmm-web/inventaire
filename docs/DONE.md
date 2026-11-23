@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Phone ☰ menu: theme switch and the old phone home's links (Pem « GO, add all four »)
+
+- The ☀ / 🌙 switch sits beside FR / EN in the menu's account row (44 px); « Tout le reste » has « Suggestions 💡 » (Kaizen), « Œuvres en ligne » and « Site public » (Public) — lost when the Journal became the phone home. What's new 3.1.99.
+
 ## 2026-11-23 — Places phase B live: addresses become places (Pem « GO, option B », « GO, lockstep now »)
 
 - Landed on top of saveContact and pushed with its SQL in one step: `places_phase_b_switch.sql` (migration `places_phase_b_switch`) then `save_contact_fn.sql` v2 (migration `save_contact_v2_places`), push `1756de5` — `e45f620`. Live after: 1,176 works on a place, 0 with an address but no place, 40 links, 46 places, 0 flagged, version rows unchanged (11,713), `system_log` PLACES_PHASE_B; types regenerated. Handoff → [archive](./archive/HANDOFF_2026-11-23.md).

@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.99 (2026-11-23) — phone menu: theme switch and the links of the old phone home.
+  wn_phone_menu_theme_t: { fr: 'Mode nuit sur le téléphone', en: 'Night mode on the phone' },
+  wn_phone_menu_theme_d: {
+    fr: 'Dans le menu ☰ du téléphone, le bouton ☀ / 🌙 à côté de FR / EN change le thème (jour, standard, nuit). « Tout le reste » retrouve « Suggestions 💡 », « Œuvres en ligne » et « Site public ».',
+    en: 'In the phone ☰ menu, the ☀ / 🌙 button beside FR / EN changes the theme (day, standard, night). « Everything else » has « Suggestions 💡 », « Works online » and « Public site » again.',
+  },
   // 3.1.98 (2026-11-23) — addresses become places (Places phase B).
   wn_addresses_are_places_t: { fr: 'Une adresse est un lieu', en: 'An address is a place' },
   wn_addresses_are_places_d: {

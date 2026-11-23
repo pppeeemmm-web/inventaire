@@ -78,6 +78,7 @@ export const todayMessages = defineMessages({
   pn_actions: { fr: 'Actions', en: 'Actions' },
   pn_actions_sub: { fr: 'Vente · Contact · Document · Problème · Pipeline · Triage', en: 'Sale · Contact · Document · Issue · Pipeline · Triage' },
   pn_lang: { fr: 'Langue', en: 'Language' },
+  pn_public_works: { fr: 'Œuvres en ligne', en: 'Works online' },
   pn_menu_loading: { fr: 'Chargement du menu…', en: 'Loading the menu…' },
   pn_write_title: { fr: 'Écrire · {date}', en: 'Write · {date}' },
   pn_write_saved: { fr: 'Écrit enregistré sur ce jour', en: 'Saved on this day' },

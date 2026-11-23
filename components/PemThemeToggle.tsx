@@ -9,9 +9,11 @@ type Props = {
   showLabels?: boolean
   /** Button horizontal padding (default matches Atelier bar). */
   padding?: string
+  /** Phone: a 44 px square tap target (the menu sheet's account row). */
+  minTap?: boolean
 }
 
-export function PemThemeToggle({ showLabels = true, padding }: Props) {
+export function PemThemeToggle({ showLabels = true, padding, minTap = false }: Props) {
   const { t } = useI18n()
   const pad = padding ?? (showLabels ? '4px 10px' : '4px 8px')
   const [theme, setTheme] = useState<PemTheme>('light')
@@ -51,6 +53,7 @@ export function PemThemeToggle({ showLabels = true, padding }: Props) {
     <button
       type="button"
       onClick={cycle}
+      aria-label={theme === 'dark' ? t('pem_theme_toggle_night') : theme === 'light' ? t('pem_theme_toggle_day') : t('pem_theme_toggle_std')}
       style={{
         padding: pad,
         background: 'transparent',
@@ -64,6 +67,7 @@ export function PemThemeToggle({ showLabels = true, padding }: Props) {
         letterSpacing: 1,
         cursor: 'pointer',
         fontFamily: 'inherit',
+        ...(minTap ? { minWidth: 44, minHeight: 44, justifyContent: 'center', border: 0, borderRight: '1px solid var(--bd2)', fontSize: 16 } : {}),
       }}
     >
       {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '◼'}
