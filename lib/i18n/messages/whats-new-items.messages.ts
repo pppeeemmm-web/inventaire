@@ -6,6 +6,27 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.91 (2026-11-23) — the Journal as one stream of days (to try), captures kept offline, voice note = entry at once, labels / suite / move.
+  wn_journal_stream_t: { fr: 'Le Journal en un seul fil de jours (à essayer)', en: 'The Journal as one stream of days (to try)' },
+  wn_journal_stream_d: {
+    fr: 'Ajoutez ?stream=1 à l’adresse du Journal ou de la page Aujourd’hui : les jours se suivent en un seul fil, le plus récent en haut, chaque carte avec une seule action principale (le reste sous « ⋯ »). Pincez à deux doigts sur le téléphone, ou utilisez les boutons Mois / Années sur l’ordinateur, pour passer aux mois et aux années. Sur l’ordinateur, une colonne montre les œuvres du jour choisi. ?stream=0 revient à l’ancien écran.',
+    en: 'Add ?stream=1 to the Journal or Today page address: the days follow one another in a single stream, newest at the top, each card with one main action (the rest under « ⋯ »). Pinch with two fingers on the phone, or use the Months / Years buttons on the computer, to zoom out to months and years. On the computer, a column shows the works of the day chosen. ?stream=0 goes back to the old screen.',
+  },
+  wn_capture_offline_t: { fr: 'Notes vocales et photos gardées sans réseau', en: 'Voice notes and photos kept without network' },
+  wn_capture_offline_d: {
+    fr: 'Sans réseau, une note vocale ou une photo d’inspiration reste sur le téléphone, montrée « en attente d’envoi » sur la page du jour, et part toute seule quand le réseau revient. Un envoi répété n’écrit jamais deux fois la même note.',
+    en: 'Without network, a voice note or an inspiration photo stays on the phone, shown « waiting to be sent » on the day’s page, and goes by itself when the network returns. A repeated send never writes the same note twice.',
+  },
+  wn_voice_entry_at_once_t: { fr: 'Une note vocale est dans le Journal tout de suite', en: 'A voice note is in the Journal at once' },
+  wn_voice_entry_at_once_d: {
+    fr: 'La note vocale entre dans le Journal dès qu’elle est enregistrée, avec les mots entendus par le téléphone (ou « transcription à venir »). La transcription de l’ordinateur arrive ensuite comme une correction. Si quelqu’un a déjà vérifié ou corrigé le texte, l’ordinateur le propose seulement : « Reprendre ces mots » ou « Garder mon texte ». Les suggestions d’œuvres et d’idées partent du texte affiché.',
+    en: 'A voice note enters the Journal as soon as it is recorded, with the words the phone heard (or « transcript to come »). The computer’s transcript then arrives as a correction. If someone has already checked or corrected the text, the computer only proposes it: « Use these words » or « Keep my text ». Work and idea suggestions start from the text shown.',
+  },
+  wn_journal_labels_suite_move_t: { fr: 'Étiquettes, suite et autre jour', en: 'Labels, follow-up and another day' },
+  wn_journal_labels_suite_move_d: {
+    fr: 'Dans le fil du Journal, « ⋯ » sur une note : « Étiquettes » (processus, matériaux, étincelle…), « Ajouter une suite » (une note écrite aujourd’hui, montrée sous celle qu’elle prolonge) et « Placer sur un autre jour » (pour l’auteur ou un admin ; l’ancien jour est gardé).',
+    en: 'In the Journal stream, « ⋯ » on a note: « Labels » (process, materials, spark…), « Add a follow-up » (a note written today, shown under the one it continues) and « Place on another day » (for the author or an admin; the old day is kept).',
+  },
   // 3.1.90 (2026-11-23) — saving a contact keeps its addresses' links.
   wn_contact_save_keeps_addresses_t: {
     fr: 'Enregistrer un contact garde ses adresses liées',

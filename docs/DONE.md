@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — The Journal as one stream of days (TODO « First: the Journal design », Pem « Approve », « start the build », « Offline queue », « Start Step B SQL » / « Yes, apply it »)
+
+- Design approved: [JournalDesign](./design/2026-11-22/JournalDesign.md) + mockup — `5eb9be3`.
+- One stream of days on phone and desk, behind `?stream=1` (cookie `journal_stream`): days in pages (`journal_scale`, `/api/journal/stream`), cards with one main action and « ⋯ », sticky days, work changes per day, pinch / Mois / Années; desk rail of works and composer; phone today opens on it — `a363c41`.
+- Offline capture queue: voice notes and inspiration photos wait in IndexedDB, sent when the network returns; `client_id` makes a resend write nothing twice. Seen on the Docker copy — `a363c41`.
+- Step B: labels, « Ajouter une suite », « Placer sur un autre jour » (`journal_step_b.sql`, live; `journal_move_entry`). Rules proven on the Docker copy as team / admin / anon — `a363c41`.
+- A voice note is a Journal entry at once (live words or « transcription à venir »); the PC transcript arrives as a correction, or as a hidden proposal beside words a person already checked; suggestions read the text shown (`journal_suggest_from_shown_text.sql`, live) — `a363c41`.
+
 ## 2026-11-23 — Contact save keeps address ids (TODO §1, Pem « fix it yes »)
 
 - Saving a contact in the editor no longer deletes and reinserts its addresses / emails / phones / websites / socials: kept rows are updated in place, new inserted, removed deleted (`syncContactRows`). The old way emptied every `Oeuvres.localisation_address_id`, `work_order.address_id`, `shipment.address_id` on the contact's addresses at each save (ON DELETE SET NULL; Pem's own card holds 1,171 works). Removing an address still used is refused in words, nothing written. Seen on the Docker copy: label change + new address kept address 17 and its 13 works; removing it was refused (13 works, 12 orders) with nothing written; removing the unused one deleted it. Found by the People design session — `c4f9f78`.

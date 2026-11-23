@@ -85,7 +85,8 @@
 // '3.1.88' (2026-11-21): the work card saves field by field.
 // '3.1.89' (2026-11-22): « Corriger » a Journal transcript; a deleted contact no longer breaks a restore or an approval; a save landing at the same instant as another change writes nothing.
 // '3.1.90' (2026-11-23): saving a contact keeps the works, orders and shipments linked to its addresses.
-export const WHATS_NEW_RELEASE = '3.1.90'
+// '3.1.91' (2026-11-23): the Journal as one stream of days (to try), captures kept offline, voice note in the Journal at once, labels / suite / another day.
+export const WHATS_NEW_RELEASE = '3.1.91'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -111,6 +112,10 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_stream', day: '2026-11-23', spot: 'journal' },
+  { id: 'capture_offline', day: '2026-11-23', spot: 'journal' },
+  { id: 'voice_entry_at_once', day: '2026-11-23', spot: 'journal' },
+  { id: 'journal_labels_suite_move', day: '2026-11-23', spot: 'journal' },
   { id: 'contact_save_keeps_addresses', day: '2026-11-23', spot: 'contacts' },
   { id: 'journal_correct', day: '2026-11-22', spot: 'journal', admin: true },
   { id: 'deleted_contact_restore', day: '2026-11-22', spot: 'inventory', admin: true },
