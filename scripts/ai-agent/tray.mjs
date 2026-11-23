@@ -5,7 +5,8 @@
  * Runs at the start of every PC agent pass (scripts/ai-agent/index.mjs), or alone: `npm run ai:agent -- --tray`.
  *   reads   JOURNAL_SYNC_DIR  (default %USERPROFILE%\Desktop\Sync all) — READ ONLY: nothing there is ever written,
  *           moved, renamed or deleted (a change would travel back to the iPhone).
- *   writes  JOURNAL_TRAY_DIR  (default %USERPROFILE%\PEM-Tray) — only there, only on this PC:
+ *   writes  JOURNAL_TRAY_DIR  (default %USERPROFILE%\Desktop\PEM-Tray, beside « Sync all » so the folder picker
+ *           finds it — Pem 2026-11-23) — only there, only on this PC:
  *           previews/<h>.jpg (480 px), send/<h>.jpg (2100 px JPEG, what the browser sends), tray.json (the list).
  * Sends nothing anywhere: no database, no R2. A photo reaches the hub only when Pem picks it in the desk Journal,
  * which sends `send/<h>.jpg` through the same door as a paste (`addInspirationPhoto`).
@@ -25,7 +26,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SYNC_DIR = process.env.JOURNAL_SYNC_DIR?.trim() || path.join(os.homedir(), 'Desktop', 'Sync all')
-const TRAY_DIR = process.env.JOURNAL_TRAY_DIR?.trim() || path.join(os.homedir(), 'PEM-Tray')
+const TRAY_DIR = process.env.JOURNAL_TRAY_DIR?.trim() || path.join(os.homedir(), 'Desktop', 'PEM-Tray')
 const MAGICK = process.env.MAGICK_PATH?.trim() || 'magick'
 const EXT = /\.(heic|heif|jpe?g|png|webp)$/i
 const DAY_DIR = /^\d{4}-\d{2}-\d{2}$/

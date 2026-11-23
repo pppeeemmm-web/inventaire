@@ -27,7 +27,7 @@ type DirHandle = {
   queryPermission(o: { mode: 'read' }): Promise<PermState>
   requestPermission(o: { mode: 'read' }): Promise<PermState>
 }
-type PickerWindow = Window & { showDirectoryPicker?: (o?: { id?: string; mode?: 'read' }) => Promise<DirHandle> }
+type PickerWindow = Window & { showDirectoryPicker?: (o?: { id?: string; mode?: 'read'; startIn?: 'desktop' }) => Promise<DirHandle> }
 
 /* ── this PC's memory: the linked folder, what was sent, what was set aside ── */
 const DB = 'pem-pc-tray-v1'
@@ -72,7 +72,8 @@ function startAgentHere() {
 export type PcTray = ReturnType<typeof usePcTray>
 
 export function usePcTray(enabled: boolean) {
-  const [status, setStatus] = useState<'off' | 'unsupported' | 'none' | 'permission' | 'wrong' | 'ready'>('off')
+  const { t } = useI18n()
+  const [status, setStatus] = useState<'off' | 'unsupported' | 'none' | 'permission' | 'wrong' | 'sync' | 'ready'>('off')
   const [dir, setDir] = useState<DirHandle | null>(null)
   const [file, setFile] = useState<TrayFile | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
@@ -117,18 +118,35 @@ export function usePcTray(enabled: boolean) {
 
   /** « Relier le dossier »: Chrome's folder picker (a click). */
   const link = useCallback(async () => {
-    const pick = (window as PickerWindow).showDirectoryPicker
-    if (!pick) return
+    const w = window as PickerWindow
+    if (!w.showDirectoryPicker) return
+    let d: DirHandle
     try {
-      const d = await pick({ id: 'pem-tray', mode: 'read' })
-      setDir(d)
-      await kvSet('dir', d)
-      await read(d)
-      // eslint-disable-next-line pem-i18n/no-silent-catch -- the picker was closed: nothing changes
-    } catch {
-      /* cancelled */
+      // Called on `window` (a detached call is refused by Chrome); opens on the Desktop, where PEM-Tray sits.
+      d = await w.showDirectoryPicker({ id: 'pem-tray-desktop', mode: 'read', startIn: 'desktop' })
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- shown as a toast (Annuler excepted)
+    } catch (e) {
+      // Closed with « Annuler »: nothing changes. Anything else is said (it was silent before — Pem 2026-11-23).
+      if ((e as Error)?.name !== 'AbortError') toast.error(t('je_err_fmt').replace('{msg}', `${(e as Error)?.name ?? ''} ${(e as Error)?.message ?? String(e)}`))
+      return
     }
-  }, [read])
+    // The phone's own folder (« Sync all », Syncthing's `.stfolder` inside) is picked by mistake (Pem 2026-11-23):
+    // say which folder is the right one, and keep nothing.
+    const isSync = await d.getDirectoryHandle('.stfolder').then(
+      () => true,
+      () => false,
+    )
+    if (isSync) return void setStatus('sync')
+    setDir(d)
+    await read(d)
+    try {
+      await kvSet('dir', d)
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- shown as a toast
+    } catch (e) {
+      // Linked for this visit; it will ask again next time.
+      toast.error(t('je_err_fmt').replace('{msg}', `IndexedDB ${(e as Error)?.message ?? String(e)}`))
+    }
+  }, [read, t])
 
   /** « Autoriser »: Chrome asks again after a restart unless « à chaque visite » was chosen (a click). */
   const allow = useCallback(async () => {
@@ -359,9 +377,10 @@ export function TrayPane({ tray, onClose, onJump }: { tray: PcTray; onClose: () 
       </div>
       <p style={muted}>{t('jt_intro')}</p>
       {tray.status === 'unsupported' ? <p style={muted}>{t('jt_unsupported')}</p> : null}
-      {tray.status === 'none' || tray.status === 'wrong' ? (
+      {tray.status === 'none' || tray.status === 'wrong' || tray.status === 'sync' ? (
         <>
           {tray.status === 'wrong' ? <p style={{ ...muted, color: 'var(--rust, #d9734a)' }}>{t('jt_wrong_folder')}</p> : null}
+          {tray.status === 'sync' ? <p style={{ ...muted, color: 'var(--rust, #d9734a)' }}>{t('jt_sync_folder')}</p> : null}
           <button type="button" className="btn sm" onClick={() => void tray.link()} style={{ ...MAIN_ACTION_STYLE, minHeight: 36 }} data-testid="jt-link">
             {t('jt_link')}
           </button>
