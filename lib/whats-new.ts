@@ -94,7 +94,8 @@
 // '3.1.97' (2026-11-23): a contact saved from two places no longer overwrites; Journal links open, « Relier » lists sorted.
 // '3.1.98' (2026-11-23): addresses become places — a floor / flat, one building shared, removing an address ends the link only; works flagged when their place is no longer linked to their holder.
 // '3.1.99' (2026-11-23): phone menu — theme switch beside FR / EN, Suggestions, Œuvres en ligne, Site public.
-export const WHATS_NEW_RELEASE = '3.1.100'
+// '3.1.101' (2026-11-23): a similar contact is flagged before creating; quick add / import write a contact in one go.
+export const WHATS_NEW_RELEASE = '3.1.101'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -120,6 +121,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'contact_similar_warning', day: '2026-11-23', spot: 'contacts' },
   { id: 'work_change_badges', day: '2026-11-23', spot: 'journal', admin: true },
   { id: 'phone_menu_theme', day: '2026-11-23' },
   { id: 'addresses_are_places', day: '2026-11-23', spot: 'contacts' },

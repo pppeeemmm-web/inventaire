@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.101 (2026-11-23) — similar contact warning; quick add / import in one go.
+  wn_contact_similar_warning_t: { fr: 'Fiche en double : un avertissement avant de créer', en: 'Duplicate contact: a warning before creating' },
+  wn_contact_similar_warning_d: {
+    fr: 'Avant de créer un contact (ajout rapide, « + Nouveau contact » d’une commande, la fiche, la fiche œuvre, le tiroir), l’app prévient quand une fiche avec le même e-mail ou le même nom existe déjà ; vous choisissez de créer quand même ou non. L’ajout rapide et l’import Google enregistrent la fiche et ses adresses d’un seul coup : une adresse refusée ne laisse plus une fiche à moitié écrite, et l’import compte à part les fiches non enregistrées.',
+    en: 'Before creating a contact (quick add, an order’s « + New contact », the card, the work card, the drawer), the app warns when a card with the same email or the same name already exists; you choose to create anyway or not. Quick add and the Google import save the card and its addresses in one go: a refused address no longer leaves a half-written card, and the import counts the cards it could not save.',
+  },
   // 3.1.100 (2026-11-23) — work-change badges (admin: the Journal's change lines are admin-only).
   wn_work_change_badges_t: { fr: 'Qui a modifié une œuvre', en: 'Who changed a work' },
   wn_work_change_badges_d: {

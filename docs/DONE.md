@@ -6,6 +6,11 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Who changed a work: initials in the person's colour (Pem gold), ⚙ machine, « ? » unknown, ✓ for an approved proposal, on Journal change lines (desk stream, phone stream, phone « Aujourd'hui » fold, old day page) and per row in the work's history (« non enregistré » for older rows). One line per work per day, its authors first change first. Rule in the trigger (`oeuvre_version_author.sql`, proof a–h + member-spoof case on the Docker copy); portfolio « rendre public » (service key) stamps who clicked and now checks readiness first, so a refusal writes nothing. The history drawer now shows each row's own change (it showed the previous row's, one off) — columns « Avant (restaurable) / Après ». Flow-reviewer: broadcast routes and selection never wrote `Oeuvres` with the service key (trace corrected). SQL live (migration `oeuvre_version_author`, Pem « Yes, go live »; version rows unchanged at 11,713, trigger enabled, anon cannot execute) and pushed `df9da99` the same minute; types regenerated. What's new 3.1.100 (admin).
 
+## 2026-11-23 — Contacts: one door for every create, and a duplicate warning (Pem « Land the contacts work »)
+
+- Quick add, the order's « + Nouveau contact », the Google / URL import and the card capture create through `saveContact` (card + emails + phones + websites + addresses in one transaction); an import counts a refused card « non enregistré ». A « same email or same name » warning before creating on quick add, order « + Nouveau contact », the editor, the work card and the drawer — `de5ce66`. Closes « no warning when adding a contact with the same name and email » and « quick add / import write the contact, then its places in a second step ». What's new 3.1.101.
+- Plan for tests that write: [TestsOnDockerCopy](./design/2026-11-23/TestsOnDockerCopy.md) committed (the « Dev profile » login wrote 18 live works by hand; tests move to the copy).
+
 ## 2026-11-23 — Phone ☰ menu: theme switch and the old phone home's links (Pem « GO, add all four »)
 
 - The ☀ / 🌙 switch sits beside FR / EN in the menu's account row (44 px); « Tout le reste » has « Suggestions 💡 » (Kaizen), « Œuvres en ligne » and « Site public » (Public) — lost when the Journal became the phone home. What's new 3.1.99.

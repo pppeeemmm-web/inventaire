@@ -11,7 +11,7 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2; `merge_contacts` is live, so it no longer waits), the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
 - Being designed: Journal on the desk — paste or drop an image onto the day, record with the laptop microphone, pick up photos from the Syncthing folder (session « Journal on the desk — design first », its own worktree; no code).
-- Waiting to land: tests that write run on the Docker copy, not live → `TestsOnDockerCopy.md` (branch `claude/eloquent-tesla-8a10c1`, uncommitted).
+- Next build (waits for the Docker copy): tests that write run on the Docker copy, not live — plan [TestsOnDockerCopy](./design/2026-11-23/TestsOnDockerCopy.md) (Pem's answers in §5): one command for the copy + a one-screen result file.
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (the Docker copy already has Places phase B and today's `merge_contacts`) → if time remains, the reverse pricing design draft (§3, no build).
 
 ## 1. Finish first — small, before anything new
@@ -23,13 +23,13 @@ Data safety (SQL, Pem's OK given)
 - [ ] A theme or group list changed in the same split second as a card save that also changes that list is replaced by the card's list (the lists are written apart from the work row, outside the save's guard).
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
-- [ ] Contacts: no warning when adding a contact with the same name and email as an existing one (quick add / manual; only the Google import checks).
 - [ ] Contacts at 375: search box 42 px wide; the list is the desktop table.
 - [ ] Phone sale, buyer step: one long select, no search, no « + nouveau contact »; offers Pem, team accounts and a nameless « #1002 »; fields without linked labels.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
-- [ ] Contacts quick add and Google import write the contact, then its places in a second step: a refused place leaves the contact without it (import only logs it).
+- [ ] Pipeline « créer » (auto-create of a contact from a project) has no « same email / same name » warning, unlike the five other create screens.
+- [ ] Bureau IA « Faire maintenant » opens the `pem-ai:` link from a hidden frame, which Chrome may drop; « Lancer sur ce PC » (a plain link) works.
 - [ ] After a contact merge the desk keeps the merged contact's duplicate address links until a reload (pickers show a place twice; a save there answers « stale »).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
