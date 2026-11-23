@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.96 (2026-11-23) — 🎤 inside an idea.
+  wn_idea_mic_t: { fr: 'Dicter dans une idée', en: 'Dictate into an idea' },
+  wn_idea_mic_d: {
+    fr: 'Dans une idée, le 🎤 ouvre l’enregistreur du Journal : la note va sur la page d’aujourd’hui et dans l’idée. Si le micro est bloqué, une note tapée y va aussi. Les vues Mois et Années comptent aussi les changements d’idées, et les idées de l’Aperçu ouvrent directement l’idée.',
+    en: 'In an idea, the 🎤 opens the Journal’s recorder: the note goes on today’s page and into the idea. If the mic is blocked, a typed note goes there too. The Months and Years views also count idea changes, and the ideas on the Overview open the idea directly.',
+  },
   // 3.1.95 (2026-11-23) — phone new work keeps the draft on « Tous les champs ».
   wn_work_record_all_fields_t: { fr: '« Tous les champs » garde ce qui est saisi', en: '« All fields » keeps what was typed' },
   wn_work_record_all_fields_d: {

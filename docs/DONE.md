@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Idées open pieces (Pem « Add the 🎤 inside an idea », « build the other items », « Yes, delete them », « land »)
+
+- 🎤 inside an idea: the Journal's recorder opens aimed at the idea; the note (or a typed one when the mic is blocked) lands on today and in the idea (`voice_note.concept_id` + a validated link from its entry; an idea deleted while the note waited offline is dropped). « Mois » / « Années » count idea lines; the old `?stream=0` day page draws them; the Overview's idea lines open that idea and show its stage. The old Idées screen (Concepts.tsx and six components) and its spec are removed; SITE_MAP points at IdeasHome / IdeaDesk. Seen on localhost: the 🎤 on an idea's desk; recording not tried (it would save to live); e2e not run — `b04754c`.
+
 ## 2026-11-23 — Phone new work: « Tous les champs » keeps the draft (Pem bug report, « Land the Tous les champs fix and push it »)
 
 - « Tous les champs » in the phone recording drawer carries the title, technique, support, format, size, photos and lookups added there into the full form; the toggle then only folds / unfolds. An empty drawer field never wipes a value the full form restored; the kept « Brouillon » is cleared only when the drawer loaded it; Reprise no longer offers the button (its photos could have become a new work); place, source, period and « peint sur » are named in a message. Seen in a 390 px frame on localhost: title carried, no sideways scroll, no button in Reprise; photos through the handoff not tried — `9c5771b`.
