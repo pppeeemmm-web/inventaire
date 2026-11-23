@@ -62,7 +62,7 @@ if ($willPush) {
 
 # Checks before any commit and before any push (landed worktree commits included), ~10 s.
 if (-not $NoChecks -and ($dirty -or $willPush)) {
-  foreach ($c in @("i18n:check", "atelier:chrome:check", "docs:routes:check", "typecheck", "lint")) {
+  foreach ($c in @("i18n:check", "atelier:chrome:check", "docs:routes:check", "principles:check", "typecheck", "lint")) {
     $out = & npm run -s $c 2>&1
     if ($LASTEXITCODE -ne 0) { $out | Select-Object -Last 30 | Write-Host; throw "Check failed: $c" }
   }

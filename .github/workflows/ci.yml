@@ -21,3 +21,4 @@ jobs:
       - run: npm run i18n:check
       - run: npm run atelier:chrome:check
       - run: npm run docs:routes:check
+      - run: npm run principles:check
