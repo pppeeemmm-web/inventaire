@@ -7,6 +7,17 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.106 (2026-11-23) — people: spheres, dates, links, timeline, moments, archive; capture date.
+  wn_people_crm_t: { fr: 'Les personnes : sphères, liens, moments', en: 'People: spheres, links, moments' },
+  wn_people_crm_d: {
+    fr: 'Sur la page d’une personne : ses sphères (collectionneur, galerie, ami…), ses dates de naissance et de décès, ses liens avec d’autres personnes et les œuvres qui l’intéressent, et une chronologie de tout ce qui s’est passé avec elle. « + Moment » note un appel, une visite, un courrier, à la voix ou au clavier ; il apparaît aussi dans le Journal du jour. Une fiche qu’on ne suit plus s’archive (menu ⋯) au lieu d’être supprimée : elle n’est plus proposée dans les choix de personnes. Vos changements sur une fiche sont signalés à Pem.',
+    en: 'On a person’s page: their spheres (collector, gallery, friend…), birth and death dates, links to other people and the works they are interested in, and a timeline of everything that happened with them. « + Moment » records a call, a visit, a letter, by voice or keyboard; it also shows on the Journal day. A card no longer followed is archived (⋯ menu) instead of deleted: it is no longer offered when choosing a person. Your changes to a card are reported to Pem.',
+  },
+  wn_capture_new_work_t: { fr: 'Une œuvre saisie est nouvelle', en: 'A captured work is new' },
+  wn_capture_new_work_d: {
+    fr: 'Une œuvre créée sans préciser son origine (téléphone, séance, partage) compte comme nouvelle et commence aujourd’hui, donc sa période s’affiche. Une année antérieure saisie la marque comme ancienne.',
+    en: 'A work created without saying where it comes from (phone, session, share) counts as new and starts today, so its period shows. An earlier year typed in marks it as old.',
+  },
   // 3.1.105 (2026-11-23) — the person page.
   wn_person_page_t: { fr: 'Une page par personne', en: 'A page for each person' },
   wn_person_page_d: {
