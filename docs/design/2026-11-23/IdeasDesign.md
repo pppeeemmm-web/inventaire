@@ -35,7 +35,26 @@ Every way in ends in the **same database door**, `idea_plant(title, body, from_e
 | A reminder with no project (« En faire une idée », Idées tab) | today `reminderToIdea` inserts a `concept` itself | goes through `idea_plant`, the moment on the reminder's day. |
 | Share triage « ajouter à une idée » | today appends a block to `concept.notes` | writes a moment on today linked to the idea (the shared link / text as its body); `concept.notes` stops growing (Pem 2026-11-23: « let's try that »). |
 
+**An idea is also a moment of the person who had it** (Pem 2026-11-23: « just as well as an article from a contact is a moment for that contact, an idea created by a team member or somebody becomes a moment as well »). The planting moment carries its author (`journal_entry.author_id`), so it shows on the day *and* in that person's history (People page: their moments). An idea that comes from someone outside the team (a collector, a friend) is planted by whoever notes it, and the moment links that person with `@` (person links, Journal Step B part 2): it then shows in their history too. One moment, three readings: by day, by idea, by person.
+
 The label Idée and the idea are one thing (Pem 2026-11-23): choosing « Idée » in « Étiquettes » opens the same « Planter » sheet; there is no moment labelled Idée without its idea. A moment can feed several ideas (one link each); an idea never owns a moment.
+
+### 2b. An article or a book: one moment ties the idea, the work, the author and the text (Pem 2026-11-23)
+
+Pem: « if we are going to pull articles or books as ideas, and contacts from them — the author — it becomes a moment to them. So to link the object, the work and the author all together. »
+
+When Pem reads an article or a book and takes an idea from it, **one moment** (the reading, on its day) carries every link:
+
+| Link on the moment | To | Exists? |
+|---|---|---|
+| `#idée` | the idea it plants or feeds | yes (`journal_entry_link.concept_id`) |
+| `#œuvre` | the work it speaks to | yes (`journal_entry_link.oeuvre_id`) |
+| `@auteur` | the author, a person (found, or « + Personne » through the contact door) | **no** — links to a person are Journal Step B part 2 (`contact_id`) |
+| the article / the book itself | the Vault (`document`: a PDF, a scan, or a link to the page) | **no** — a moment cannot point to a paper yet: one column `document_id` on the same link table, beside `contact_id`, same rules |
+
+Read back, the same moment shows: on its day; in the idea's Fil; on the work's page (« Dans le Journal »); in the author's history (People); beside the paper in the Vault. Nothing is copied, nothing is a second record: the author is a person once, the article a paper once, the moment the one place where they meet.
+
+Not in this build: pulling ideas or authors out of a text by machine (a deferred feature — its own GO). The two link columns are SQL on the Journal's link table, with their own OK, built with Journal Step B part 2.
 
 ## 3. The desk of one idea (question 2)
 
