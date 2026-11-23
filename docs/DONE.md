@@ -6,6 +6,10 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Who changed a work: initials in the person's colour (Pem gold), ⚙ machine, « ? » unknown, ✓ for an approved proposal, on Journal change lines (desk stream, phone stream, phone « Aujourd'hui » fold, old day page) and per row in the work's history (« non enregistré » for older rows). One line per work per day, its authors first change first. Rule in the trigger (`oeuvre_version_author.sql`, proof a–h + member-spoof case on the Docker copy); portfolio « rendre public » (service key) stamps who clicked and now checks readiness first, so a refusal writes nothing. The history drawer now shows each row's own change (it showed the previous row's, one off) — columns « Avant (restaurable) / Après ». Flow-reviewer: broadcast routes and selection never wrote `Oeuvres` with the service key (trace corrected). SQL live (migration `oeuvre_version_author`, Pem « Yes, go live »; version rows unchanged at 11,713, trigger enabled, anon cannot execute) and pushed `df9da99` the same minute; types regenerated. What's new 3.1.100 (admin).
 
+## 2026-11-23 — Journal on the desk: paste, drop, 🎤, « Sur ce PC » (Pem « Design first, go », « Yes, land them »)
+
+- Design [JournalDesk](./design/2026-11-23/JournalDesk.md) + mockup; build steps 1–2: paste / drop an image onto a day, 🎤 with the PC microphone (live words off), the « Sur ce PC » tray (PC agent `tray.mjs`, local files only); `addInspirationPhoto` takes an explicit day, refuses HEIC by name, answers « already » — `85d0abb`. Step 3 (real `#` / `@` links and the photo's own data, SQL) waits for Journal Step B. What's new 3.1.103.
+
 ## 2026-11-23 — Phone sale: the buyer step is a search (stress-test leftover; Pem « Phone sale buyer »)
 
 - A labelled search with 48 px rows replaces the long select; Pem, team accounts and nameless contacts are not offered; « + Nouveau contact » (pre-filled from the search) creates through `saveContact` with the duplicate warning and picks the new card; payment fields have linked labels; `createWorkOrder` refuses a sale to a team account — `d8d3310`. What's new 3.1.102.

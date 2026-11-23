@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  wn_journal_desk_capture_t: { fr: 'Le Journal sur l’ordinateur : images, voix, photos du téléphone', en: 'The Journal on the computer: images, voice, phone photos' },
+  wn_journal_desk_capture_d: {
+    fr: 'Collez une image (Ctrl+V) sur le jour affiché, ou glissez-la sur n’importe quel jour : elle devient la photo d’inspiration de ce jour, avec un texte dessous. Le 🎤 enregistre avec le micro de l’ordinateur ; le PC transcrit juste après. « Sur ce PC » montre les photos de l’iPhone arrivées par Syncthing, sur le jour où elles ont été prises : cochez celles à garder, seules celles-là partent. La première fois, « Relier le dossier » ouvre le dossier PEM-Tray.',
+    en: 'Paste an image (Ctrl+V) onto the day on screen, or drag it onto any day: it becomes that day’s inspiration photo, with a text under it. The 🎤 records with the computer’s microphone; the PC transcribes right after. « On this PC » shows the iPhone photos synced by Syncthing, on the day they were taken: tick the ones to keep, only those are sent. The first time, « Link the folder » opens the PEM-Tray folder.',
+  },
   // 3.1.102 (2026-11-23) — phone sale buyer step.
   wn_phone_sale_buyer_search_t: { fr: 'Vente au téléphone : chercher l’acheteur', en: 'Phone sale: find the buyer' },
   wn_phone_sale_buyer_search_d: {
