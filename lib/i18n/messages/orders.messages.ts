@@ -251,6 +251,7 @@ export const ordersMessages = defineMessages({
   ord_newc_country: { fr: 'Pays', en: 'Country' },
   ord_newc_save: { fr: 'Créer le contact', en: 'Create the contact' },
   ord_newc_saving: { fr: 'Création…', en: 'Creating…' },
+  ord_err_party_team: { fr: 'Un compte de l’équipe ne peut pas être l’acheteur.', en: 'A team account cannot be the buyer.' },
   ord_newc_err_name: { fr: 'Il faut un nom ou une structure.', en: 'A name or an organisation is needed.' },
   ord_price_auto_hint: { fr: 'Prix final = prix − remise, calculé en tapant (modifiable).', en: 'Final price = price − discount, worked out as you type (can be changed).' },
   ord_vat_tbd: { fr: 'TVA : à définir (comptable)', en: 'VAT: to be set (accountant)' },

@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useId, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { compareContactsByName, contactListLabel } from '@/lib/contacts/contact-display'
+import { contactListLabel } from '@/lib/contacts/contact-display'
+import { SaleBuyerPicker } from '@/components/atelier/sale/SaleBuyerPicker'
 import { statusOf } from '@/lib/data'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -87,6 +88,9 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [buyerId, setBuyerId] = useState('')
+  /** Contacts created here through « + Nouveau contact ». */
+  const [newContacts, setNewContacts] = useState<MobileSaleContact[]>([])
+  const fid = useId()
   const [cataloguePrice, setCataloguePrice] = useState('')
   const [discountPct, setDiscountPct] = useState('')
   const [finalPrice, setFinalPrice] = useState('')
@@ -157,13 +161,10 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
     }
     return map
   }, [groupLinks])
+  const allContacts = useMemo(() => [...newContacts, ...contacts], [newContacts, contacts])
   const selectedBuyer = useMemo(
-    () => contacts.find((contact) => String(contact.ContactID) === buyerId) ?? null,
-    [buyerId, contacts],
-  )
-  const sortedContacts = useMemo(
-    () => [...contacts].sort(compareContactsByName(lang)),
-    [contacts, lang],
+    () => allContacts.find((contact) => String(contact.ContactID) === buyerId) ?? null,
+    [buyerId, allContacts],
   )
   const selectedTotal = useMemo(
     () => selectedWorks.reduce((sum, work) => sum + Number(work.PrixFinal ?? work.Prix ?? 0), 0),
@@ -353,19 +354,22 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
 
           <section style={{ display: step === 1 ? 'block' : 'none' }}>
             <StepTitle label={t('sale_mobile_step_buyer')} />
-            <select value={buyerId} onChange={(event) => setBuyerId(event.target.value)} style={inputStyle} data-testid="mobile-sale-buyer">
-              <option value="">{t('sale_mobile_buyer_placeholder')}</option>
-              {sortedContacts.map((contact) => (
-                <option key={contact.ContactID} value={contact.ContactID}>{contactLabel(contact)}</option>
-              ))}
-            </select>
+            <SaleBuyerPicker
+              contacts={allContacts}
+              buyer={selectedBuyer}
+              onPick={(contact) => {
+                if (contact && !allContacts.some((c) => c.ContactID === contact.ContactID)) setNewContacts((list) => [contact, ...list])
+                setBuyerId(contact ? String(contact.ContactID) : '')
+              }}
+            />
           </section>
 
           <section style={{ display: step === 2 ? 'block' : 'none' }}>
             <StepTitle label={t('sale_mobile_step_payment')} />
             <div style={fieldGridStyle}>
-              <label style={labelStyle}>{t('sale_mobile_catalogue_price')}</label>
+              <label htmlFor={`${fid}-catalogue`} style={labelStyle}>{t('sale_mobile_catalogue_price')}</label>
               <input
+                id={`${fid}-catalogue`}
                 value={cataloguePrice}
                 onChange={(event) => {
                   setCataloguePrice(event.target.value)
@@ -374,8 +378,9 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
                 inputMode="decimal"
                 style={inputStyle}
               />
-              <label style={labelStyle}>{t('sale_mobile_discount')}</label>
+              <label htmlFor={`${fid}-discount`} style={labelStyle}>{t('sale_mobile_discount')}</label>
               <input
+                id={`${fid}-discount`}
                 value={discountPct}
                 onChange={(event) => {
                   setDiscountPct(event.target.value)
@@ -384,11 +389,11 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
                 inputMode="decimal"
                 style={inputStyle}
               />
-              <label style={labelStyle}>{t('sale_mobile_final_price')}</label>
-              <input value={finalPrice} onChange={(event) => setFinalPrice(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-final-price" />
+              <label htmlFor={`${fid}-final`} style={labelStyle}>{t('sale_mobile_final_price')}</label>
+              <input id={`${fid}-final`} value={finalPrice} onChange={(event) => setFinalPrice(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-final-price" />
               <VatLine price={finalNumber || null} rates={selectedWorks.map((w) => w.tva_rate)} />
-              <label style={labelStyle}>{t('sale_mobile_payment_amount')}</label>
-              <input value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-payment-amount" />
+              <label htmlFor={`${fid}-paid`} style={labelStyle}>{t('sale_mobile_payment_amount')}</label>
+              <input id={`${fid}-paid`} value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} inputMode="decimal" style={inputStyle} data-testid="mobile-sale-payment-amount" />
               {paidInFull ? (
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, cursor: 'pointer', marginTop: 4 }}>
                   <input type="checkbox" checked={takeaway} onChange={(event) => setTakeawayPick(event.target.checked)} data-testid="mobile-sale-takeaway"
@@ -399,14 +404,14 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
                   </span>
                 </label>
               ) : null}
-              <label style={labelStyle}>{t('sale_mobile_payment_method')}</label>
-              <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} style={inputStyle}>
+              <label htmlFor={`${fid}-method`} style={labelStyle}>{t('sale_mobile_payment_method')}</label>
+              <select id={`${fid}-method`} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} style={inputStyle}>
                 {PAYMENT_METHODS.map(([value, key]) => (
                   <option key={value} value={value}>{t(key)}</option>
                 ))}
               </select>
-              <label style={labelStyle}>{t('sale_mobile_notes')}</label>
-              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+              <label htmlFor={`${fid}-notes`} style={labelStyle}>{t('sale_mobile_notes')}</label>
+              <textarea id={`${fid}-notes`} value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
           </section>
 

@@ -355,6 +355,11 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   if (oeuvreIds.length === 0) return { error: 'ord_err_no_work' }
   const partyId = numOrNull(formData.get('party_id'))
   if (!partyId || partyId === PEM) return { error: 'holder_required' }
+  // A team account never buys (stress test 2026-11-18): refused here, not only hidden in the pickers.
+  if (kind === 'sale') {
+    const { data: party } = await supabase.from('Contact').select('is_team_member').eq('ContactID', partyId).maybeSingle()
+    if (party?.is_team_member) return { error: 'ord_err_party_team' }
+  }
   let addressId = numOrNull(formData.get('place_id'))   // a place linked to the party
   // A deposit or a loan always says when the works go out and come back (Pem 2026-11-17).
   const startDate = strOrNull(formData.get('start_date'))

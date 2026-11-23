@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { dict } from '@/lib/i18n/dictionary'
+import { PEM_CONTACT_ID } from '@/lib/data'
 import { SaleNewClient, type MobileSaleContact, type MobileSaleGroup, type MobileSaleGroupLink, type MobileSaleStatusRow, type MobileSaleWork } from '@/components/atelier/sale/SaleNewClient'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,9 @@ export default async function SaleNewPage() {
   const contactsQ = supabase
     .from('Contact')
     .select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays')
+    // Pem and the team accounts are never the buyer (stress test 2026-11-18): not asked for.
+    .neq('ContactID', PEM_CONTACT_ID)
+    .not('is_team_member', 'is', true)
     .order('NomInstitution', { ascending: true, nullsFirst: false })
     .order('Nom', { ascending: true, nullsFirst: false })
 

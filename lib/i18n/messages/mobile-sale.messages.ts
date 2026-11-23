@@ -41,10 +41,6 @@ export const mobileSaleMessages = defineMessages({
     fr: 'Rechercher par n° ou titre…',
     en: 'Search by no. or title…',
   },
-  sale_mobile_buyer_placeholder: {
-    fr: 'Sélectionner un acheteur',
-    en: 'Select a buyer',
-  },
   sale_mobile_catalogue_price: {
     fr: 'Prix catalogue (€)',
     en: 'Catalogue price (€)',
@@ -172,5 +168,22 @@ export const mobileSaleMessages = defineMessages({
   hub_field_sale_sub: {
     fr: 'Encaisser et solder',
     en: 'Record and complete',
+  },
+  // Buyer step: search + « + Nouveau contact » (stress test 2026-11-18).
+  sale_mobile_buyer_search_label: {
+    fr: 'Rechercher un acheteur',
+    en: 'Find a buyer',
+  },
+  sale_mobile_buyer_search_ph: {
+    fr: 'Nom, prénom ou structure',
+    en: 'Name, first name or organisation',
+  },
+  sale_mobile_buyer_none: {
+    fr: 'Aucun contact trouvé — créez-le ci-dessous.',
+    en: 'No contact found — create it below.',
+  },
+  sale_mobile_buyer_new_failed: {
+    fr: 'Le contact n’a pas été créé.',
+    en: 'The contact was not created.',
   },
 })
