@@ -20,13 +20,5 @@ export function saveContactRefusalText(res: SaveContactResult, t: (key: DictKey)
       return t('contact_save_not_found')
     case 'bad_field':
       return t('contact_save_bad_field_fmt').replace('{field}', String(detail ?? ''))
-    case 'address_in_use': {
-      const d = (detail ?? {}) as { label?: string; works?: number; orders?: number; shipments?: number }
-      return t('contact_editor_addr_in_use_fmt')
-        .replace('{label}', d.label ?? '')
-        .replace('{works}', String(d.works ?? 0))
-        .replace('{orders}', String(d.orders ?? 0))
-        .replace('{shipments}', String(d.shipments ?? 0))
-    }
   }
 }

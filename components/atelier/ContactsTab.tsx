@@ -1,7 +1,7 @@
 'use client'
 
 // ContactsTab — searchable, filterable contact list with full field set + edit/create.
-// Supports multiple addresses per contact via contact_addresses table.
+// Supports multiple addresses per contact: places linked to the card (contact_place_lines, Places phase B).
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -37,6 +37,7 @@ import {
   ContactEditorPanel,
   type ContactEditorPanelHandle,
 } from '@/components/atelier/ContactEditorPanel'
+import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
 import type {
   ContactAddress,
   ContactEmail,
@@ -204,8 +205,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           .order('ContactID'),
         sb.from('Contact')
           .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Adresse, CodePostal, Ville, Pays, Notes, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id'),
-        sb.from('contact_addresses')
-          .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
+        sb.from('contact_place_lines')
+          .select(ADDRESS_LINE_COLS)
           .order('position'),
         sb.from('contact_emails').select('*'),
         sb.from('contact_phones').select('*'),

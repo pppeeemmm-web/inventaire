@@ -1,5 +1,6 @@
 -- save_contact(p jsonb): the one door for a contact and its child rows, in ONE transaction (People.md §3, v1).
--- Pem GO 2026-11-23 (« GO v1 »). Called only by the server action `saveContact`
+-- Pem GO 2026-11-23 (« GO v1 »). v2 (Places phase B, same day): the address list goes through save_contact_places.
+-- ORDER: apply only AFTER places_phase_b_switch.sql (it creates save_contact_places and contact_place_lines). Called only by the server action `saveContact`
 -- (app/atelier/(portal)/contacts/save-contact.ts); no browser file writes a contact table.
 --
 -- Input:
@@ -7,6 +8,8 @@
 --     fields: { <Contact column>: value },   -- only the columns below; '' is sent as null
 --     read:   { <column>: value } | null,    -- the values the screen read (stale check); null = no check
 --     lists:  { addresses|emails|phones|websites|socials: [ { id?, <cols> } ] },  -- a kind absent = untouched
+--             -- addresses: id = the live link (contact_place_lines.id), cols label, adresse, code_postal, ville, pays,
+--             --            complement (floor / flat), shipping_notes, is_primary, position
 --     read_lists: { <kind>: [rows as read] } | null }
 -- Rules, in order (nothing is written until every check passed):
 --   1. who asks: team or admin, else « forbidden »;
@@ -15,19 +18,20 @@
 --      admin-only fields (is_private, is_team_member, IsTeamMember) changed by a non-admin → « admin_only »;
 --   4. stale: a field the screen changed must still hold the value it read; a list the screen changed must
 --      still be exactly the list it read → else « stale » with the fresh card, nothing written;
---   5. addresses (one isolated step — Places phase B swaps it for save_contact_places): an address the form
---      drops while a work / order / shipment still points at it → « address_in_use » with the counts.
---      Phase B (Pem 2026-11-23) drops this refusal: removing an address ends the person's link only, the works
---      keep their place and are flagged (`oeuvre_place_unlinked`) — the swap removes this check;
---   6. child rows by id: kept rows updated in place (ids never change), new rows inserted, dropped rows
---      deleted; one primary email and one primary phone (the first marked, else the first row);
+--   5. (v1's « address_in_use » refusal is gone — Pem 2026-11-23: removing an address ends the person's link only,
+--      the works keep their place and are flagged by `oeuvre_place_unlinked`);
+--   6. addresses → save_contact_places(contact, rows) in this same transaction (the same full line = the same building,
+--      complement = a floor, an edited line corrected for everyone, a dropped row ends / removes the link). A link it
+--      no longer finds (ended elsewhere) → « stale », everything rolled back. Other child rows by id: kept rows
+--      updated in place (ids never change), new rows inserted, dropped rows deleted; one primary email and one primary
+--      phone (the first marked, else the first row);
 --   7. legacy mirror columns written from the lists: Email (primary email), Adresse / CodePostal / Ville /
 --      Pays (first address by position);
 --   8. nothing changed → « unchanged » (never ok for nothing); else ok + the card as stored + what changed.
 -- The Contact row is locked (FOR UPDATE) for the whole save: two saves of one card run one after the other.
 --
--- Security: SECURITY DEFINER (the in-use counts must see every work / order / shipment), team / admin checked
--- inside; auth.uid() stays the caller, so the protect_admin_flags trigger still refuses a non-admin flag change.
+-- Security: SECURITY DEFINER (writes the child tables for the caller), team / admin checked
+-- inside; auth.uid() stays the caller (save_contact_places checks is_team() itself), so the protect_admin_flags trigger still refuses a non-admin flag change.
 -- search_path '', every name qualified. EXECUTE: save_contact → authenticated; the helpers → nobody but the owner.
 
 create or replace function public._contact_rows_norm(p_rows jsonb, p_cols text[])
@@ -58,7 +62,7 @@ declare v jsonb;
 begin
   execute format(
     'select coalesce(jsonb_agg(to_jsonb(t) order by %s t.id), ''[]''::jsonb) from public.%I t where t.contact_id = $1',
-    case when p_table = 'contact_addresses' then 't.position nulls last,' else '' end, p_table)
+    case when p_table = 'contact_place_lines' then 't.position nulls last,' else '' end, p_table)
   into v using p_contact;
   return v;
 end $$;
@@ -109,7 +113,7 @@ set search_path = ''
 as $$
   select jsonb_build_object(
     'contact', (select to_jsonb(c) from public."Contact" c where c."ContactID" = p_id),
-    'addresses', public._contact_rows_stored('contact_addresses', p_id),
+    'addresses', public._contact_rows_stored('contact_place_lines', p_id),
     'emails', public._contact_rows_stored('contact_emails', p_id),
     'phones', public._contact_rows_stored('contact_phones', p_id),
     'websites', public._contact_rows_stored('contact_websites', p_id),
@@ -131,8 +135,9 @@ declare
     'is_private', 'is_team_member', 'IsTeamMember'];
   c_admin constant text[] := array['is_private', 'is_team_member', 'IsTeamMember'];
   c_kinds constant jsonb := jsonb_build_object(
-    'addresses', jsonb_build_object('t', 'contact_addresses',
-                   'c', jsonb_build_array('label', 'adresse', 'code_postal', 'ville', 'pays', 'position', 'shipping_notes')),
+    'addresses', jsonb_build_object('t', 'contact_place_lines',
+                   'c', jsonb_build_array('label', 'adresse', 'code_postal', 'ville', 'pays', 'complement',
+                                          'shipping_notes', 'is_primary', 'position')),
     'emails',    jsonb_build_object('t', 'contact_emails',    'c', jsonb_build_array('email', 'label', 'is_primary')),
     'phones',    jsonb_build_object('t', 'contact_phones',    'c', jsonb_build_array('phone', 'country_code', 'label', 'is_primary')),
     'websites',  jsonb_build_object('t', 'contact_websites',  'c', jsonb_build_array('url', 'label')),
@@ -163,8 +168,7 @@ declare
   v_set text;
   v_ins_cols text;
   v_ins_vals text;
-  v_addr record;
-  v_w int; v_o int; v_s int;
+  v_places jsonb;
   v_email text;
   v_first_addr jsonb;
 begin
@@ -244,30 +248,14 @@ begin
     end if;
   end loop;
 
-  -- 5. Addresses (isolated step): a dropped address still in use refuses the save.
-  if v_id is not null and 'addresses' = any(v_kinds_changed) then
-    for v_addr in
-      select a.id, a.label, a.ville from public.contact_addresses a
-       where a.contact_id = v_id
-         and not exists (select 1 from jsonb_array_elements(v_lists->'addresses') x
-                          where nullif(x->>'id', '')::bigint = a.id)
-    loop
-      select count(*) into v_w from public."Oeuvres" w where w.localisation_address_id = v_addr.id;
-      select count(*) into v_o from public.work_order o where o.address_id = v_addr.id;
-      select count(*) into v_s from public.shipment s where s.address_id = v_addr.id;
-      if v_w + v_o + v_s > 0 then
-        return jsonb_build_object('refused', 'address_in_use', 'detail', jsonb_build_object(
-          'label', coalesce(nullif(v_addr.label, ''), nullif(v_addr.ville, ''), v_addr.id::text),
-          'works', v_w, 'orders', v_o, 'shipments', v_s));
-      end if;
-    end loop;
-  end if;
-
   -- 8a. Nothing to do.
   if v_id is not null and v_write = '{}'::jsonb and cardinality(v_kinds_changed) = 0 then
     return jsonb_build_object('unchanged', true, 'card', public._contact_card(v_id));
   end if;
 
+  -- Everything below writes; a link save_contact_places no longer finds (ended elsewhere meanwhile) rolls the whole
+  -- block back and answers « stale ».
+  begin
   -- Write the Contact row.
   if v_id is null then
     if v_write = '{}'::jsonb then
@@ -287,8 +275,22 @@ begin
     execute format('update public."Contact" set %s where "ContactID" = $2', v_set) using v_new, v_id;
   end if;
 
-  -- 6. Child rows by id (the address in-use check above already ran, before any write).
+  -- 6. Addresses through the places door (link id as link_id), then the other child rows by id.
+  if 'addresses' = any(v_kinds_changed) then
+    v_places := public.save_contact_places(v_id, coalesce((
+      select jsonb_agg(x - 'id' - 'contact_id' - 'position'
+                       || case when nullif(x->>'id', '') is not null
+                               then jsonb_build_object('link_id', (x->>'id')::bigint) else '{}'::jsonb end
+                       order by i)
+        from jsonb_array_elements(v_lists->'addresses') with ordinality t(x, i)), '[]'::jsonb));
+    -- A list that differed only in ways the door ignores (an empty line, the same text) changed nothing.
+    if jsonb_array_length(coalesce(v_places->'changed', '[]'::jsonb)) = 0
+       and coalesce((v_places->>'ended')::int, 0) = 0 and coalesce((v_places->>'removed')::int, 0) = 0 then
+      v_kinds_changed := array_remove(v_kinds_changed, 'addresses');
+    end if;
+  end if;
   foreach v_kind in array v_kinds_changed loop
+    continue when v_kind = 'addresses';
     v_table := c_kinds->v_kind->>'t';
     select array_agg(x) into v_cols from jsonb_array_elements_text(c_kinds->v_kind->'c') x;
     perform public._contact_rows_write(v_table, v_id, v_cols, v_lists->v_kind);
@@ -304,7 +306,7 @@ begin
     end if;
   end if;
   if v_lists ? 'addresses' then
-    select to_jsonb(a) into v_first_addr from public.contact_addresses a
+    select to_jsonb(a) into v_first_addr from public.contact_place_lines a
      where a.contact_id = v_id order by a.position nulls last, a.id limit 1;
     update public."Contact" set
         "Adresse" = v_first_addr->>'adresse', "CodePostal" = v_first_addr->>'code_postal',
@@ -314,7 +316,17 @@ begin
            (v_first_addr->>'adresse', v_first_addr->>'code_postal', v_first_addr->>'ville', v_first_addr->>'pays');
   end if;
 
-  -- 8b. The truth: the card as stored, and what changed.
+  exception when raise_exception then
+    if sqlerrm = 'link_not_found' and nullif(p->>'id', '') is not null then
+      return jsonb_build_object('refused', 'stale', 'detail', 'addresses', 'card', public._contact_card(v_id));
+    end if;
+    raise;
+  end;
+
+  -- 8b. The truth: nothing changed after all → « unchanged »; else the card as stored, and what changed.
+  if nullif(p->>'id', '') is not null and v_write = '{}'::jsonb and cardinality(v_kinds_changed) = 0 then
+    return jsonb_build_object('unchanged', true, 'card', public._contact_card(v_id));
+  end if;
   return jsonb_build_object('ok', true, 'created', p->>'id' is null or p->>'id' = '',
     'changed', to_jsonb(v_changed || v_kinds_changed), 'card', public._contact_card(v_id));
 end $$;

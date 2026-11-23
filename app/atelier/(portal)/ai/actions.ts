@@ -147,7 +147,7 @@ async function contactsBefore(supabase: Sb, ids: number[]): Promise<Map<number, 
     supabase.from('contact_emails').select('contact_id, email').in('contact_id', ids),
     supabase.from('contact_phones').select('contact_id, phone').in('contact_id', ids),
     supabase.from('contact_websites').select('contact_id, url').in('contact_id', ids),
-    supabase.from('contact_addresses').select('contact_id, adresse, code_postal, ville, pays').in('contact_id', ids),
+    supabase.from('contact_place_lines').select('contact_id, adresse, code_postal, ville, pays').in('contact_id', ids),
   ])
   const err = c.error ?? e.error ?? p.error ?? w.error ?? a.error
   if (err) throw new Error(err.message)

@@ -35,8 +35,8 @@ async function step(name, action, args, opts = {}, check) {
   return r;
 }
 const expect = (cond, msg) => (cond ? null : { fail: msg });
-const work = (id) => json(`select "statusId" s, "ContactID" owner, "LocalisationID" loc, "AcheteurID" buyer, is_paid paid, localisation_address_id addr from public."Oeuvres" where "OeuvreID"=${id}`)[0];
-const order = (id) => json(`select status, ref, paper_path, parent_order_id, commission_amount, address_id from public.work_order where id='${id}'`)[0];
+const work = (id) => json(`select "statusId" s, "ContactID" owner, "LocalisationID" loc, "AcheteurID" buyer, is_paid paid, place_id addr from public."Oeuvres" where "OeuvreID"=${id}`)[0];
+const order = (id) => json(`select status, ref, paper_path, parent_order_id, commission_amount, place_id from public.work_order where id='${id}'`)[0];
 const r2Has = (bucket, key) => key && fs.existsSync(path.join(R2, bucket, key));
 // Works free for a new order: Disponible, catalogued, priced, on no active line, not used by a past run.
 const used = new Set();
@@ -49,7 +49,7 @@ function freeWorks(n, extra = '') {
   return rows;
 }
 const contact = (name) => Number(one(`select "ContactID" from public."Contact" where coalesce("NomInstitution","Nom")='${name}'`));
-const COLLECTOR = () => Number(one(`select c."ContactID" from public."Contact" c where c."Nom" like 'Collector%' and (select count(*) from public.contact_addresses a where a.contact_id=c."ContactID")=1 order by random() limit 1`));
+const COLLECTOR = () => Number(one(`select c."ContactID" from public."Contact" c where c."Nom" like 'Collector%' and (select count(distinct a.place_id) from public.contact_place_lines a where a.contact_id=c."ContactID")=1 order by random() limit 1`));
 const today = new Date().toISOString().slice(0, 10);
 const plusDays = (d) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
 
@@ -115,14 +115,14 @@ const chains = {
 
   // C — deposit at a gallery with two addresses → sale out of the deposit → « Retour » before delivery → deposit back
   async deposit() {
-    const ws = freeWorks(3); const gal = Number(one(`select contact_id from public.contact_addresses where label='Réserve' and contact_id in (select "ContactID" from public."Contact" where "NomInstitution" like 'Galerie%') limit 1`));
+    const ws = freeWorks(3); const gal = Number(one(`select contact_id from public.contact_place_lines where label='Réserve' and contact_id in (select "ContactID" from public."Contact" where "NomInstitution" like 'Galerie%') limit 1`));
     const c = await step('create deposit (gallery, 2 addresses, no address)', 'createWorkOrder', [fd({ kind: 'consignment', oeuvre_ids: ws, party_id: gal, start_date: today, end_date: plusDays(90), commission_pct: 40 })], {}, (r) => {
-      const o = order(r.result.id); return expect(o.address_id == null, `address ${o.address_id}`) ?? { ref: o.ref, address: 'none (picker expected)' };
+      const o = order(r.result.id); return expect(o.place_id == null, `place ${o.place_id}`) ?? { ref: o.ref, address: 'none (picker expected)' };
     });
     if (!c.ok) return; const id = c.result.id;
-    const addr = Number(one(`select id from public.contact_addresses where contact_id=${gal} and label='Réserve'`));
+    const addr = Number(one(`select place_id from public.contact_place_lines where contact_id=${gal} and label='Réserve' limit 1`));
     await step('pick the address on the order', 'setOrderAddress', [id, addr]);
-    await step('sign → return shipment? no: ship to gallery', 'advanceWorkOrder', [id, 'signed'], {}, () => json(`select kind, status, address_id from public.shipment s where exists (select 1 from public.shipment_work sw where sw.shipment_id=s.id and sw.oeuvre_id=${ws[0]})`));
+    await step('sign → return shipment? no: ship to gallery', 'advanceWorkOrder', [id, 'signed'], {}, () => json(`select kind, status, place_id from public.shipment s where exists (select 1 from public.shipment_work sw where sw.shipment_id=s.id and sw.oeuvre_id=${ws[0]})`));
     const ship = json(`select distinct s.id from public.shipment s join public.shipment_work sw on sw.shipment_id=s.id join public.work_order_work l on l.id=sw.order_line_id where l.order_id='${id}'`)[0];
     await driveShipment(ship.id, 'deposit shipment');
     results.at(-1).detail = { order: order(id).status, works: ws.map(work) };

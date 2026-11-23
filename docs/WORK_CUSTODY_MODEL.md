@@ -6,10 +6,10 @@ or where it is must match this page. Verified against live code 2026-11-03.
 ## Terms
 
 - **Contact** — a person, an institution or an organisation (`Contact`).
-- **Address** — one of a contact's places (`contact_addresses`: label + street, city…). A contact can have several.
+- **Address** — one of a contact's places (Places phase B: a `place` linked to the contact by `contact_place`, read through `contact_place_lines`: label + street, city…). A contact can have several; a place can be shared by several people.
 - **Owner** — who holds the title (`Oeuvres.ContactID`).
 - **Custodian** — who physically holds the work, always filled (`Oeuvres.LocalisationID`). A role, not a kind of contact.
-- **Address of the work** — always one of the custodian's addresses (`Oeuvres.localisation_address_id`). Screens show the label; the street is behind it.
+- **Address of the work** — `Oeuvres.place_id`, a place in a building the custodian is linked to; any other is kept and flagged « lieu non relié au détenteur » (`oeuvre_place_unlinked`: audit rule 9, work card, Overview), never refused or moved (Pem 2026-11-23). Screens show the custodian's label for it; the street is behind it.
 - **Buyer** — `Oeuvres.AcheteurID` (also set while reserved, before ownership moves).
 
 Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6 rue des Trois Frères Barthélemy, 13006 Marseille — two separate rows), **Rutali**.
@@ -39,7 +39,7 @@ Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6
 
 - DB trigger `oeuvre_holder_check` ([`work_custody_model.sql`](../supabase/sql/work_custody_model.sql)): the table above, per status.
 - DB trigger `oeuvre_location_by_stage` (same file): the address rules. Runs only when the work row is saved.
-- DB trigger `trg_contact_address_link_single` on `contact_addresses` ([`contact_address_single_link.sql`](../supabase/sql/contact_address_single_link.sql), applied 2026-11-12): same single-address rule from the address side — when a contact is left with one address, its works without an address get it (Pem excluded). Backfill linked #302, #2124, #2162, #2339, #2341 (Kaizen "linkage broken").
+- DB trigger `trg_contact_place_link_single` on `contact_place` ([`places_phase_b_switch.sql`](../supabase/sql/places_phase_b_switch.sql), replaces `trg_contact_address_link_single` of 2026-11-12): same single-place rule from the link side — when a contact is left with one address, its works without an address get it (Pem excluded). Backfill linked #302, #2124, #2162, #2339, #2341 (Kaizen "linkage broken").
 - Orders: [`orders-actions.ts`](../app/atelier/(portal)/sales/orders-actions.ts) (`createWorkOrder`, `advanceWorkOrder`: each step moves the works and writes their history); exhibitions send through it ([`exhibitions/actions.ts`](../app/atelier/(portal)/exhibitions/actions.ts)). The former `sales/actions.ts`, `consignments/actions.ts` and `gift-actions.ts` are gone (R7, 2026-11-17).
 
 ## Mismatches found 2026-11-03 (live code + DB) and their fix

@@ -10,7 +10,7 @@ const free = (n) => one(`select string_agg(id::text, ',') from (select "OeuvreID
   and not exists (select 1 from public.shipment_work s where s.oeuvre_id = o."OeuvreID") order by random() limit ${n}) x`).split(',').map(Number);
 // A collector with exactly one address, so every order to them goes to the same place.
 const party = () => Number(one(`select c."ContactID" from public."Contact" c where c."ContactID" >= 100 and c."ContactID" < 900
-  and (select count(*) from public.contact_addresses a where a.contact_id = c."ContactID") = 1
+  and (select count(distinct a.place_id) from public.contact_place_lines a where a.contact_id = c."ContactID") = 1
   and not exists (select 1 from public.shipment s where s.to_contact_id = c."ContactID" and s.status not in ('shipped', 'delivered', 'cancelled'))
   order by random() limit 1`));
 const boxesOf = (orderId) => json(`select s.id, s.status, s.kind, (select count(*) from public.shipment_work x where x.shipment_id = s.id) n

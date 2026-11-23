@@ -19,7 +19,7 @@ export type WorkFormDraftPayload = {
   /** Custodian — who holds the work (`LocalisationID`). */
   contactId: string
   /** Which of the custodian's addresses holds the work ('' = unspecified). */
-  localisationAddressId: string
+  placeId: string
   /** Owner (`ContactID`) and buyer (`AcheteurID`) — docs/WORK_CUSTODY_MODEL.md. Optional in old drafts. */
   ownerId?: string
   buyerId?: string
@@ -65,7 +65,7 @@ export function normalizeWorkFormDraftContent(
     needsPhoto: !!p.needsPhoto,
     ownStage: String(p.ownStage ?? ''),
     contactId: String(p.contactId ?? ''),
-    localisationAddressId: String(p.localisationAddressId ?? ''),
+    placeId: String(p.placeId ?? ''),
     ownerId: String(p.ownerId ?? ''),
     buyerId: String(p.buyerId ?? ''),
     anonymityLevel: typeof p.anonymityLevel === 'number' ? p.anonymityLevel : 0,
@@ -97,7 +97,7 @@ export function workFormDraftContentEquals(a: WorkFormDraftContent, b: WorkFormD
   if (na.needsPhoto !== nb.needsPhoto) return false
   if (na.ownStage !== nb.ownStage) return false
   if (na.contactId !== nb.contactId) return false
-  if (na.localisationAddressId !== nb.localisationAddressId) return false
+  if (na.placeId !== nb.placeId) return false
   if (na.ownerId !== nb.ownerId) return false
   if (na.buyerId !== nb.buyerId) return false
   if (na.anonymityLevel !== nb.anonymityLevel) return false

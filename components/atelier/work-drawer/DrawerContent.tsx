@@ -216,8 +216,8 @@ export function DrawerContent({
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [ownerId, setOwnerId] = useState(String(o.ContactID ?? ''))
   const [buyerId, setBuyerId] = useState(String((o as { AcheteurID?: number | null }).AcheteurID ?? ''))
-  const [localisationAddressId, setLocalisationAddressId] = useState(
-    String((o as { localisation_address_id?: number | null }).localisation_address_id ?? ''),
+  const [placeId, setPlaceId] = useState(
+    String((o as { place_id?: number | null }).place_id ?? ''),
   )
   const [exposable,   setExposable]   = useState(!!o.Exposable)
   const [broadcastReady, setBroadcastReady] = useState(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
@@ -501,7 +501,7 @@ export function DrawerContent({
         needsPhoto,
         ownStage,
         contactId,
-        localisationAddressId,
+        placeId,
         ownerId,
         buyerId,
         anonymityLevel,
@@ -529,7 +529,7 @@ export function DrawerContent({
       needsPhoto,
       ownStage,
       contactId,
-      localisationAddressId,
+      placeId,
       ownerId,
       buyerId,
       anonymityLevel,
@@ -560,7 +560,7 @@ export function DrawerContent({
     setProdStage(draftStage === 'available' && d.needsPhoto ? 'catalogued' : draftStage)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
-    setLocalisationAddressId(d.localisationAddressId ?? '')
+    setPlaceId(d.placeId ?? '')
     setOwnerId(d.ownerId ?? '')
     setBuyerId(d.buyerId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
@@ -634,12 +634,12 @@ export function DrawerContent({
     }
     const loadedBuyerId = String((o as { AcheteurID?: number | null }).AcheteurID ?? '')
     const loadedAddressId = String(
-      (o as { localisation_address_id?: number | null }).localisation_address_id ?? '',
+      (o as { place_id?: number | null }).place_id ?? '',
     )
     setContactId(loadedContactId)
     setOwnerId(loadedOwnerId)
     setBuyerId(loadedBuyerId)
-    setLocalisationAddressId(loadedAddressId)
+    setPlaceId(loadedAddressId)
     setExposable(loadedOwn === 'artist_archive' ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
@@ -689,7 +689,7 @@ export function DrawerContent({
           needsPhoto: normProd === 'catalogued',
           ownStage: loadedOwn,
           contactId: loadedContactId,
-          localisationAddressId: loadedAddressId,
+          placeId: loadedAddressId,
           ownerId: loadedOwnerId,
           buyerId: loadedBuyerId,
           anonymityLevel: normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
@@ -810,15 +810,19 @@ export function DrawerContent({
     [initialAddresses, contactId],
   )
 
-  // A pinned address must belong to the holding contact: clear it when ownership moves,
-  // otherwise a transferred work would keep pointing at its previous owner's address.
-  // Addresses hydrate after first paint: an empty list means "not loaded yet", not "moved".
+  // A place the holder is not linked to is kept and flagged on the card, never cleared here (Pem 2026-11-23,
+  // Places phase B): custody and place move only through orders. The flag is the database's own read
+  // (`oeuvre_place_unlinked`, same as audit rule 9 and the Overview count), for the place as saved.
+  const savedPlaceId = String((o as { place_id?: number | null }).place_id ?? '')
+  const [placeFlagged, setPlaceFlagged] = useState(false)
   useEffect(() => {
-    if (!localisationAddressId || locationAddresses.length === 0) return
-    if (!locationAddresses.some((a) => String(a.id) === localisationAddressId)) {
-      setLocalisationAddressId('')
-    }
-  }, [locationAddresses, localisationAddressId])
+    let off = false
+    setPlaceFlagged(false)
+    if (!savedPlaceId) return
+    void createClient().from('oeuvre_place_unlinked').select('oeuvre_id').eq('oeuvre_id', o.OeuvreID).maybeSingle()
+      .then(({ data }) => { if (!off) setPlaceFlagged(!!data) })
+    return () => { off = true }
+  }, [o.OeuvreID, savedPlaceId])
 
   // Pem's address by stage (Atelier / Principal) is set by DB trigger oeuvre_location_by_stage on
   // save; the drawer shows it and lets you pick (docs/WORK_CUSTODY_MODEL.md).
@@ -1068,7 +1072,7 @@ export function DrawerContent({
     // oeuvre_holder_check enforces the table).
     fd.append('contact_id', ownerId)
     fd.append('localisation_id', contactId)
-    fd.append('localisation_address_id', localisationAddressId)
+    fd.append('place_id', placeId)
     fd.append('acheteur_id', buyerId)
     fd.append('exposable', exposable ? '1' : '0')
     fd.append('broadcast_ready', broadcastReady ? '1' : '0')
@@ -1259,7 +1263,7 @@ export function DrawerContent({
     prodStage,
     needsPhoto,
     contactId,
-    localisationAddressId,
+    placeId,
     ownerId,
     buyerId,
     exposable,
@@ -1317,13 +1321,13 @@ export function DrawerContent({
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, ownerId, buyerId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, placeId, ownerId, buyerId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, ownerId, buyerId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, placeId, ownerId, buyerId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
@@ -1807,8 +1811,9 @@ export function DrawerContent({
             setBuyerId={setBuyerId}
             loadedOwnStage={ownStageFromStatusId(o.statusId)}
             locationAddresses={locationAddresses}
-            localisationAddressId={localisationAddressId}
-            setLocalisationAddressId={setLocalisationAddressId}
+            placeUnlinked={placeFlagged && placeId === savedPlaceId}
+            placeId={placeId}
+            setPlaceId={setPlaceId}
             sortedContacts={sortedContacts}
             cName={cName}
             currentLoc={currentLoc}

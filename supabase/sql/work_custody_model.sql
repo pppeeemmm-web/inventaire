@@ -1,3 +1,6 @@
+-- SUPERSEDED by Places phase B (2026-11-23) — DO NOT RE-APPLY: oeuvre_location_by_stage — its live body (on Oeuvres.place_id) is in places_phase_b_switch.sql; this one writes the retired localisation_address_id.
+-- Kept as history; re-running it after the switch breaks live data.
+
 -- Work custody model (owner 2026-11-03) — see docs/WORK_CUSTODY_MODEL.md.
 --
 --   owner     = Oeuvres.ContactID

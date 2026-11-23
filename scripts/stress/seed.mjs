@@ -97,7 +97,11 @@ async function main() {
   const A = [[13, 'Atelier', '1 rue Test', '75011', 'Paris', 'France', 0], [13, 'Principal', '2 rue Test', '75011', 'Paris', 'France', 1]];
   for (const c of C.slice(3)) { const [v, p, z] = pick(cities); A.push([c[0], 'Principal', `${int(1, 90)} rue Fictive`, z, v, p, 0]); }
   for (const g of [...groups.gallery.slice(0, 3), groups.collector[0]]) A.push([g, 'Réserve', '9 quai Test', '93400', 'Saint-Ouen', 'France', 1]);
+  // Places phase B: contact_addresses is read-only and the cards read places. The rows are written with its guard off,
+  // then turned into places + links by the same backfill as live (nothing changes on a copy before phase B).
+  sql.push(`do $$ begin if exists (select 1 from pg_trigger where tgname = 'trg_contact_addresses_read_only') then alter table public.contact_addresses disable trigger trg_contact_addresses_read_only; end if; end $$;`);
   sql.push(`insert into public.contact_addresses (contact_id,label,adresse,code_postal,ville,pays,position) values\n${A.map(row).join(',\n')};`);
+  sql.push(`do $$ begin if exists (select 1 from pg_trigger where tgname = 'trg_contact_addresses_read_only') then alter table public.contact_addresses enable trigger trg_contact_addresses_read_only; perform public.places_backfill_from_addresses(); end if; end $$;`);
 
   // 4. themes, works, images, groups
   const ids = (t, c) => psql(`select string_agg("${c}"::text, ',') from public."${t}"`).split(',').map(Number);

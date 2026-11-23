@@ -108,6 +108,8 @@ export type ReportMaps = {
   cM: Record<number, string>
   pM: Record<number, string>
   locMap: Record<number, string>
+  /** `holder:place` → the holder's label for the work's place (Places phase B, `contact_place_lines`). */
+  addrMap?: Record<string, string>
   statusLabelMap: Record<number, string>
   thM: Record<number, string>
   groupNameMap: Record<string, string>
@@ -218,12 +220,15 @@ function locationLine(
   o: Oeuvre,
   cM: Record<number, string>,
   locMap: Record<number, string>,
+  addrMap: Record<string, string> = {},
 ): string {
   const locId = o.LocalisationID
   const contact = locId != null ? cM[locId] ?? '' : ''
+  // The work's place (Places phase B) as its holder names it; else the holder's town. The old free text is no
+  // longer printed (it stays readable in Inventory as « ancien repère »).
+  const place = locId != null && o.place_id != null ? addrMap[`${locId}:${o.place_id}`] ?? '' : ''
   const geo = locId != null ? locMap[locId] ?? '' : ''
-  const detail = (o.LocalisationDetail ?? '').trim()
-  const parts = [contact, geo, detail].filter(Boolean)
+  const parts = [contact, place || geo].filter(Boolean)
   return parts.length ? parts.join(' · ') : '—'
 }
 
@@ -258,7 +263,7 @@ export function formatReportCell(o: Oeuvre, col: ReportColumnId, maps: ReportMap
     case 'buyer':
       return o.AcheteurID != null ? maps.cM[o.AcheteurID] ?? '—' : '—'
     case 'location':
-      return locationLine(o, maps.cM, maps.locMap)
+      return locationLine(o, maps.cM, maps.locMap, maps.addrMap)
     case 'themes': {
       const names = (maps.oeuvreThemeMap.get(o.OeuvreID) ?? []).map((tid) => maps.thM[tid] ?? '').filter(Boolean)
       return names.length ? names.join(', ') : '—'

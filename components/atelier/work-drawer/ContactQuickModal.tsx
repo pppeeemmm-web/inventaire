@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ContactEditorPanel, type ContactEditorPanelHandle } from '@/components/atelier/ContactEditorPanel'
+import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
 import type {
   ContactAddress,
   ContactEmail,
@@ -53,8 +54,8 @@ export function ContactQuickModal({
     const [adminRes, cRes, addrRes, emailRes, phoneRes, webRes, socialRes, rolesRes, worksRes] = await Promise.all([
       sb.rpc('is_admin'),
       sb.from('Contact').select('*').eq('ContactID', contactId).maybeSingle(),
-      sb.from('contact_addresses')
-        .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
+      sb.from('contact_place_lines')
+        .select(ADDRESS_LINE_COLS)
         .eq('contact_id', contactId)
         .order('position'),
       sb.from('contact_emails').select('*').eq('contact_id', contactId),

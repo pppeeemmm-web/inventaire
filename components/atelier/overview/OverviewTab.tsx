@@ -128,6 +128,8 @@ export function OverviewTab({
     { key: 'photos', label: t('ov_needs_photo_validation'), count: needsPhotoValidation, go: () => goInventory(t('ov_needs_photo_validation'), [{ field: 'NeedsPhotograph', op: '= vrai' }]) },
     { key: 'field', label: t('ov_needs_field_tasks'), count: backlog.openFieldTasks, go: () => onGoTab('production') },
     { key: 'ledger', label: t('ov_needs_ledger'), count: backlog.openLedger, go: () => onGoTab('kaizen-ops') },
+    // Places phase B (Pem 2026-11-23: « make sure I don't miss that crucial information »): the list is audit rule 9.
+    { key: 'place_unlinked', label: t('ov_needs_place_unlinked'), count: biz?.placeUnlinked ?? 0, go: () => onGoTab('audit') },
     { key: 'catalogue', label: t('ov_needs_not_catalogued'), count: notCatalogued, go: () => goInventory(t('ov_needs_not_catalogued'), [{ field: 'Catalogué', op: '= faux' }]) },
     { key: 'sessions', label: t('ov_needs_sessions'), count: backlog.sessionsToApply, go: () => onGoTab('journal') },
   ]
@@ -137,7 +139,7 @@ export function OverviewTab({
     { key: 'photo', label: t('ov_health_missing_photos'), count: missingImages, go: () => goInventory(t('ov_health_missing_photos'), [{ field: '_hasImage', op: 'est vide' }]) },
     { key: 'dims', label: t('ov_health_missing_dims'), count: missingDims, go: () => goInventory(t('ov_health_missing_dims'), [{ field: 'Hauteur', op: 'est vide' }]) },
     { key: 'loc', label: t('ov_health_missing_loc'), count: missingLoc, go: () => goInventory(t('ov_health_missing_loc'), [{ field: 'LocalisationID', op: 'est vide' }]) },
-    { key: 'address', label: t('ov_health_missing_address'), count: missingAddress, go: () => goInventory(t('ov_health_missing_address'), [{ field: 'localisation_address_id', op: 'est vide' }]) },
+    { key: 'address', label: t('ov_health_missing_address'), count: missingAddress, go: () => goInventory(t('ov_health_missing_address'), [{ field: 'place_id', op: 'est vide' }]) },
     { key: 'tech', label: t('ov_health_missing_tech'), count: missingTech, go: () => goInventory(t('ov_health_missing_tech'), [{ field: 'Technique', op: 'est vide' }]) },
     { key: 'support', label: t('ov_health_missing_support'), count: missingSupport, go: () => goInventory(t('ov_health_missing_support'), [{ field: 'Support', op: 'est vide' }]) },
     { key: 'year', label: t('ov_health_missing_year'), count: missingYear, go: () => goInventory(t('ov_health_missing_year'), [{ field: 'Année', op: 'est vide' }]) },

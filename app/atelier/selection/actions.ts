@@ -21,7 +21,7 @@ import {
 } from '@/lib/export/image-quality'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import { PEM_CONTACT_ID, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
@@ -49,9 +49,8 @@ export interface BatchChanges {
   Discount?:          number | null
   PrixFinal?:         number | null
   Année?:             string | null
-  LocalisationDetail?: string | null
-  /** One of Pem's addresses — applies to the works Pem holds (DB trigger clears it elsewhere). */
-  localisation_address_id?: number | null
+  /** One of Pem's places — applies only to the works Pem holds (on any other it would be a place its holder is not linked to). */
+  place_id?: number | null
   /** Added to each work's comments on a new line with the date — never replaces them (owner 2026-11-13). */
   Commentaires?:      string | null
   /** Period for every selected work: 'auto' (from its date), 'none', or a period id (`work_period_override`). */
@@ -157,8 +156,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     else if (a && /^\d{4}-\d{2}$/.test(a)) a = `${a}-01`
     update['Année'] = a
   }
-  if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
-  if (changes.localisation_address_id !== undefined) update.localisation_address_id = changes.localisation_address_id
+  if (changes.place_id !== undefined) update.place_id = changes.place_id
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
   if (changes.broadcast_ready   !== undefined) update.broadcast_ready   = changes.broadcast_ready
@@ -235,7 +233,10 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   // Status / owner / custodian history lines are written by the database (oeuvre_history,
   // docs/WORK_RULES.md rule 14).
 
-  if (hasScalarChanges) {
+  // Pem's place goes only on the works Pem holds, after the other fields (a status change may move them first).
+  const placeChange = update.place_id
+  delete update.place_id
+  if (Object.keys(update).length > 0) {
     const { error, data: updatedIds } = await supabase
       .from('Oeuvres')
       .update(update)
@@ -244,6 +245,17 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
       .select('OeuvreID')
     if (error) return { error: error.message }
     count = updatedIds?.length ?? ids.length
+  }
+  if (placeChange !== undefined) {
+    const { error, data: placed } = await supabase
+      .from('Oeuvres')
+      .update({ place_id: placeChange })
+      .in('OeuvreID', ids)
+      .eq('LocalisationID', PEM_CONTACT_ID)
+      .is('deleted_at', null)
+      .select('OeuvreID')
+    if (error) return { error: error.message }
+    if (Object.keys(update).length === 0) count = placed?.length ?? 0
   }
 
   // Comments: appended per work, "YYYY-MM-DD — text" on a new line (owner 2026-11-13: never overwrite).

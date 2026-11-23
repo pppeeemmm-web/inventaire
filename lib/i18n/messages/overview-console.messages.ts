@@ -17,6 +17,10 @@ export const overviewConsoleMessages = defineMessages({
     fr: 'Validation photo',
     en: 'Photo validation',
   },
+  ov_needs_place_unlinked: {
+    fr: 'Œuvres à un lieu non relié au détenteur',
+    en: 'Works at a place not linked to the holder',
+  },
   ov_needs_not_catalogued: {
     fr: 'Non cataloguées',
     en: 'Not catalogued',

@@ -215,7 +215,7 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     fd.append('kind', kind)
     works.forEach((w) => fd.append('oeuvre_ids', String(w.id)))
     fd.append('party_id', String(party.ContactID))
-    if (addressId) fd.append('address_id', addressId)
+    if (addressId) fd.append('place_id', addressId)
     for (const [k, v] of Object.entries(terms)) if (v) fd.append(k, v)
     if (LINE_VALUE_LABEL[kind]) for (const w of works) { const v = lineValues[w.id]; if (v) fd.append(`line_value_${w.id}`, v) }
     if (notes) fd.append('notes', notes)

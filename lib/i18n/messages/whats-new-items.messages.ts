@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.98 (2026-11-23) — addresses become places (Places phase B).
+  wn_addresses_are_places_t: { fr: 'Une adresse est un lieu', en: 'An address is a place' },
+  wn_addresses_are_places_d: {
+    fr: 'Une adresse de contact est maintenant un lieu, partagé par toutes les personnes qui y habitent ou y travaillent : corriger la ligne la corrige pour tous. Un nouveau champ « Étage / appartement » précise l’étage. Retirer une adresse d’une fiche ne retire que le lien de cette personne : les œuvres qui y sont restent à leur place, et la fiche de l’œuvre signale « ⚠ Lieu non relié au détenteur » quand le détenteur n’est plus relié à ce lieu.',
+    en: 'A contact’s address is now a place, shared by everyone who lives or works there: correcting the line corrects it for all of them. A new « Floor / flat » field gives the floor. Removing an address from a card removes only that person’s link: the works there stay where they are, and the work card shows « ⚠ Place not linked to the holder » when the holder is no longer linked to that place.',
+  },
   // 3.1.97 (2026-11-23) — one door for a contact; Journal links and sorted lists.
   wn_contact_save_door_t: {
     fr: 'Une fiche contact modifiée à deux endroits n’est plus écrasée',

@@ -29,6 +29,7 @@ export const workCardMessages = defineMessages({
   wc_swatch_fmt: { fr: '{hex} · {share}', en: '{hex} · {share}' },
 
   wc_prod_label: { fr: 'Production', en: 'Production' },
+  wc_place_unlinked: { fr: 'Lieu non relié au détenteur', en: 'Place not linked to the holder' },
   wc_stage_started_fmt: { fr: 'commencée {date}', en: 'started {date}' },
   wc_stage_photo_needed: { fr: 'photo requise', en: 'photo needed' },
   wc_stage_photo_needed_tt: {

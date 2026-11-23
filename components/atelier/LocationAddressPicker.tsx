@@ -8,7 +8,7 @@ import type { ContactAddress } from '@/components/atelier/contact-editor-types'
  * Pin a work to ONE of its holding contact's addresses.
  *
  * `Oeuvres.LocalisationID` says WHICH contact holds the work; this says which of that
- * contact's `contact_addresses` rows. The artist has "Principal" and "Atelier", a gallery
+ * contact's places (`Oeuvres.place_id` ← `contact_place_lines.place_id`, Places phase B). The artist has "Principal" and "Atelier", a gallery
  * can have two sites — without this, every work at a contact is indistinguishable.
  *
  * With zero or one address there is no choice: it shows that address (the DB trigger
@@ -51,7 +51,7 @@ export function LocationAddressPicker({
     >
       <option value="">{t('wf_location_address_any')}</option>
       {addresses.map((a) => (
-        <option key={a.id} value={String(a.id)}>
+        <option key={a.id} value={String(a.place_id)}>
           {[a.label, a.ville].filter(Boolean).join(' — ')}
         </option>
       ))}

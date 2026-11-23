@@ -113,6 +113,20 @@ export const conditionMessages = defineMessages({
     fr: 'Version restaurée, sauf : {fields} — le contact (ou l’adresse) de cette version a été supprimé ; la valeur actuelle est gardée.',
     en: 'Version restored, except: {fields} — the contact (or address) in this version was deleted; the current value is kept.',
   },
+  // Places phase B refusals (supabase/sql/places_phase_b_switch.sql)
+  err_place_not_empty: {
+    fr: 'Ce lieu contient encore des œuvres ou d’autres lieux : les déplacer d’abord.',
+    en: 'This place still holds works or other places: move them first.',
+  },
+  err_place_never_deleted: { fr: 'Un lieu ne se supprime pas : il s’archive.', en: 'A place is never deleted: it is archived.' },
+  err_place_is_an_address: {
+    fr: 'C’est l’adresse d’une personne : la modifier depuis sa fiche contact.',
+    en: 'This is a person’s address: change it from their contact card.',
+  },
+  err_column_retired: {
+    fr: 'Cette page est d’une version précédente : recharger la page puis recommencer.',
+    en: 'This page is from an older version: reload it and try again.',
+  },
   // Work lifetime gates (supabase/sql/work_lifetime_gates.sql)
   err_holder_required: {
     fr: 'Vendu / don : choisir l’acquéreur (pas Pem). Consigné / prêt : choisir le dépositaire (pas Pem).',

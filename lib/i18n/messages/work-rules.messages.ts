@@ -48,7 +48,7 @@ export const workRulesMessages = defineMessages({
   wr_b_custody_owner: { fr: 'consignée / prêtée, propriétaire ≠ Pem', en: 'consigned / on loan, owner ≠ Pem' },
   wr_b_no_custodian: { fr: 'consignée / prêtée sans dépositaire', en: 'consigned / on loan with no custodian' },
   wr_b_owner_is_pem: { fr: 'vendue / donnée, propriétaire = Pem', en: 'sold / given, owner = Pem' },
-  wr_b_address: { fr: 'adresse qui n’est pas celle du détenteur', en: 'address not the holder’s' },
+  wr_b_address: { fr: 'lieu non relié au détenteur', en: 'place not linked to the holder' },
   wr_b_no_custody_order: { fr: 'consignée / prêtée sans ordre actif', en: 'consigned / on loan with no active order' },
   wr_b_no_paid_sale: { fr: 'vendue sans vente payée', en: 'sold with no paid sale' },
   wr_b_no_gift_order: { fr: 'donnée sans ordre de don', en: 'given with no gift order' },

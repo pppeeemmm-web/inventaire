@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client'
 import { isInProduction } from '@/lib/production-scope'
 import { loadPendingActionsMap } from '@/lib/reports/pending-actions'
 import { REPORT_PDF_MAX_ROWS, type ReportMaps } from '@/lib/reports/works-table'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { cellText, cleanConfig, isActiveFilter, runReport, type ReportConfig } from '@/lib/reports/engine'
 import { REPORT_SOURCES, parseReportSource, type ReportSource, type SavedReport } from '@/lib/reports/saved-report'
 import type { KaizenItem } from '@/lib/kaizen'
@@ -59,6 +60,8 @@ type Props = {
   cM: Record<number, string>
   pM: Record<number, string>
   locMap: Record<number, string>
+  /** Live person ↔ place links (shell post-paint), for the work's place in « Localisation » (Places phase B). */
+  addresses?: ContactAddress[]
   statusLabelMap: Record<number, string>
   oeuvreThemeIdsByOeuvre: Record<number, number[]>
   oeuvreGroupIdsByOeuvre: Record<number, string[]>
@@ -89,6 +92,7 @@ export function Reports({
   cM,
   pM,
   locMap,
+  addresses = [],
   statusLabelMap,
   oeuvreThemeIdsByOeuvre,
   oeuvreGroupIdsByOeuvre,
@@ -129,13 +133,16 @@ export function Reports({
       cM,
       pM,
       locMap,
+      addrMap: Object.fromEntries(
+        addresses.filter((a) => a.place_id != null).map((a) => [`${a.contact_id}:${a.place_id}`, [a.label, a.complement, a.ville].filter(Boolean).join(' · ')]),
+      ),
       statusLabelMap,
       thM: Object.fromEntries(themes.map((x) => [x.id, x.name])),
       groupNameMap: Object.fromEntries(groups.map((g) => [g.id, g.name])),
       oeuvreThemeMap,
       oeuvreGroupMap,
     }
-  }, [tM, sM, cM, pM, locMap, statusLabelMap, formats, themes, groups, oeuvreThemeIdsByOeuvre, oeuvreGroupIdsByOeuvre])
+  }, [tM, sM, cM, pM, locMap, addresses, statusLabelMap, formats, themes, groups, oeuvreThemeIdsByOeuvre, oeuvreGroupIdsByOeuvre])
 
   const worksByBuyer = useMemo(() => {
     const m = new Map<number, number>()

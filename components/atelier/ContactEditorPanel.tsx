@@ -121,17 +121,19 @@ type FormState = {
 }
 
 type AddrForm = {
+  /** The live link person ↔ place (`contact_place_lines.id`); absent for a new address. */
   id?: number
   label: string
   adresse: string
   code_postal: string
   ville: string
   pays: string
+  complement: string
   shipping_notes: string
 }
 
 function emptyAddr(): AddrForm {
-  return { label: '', adresse: '', code_postal: '', ville: '', pays: '', shipping_notes: '' }
+  return { label: '', adresse: '', code_postal: '', ville: '', pays: '', complement: '', shipping_notes: '' }
 }
 
 function WorkMini({ label, items }: { label: string; items: Oeuvre[] }) {
@@ -254,6 +256,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             code_postal: a.code_postal ?? '',
             ville: a.ville ?? '',
             pays: a.pays ?? '',
+            complement: a.complement ?? '',
             shipping_notes: a.shipping_notes ?? '',
           }))
         : [
@@ -263,6 +266,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               code_postal: contact?.CodePostal ?? '',
               ville: contact?.Ville ?? '',
               pays: contact?.Pays ?? '',
+              complement: '',
               shipping_notes: '',
             },
           ],
@@ -397,9 +401,13 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       setErr(null)
       try {
         const validAddrs = addrList.filter((a) => a.adresse || a.ville || a.pays || a.code_postal)
+        // The primary address stays the one stored when it is still on the card, else the first row (no « primary » control yet).
+        const storedPrimary = initialAddresses.find((a) => a.is_primary)?.id
+        const primaryId = validAddrs.some((a) => a.id != null && a.id === storedPrimary) ? storedPrimary : undefined
 
-        // The one door (saveContact → SQL save_contact): who asks, stale check, child rows by id, an address still in
-        // use refused, all in one transaction. The fields and lists this screen read go with it, so a change made
+        // The one door (saveContact → SQL save_contact): who asks, stale check, child rows by id, the addresses through
+        // save_contact_places (Places phase B: the same full line is the same building, « Étage / appartement » a floor,
+        // an edited line corrected for everyone, a removed address ends this card's link only), all in one transaction. The fields and lists this screen read go with it, so a change made
         // meanwhile in another tab is refused instead of overwritten.
         const fields: ContactFields = {
           NomInstitution: form.NomInstitution,
@@ -453,8 +461,10 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
               code_postal: a.code_postal || null,
               ville: a.ville || null,
               pays: a.pays || null,
-              position: i,
+              complement: a.complement || null,
               shipping_notes: a.shipping_notes || null,
+              is_primary: primaryId != null ? a.id === primaryId : i === 0,
+              position: i,
             })),
             emails: emailList.map((e) => ({ id: e.id, email: e.email, label: e.label, is_primary: e.is_primary })),
             phones: phoneList.map((p) => ({ id: p.id, phone: p.phone, country_code: p.country_code, label: p.label, is_primary: p.is_primary })),
@@ -1181,6 +1191,24 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                       />
                     </FRow>
                   </div>
+                  <div style={{ marginTop: 8 }}>
+                    <FRow label={t('contact_editor_complement')}>
+                      <input
+                        value={addr.complement}
+                        onChange={(e) => updateAddr(i, 'complement', e.target.value)}
+                        placeholder={t('contact_editor_complement_ph')}
+                        style={FIS}
+                      />
+                    </FRow>
+                  </div>
+                  {addr.id != null && (initialAddresses.find((a) => a.id === addr.id)?.others ?? 0) > 0 && (
+                    <div className="t-mono-sm" style={{ marginTop: 6, color: 'var(--tx3)' }}>
+                      {t('contact_editor_place_others_fmt').replace(
+                        '{n}',
+                        String(initialAddresses.find((a) => a.id === addr.id)?.others ?? 0),
+                      )}
+                    </div>
+                  )}
                   <div style={{ marginTop: 8 }}>
                     <FRow label={t('contactEditorShippingNotes')}>
                       <input

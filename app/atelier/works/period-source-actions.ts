@@ -9,6 +9,7 @@
 // (`work_creation_step`, supabase/sql/work_creation_steps.sql); `work_place` is no longer read.
 
 import { createClient } from '@/lib/supabase/server'
+import { PEM_CONTACT_ID } from '@/lib/data'
 import { lookupGeocode } from '@/lib/geocode-nominatim'
 import { logError } from '@/lib/error-reporter/server'
 import { CREATION_KINDS, placeFitsDate, sortSteps, type CreationKind, type CreationStep, type DatePrecision, type PeriodChoice, type PeriodSourceData, type Place, type WorkPeriod, type WorkSource } from '@/lib/work-periods'
@@ -54,11 +55,20 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     supabase.from('work_period').select(PERIOD_COLS).order('start_on'),
     supabase.from('work_source').select('id, name').order('name'),
     supabase.from('work_period_override').select('oeuvre_id, period_id').limit(20_000),
-    supabase.from('place').select(PLACE_COLS).order('name'),
+    // Creation places only (Places phase B: every address is a place now): not archived, not a room / box.
+    supabase.from('place').select(`${PLACE_COLS}, kind`).is('archived_at', null).not('kind', 'in', '(zone,furniture,container)').order('name'),
     placeValidity(supabase),
   ])
   if (pRes.error) return { error: pRes.error.message }
   if (plRes.error) return { error: plRes.error.message }
+  // …and not a person's address: an `address` place ever linked to someone (Pem's Principal included), or any place
+  // someone other than Pem is linked to now. Creation places (studio, motif, the towns Pem worked in) stay.
+  const { data: links, error: linkErr } = await supabase.from('contact_place').select('place_id, contact_id, until')
+  if (linkErr) return { error: linkErr.message }
+  const linkedEver = new Set((links ?? []).map((l) => l.place_id))
+  const othersPlaces = new Set((links ?? []).filter((l) => l.contact_id !== PEM_CONTACT_ID && l.until == null).map((l) => l.place_id))
+  const isPersonAddress = (p: { id: number; kind: string | null }) =>
+    othersPlaces.has(p.id) || (p.kind === 'address' && linkedEver.has(p.id))
   if (sRes.error) return { error: sRes.error.message }
   if (oRes.error) return { error: oRes.error.message }
   const overrides: Record<number, number | null> = {}
@@ -98,7 +108,7 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     overrides,
     sourcesByWork,
     sourceNotes,
-    places: ((plRes.data ?? []) as Place[]).map((p) => {
+    places: ((plRes.data ?? []) as (Place & { kind: string | null })[]).filter((p) => !isPersonAddress(p)).map(({ kind: _kind, ...p }) => {
       const v = validity?.find((x) => x.id === p.id)
       return v ? { ...p, valid_from: v.valid_from, valid_to: v.valid_to } : p
     }),
@@ -282,9 +292,24 @@ export type PlaceInput = {
 
 const short = (v: string | null | undefined) => (v ?? '').trim().slice(0, MAX_NAME) || null
 
+/** A person's address (kind `address` linked to someone): edited from their card, never from the creation places. */
+async function isLinkedAddress(supabase: Supa, id: number): Promise<boolean | Err> {
+  const { data, error } = await supabase.from('place').select('kind').eq('id', id).maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) return { error: 'not_found' }
+  if (data.kind !== 'address') return false
+  const { count, error: cErr } = await supabase.from('contact_place').select('id', { count: 'exact', head: true }).eq('place_id', id)
+  if (cErr) return { error: cErr.message }
+  return (count ?? 0) > 0
+}
+
 export async function savePlace(input: PlaceInput): Promise<{ ok: true; place: Place } | Err> {
   const supabase = await createClient()
   if (!(await signedIn(supabase))) return { error: 'auth' }
+  if (input.id != null) {
+    const linked = await isLinkedAddress(supabase, input.id)
+    if (linked !== false) return linked === true ? { error: 'place_is_an_address' } : linked
+  }
   const name = short(input.name)
   if (!name) return { error: 'name' }
   const lat = input.latitude ?? null
@@ -317,12 +342,33 @@ export async function findPlaceCoords(input: { address?: string | null; town?: s
   return { ok: true, latitude: Math.round(hit.lat * 1e5) / 1e5, longitude: Math.round(hit.lng * 1e5) / 1e5 }
 }
 
-/** Deleting a place clears it from every work (cascade) and from periods that suggested it. */
+/**
+ * « Supprimer » a creation place: a place is never deleted (Places.md §4 rule 5). It is archived (gone from the lists)
+ * and taken off the creation steps and the periods that suggested it — what the old delete did through its foreign
+ * keys. The database refuses while works or other places are inside it.
+ */
 export async function deletePlace(id: number): Promise<{ ok: true } | Err> {
   const supabase = await createClient()
-  if (!(await signedIn(supabase))) return { error: 'auth' }
-  const { error } = await supabase.from('place').delete().eq('id', id)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const linked = await isLinkedAddress(supabase, id)
+  if (linked !== false) return linked === true ? { error: 'place_is_an_address' } : linked
+  // A place someone is linked to (Pem's Atelier included) is not archived from the creation places.
+  const { count: live, error: liveErr } = await supabase.from('contact_place').select('id', { count: 'exact', head: true })
+    .eq('place_id', id).is('until', null)
+  if (liveErr) return { error: liveErr.message }
+  if ((live ?? 0) > 0) return { error: 'place_is_an_address' }
+  const { data: archived, error } = await supabase.from('place')
+    .update({ archived_at: new Date().toISOString(), archived_by: user.id })
+    .eq('id', id).is('archived_at', null).select('id')
   if (error) return { error: error.message }
+  if (!archived?.length) return { error: 'not_found' }
+  const [steps, periods] = await Promise.all([
+    supabase.from('work_creation_step').update({ place_id: null }).eq('place_id', id),
+    supabase.from('work_period').update({ default_place_id: null }).eq('default_place_id', id),
+  ])
+  const stepErr = steps.error ?? periods.error
+  if (stepErr) return { error: stepErr.message }
   return { ok: true }
 }
 

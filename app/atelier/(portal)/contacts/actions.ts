@@ -5,6 +5,8 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMissingTableError } from '@/lib/supabase/missing-table'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 import type { ImportedContact } from '@/lib/contact-import-types'
+import { callSaveContactPlaces } from '@/lib/contacts/save-contact-places'
+import { logError } from '@/lib/error-reporter/server'
 import {
   assertSafePublicUrl,
   extractContactFromHtml,
@@ -123,19 +125,22 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
       )
     }
 
-    // Addresses
+    // Addresses: places linked to the new card (Places phase B), through the address door; a known street is reused.
     if (c.addresses.length > 0) {
-      await svc.from('contact_addresses').insert(
-        c.addresses.map((a, i) => ({
-          contact_id:  cid,
-          label:       a.label || 'Principal',
-          adresse:     a.adresse,
-          code_postal: a.code_postal,
-          ville:       a.ville,
-          pays:        a.pays,
-          position:    i,
-        }))
-      )
+      const placesRes = await callSaveContactPlaces(supabase, cid, c.addresses.map((a, i) => ({
+        label:       a.label || 'Principal',
+        adresse:     a.adresse,
+        code_postal: a.code_postal,
+        ville:       a.ville,
+        pays:        a.pays,
+        is_primary:  i === 0,
+      })))
+      // The card is imported either way; a refused address is said, not swallowed (principle 3).
+      if ('error' in placesRes) {
+        await logError('Contact import: address not saved', placesRes.error, {
+          source: 'importGoogleContacts', metadata: { contactId: cid },
+        })
+      }
     }
 
     // Websites
@@ -432,7 +437,7 @@ export async function checkOllamaListening(): Promise<OllamaListenResult> {
  * Quick contact creation (Contacts quick add, R7 « + Nouveau contact » in an order's party picker).
  * Optional `phone` and `adresse` / `code_postal` / `ville` / `pays` are written as the contact editor
  * writes them: the Contact columns plus one primary row each in `contact_phones` / `contact_emails` /
- * `contact_addresses` (label « Principal »). Returns the new address id when one was written.
+ * a place linked to the card (label « Principal », Places phase B). Returns that place's id when one was written.
  */
 export async function saveContactWithConflictCheck(formData: FormData): Promise<{ ok: true; id: number; addressId: number | null } | { error: string }> {
   const supabase = await createClient()
@@ -490,13 +495,14 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
 
   if (insertErr || !contact) return { error: insertErr?.message ?? 'Insert failed' }
 
-  // The child rows the contact card reads (same shape as ContactEditorPanel).
+  // The child rows the contact card reads. The address is a place linked to the card (Places phase B); `addressId`
+  // = that place (what a work or an order points at).
   let addressId: number | null = null
   if (hasAddr) {
-    const { data: a, error: aErr } = await supabase.from('contact_addresses')
-      .insert({ contact_id: contact.ContactID, label: 'Principal', position: 0, ...addr }).select('id').single()
-    if (aErr) return { error: aErr.message }
-    addressId = a.id
+    const res = await callSaveContactPlaces(supabase, contact.ContactID, [{ label: 'Principal', is_primary: true, ...addr }])
+    if ('error' in res) return { error: res.error }
+    const { data: link } = await supabase.from('contact_place_lines').select('place_id').eq('contact_id', contact.ContactID).limit(1).maybeSingle()
+    addressId = link?.place_id ?? null
   }
   if (email) {
     const { error: eErr } = await supabase.from('contact_emails').insert({ contact_id: contact.ContactID, email, label: 'Personnel', is_primary: true })

@@ -125,8 +125,7 @@ export const contactsUiMessages = defineMessages({
     fr: 'Rien n’a été enregistré : {msg}',
     en: 'Nothing was saved: {msg}',
   },
-  contact_editor_addr_in_use_fmt: {
-    fr: 'Rien n’a été enregistré : l’adresse « {label} » est encore celle de {works} œuvre(s), {orders} commande(s) et {shipments} envoi(s). Donnez-leur une autre adresse d’abord, ou gardez celle-ci.',
-    en: 'Nothing was saved: the address “{label}” is still used by {works} work(s), {orders} order(s) and {shipments} shipment(s). Give them another address first, or keep this one.',
-  },
+  contact_editor_complement: { fr: 'Étage / appartement', en: 'Floor / flat' },
+  contact_editor_complement_ph: { fr: '3e étage, rez-de-chaussée… (facultatif)', en: '3rd floor, ground floor… (optional)' },
+  contact_editor_place_others_fmt: { fr: 'Aussi : {n} autre(s) personne(s) à ce lieu', en: 'Also: {n} other person(s) at this place' },
 })

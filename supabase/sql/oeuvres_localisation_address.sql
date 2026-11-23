@@ -1,3 +1,6 @@
+-- SUPERSEDED by Places phase B (2026-11-23) — DO NOT RE-APPLY: Oeuvres.localisation_address_id — retired by places_phase_b_switch.sql (read-only, replaced by Oeuvres.place_id).
+-- Kept as history; re-running it after the switch breaks live data.
+
 -- Pin a work to ONE of its location contact's addresses.
 --
 -- `Oeuvres.LocalisationID` is an FK to `Contact` — it says WHICH contact holds the work,

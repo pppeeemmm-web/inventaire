@@ -43,8 +43,10 @@ export type WorkDrawerPipelineSectionProps = {
   /** Stage as saved — consignment / loan / sale stages move only through their order. */
   loadedOwnStage: OwnStageId
   locationAddresses: ContactAddress[]
-  localisationAddressId: string
-  setLocalisationAddressId: Dispatch<SetStateAction<string>>
+  /** The saved place is one its holder is not linked to (`oeuvre_place_unlinked`): shown as a warning, never cleared. */
+  placeUnlinked: boolean
+  placeId: string
+  setPlaceId: Dispatch<SetStateAction<string>>
   sortedContacts: DrawerContactRow[]
   cName: (c: DrawerContactRow) => string
   currentLoc: string
@@ -85,8 +87,9 @@ export function WorkDrawerPipelineSection({
   setBuyerId,
   loadedOwnStage,
   locationAddresses,
-  localisationAddressId,
-  setLocalisationAddressId,
+  placeUnlinked,
+  placeId,
+  setPlaceId,
   sortedContacts,
   cName,
   currentLoc,
@@ -230,8 +233,15 @@ export function WorkDrawerPipelineSection({
     </div>
   )
 
-  const chosenAddress = locationAddresses.find((a) => String(a.id) === localisationAddressId) ?? (locationAddresses.length === 1 ? locationAddresses[0] : undefined)
-  const addressText = chosenAddress ? [chosenAddress.label, chosenAddress.ville].filter(Boolean).join(' — ') : ''
+  // The work's place among the holder's links (the place itself, or the building of a floor they are linked to).
+  // A place the holder is not linked to is flagged, never cleared (Pem 2026-11-23, Places phase B).
+  const chosenAddress = placeId
+    ? locationAddresses.find((a) => String(a.place_id) === placeId) ?? locationAddresses.find((a) => String(a.building_id) === placeId)
+    : (locationAddresses.length === 1 ? locationAddresses[0] : undefined)
+  const addressText = chosenAddress
+    ? [chosenAddress.label, chosenAddress.complement, chosenAddress.ville].filter(Boolean).join(' — ')
+    : ''
+  const addressLine = placeUnlinked ? `⚠ ${t('wc_place_unlinked')}${addressText ? ` — ${addressText}` : ''}` : addressText
   const kvGrid = { display: 'grid', gridTemplateColumns: '96px minmax(0,1fr)', gap: '4px 12px', alignItems: 'center' } as const
 
   return (
@@ -483,10 +493,10 @@ export function WorkDrawerPipelineSection({
             onOpen={onOpenContact}
             select={isGift || (isArchived && isAdmin) ? contactSelect(contactId, setContactId, t('custody_custodian')) : null}
             canChange={isGift || (isArchived && isAdmin)}
-            address={addressText}
+            address={addressLine}
             addressPicker={
               locationAddresses.length > 1 ? (
-                <LocationAddressPicker addresses={locationAddresses} value={localisationAddressId} onChange={setLocalisationAddressId} />
+                <LocationAddressPicker addresses={locationAddresses} value={placeId} onChange={setPlaceId} />
               ) : null
             }
             note={isArchived ? (isAdmin ? t('wr_custodian_archive_admin') : t('wr_custodian_archive')) : ''}

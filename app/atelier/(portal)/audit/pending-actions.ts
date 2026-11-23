@@ -91,7 +91,7 @@ async function loadPendingRefLabels(
   const supportIds = ids('support')
   const formatIds = ids('format')
   const contactIds = ids('contact_id', 'localisation_id', 'acheteur_id')
-  const addressIds = ids('localisation_address_id')
+  const addressIds = ids('place_id')
   const presentationIds = ids('presentation_id')
 
   const [status, technique, support, format, contact, address, presentation] = await Promise.all([
@@ -102,7 +102,7 @@ async function loadPendingRefLabels(
     contactIds.length
       ? supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', contactIds)
       : null,
-    addressIds.length ? supabase.from('contact_addresses').select('id, label, ville').in('id', addressIds) : null,
+    addressIds.length ? supabase.from('place').select('id, name, town').in('id', addressIds) : null,
     presentationIds.length
       ? supabase.from('tblPresentation').select('PresentationID, Nom').in('PresentationID', presentationIds)
       : null,
@@ -117,7 +117,7 @@ async function loadPendingRefLabels(
     put(['contact_id', 'localisation_id', 'acheteur_id'], r.ContactID, name || null)
   }
   for (const r of address?.data ?? []) {
-    put(['localisation_address_id'], r.id, [r.label, r.ville].filter(Boolean).join(' · '))
+    put(['place_id'], r.id, [r.name, r.town].filter(Boolean).join(' · '))
   }
   for (const r of presentation?.data ?? []) put(['presentation_id'], r.PresentationID, r.Nom)
   return out

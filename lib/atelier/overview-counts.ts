@@ -18,12 +18,12 @@ export type OverviewCountRow = {
   Catalogué: boolean | null
   txtImageNameLink?: string | null
   LocalisationID?: number | null
-  localisation_address_id?: number | null
+  place_id?: number | null
   NeedsPhotograph?: boolean | null
 }
 
 export const OVERVIEW_COUNT_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Hauteur, Largeur, Prix, statusId, Exposable, "Catalogué", txtImageNameLink, LocalisationID, localisation_address_id, NeedsPhotograph'
+  'OeuvreID, Titre, Technique, Support, "Année", Hauteur, Largeur, Prix, statusId, Exposable, "Catalogué", txtImageNameLink, LocalisationID, place_id, NeedsPhotograph'
 
 export type OverviewCounts = {
   total: number
@@ -67,7 +67,7 @@ export function computeOverviewCounts(rows: readonly OverviewCountRow[], year: n
     if (!o.Hauteur || !o.Largeur) c.missingDims++
     if (!o.txtImageNameLink) c.missingImages++
     if (!o.LocalisationID) c.missingLoc++
-    else if (o.localisation_address_id == null) c.missingAddress++
+    else if (o.place_id == null) c.missingAddress++
     if (o.Technique == null) c.missingTech++
     if (o.Support == null) c.missingSupport++
     if (!o.Année) c.missingYear++

@@ -2177,6 +2177,8 @@ export type Database = {
           IsCommission: boolean | null
           Largeur: string | null
           localisation_address_id: number | null
+          place_id: number | null
+          home_place_id: number | null
           LocalisationDetail: string | null
           LocalisationID: number | null
           Montee: boolean | null
@@ -2230,6 +2232,8 @@ export type Database = {
           IsCommission?: boolean | null
           Largeur?: string | null
           localisation_address_id?: number | null
+          place_id?: number | null
+          home_place_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null
@@ -2283,6 +2287,8 @@ export type Database = {
           IsCommission?: boolean | null
           Largeur?: string | null
           localisation_address_id?: number | null
+          place_id?: number | null
+          home_place_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null
@@ -2931,6 +2937,7 @@ export type Database = {
       shipment: {
         Row: {
           address_id: number | null
+          place_id: number | null
           cancelled_at: string | null
           carrier: string | null
           charged_to: string | null
@@ -2963,6 +2970,7 @@ export type Database = {
         }
         Insert: {
           address_id?: number | null
+          place_id?: number | null
           cancelled_at?: string | null
           carrier?: string | null
           charged_to?: string | null
@@ -2995,6 +3003,7 @@ export type Database = {
         }
         Update: {
           address_id?: number | null
+          place_id?: number | null
           cancelled_at?: string | null
           carrier?: string | null
           charged_to?: string | null
@@ -4239,6 +4248,7 @@ export type Database = {
       work_order: {
         Row: {
           address_id: number | null
+          place_id: number | null
           balance_due: string | null
           cancelled_at: string | null
           commission_amount: number | null
@@ -4280,6 +4290,7 @@ export type Database = {
         }
         Insert: {
           address_id?: number | null
+          place_id?: number | null
           balance_due?: string | null
           cancelled_at?: string | null
           commission_amount?: number | null
@@ -4321,6 +4332,7 @@ export type Database = {
         }
         Update: {
           address_id?: number | null
+          place_id?: number | null
           balance_due?: string | null
           cancelled_at?: string | null
           commission_amount?: number | null
@@ -4802,6 +4814,40 @@ export type Database = {
       }
     }
     Views: {
+      oeuvre_place_unlinked: {
+        Row: {
+          holder_id: number | null
+          oeuvre_id: number
+          place_id: number
+        }
+        Relationships: []
+      }
+      contact_place_lines: {
+        Row: {
+          adresse: string | null
+          building_id: number
+          code_postal: string | null
+          complement: string | null
+          contact_id: number
+          id: number
+          is_primary: boolean
+          kind: string | null
+          label: string | null
+          latitude: number | null
+          longitude: number | null
+          others: number
+          parent_id: number | null
+          pays: string | null
+          place_id: number
+          place_name: string | null
+          position: number | null
+          role: string
+          shipping_notes: string | null
+          since: string | null
+          ville: string | null
+        }
+        Relationships: []
+      }
       edge_fact: {
         Row: {
           description: string | null
@@ -5020,6 +5066,10 @@ export type Database = {
       merge_contacts: {
         Args: { p_keep: number; p_lose: number }
         Returns: number
+      }
+      save_contact_places: {
+        Args: { p_contact: number; p_rows: Json }
+        Returns: Json
       }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }

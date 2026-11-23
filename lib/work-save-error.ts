@@ -54,6 +54,11 @@ export function isWorkSaveI18nError(error: string): error is DictKey {
  */
 const GATE_ERROR_KEYS: Record<string, AnyDictKey> = {
   holder_required: 'err_holder_required',
+  place_not_empty: 'err_place_not_empty',
+  place_never_deleted: 'err_place_never_deleted',
+  place_is_an_address: 'err_place_is_an_address',
+  column_retired: 'err_column_retired',
+  contact_addresses_read_only: 'err_column_retired',
   sold_delete_admin_only: 'err_sold_delete_admin_only',
   sold_restore_admin_only: 'err_sold_restore_admin_only',
   fate_admin_only: 'cond_err_fate_admin',

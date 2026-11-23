@@ -17,8 +17,8 @@ export interface Oeuvre {
   ContactID?: number | null;
   LocalisationID?: number | null;
   LocalisationDetail?: string | null;
-  /** Which of the LocalisationID contact's addresses holds the work (null = unspecified). */
-  localisation_address_id?: number | null;
+  /** Where the work is: a place linked to the LocalisationID contact (Places phase B; null = unspecified). */
+  place_id?: number | null;
   /** Production span — see supabase/sql/oeuvres_production_span.sql. */
   production_started_on?: string | null;
   production_completed_on?: string | null;

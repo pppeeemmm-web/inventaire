@@ -83,8 +83,10 @@ Mockup: [`Places_Mockup.html`](./Places_Mockup.html) — desk and phone (375 px)
 ### 3b. `contact_place` — a person at a place (new)
 
 `contact_id`, `place_id`, `role` (`home` lives here · `work` works here · `works_kept` works kept here · `delivery` deliveries · `other`), `label` (free, kept from today: « Principal », « Atelier »), `is_primary` (one per person), `since`, `until` (optional; a move ends the old link, history stays), `position`.
-- « Retirer » on a card = sets `until` (or removes a link that never had a work, an order or a paper). The place stays.
-- Only top-level places (`address`, `venue`, `studio`) can be linked to a person. Pem's studio boxes are under the studio address.
+- « Retirer » on a card = sets `until` (or removes a link that never had a work, an order or a paper). The place stays. **Works never move with a link** (Pem 2026-11-23: custody moves only through orders); a work left at a place its holder is no longer linked to is flagged (§4 rule 1).
+- **A place = the full line; floors are child places (Pem 2026-11-23: « same building, different floor, therefore different places »).** The building (number + street + postcode + town) is one place of kind `address`; each floor / flat is a child place under it (« 3e étage », « rez-de-chaussée »), and people link to the floor, not to the building. Two cards with the same line and no floor share the building place until someone adds the floor. Same street, other number = another building. Example: M. Dupont → « 1 rue du Port › 3e étage » (home); a gallery → « 1 rue du Port › rez-de-chaussée » (work); M. Jackwell → « 6 rue du Port ».
+- **No question when typing an address (Pem 2026-11-23: « just put the address »).** The same full line is the same building, reused silently (a line with no street is always its own place); « Étage / appartement » is the only extra field (optional, free text, no names shown). Editing a line corrects the building for everyone linked to it.
+- Pem's Atelier is a room under the Principal and Pem links to it directly; boxes and zones sit under the rooms.
 
 ### 3c. What points at a place
 
@@ -106,7 +108,7 @@ Mockup: [`Places_Mockup.html`](./Places_Mockup.html) — desk and phone (375 px)
 
 ## 4. The rules — in the database (principle 1)
 
-1. **The holder is linked to the work's address.** A work's place root must be a place its holder is linked to (any role, link not ended). Refused otherwise with one sentence (« ce lieu n'est pas relié à X »). Replaces the first lines of `oeuvre_location_by_stage` and audit rule 9.
+1. **The holder is linked to the work's address — flagged, never refused (Pem 2026-11-23: « it should be flagged »).** The holder should have a live link to a place in the same building as the work's place. When not, the write is accepted and nothing moves; the work is flagged: the read `oeuvre_place_unlinked`, audit rule 9, the work card (« ⚠ Lieu non relié au détenteur ») and a count on the Overview (« just to make sure I don't miss that crucial information »).
 2. **Pem's stage rule, kept and made box-aware.** The Atelier is a room inside the Principal (Pem 2026-11-23), so the tree is **Principal › Atelier › zones › boxes**, and Principal › other rooms. When a work of Pem's changes stage, the database looks for the place linked to Pem with the stage's label (`atelier` / `principal`, as today). **If the work is already somewhere inside that place's tree, it stays put.** A finished work in an Atelier box is inside the Principal too, so it stays in its box — today it would be moved to « Principal ». A work in making stored in the attic is moved to the Atelier, top level, « à ranger ». Pem's choice by hand still wins (same « picked » test as today).
 3. **One address only, filled for you.** A holder (not Pem) linked to exactly one place → their works with no place get it (today's `contact_address_link_single`, moved to `contact_place`).
 4. **Leaving Pem's hands clears the box.** An order that moves works to a party sets their place to the order's place (or the party's single place); the studio box is no longer theirs. Back from loan or deposit → Pem's stage place, top level, « à ranger ».

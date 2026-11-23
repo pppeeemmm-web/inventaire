@@ -79,7 +79,6 @@ export type SaveContactRefusal =
   | 'bad_field'
   | 'admin_only'
   | 'stale'
-  | 'address_in_use'
   | 'not_found'
 
 export type SaveContactResult =

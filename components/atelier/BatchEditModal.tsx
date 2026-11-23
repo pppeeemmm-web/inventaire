@@ -23,7 +23,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import type { Oeuvre } from '@/lib/types/database'
 
-type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
+type ContactAddress = { id?: number; contact_id: number; place_id?: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
 interface Props {
   ids:            number[]
@@ -76,7 +76,6 @@ export function BatchEditModal({
   const [discount,  setDiscount]  = useState('')
   const [annee,     setAnnee]     = useState('')
   const [addressId, setAddressId] = useState('')
-  const [locDetail, setLocDetail] = useState('')
   const [note,      setNote]      = useState('')
   /** '' unchanged · 'auto' · 'none' · period id */
   const [period,    setPeriod]    = useState('')
@@ -107,7 +106,7 @@ export function BatchEditModal({
 
   function resetAll() {
     setTitre(''); setStatusId(''); setTechnique(''); setSupport(''); setFormat('')
-    setPrix(''); setDiscount(''); setAnnee(''); setAddressId(''); setLocDetail(''); setNote(''); setPeriod(''); setPlace('')
+    setPrix(''); setDiscount(''); setAnnee(''); setAddressId(''); setNote(''); setPeriod(''); setPlace('')
     for (const s of [setExposable, setMontee, setEncadree, setCatalogued, setIsCommission, setIsPaid, setNeedsPhoto, setBroadcastReady]) s(null)
     setThemeSel(EMPTY_SEL as JunctionSel<number>); setGroupSel(EMPTY_SEL as JunctionSel<string>)
     setError(null)
@@ -215,8 +214,7 @@ export function BatchEditModal({
   add(place !== '', 'place', t('cr_batch_add'), places.find(p => String(p.id) === place)?.name ?? place)
   add(prix !== '', 'price', t('price'), `${prix} €`)
   add(discount !== '', 'discount', t('discount'), `${discount} %`)
-  add(locDetail !== '', 'loc', t('localisationDetail'), locDetail.trim() || t('remove'))
-  add(addressId !== '', 'address', t('batch_pem_address'), pemAddresses.find(a => String(a.id) === addressId)?.label)
+  add(addressId !== '', 'address', t('batch_pem_address'), pemAddresses.find(a => String(a.place_id) === addressId)?.label)
   for (const f of flags) add(f.value !== null, f.key, f.label, f.value ? t('yes') : t('no'))
   if (addThemes.size || removeThemes.size) changes.push({ k: 'themes', text: `${t('bm_chip_themes')} ${[addThemes.size ? `+${addThemes.size}` : '', removeThemes.size ? `−${removeThemes.size}` : ''].filter(Boolean).join(' ')}` })
   if (addGroups.size || removeGroups.size) changes.push({ k: 'groups', text: `${t('bm_chip_groups')} ${[addGroups.size ? `+${addGroups.size}` : '', removeGroups.size ? `−${removeGroups.size}` : ''].filter(Boolean).join(' ')}` })
@@ -230,11 +228,10 @@ export function BatchEditModal({
     if (technique  !== '') c.Technique  = technique === 'null' ? null : Number(technique)
     if (support    !== '') c.Support    = support   === 'null' ? null : Number(support)
     if (format     !== '') c.Format     = format    === 'null' ? null : Number(format)
-    if (addressId  !== '') c.localisation_address_id = Number(addressId)
+    if (addressId  !== '') c.place_id = Number(addressId)
     if (prix       !== '') c.Prix       = parseFloat(prix)
     if (discount   !== '') c.Discount   = parseFloat(discount)
     if (annee      !== '') c.Année      = annee.trim() || null
-    if (locDetail  !== '') c.LocalisationDetail = locDetail.trim() || null
     if (note.trim() !== '') c.Commentaires = note.trim()
     if (period     !== '') c.periodChoice = period === 'auto' || period === 'none' ? period : Number(period)
     if (place      !== '') c.placeChoice  = Number(place)
@@ -377,12 +374,9 @@ export function BatchEditModal({
         <Text narrow={narrow} id="bm-disc" type="number" value={discount} onChange={setDiscount} />
       </Row>
       <SectionHead>{t('bm_sec_location')}</SectionHead>
-      <Row {...rowProps} label={t('localisationDetail')} active={locDetail !== ''} onReset={() => setLocDetail('')} htmlFor="bm-loc">
-        <Text narrow={narrow} id="bm-loc" value={locDetail} onChange={setLocDetail} />
-      </Row>
       <Row {...rowProps} label={t('batch_pem_address')} active={addressId !== ''} onReset={() => setAddressId('')} htmlFor="bm-pem" help={t('batch_pem_address_help')}>
         <Select narrow={narrow} id="bm-pem" value={addressId} onChange={setAddressId}>
-          {pemAddresses.map(a => <option key={a.id} value={a.id}>{a.label}{a.ville ? ` — ${a.ville}` : ''}</option>)}
+          {pemAddresses.map(a => <option key={a.id} value={a.place_id}>{a.label}{a.ville ? ` — ${a.ville}` : ''}</option>)}
         </Select>
       </Row>
     </>

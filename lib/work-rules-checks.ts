@@ -36,7 +36,7 @@ export type CheckWork = {
   ContactID: number | null
   LocalisationID: number | null
   Exposable: boolean | null
-  localisation_address_id: number | null
+  place_id: number | null
   production_completed_on: string | null
   is_public: boolean | null
 }
@@ -60,8 +60,10 @@ export type CheckInput = {
   /** Tasks not done, plus done tasks with no date created since RULES_LIVE_SINCE. */
   tasks: CheckTask[]
   worksWithPhoto: Set<number>
-  /** address id → contact id */
-  addressOwner: Map<number, number>
+  /** place id → its root (the address); a place with no root is its own. */
+  placeRoot: Map<number, number>
+  /** `${contactId}:${rootPlaceId}` for every live person ↔ place link (Places phase B). */
+  holderRoots: Set<string>
   /** `${oeuvreId}:${kind}` → the database's `oeuvre_order_exists` answer (kinds entrusted / custody / paid). */
   orderExists: Map<string, boolean>
   orderLines: CheckOrderLine[]
@@ -141,7 +143,9 @@ export function evaluateWorkRules(input: CheckInput): RuleBreak[] {
     else if ((s === 7 || s === 8) && owner !== PEM_CONTACT) add('9', w, 'wr_b_custody_owner')
     else if ((s === 7 || s === 8) && holder === PEM_CONTACT) add('9', w, 'wr_b_no_custodian')
     else if ((s === 6 || s === 11) && owner === PEM_CONTACT) add('9', w, 'wr_b_owner_is_pem')
-    else if (w.localisation_address_id != null && input.addressOwner.get(w.localisation_address_id) !== w.LocalisationID) add('9', w, 'wr_b_address')
+    // 9b — a place its holder is not linked to: flagged on its own line (Places phase B), so the audit lists every
+    // work the Overview counts (`oeuvre_place_unlinked`), even one already listed for another rule-9 reason.
+    if (w.place_id != null && !input.holderRoots.has(`${w.LocalisationID}:${input.placeRoot.get(w.place_id) ?? w.place_id}`)) add('9', w, 'wr_b_address')
     // 10 — leaves Pem only through an order
     if ((s === 7 || s === 8) && !input.orderExists.get(`${w.OeuvreID}:custody`)) add('10', w, 'wr_b_no_custody_order')
     else if (s === 6 && !input.orderExists.get(`${w.OeuvreID}:paid`)) add('10', w, 'wr_b_no_paid_sale')

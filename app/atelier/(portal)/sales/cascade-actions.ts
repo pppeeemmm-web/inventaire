@@ -8,6 +8,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { placeAddressLine } from '@/lib/places/place-address'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { logError } from '@/lib/error-reporter/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
@@ -56,7 +57,7 @@ export interface CascadeClaim {
 }
 export interface CascadeShipment {
   id: string; kind: ShipmentKind; status: ShipmentStatus; created_at: string
-  to_contact_id: number | null; party_name: string; address_id: number | null; pickup_process_id: string | null
+  to_contact_id: number | null; party_name: string; place_id: number | null; pickup_process_id: string | null
   carrier: string | null; tracking_no: string | null; tracking_url: string | null
   packed_dims: string | null; packed_weight_kg: number | null; packing_note: string | null
   insured_value: number | null; insurer: string | null; policy_ref: string | null; cost: number | null; handed_to: string | null
@@ -90,7 +91,7 @@ export interface OrderCascadeView {
   isAdmin: boolean
 }
 
-const SHIP_COLS = 'id, kind, status, created_at, to_contact_id, address_id, pickup_process_id, carrier, tracking_no, tracking_url, packed_dims, packed_weight_kg, packing_note, insured_value, insurer, policy_ref, cost, handed_to, photos_at, picked_at, packed_at, insured_at, labelled_at, shipped_at, delivered_at, cancelled_at'
+const SHIP_COLS = 'id, kind, status, created_at, to_contact_id, place_id, pickup_process_id, carrier, tracking_no, tracking_url, packed_dims, packed_weight_kg, packing_note, insured_value, insurer, policy_ref, cost, handed_to, photos_at, picked_at, packed_at, insured_at, labelled_at, shipped_at, delivered_at, cancelled_at'
 
 type ShipRow = Omit<CascadeShipment, 'works' | 'orders' | 'open_demands' | 'claims' | 'party_name'>
 
@@ -306,7 +307,7 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
   if ('error' in g) return g
   const { supabase } = g
 
-  const { data: o, error } = await supabase.from('work_order').select('id, ref, kind, status, party_id, address_id, delivery_mode, shipping_method').eq('id', orderId).single()
+  const { data: o, error } = await supabase.from('work_order').select('id, ref, kind, status, party_id, place_id, delivery_mode, shipping_method').eq('id', orderId).single()
   if (error || !o) return { error: error?.message ?? 'not_found' }
   if (['cancelled', 'closed', 'delivered', 'handed_over'].includes(o.status)) return { error: 'cas_err_step' }
 
@@ -326,7 +327,7 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
   if (todo.length === 0) return { error: 'cas_err_nothing_to_ship' }
 
   let q = supabase.from('shipment').select('id').eq('kind', kind).eq('to_contact_id', o.party_id).in('status', [...SHIP_OPEN])
-  q = o.address_id ? q.eq('address_id', o.address_id) : q.is('address_id', null)
+  q = o.place_id ? q.eq('place_id', o.place_id) : q.is('place_id', null)
   if (kind === 'pickup') q = pickupProcessId ? q.eq('pickup_process_id', pickupProcessId) : q.is('pickup_process_id', null)
   // Never a box whose orders were all cancelled / returned / closed (B4): it would carry their works too.
   const { data: candidates } = await q.order('created_at').limit(10)
@@ -337,7 +338,7 @@ export async function openShipmentForOrder(orderId: string, pickupProcessId?: st
 
   if (!shipmentId) {
     const { data: s, error: insErr } = await supabase.from('shipment').insert({
-      kind, status: 'open', to_contact_id: o.party_id, address_id: o.address_id,
+      kind, status: 'open', to_contact_id: o.party_id, place_id: o.place_id,
       pickup_process_id: kind === 'pickup' ? pickupProcessId ?? null : null,
       charged_to: o.kind === 'sale' && kind === 'ship' ? 'buyer' : o.kind === 'consignment' || o.kind === 'loan' || o.kind === 'entrusted' ? 'other_party' : 'studio',
     }).select('id').single()
@@ -510,16 +511,16 @@ async function partyBlock(supabase: Supa, contactId: number, addressId: number |
   const [c, a] = await Promise.all([
     supabase.from('Contact').select('NomInstitution, Nom, "Prénom", Ville, Pays').eq('ContactID', contactId).single(),
     addressId
-      ? supabase.from('contact_addresses').select('adresse, code_postal, ville, pays').eq('id', addressId).maybeSingle()
+      ? placeAddressLine(supabase, addressId).then((data) => ({ data }))
       : contactId === PEM
-        ? supabase.from('contact_addresses').select('adresse, code_postal, ville, pays').eq('contact_id', PEM).ilike('label', 'principal').maybeSingle()
+        ? supabase.from('contact_place_lines').select('adresse, code_postal, ville, pays, complement').eq('contact_id', PEM).ilike('label', 'principal').order('position').limit(1).maybeSingle()
         : Promise.resolve({ data: null }),
   ])
   // Invoice paper: the institution is the party when there is one (as before); a person reads « Marie DUPONT ».
   const name = c.data ? contactProseLabel(c.data, { institution: 'prefer', fallback: '' }) : `#${contactId}`
-  const ad = a.data as { adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null } | null
+  const ad = a.data as { adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null; complement: string | null } | null
   const lines = ad
-    ? [ad.adresse, [ad.code_postal, ad.ville].filter(Boolean).join(' '), ad.pays].filter((x): x is string => !!x && !!x.trim())
+    ? [ad.adresse, ad.complement, [ad.code_postal, ad.ville].filter(Boolean).join(' '), ad.pays].filter((x): x is string => !!x && !!x.trim())
     : [[c.data?.Ville, c.data?.Pays].filter(Boolean).join(', ')].filter(Boolean)
   return { name: name || `#${contactId}`, lines }
 }
@@ -560,7 +561,7 @@ export async function issueInvoice(orderIds: string[]): Promise<{ ok: true; numb
   if (ids.length === 0) return { error: 'cas_err_step' }
 
   const { data: orders, error } = await supabase.from('work_order')
-    .select('id, ref, kind, status, party_id, address_id, currency, price_final, shipping_charge').in('id', ids)
+    .select('id, ref, kind, status, party_id, place_id, currency, price_final, shipping_charge').in('id', ids)
   if (error || !orders || orders.length !== ids.length) return { error: error?.message ?? 'not_found' }
   const party = orders[0].party_id
   if (orders.some((o) => o.kind !== 'sale' || o.party_id !== party || !(INVOICE_FROM_STATUS as readonly string[]).includes(o.status))) {
@@ -609,7 +610,7 @@ export async function issueInvoice(orderIds: string[]): Promise<{ ok: true; numb
     return { error: ioErr.message }
   }
   await writeInvoicePaper(supabase, { id: inv.id, kind: 'invoice', number: inv.number!, issued_on: inv.issued_on, party_id: party, total, currency, lines: invLines, vat_mention: INVOICE_VAT_MENTION },
-    orders[0].address_id, null, paid, ids[0])
+    orders[0].place_id, null, paid, ids[0])
   await logSystemEvent({ eventType: 'STATUS_CHANGE', tableName: 'invoice', rowId: inv.id, newValue: 'issued', metadata: { number: inv.number, orders: orders.map((o) => o.ref), total } })
   done()
   return { ok: true, number: inv.number! }

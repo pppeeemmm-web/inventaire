@@ -116,7 +116,7 @@ const FILTER_HIDDEN_FIELDS = new Set([
   'txtImageNameLink',
   'theme', // themes are handled separately via _theme virtual field
   'is_public', // deprecated by anonymity_level
-  'localisation_address_id',
+  'place_id',
   'admin_override_anonymity',
   'production_started_precision',
   'production_completed_precision',
@@ -234,13 +234,13 @@ function custodyLabel(
   o: Oeuvre,
   cM: Record<number, string>,
   locMap: Record<number, string>,
-  addrMap: Record<number, string>,
+  addrMap: Record<string, string>,
 ): string {
   const holder = o.LocalisationID
   if (holder == null) return '—'
   const name = cM[holder] || '—'
-  const addrId = (o as { localisation_address_id?: number | null }).localisation_address_id
-  const where = addrId != null ? addrMap[addrId] : locMap[holder]
+  const addrId = (o as { place_id?: number | null }).place_id
+  const where = addrId != null ? addrMap[`${holder}:${addrId}`] : locMap[holder]
   return where ? `${name} · ${where}` : name
 }
 
@@ -364,10 +364,10 @@ export function Inventory({
   /** true = shown in the panel; false = the portal opens the overlay card instead. */
   onFocusRequestDone?: (handled: boolean) => void
 }) {
-  /** contact_addresses.id → label, for the custodian · address column. */
+  /** `holder:place` → that holder's label for the place, for the custodian · address column (Places phase B). */
   const addrMap = useMemo(() => {
-    const m: Record<number, string> = {}
-    for (const a of addresses) if (a.id != null) m[a.id] = a.label || a.ville || ''
+    const m: Record<string, string> = {}
+    for (const a of addresses) if (a.place_id != null) m[`${a.contact_id}:${a.place_id}`] ??= a.label || a.ville || ''
     return m
   }, [addresses])
   const { t } = useI18n()
@@ -1829,7 +1829,7 @@ function InvList({
   sM:             Record<number, string>
   cM:             Record<number, string>
   locMap:         Record<number, string>
-  addrMap:        Record<number, string>
+  addrMap:        Record<string, string>
   statusLabelMap: Record<number, string>
   embeddingStatusMap: OeuvreEmbeddingStatusMap
   focused:        Oeuvre | null

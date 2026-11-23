@@ -7,6 +7,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
 import { parsePlaceCoords, effectivePeriod, effectivePlace, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
 import { deletePeriod, deletePlace, deleteSource, findPlaceCoords, savePeriod, savePlace, saveSource } from '@/app/atelier/works/period-source-actions'
@@ -88,6 +89,7 @@ export function PeriodSourceManager({
     else if (code === 'name') toast.error(t('ps_err_name'))
     else if (code === 'duplicate') toast.error(t('ps_err_duplicate'))
     else if (code === 'coords') toast.error(t('ps_err_coords'))
+    else if (gateErrorKey(code)) toast.error(t(gateErrorKey(code)!))
     else toast.error(`${t('error_prefix')} ${code}`)
   }
 

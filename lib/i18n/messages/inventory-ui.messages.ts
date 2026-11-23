@@ -151,7 +151,7 @@ export const inventoryUiMessages = defineMessages({
   inv_fl_fate: { fr: 'Détruite / perdue', en: 'Destroyed / lost' },
   inv_fl_fate_on: { fr: 'Date (détruite / perdue)', en: 'Date (destroyed / lost)' },
   inv_fl_format: { fr: 'Format', en: 'Format' },
-  inv_fl_localisation_detail: { fr: 'Emplacement (détail)', en: 'Location (detail)' },
+  inv_fl_localisation_detail: { fr: 'Ancien repère (lieu)', en: 'Old location note' },
   inv_fl_production_completed_on: { fr: 'Fin de production', en: 'Production ended' },
   inv_fl_production_origin: { fr: 'Nouvelle / retrouvée', en: 'New / found' },
   inv_fl_production_started_on: { fr: 'Début de production', en: 'Production started' },

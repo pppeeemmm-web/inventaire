@@ -1,3 +1,6 @@
+-- SUPERSEDED by Places phase B (2026-11-23) — DO NOT RE-APPLY: merge_contacts — its live body (moves contact_place links) is in places_phase_b_switch.sql.
+-- Kept as history; re-running it after the switch breaks live data.
+
 -- merge_contacts(p_keep, p_lose): merge contact p_lose into p_keep in ONE transaction (TODO §1 « Data safety »).
 -- Applied 2026-11-19 (Pem OK: admin only, « do what's best and what preserves data »).
 --

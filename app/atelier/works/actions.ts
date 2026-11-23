@@ -386,9 +386,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const commentaires      = (formData.get('commentaires')       as string | null)?.trim() || null
   const historique        = (formData.get('historique')         as string | null)?.trim() || null
   let localisationId      = numOrNull(formData.get('localisation_id'))
-  const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
   /** Which of the location contact's addresses holds the work (null = unspecified). */
-  const localisationAddressId = numOrNull(formData.get('localisation_address_id'))
+  const placeId = numOrNull(formData.get('place_id'))
   /** Buyer (reserved / sold / gift); owner and custodian are contact_id / localisation_id. */
   const acheteurId = numOrNull(formData.get('acheteur_id'))
   const tvaRate      = numOrNull(formData.get('tva_rate'))
@@ -508,8 +507,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Commentaires:      commentaires,
       Historique:        initialHistorique,
       LocalisationID:    localisationId,
-      LocalisationDetail: localisationDetail,
-      localisation_address_id: localisationAddressId,
+      place_id: placeId,
       AcheteurID:        acheteurId,
       Exposable:         exposable,
       Montee:            montee,
@@ -641,8 +639,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       ContactID:    contactId,
       Commentaires:      commentaires,
       LocalisationID:    localisationId,
-      LocalisationDetail: localisationDetail,
-      localisation_address_id: localisationAddressId,
+      place_id: placeId,
       AcheteurID:        acheteurId,
       Exposable:         exposable,
       Montee:            montee,
@@ -669,7 +666,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // Keep in sync with the form fields in WorkForm.tsx / work-drawer/DrawerContent.tsx.
     const OPTIONAL_UPDATE_COLUMNS: Record<string, string> = {
       Commentaires:             'commentaires',        // left out by a planned save unless it is the change
-      LocalisationDetail:       'localisation_detail', // sent by neither form
       DateLivraison:            'date_livraison',      // drawer only (Objet › Logistique)
       ReturnDate:               'return_date',         // drawer only (Objet › Logistique)
       Montee:                   'montee',              // drawer only
@@ -677,7 +673,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       IsCommission:             'is_commission',       // drawer only
       admin_override_anonymity: 'admin_override_anonymity', // drawer only
       PresentationID:           'presentation_id',     // drawer only
-      localisation_address_id:  'localisation_address_id',
+      place_id:                 'place_id',             // the address picker (Places phase B)
       AcheteurID:               'acheteur_id',         // drawer only
     }
     for (const [column, formKey] of Object.entries(OPTIONAL_UPDATE_COLUMNS)) {
@@ -1591,7 +1587,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, Montee, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision, tva_rate, is_paid, edited_at'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, place_id, is_public, Encadree, Montee, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision, tva_rate, is_paid, edited_at'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing

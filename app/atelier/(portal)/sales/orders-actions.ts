@@ -6,6 +6,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { placeAddressLine } from '@/lib/places/place-address'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { logError } from '@/lib/error-reporter/server'
 import { circulationError, CONSIGN_FROM, SALE_ORDER_FROM } from '@/lib/work-circulation'
@@ -82,8 +83,8 @@ export interface WorkOrderView {
   return_window_skipped: boolean
   /** Sale: `'emportee'` = paid and taken away at the studio, « Livrée » follows the full payment (Pem 2026-11-18). */
   shipping_method: string | null
-  /** The custodian's / buyer's address the works go to (`contact_addresses`), and its label · city. */
-  address_id: number | null
+  /** The custodian's / buyer's place the works go to (a place linked to the party, Places phase B), and its label · city. */
+  place_id: number | null
   address_label: string | null
   /** How many addresses the party has: with several and none set, the order lets one be picked. */
   address_count: number
@@ -108,7 +109,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
 
   const { data: orders, error } = await supabase
     .from('work_order')
-    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped, shipping_method, address_id')
+    .select('id, ref, kind, status, reconstituted, party_id, created_at, start_date, end_date, signed_at, paid_at, delivered_at, returned_at, cancelled_at, currency, price_final, deposit_pct, commission_pct, notes, paper_path, process_id, return_window_days, return_window_starts_at, return_window_skipped, shipping_method, place_id')
     .order('created_at', { ascending: false })
   if (error) return { error: error.message }
   if (!orders || orders.length === 0) return { ok: true, orders: [] }
@@ -122,7 +123,7 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
     inChunks(partyIds, (c) => supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').in('ContactID', c)),
     inChunks(orderIds, (c) => supabase.from('document').select('id, name, storage_path, folder, work_order_id').in('work_order_id', c)),
     inChunks(orderIds, (c) => supabase.from('payments').select('id, amount, payment_date, method, work_order_id').in('work_order_id', c).order('payment_date', { ascending: false })),
-    inChunks(partyIds, (c) => supabase.from('contact_addresses').select('id, contact_id, label, ville').in('contact_id', c)),
+    inChunks(partyIds, (c) => supabase.from('contact_place_lines').select('place_id, contact_id, label, ville').in('contact_id', c)),
   ])
   if (linesRes.error) return { error: linesRes.error.message }
   if (partiesRes.error) return { error: partiesRes.error.message }
@@ -138,8 +139,8 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
   const workById = new Map((worksRes.data ?? []).map((w) => [w.OeuvreID, w]))
   // Addresses are a nicety: without them the order just shows no address line.
   const addrs = addrRes.data ?? []
-  const addrLabel = (id: number | null) => {
-    const a = id == null ? null : addrs.find((x) => x.id === id)
+  const addrLabel = (id: number | null, party: number) => {
+    const a = id == null ? null : addrs.find((x) => x.place_id === id && x.contact_id === party)
     return a ? [a.label, a.ville].filter(Boolean).join(' · ') || null : null
   }
   const partyById = new Map((partiesRes.data ?? []).map((c) => [c.ContactID, c]))
@@ -171,8 +172,8 @@ export async function fetchWorkOrders(): Promise<FetchWorkOrdersResult> {
       papers,
       payments,
       paid_total: payments.reduce((sum, p) => sum + p.amount, 0),
-      address_label: addrLabel(o.address_id),
-      address_count: addrs.filter((a) => a.contact_id === o.party_id).length,
+      address_label: addrLabel(o.place_id, o.party_id),
+      address_count: new Set(addrs.filter((a) => a.contact_id === o.party_id).map((a) => a.place_id)).size,
       refunded_at: refunded.get(o.id) ?? null,
     }
   })
@@ -354,7 +355,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   if (oeuvreIds.length === 0) return { error: 'ord_err_no_work' }
   const partyId = numOrNull(formData.get('party_id'))
   if (!partyId || partyId === PEM) return { error: 'holder_required' }
-  let addressId = numOrNull(formData.get('address_id'))
+  let addressId = numOrNull(formData.get('place_id'))   // a place linked to the party
   // A deposit or a loan always says when the works go out and come back (Pem 2026-11-17).
   const startDate = strOrNull(formData.get('start_date'))
   const endDate = strOrNull(formData.get('end_date'))
@@ -379,12 +380,13 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
   const priceOf = new Map((prices ?? []).map((w) => [w.OeuvreID, w.Prix == null ? null : Number(w.Prix)]))
 
   if (addressId) {
-    const { data: addr } = await supabase.from('contact_addresses').select('contact_id').eq('id', addressId).maybeSingle()
-    if (!addr || addr.contact_id !== partyId) return { error: 'ord_err_address' }
+    const { data: addr } = await supabase.from('contact_place_lines').select('contact_id').eq('place_id', addressId).eq('contact_id', partyId).limit(1).maybeSingle()
+    if (!addr) return { error: 'ord_err_address' }
   } else {
     // No address given (Pipeline, Exhibitions, phone): a party with a single address gets it, as in the form.
-    const { data: addrs } = await supabase.from('contact_addresses').select('id').eq('contact_id', partyId).limit(2)
-    if (addrs?.length === 1) addressId = addrs[0].id
+    const { data: addrs } = await supabase.from('contact_place_lines').select('place_id').eq('contact_id', partyId)
+    const only = [...new Set((addrs ?? []).map((a) => a.place_id))]
+    if (only.length === 1) addressId = only[0]
   }
 
   const { data: order, error } = await supabase
@@ -392,7 +394,7 @@ export async function createWorkOrder(formData: FormData): Promise<OrderWriteRes
     .insert({
       kind,
       party_id: partyId,
-      address_id: addressId,
+      place_id: addressId,
       start_date: startDate,
       end_date: endDate,
       price_catalogue: kind === 'sale' ? numOrNull(formData.get('price_catalogue')) : null,
@@ -504,22 +506,22 @@ export async function setOrderAddress(orderId: string, addressId: number): Promi
   const { supabase } = g
   if (!UUID_RE.test(orderId) || !Number.isInteger(addressId)) return { error: 'ord_err_address' }
 
-  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, party_id, address_id, ref').eq('id', orderId).single()
+  const { data: o, error } = await supabase.from('work_order').select('id, kind, status, party_id, place_id, ref').eq('id', orderId).single()
   if (error || !o) return { error: error?.message ?? 'Order not found' }
   if ((ORDER_FINISHED as readonly string[]).includes(o.status)) return { error: 'ord_err_step' }
-  const { data: addr } = await supabase.from('contact_addresses').select('contact_id').eq('id', addressId).maybeSingle()
-  if (!addr || addr.contact_id !== o.party_id) return { error: 'ord_err_address' }
+  const { data: addr } = await supabase.from('contact_place_lines').select('contact_id').eq('place_id', addressId).eq('contact_id', o.party_id).limit(1).maybeSingle()
+  if (!addr) return { error: 'ord_err_address' }
 
-  const { error: upErr } = await supabase.from('work_order').update({ address_id: addressId }).eq('id', o.id)
+  const { error: upErr } = await supabase.from('work_order').update({ place_id: addressId }).eq('id', o.id)
   if (upErr) return { error: upErr.message }
   const { data: lines } = await supabase.from('work_order_work').select('oeuvre_id').eq('order_id', o.id).eq('line_status', 'active')
   const ids = (lines ?? []).map((l) => l.oeuvre_id)
   if (ids.length) {
-    const { error: wErr } = await supabase.from('Oeuvres').update({ localisation_address_id: addressId })
-      .in('OeuvreID', ids).eq('LocalisationID', o.party_id).is('localisation_address_id', null)
+    const { error: wErr } = await supabase.from('Oeuvres').update({ place_id: addressId })
+      .in('OeuvreID', ids).eq('LocalisationID', o.party_id).is('place_id', null)
     if (wErr) await logError('Order address not copied to its works', wErr.message, { source: 'orders.setOrderAddress', metadata: { orderId: o.id } })
   }
-  await logSystemEvent({ eventType: 'LOCATION_MOVE', tableName: 'work_order', rowId: o.id, oldValue: o.address_id, newValue: addressId, metadata: { ref: o.ref, kind: o.kind } })
+  await logSystemEvent({ eventType: 'LOCATION_MOVE', tableName: 'work_order', rowId: o.id, oldValue: o.place_id, newValue: addressId, metadata: { ref: o.ref, kind: o.kind } })
   if (o.status === 'draft') {
     const paper = await makeOrderPaper(o.id)
     if ('error' in paper) await logError('Draft paper not remade after an address change', paper.error, { source: 'orders.setOrderAddress', metadata: { orderId: o.id, ref: o.ref } })
@@ -564,7 +566,7 @@ export async function fetchEntrustedOut(): Promise<EntrustedOutWork[]> {
 }
 
 type OrderRow = {
-  id: string; kind: WorkOrderKind; status: string; party_id: number; address_id: number | null
+  id: string; kind: WorkOrderKind; status: string; party_id: number; place_id: number | null
   end_date: string | null; price_final: number | null; ref: string | null
 }
 
@@ -584,7 +586,7 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   const { supabase } = g
 
   const { data: o, error: readErr } = await supabase
-    .from('work_order').select('id, kind, status, party_id, address_id, end_date, price_final, ref').eq('id', orderId).single()
+    .from('work_order').select('id, kind, status, party_id, place_id, end_date, price_final, ref').eq('id', orderId).single()
   if (readErr || !o) return { error: readErr?.message ?? 'Order not found' }
   const order = o as OrderRow
   if (!(NEXT[order.kind][order.status] ?? []).includes(to)) return { error: 'ord_err_step' }
@@ -643,19 +645,19 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
     // « Payé » follows the payments (TODO 10): all of the price received → paid; the card can still override.
     moveErr = await moveWorks(supabase, ids, { statusId: 6, ContactID: party, AcheteurID: party, is_paid: true })
   } else if (order.kind === 'sale' && to === 'delivered') {
-    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id })
+    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, place_id: order.place_id })
   } else if (order.kind === 'gift' && to === 'handed_over') {
     // Don manuel (Pem 2026-11-17): ownership and custody move together at hand-over. The price is
     // kept; the gift's reference value lives on its order line.
     moveErr = await moveWorks(supabase, ids,
-      { statusId: 11, ContactID: party, AcheteurID: party, LocalisationID: party, localisation_address_id: order.address_id })
+      { statusId: 11, ContactID: party, AcheteurID: party, LocalisationID: party, place_id: order.place_id })
   } else if (order.kind === 'entrusted' && to === 'out') {
     // « Confié »: the work keeps its stage and owner; only the custodian changes.
-    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date })
+    moveErr = await moveWorks(supabase, ids, { LocalisationID: party, place_id: order.place_id, ReturnDate: order.end_date })
   } else if (order.kind === 'entrusted' && to === 'closed') {
     const { data: still } = await supabase.from('Oeuvres').select('OeuvreID').in('OeuvreID', ids).eq('LocalisationID', party)
     const back = (still ?? []).map((w) => w.OeuvreID)
-    moveErr = await moveWorks(supabase, back, { LocalisationID: PEM, localisation_address_id: null, ReturnDate: null })
+    moveErr = await moveWorks(supabase, back, { LocalisationID: PEM, place_id: null, ReturnDate: null })
     if (!moveErr && ids.length) {
       await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
         .eq('order_id', order.id).eq('line_status', 'active')
@@ -663,14 +665,14 @@ export async function advanceWorkOrder(orderId: string, to: string): Promise<Sim
   } else if ((order.kind === 'consignment' || order.kind === 'loan') && to === 'out') {
     const statusId = order.kind === 'loan' ? 8 : 7
     moveErr = await moveWorks(supabase, ids,
-      { statusId, ContactID: PEM, LocalisationID: party, localisation_address_id: order.address_id, ReturnDate: order.end_date })
+      { statusId, ContactID: PEM, LocalisationID: party, place_id: order.place_id, ReturnDate: order.end_date })
   } else if ((order.kind === 'consignment' || order.kind === 'loan') && to === 'closed') {
     // Only works still out with this custodian come back; sold / given ones left the order already.
     const { data: still } = await supabase.from('Oeuvres').select('OeuvreID')
       .in('OeuvreID', ids).in('statusId', [7, 8]).eq('LocalisationID', party)
     const back = (still ?? []).map((w) => w.OeuvreID)
     moveErr = await moveWorks(supabase, back,
-      { statusId: 2, ContactID: PEM, LocalisationID: PEM, localisation_address_id: null, ReturnDate: null })
+      { statusId: 2, ContactID: PEM, LocalisationID: PEM, place_id: null, ReturnDate: null })
     if (!moveErr && ids.length) {
       await supabase.from('work_order_work').update({ line_status: 'returned', closed_at: new Date().toISOString() })
         .eq('order_id', order.id).eq('line_status', 'active')
@@ -736,7 +738,7 @@ export async function cancelWorkOrder(orderId: string): Promise<SimpleOrderResul
   if ('error' in g) return g
   const { supabase } = g
   const { data: o, error: readErr } = await supabase
-    .from('work_order').select('id, kind, status, party_id, address_id, end_date, price_final, ref').eq('id', orderId).single()
+    .from('work_order').select('id, kind, status, party_id, place_id, end_date, price_final, ref').eq('id', orderId).single()
   if (readErr || !o) return { error: readErr?.message ?? 'Order not found' }
   const order = o as OrderRow
   if (!CANCEL_FROM[order.kind].includes(order.status)) return { error: 'ord_err_step' }
@@ -1088,7 +1090,7 @@ export async function returnSaleOrder(orderId: string): Promise<SimpleOrderResul
   }
   if (!moveErr) {
     moveErr = await moveWorks(supabase, toPem,
-      { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, localisation_address_id: null, is_paid: false })
+      { statusId: 2, ContactID: PEM, LocalisationID: PEM, AcheteurID: null, place_id: null, is_paid: false })
   }
   if (moveErr) {
     // Undo in the order the database checks allow: the sale is paid again, its works sold again, then the deposit closes.
@@ -1158,8 +1160,10 @@ export type PartyAddress = { id: number; label: string | null; ville: string | n
 export async function listPartyAddresses(partyId: number): Promise<PartyAddress[]> {
   const g = await guardTeam()
   if ('error' in g) return []
-  const { data } = await g.supabase.from('contact_addresses').select('id, label, ville, position').eq('contact_id', partyId).order('position')
-  return (data ?? []).map((a) => ({ id: a.id, label: a.label, ville: a.ville }))
+  // `id` = the place (an order points at a place linked to its party, Places phase B); one row per place.
+  const { data } = await g.supabase.from('contact_place_lines').select('place_id, label, ville, position').eq('contact_id', partyId).order('position')
+  const seen = new Set<number>()
+  return (data ?? []).filter((a) => !seen.has(a.place_id) && seen.add(a.place_id)).map((a) => ({ id: a.place_id, label: a.label, ville: a.ville }))
 }
 
 
@@ -1191,9 +1195,9 @@ async function putVaultObject(key: string, body: Buffer, contentType: string, or
   })
 }
 
-function addressLines(a: { adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null } | null, fallback: string[]): string[] {
+function addressLines(a: { adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null; complement?: string | null } | null, fallback: string[]): string[] {
   if (!a) return fallback.filter(Boolean)
-  return [a.adresse, [a.code_postal, a.ville].filter(Boolean).join(' '), a.pays].filter((x): x is string => Boolean(x && x.trim()))
+  return [a.adresse, a.complement ?? null, [a.code_postal, a.ville].filter(Boolean).join(' '), a.pays].filter((x): x is string => Boolean(x && x.trim()))
 }
 
 /** Make (or redo) the order's paper: PDF in the Vault, `document` row linked to the order. */
@@ -1212,9 +1216,9 @@ export async function makeOrderPaper(orderId: string): Promise<SimpleOrderResult
   const [worksRes, partyRes, addrRes, pemRes, pemAddrRes] = await Promise.all([
     ids.length ? supabase.from('Oeuvres').select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, Prix, txtImageNameLink').in('OeuvreID', ids) : Promise.resolve({ data: [] as never[] }),
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays').eq('ContactID', o.party_id).single(),
-    o.address_id ? supabase.from('contact_addresses').select('adresse, code_postal, ville, pays').eq('id', o.address_id).maybeSingle() : Promise.resolve({ data: null }),
+    o.place_id ? placeAddressLine(supabase, o.place_id).then((data) => ({ data })) : Promise.resolve({ data: null }),
     supabase.from('Contact').select('NomInstitution, Nom, "Prénom", Ville, Pays').eq('ContactID', PEM).single(),
-    supabase.from('contact_addresses').select('adresse, code_postal, ville, pays, label').eq('contact_id', PEM).ilike('label', 'principal').maybeSingle(),
+    supabase.from('contact_place_lines').select('adresse, code_postal, ville, pays, complement, label').eq('contact_id', PEM).ilike('label', 'principal').order('position').limit(1).maybeSingle(),
   ])
   const works = (worksRes.data ?? []) as { OeuvreID: number; Titre: string | null; Année: string | null; Technique: number | null; Support: number | null; Hauteur: number | null; Largeur: number | null; Profondeur: string | null; Prix: number | null; txtImageNameLink: string | null }[]
   const techIds = [...new Set(works.map((w) => w.Technique).filter((x): x is number => x != null))]

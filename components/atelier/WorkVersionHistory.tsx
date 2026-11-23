@@ -62,7 +62,7 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
       }
       if (r.kept?.length) {
         const label = (f: string) =>
-          f === 'AcheteurID' ? t('vf_buyer') : f === 'localisation_address_id' ? t('vf_location_address') : versionFieldLabel(f, t)
+          f === 'AcheteurID' ? t('vf_buyer') : f === 'place_id' ? t('vf_location_address') : versionFieldLabel(f, t)
         alert(t('history_restore_contact_kept').replace('{fields}', r.kept.map(label).join(', ')))
       }
       onRestored?.()

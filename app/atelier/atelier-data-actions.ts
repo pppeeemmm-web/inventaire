@@ -3,7 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/types/supabase.generated'
-import type { ContactAddress } from '@/components/atelier/contact-editor-types'
+import { ADDRESS_LINE_COLS, type ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { AtelierOverviewBootstrap, TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import {
   computePipelinePulseItems,
@@ -203,7 +203,7 @@ export async function fetchAtelierShellPostPaint(
   const supabase = client ?? (await createClient())
   const queryLabels = [
     'Contact',
-    'contact_addresses',
+    'contact_place_lines',
     'Technique',
     'Support',
     'Format',
@@ -226,8 +226,8 @@ export async function fetchAtelierShellPostPaint(
     // is_private: pickers hide « Privé » contacts from the team (pickableContacts); names still resolve from the full list.
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private').order('ContactID'),
     supabase
-      .from('contact_addresses')
-      .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
+      .from('contact_place_lines')
+      .select(ADDRESS_LINE_COLS)
       .order('position'),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
     supabase.from('Support').select('SupportID, Support').order('SupportID'),

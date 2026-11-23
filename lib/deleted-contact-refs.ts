@@ -7,29 +7,20 @@ import type { createServiceClient } from '@/lib/supabase/server'
  * foreign key, so the restore and approve doors check first.
  */
 
-/** Work columns that point at a contact or one of its addresses (both go when the contact is deleted). */
-export const CONTACT_REF_COLUMNS = ['ContactID', 'LocalisationID', 'AcheteurID', 'localisation_address_id'] as const
-
-function refTable(column: string): 'Contact' | 'contact_addresses' {
-  return column === 'localisation_address_id' ? 'contact_addresses' : 'Contact'
-}
+/** Work columns that point at a contact (gone when the contact is deleted). A place is never deleted (Places phase B). */
+export const CONTACT_REF_COLUMNS = ['ContactID', 'LocalisationID', 'AcheteurID'] as const
 
 function asId(v: unknown): number | null {
   const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d+$/.test(v.trim()) ? Number(v) : NaN
   return Number.isInteger(n) && n > 0 ? n : null
 }
 
-/** Ids of `table` among `ids` that no longer exist (service role: RLS must not hide a live row). */
-async function missingIds(
-  svc: ReturnType<typeof createServiceClient>,
-  table: 'Contact' | 'contact_addresses',
-  ids: number[],
-): Promise<Set<number>> {
+/** Contact ids among `ids` that no longer exist (service role: RLS must not hide a live row). */
+async function missingContactIds(svc: ReturnType<typeof createServiceClient>, ids: number[]): Promise<Set<number>> {
   if (!ids.length) return new Set()
-  const key = table === 'Contact' ? 'ContactID' : 'id'
-  const { data, error } = await svc.from(table).select(key).in(key, ids)
-  if (error) throw new Error(`${table}: ${error.message}`)
-  const found = new Set(((data ?? []) as unknown as Record<string, number>[]).map((r) => r[key]))
+  const { data, error } = await svc.from('Contact').select('ContactID').in('ContactID', ids)
+  if (error) throw new Error(`Contact: ${error.message}`)
+  const found = new Set(((data ?? []) as { ContactID: number }[]).map((r) => r.ContactID))
   return new Set(ids.filter((id) => !found.has(id)))
 }
 
@@ -40,20 +31,14 @@ export async function deletedContactColumns(
   svc: ReturnType<typeof createServiceClient>,
   row: Record<string, unknown>,
 ): Promise<string[]> {
-  const byTable = new Map<'Contact' | 'contact_addresses', { column: string; id: number }[]>()
+  const refs: { column: string; id: number }[] = []
   for (const column of CONTACT_REF_COLUMNS) {
     if (!(column in row)) continue
     const id = asId(row[column])
-    if (id == null) continue
-    const table = refTable(column)
-    byTable.set(table, [...(byTable.get(table) ?? []), { column, id }])
+    if (id != null) refs.push({ column, id })
   }
-  const out: string[] = []
-  for (const [table, refs] of byTable) {
-    const gone = await missingIds(svc, table, [...new Set(refs.map((r) => r.id))])
-    for (const r of refs) if (gone.has(r.id)) out.push(r.column)
-  }
-  return out
+  const gone = await missingContactIds(svc, [...new Set(refs.map((r) => r.id))])
+  return refs.filter((r) => gone.has(r.id)).map((r) => r.column)
 }
 
 /** Pending form keys (among `keys`) whose proposed id no longer exists. */
@@ -67,7 +52,6 @@ export async function deletedContactFormKeys(
     ContactID: 'contact_id',
     LocalisationID: 'localisation_id',
     AcheteurID: 'acheteur_id',
-    localisation_address_id: 'localisation_address_id',
   }
   for (const [column, key] of Object.entries(columnToKey)) {
     if (keys.includes(key) && key in payload) row[column] = payload[key]

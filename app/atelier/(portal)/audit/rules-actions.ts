@@ -52,14 +52,14 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
     const works = await readAll<CheckWork>((a, b) =>
       supabase
         .from('Oeuvres')
-        .select('OeuvreID, Titre, statusId, "Catalogué", "NeedsPhotograph", fate, ContactID, LocalisationID, "Exposable", localisation_address_id, production_completed_on, is_public')
+        .select('OeuvreID, Titre, statusId, "Catalogué", "NeedsPhotograph", fate, ContactID, LocalisationID, "Exposable", place_id, production_completed_on, is_public')
         .is('deleted_at', null)
         .order('OeuvreID')
         .range(a, b),
     )
     const live = new Set(works.map((w) => w.OeuvreID))
 
-    const [openTasks, undatedTicks, images, addresses, reports, lines, events] = await Promise.all([
+    const [openTasks, undatedTicks, images, places, links, reports, lines, events] = await Promise.all([
       readAll<CheckTask>((a, b) =>
         supabase.from('work_action').select('id, oeuvre_id, action_type_id, done, done_at, paused_at, created_at')
           .eq('done', false).order('id').range(a, b)),
@@ -68,8 +68,10 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
           .eq('done', true).is('done_at', null).gte('created_at', RULES_LIVE_SINCE).order('id').range(a, b)),
       readAll<{ OeuvreID: number }>((a, b) =>
         supabase.from('tblImage').select('OeuvreID').order('ImageID').range(a, b)),
-      readAll<{ id: number; contact_id: number }>((a, b) =>
-        supabase.from('contact_addresses').select('id, contact_id').order('id').range(a, b)),
+      readAll<{ id: number; root_id: number | null }>((a, b) =>
+        supabase.from('place').select('id, root_id').order('id').range(a, b)),
+      readAll<{ contact_id: number; place_id: number }>((a, b) =>
+        supabase.from('contact_place').select('contact_id, place_id').is('until', null).order('id').range(a, b)),
       readAll<{ oeuvre_id: number; kind: string }>((a, b) =>
         supabase.from('condition_report').select('oeuvre_id, kind').in('kind', ['destroyed', 'lost', 'stolen'])
           .is('resolved_on', null).order('id').range(a, b)),
@@ -119,11 +121,13 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
       .filter((l) => l.work_order)
       .map((l) => ({ oeuvre_id: l.oeuvre_id, line_status: l.line_status, kind: l.work_order!.kind, status: l.work_order!.status, party_id: l.work_order!.party_id }))
 
+    const placeRoot = new Map(places.map((p) => [p.id, p.root_id ?? p.id]))
     const breaks = evaluateWorkRules({
       works,
       tasks: [...openTasks, ...undatedTicks].filter((tk) => live.has(tk.oeuvre_id)),
       worksWithPhoto: new Set(images.map((i) => i.OeuvreID)),
-      addressOwner: new Map(addresses.map((a) => [a.id, a.contact_id])),
+      placeRoot,
+      holderRoots: new Set(links.map((l) => `${l.contact_id}:${placeRoot.get(l.place_id) ?? l.place_id}`)),
       orderExists: orderExistsMap,
       orderLines,
       openFateReports,

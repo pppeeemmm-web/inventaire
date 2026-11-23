@@ -1,4 +1,5 @@
 // /atelier/works/new — create a new work
+import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
 import { createClient } from '@/lib/supabase/server'
 import { WorkForm } from '@/components/atelier/WorkForm'
 import { NewWorkPageShell } from '@/components/atelier/NewWorkPageShell'
@@ -35,7 +36,7 @@ export default async function NewWorkPage({
     supabase.from('Format').select('FormatID, Format').order('Format', { ascending: true }),
     supabase.from('theme').select('id, name').order('name', { ascending: true }),
     isAdmin ? contactsQ : contactsQ.not('is_private', 'is', true),
-    supabase.from('contact_addresses').select('*'),
+    supabase.from('contact_place_lines').select(ADDRESS_LINE_COLS),
     supabase.from('working_group').select('*').order('name', { ascending: true }),
   ])
 

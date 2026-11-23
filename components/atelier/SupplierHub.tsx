@@ -582,7 +582,7 @@ export function SupplierHub({ contacts }: Props) {
           )
           .in('ContactID', orderedIds),
         sb
-          .from('contact_addresses')
+          .from('contact_place_lines')
           .select('contact_id, adresse, code_postal, ville, pays, position')
           .in('contact_id', orderedIds)
           .order('position'),

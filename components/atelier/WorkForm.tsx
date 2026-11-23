@@ -176,12 +176,14 @@ export function WorkForm({
   // ── Ownership / flow state ────────────────────────────────────────
   const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
   const [contactId,     setContactId]     = useState(String(oeuvre?.LocalisationID ?? ''))
+  // This form always saves Pem as the holder (a new work starts at Pem; « Réservé » only names a buyer), so the place
+  // offered is one of Pem's: any other would be flagged « lieu non relié au détenteur » (Places phase B).
   const locationAddresses = useMemo(
-    () => (addresses ?? []).filter((a) => String(a.contact_id) === contactId),
-    [addresses, contactId],
+    () => (addresses ?? []).filter((a) => a.contact_id === PEM_CONTACT_ID),
+    [addresses],
   )
-  const [localisationAddressId, setLocalisationAddressId] = useState(
-    String((oeuvre as { localisation_address_id?: number | null } | undefined)?.localisation_address_id ?? ''),
+  const [placeId, setPlaceId] = useState(
+    String((oeuvre as { place_id?: number | null } | undefined)?.place_id ?? ''),
   )
   const [anonymityLevel, setAnonymityLevel] = useState<number>(() =>
     normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
@@ -213,13 +215,13 @@ export function WorkForm({
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, placeId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, placeId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
@@ -241,7 +243,7 @@ export function WorkForm({
         // A new work starts with Pem as holder (effect F below sets it at once): the baseline must say so too,
         // or an untouched form counts as changed and leaves an empty « Brouillon local » to restore.
         contactId: String(contacts.find(c => (c.NomInstitution ?? '').toLowerCase().includes('pem'))?.ContactID ?? ''),
-        localisationAddressId: '',
+        placeId: '',
         anonymityLevel: 0,
         prix: '0',
         tvaRate: '0',
@@ -268,7 +270,7 @@ export function WorkForm({
       needsPhoto: !!((oeuvre as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false),
       ownStage: ownStageFromStatusId(oeuvre.statusId),
       contactId: String(oeuvre.LocalisationID ?? ''),
-      localisationAddressId: String((oeuvre as { localisation_address_id?: number | null }).localisation_address_id ?? ''),
+      placeId: String((oeuvre as { place_id?: number | null }).place_id ?? ''),
       anonymityLevel: normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
       prix: String(oeuvre.Prix ?? '0'),
       tvaRate: String((oeuvre as { tva_rate?: number | null }).tva_rate ?? '0'),
@@ -479,7 +481,7 @@ export function WorkForm({
     fd.set('contact_id', pemId)
     fd.set('localisation_id', pemId)
     fd.set('acheteur_id', ownStage === 'reserved' ? contactId : '')
-    fd.set('localisation_address_id', localisationAddressId)
+    fd.set('place_id', placeId)
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
     fd.set('broadcast_ready', broadcastReady ? '1' : '0')
@@ -924,8 +926,8 @@ export function WorkForm({
                   <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 12 }}>{currentLoc}</div>
                   <LocationAddressPicker
                     addresses={locationAddresses}
-                    value={localisationAddressId}
-                    onChange={setLocalisationAddressId}
+                    value={placeId}
+                    onChange={setPlaceId}
                   />
                 </div>
               </div>

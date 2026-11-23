@@ -325,6 +325,7 @@ export function SegmentRoutePanel({
             cM={cM}
             pM={pM}
             locMap={locMap}
+            addresses={addresses}
             statusLabelMap={statusLabelMap}
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}

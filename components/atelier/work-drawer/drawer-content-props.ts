@@ -46,7 +46,7 @@ export type DrawerContentProps = {
   initialFormats: { FormatID: number; Format: string | null }[]
   initialThemes: { id: number; name: string }[]
   initialContacts: DrawerContactRow[]
-  /** Every contact_addresses row (shell post-paint) — used to pin WHICH address holds the work. */
+  /** Every live person ↔ place link (`contact_place_lines`, shell post-paint) — used to pin WHICH place holds the work. */
   initialAddresses?: ContactAddress[]
   initialGroups: { id: string; name: string }[]
   initialPresentations: { PresentationID: number; Nom: string | null }[]

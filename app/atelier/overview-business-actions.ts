@@ -15,6 +15,8 @@ export type OverviewBusiness = {
    *  Logistique badge also counts boxes already on their way; this one does not). */
   shipments: number
   events: number
+  /** Works at a place their holder is not linked to (`oeuvre_place_unlinked`, Places phase B — flagged, never moved). */
+  placeUnlinked: number
   /** Admin only, else null. */
   errors7d: number | null
   /** Admin only and once work_rule_run exists, else null. */
@@ -29,13 +31,14 @@ export async function getOverviewBusiness(): Promise<OverviewBusiness | null> {
   const counts = await getSidebarCounts()
   if ('error' in counts) return null
   const supabase = await createClient()
-  const [{ data: isAdmin }, toShip] = await Promise.all([
+  const [{ data: isAdmin }, toShip, unlinked] = await Promise.all([
     supabase.rpc('is_admin'),
     supabase.from('shipment').select('id', { count: 'exact', head: true }).not('status', 'in', `(${SHIPMENT_GONE.join(',')})`),
+    supabase.from('oeuvre_place_unlinked').select('oeuvre_id', { count: 'exact', head: true }),
   ])
 
   // A failed count must not read as « 0 envoi » (flow review): the Overview shows « … » instead.
-  if (toShip.error) return null
+  if (toShip.error || unlinked.error) return null
 
   let errors7d: number | null = null
   let lastRuleRun: OverviewBusiness['lastRuleRun'] = null
@@ -50,5 +53,5 @@ export async function getOverviewBusiness(): Promise<OverviewBusiness | null> {
       if (r) lastRuleRun = { ranAt: r.ran_at, breaks: r.breaks, source: r.source, error: r.error }
     }
   }
-  return { orders: counts.orders, shipments: toShip.count ?? 0, events: counts.events, errors7d, lastRuleRun }
+  return { orders: counts.orders, shipments: toShip.count ?? 0, events: counts.events, placeUnlinked: unlinked.count ?? 0, errors7d, lastRuleRun }
 }

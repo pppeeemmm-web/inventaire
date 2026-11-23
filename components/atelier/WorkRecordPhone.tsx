@@ -403,7 +403,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     set('contact_id', pem)
     set('localisation_id', pem)
     set('acheteur_id', '')
-    set('localisation_address_id', '')
+    set('place_id', '')
     set('status_id', '1')
     set('tva_rate', '0')
     set('broadcast_ready', '0')

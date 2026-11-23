@@ -111,10 +111,13 @@ select '9' as rule, o."OeuvreID", o."Titre", d.detail
         then 'consignée / prêtée sans dépositaire'
       when o."statusId" in (6, 11) and coalesce(o."ContactID", 13) = 13
         then 'vendue / donnée mais propriétaire = Pem'
-      when o.localisation_address_id is not null
-           and not exists (select 1 from public.contact_addresses ca
-                            where ca.id = o.localisation_address_id and ca.contact_id = o."LocalisationID")
-        then 'adresse qui n''est pas celle du détenteur'
+      when o.place_id is not null
+           and not exists (select 1 from public.contact_place cp
+                             join public.place lp on lp.id = cp.place_id
+                             join public.place wp on wp.id = o.place_id
+                            where cp.contact_id = o."LocalisationID" and cp.until is null
+                              and coalesce(lp.root_id, lp.id) = coalesce(wp.root_id, wp.id))
+        then 'lieu qui n''est pas relié au détenteur (Places phase B)'
     end as detail
   ) d
  where o.deleted_at is null and d.detail is not null

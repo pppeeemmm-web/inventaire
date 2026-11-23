@@ -1,3 +1,6 @@
+-- SUPERSEDED by Places phase B (2026-11-23) — DO NOT RE-APPLY: contact_address_link_single — dropped by places_phase_b_switch.sql (replaced by contact_place_link_single).
+-- Kept as history; re-running it after the switch breaks live data.
+
 -- Single custodian address → works (owner 2026-11-12, Kaizen "linkage broken").
 --
 -- Rule (docs/WORK_CUSTODY_MODEL.md): a custodian with one address gives the work that

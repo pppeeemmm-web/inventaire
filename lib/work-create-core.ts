@@ -50,7 +50,7 @@ export async function insertOeuvreRow(
   // location still wins, for the case where a holder stores a work somewhere else.
   // Session and share-triage supply neither, so their works land with the artist.
   // This mirrors WorkForm, which already submits contact_id and localisation_id as the
-  // same contact. Which of that contact's addresses is `localisation_address_id`.
+  // same contact. Which of that contact's addresses is `place_id`.
   const contactId = columns.ContactID ?? PEM_CONTACT_ID
   const localisationId = columns.LocalisationID ?? contactId
 

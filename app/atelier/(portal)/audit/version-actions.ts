@@ -94,6 +94,10 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
     'is_gift',
     'StageProduction',
     'commercial_status',
+    // Retired by Places phase B (read-only until dropped): the place is restored through `place_id` below.
+    'localisation_address_id',
+    'LocalisationDetail',
+    'home_place_id',
   ])
   // A contact (or its address) deleted since the snapshot cannot be written back: that field keeps the
   // work's current value, the rest is restored, and the reply names what was kept.
@@ -110,6 +114,20 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
   for (const [k, v] of Object.entries(snap)) {
     if (skip.has(k)) continue
     payload[k] = v
+  }
+
+  // Places phase B: a snapshot older than the switch names an address row; the map turns it into its place.
+  // A place the restored holder is no longer linked to is written back and flagged (oeuvre_place_unlinked), never dropped.
+  // A snapshot that had no address restores « no place » (not today's place).
+  if (!('place_id' in snap) && 'localisation_address_id' in snap) {
+    if (snap.localisation_address_id == null) {
+      payload.place_id = null
+    } else {
+      const { data: m, error: mErr } = await svc
+        .from('place_address_map').select('place_id').eq('address_id', Number(snap.localisation_address_id)).maybeSingle()
+      if (mErr) return { error: mErr.message }
+      payload.place_id = m?.place_id ?? null
+    }
   }
   payload.edited_at = provenanceTimestamp()
   payload.edited_by = gate.user!.id

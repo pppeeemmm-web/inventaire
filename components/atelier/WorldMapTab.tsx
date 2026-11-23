@@ -1,7 +1,7 @@
 'use client'
 
 // WorldMapTab — contacts + works on an interactive Leaflet map.
-// Fetches contact_addresses (multiple per contact) and Contact.Ville/Pays as fallback.
+// Fetches contact_place_lines (a person's places, several per contact) and Contact.Ville/Pays as fallback.
 // Both fetches run in parallel; pin building only starts when BOTH complete.
 // R4 (Pem 2026-11-17): « Création » mode = where works were made, at the `place` rows' own coordinates
 // (no geocoding); « Œuvres » places a work at its own address (custody model), not its custodian's card
@@ -34,6 +34,7 @@ interface ContactRow {
 
 interface ContactAddress {
   id:          number
+  place_id:    number
   contact_id:  number
   label:       string | null
   ville:       string | null
@@ -389,11 +390,11 @@ export function WorldMapTab({
     hiddenTechniqueIds.size > 0
 
   // Contacts come from page.tsx props — no re-fetch needed.
-  // Only fetch contact_addresses (not loaded server-side).
+  // Only fetch the contacts' places (not loaded server-side).
   useEffect(() => {
     const sb = createClient()
-    void (sb.from('contact_addresses')
-      .select('id, contact_id, label, ville, pays')
+    void (sb.from('contact_place_lines')
+      .select('id, place_id, contact_id, label, ville, pays')
       .order('position')
       .then(
         ({ data }: { data: ContactAddress[] | null }) => {
@@ -431,7 +432,7 @@ export function WorldMapTab({
     const contactMap = new Map<number, ContactRow>()
     browseContacts.forEach(c => contactMap.set(c.ContactID, c))
 
-    // Build location entries: prefer contact_addresses, fallback to Contact.Ville/Pays
+    // Build location entries: prefer the contacts' places, fallback to Contact.Ville/Pays
     interface LocEntry { contact_id: number; ville: string; pays: string; label: string | null }
     const locEntries: LocEntry[] = []
 
@@ -459,7 +460,7 @@ export function WorldMapTab({
         }
       })
     } else {
-      // No contact_addresses at all — fall back to Contact.Ville/Pays
+      // No place at all — fall back to Contact.Ville/Pays
       browseContacts.forEach(c => {
         if (c.Ville || c.Pays) {
           if (!passesContactFilters(c)) return
@@ -531,7 +532,7 @@ export function WorldMapTab({
     const result: Pin[] = []
 
     // Build contactLocMap: ContactID → { city, country }
-    // Priority: Contact.Ville/Pays first, then contact_addresses as supplement.
+    // Priority: Contact.Ville/Pays first, then the contacts' places as supplement.
     const contactLocMap = new Map<number, { city: string; country: string }>()
     contacts.forEach(c => {
       if (c.Ville || c.Pays) contactLocMap.set(c.ContactID, { city: c.Ville ?? '', country: c.Pays ?? '' })
@@ -549,12 +550,12 @@ export function WorldMapTab({
     interface WorkLocMeta { city: string; country: string; label: string }
     const groups  = new Map<string, Oeuvre[]>()
     const keyMeta = new Map<string, WorkLocMeta>()
-    const addrById = new Map(addresses.map((a) => [a.id, a]))
+    const addrById = new Map(addresses.map((a) => [a.place_id, a]))
 
     oeuvresFiltered.forEach(o => {
       // The work's own address first (custody model: always one of its custodian's addresses) —
       // #1653 sits at its custodian's Rutali address while that contact's card says Marseille.
-      const own   = o.localisation_address_id != null ? addrById.get(o.localisation_address_id) : undefined
+      const own   = o.place_id != null ? addrById.get(o.place_id) : undefined
       const locId = o.LocalisationID
       const cid   = locId ?? o.ContactID ?? 13
       const addr  = own && (own.ville || own.pays)
