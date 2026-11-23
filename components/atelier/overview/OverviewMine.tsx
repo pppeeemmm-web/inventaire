@@ -10,6 +10,7 @@
 import Link from 'next/link'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { FitList } from '@/components/atelier/overview/FitList'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { listMyNoteLines, type MyNoteLine } from '@/app/atelier/fil/note-lines-actions'
 import { listMyProposals, type MyProposal } from '@/app/atelier/(portal)/audit/pending-actions'
@@ -17,7 +18,13 @@ import { isUndatedOldNote } from '@/lib/note-line-dates'
 
 const ELLIPSIS: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 
-export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => void; narrow?: boolean }) {
+export function OverviewMine({ onGoIdeas, narrow = false, compact = false, fit = true }: {
+  onGoIdeas: () => void
+  narrow?: boolean
+  /** Left column of the glance layout: the lines that fit, then « + n autres »; nothing scrolls. */
+  compact?: boolean
+  fit?: boolean
+}) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const [lines, setLines] = useState<MyNoteLine[] | null>(null)
@@ -68,27 +75,7 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
       )
     : []
 
-  return (
-    <div data-testid="overview-mine" style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: narrow ? '8px 16px' : '8px 12px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--font-instrument-next), serif', fontWeight: 400, fontSize: 20 }}>{t('my_title')}</h2>
-        <b>{ready ? items.length : '…'}</b>
-        {out > 0 && <span data-testid="overview-mine-out" style={{ fontSize: 12, color: 'var(--rust)' }}>{t('my_discarded_count').replace('{n}', String(out))}</span>}
-        {refused > 0 && <span data-testid="overview-mine-refused" style={{ fontSize: 12, color: 'var(--rust)' }}>{t('my_prop_rejected_count').replace('{n}', String(refused))}</span>}
-        <span style={{ fontSize: 12, color: 'var(--tx3)', flex: '1 1 200px', minWidth: 0 }}>{t('my_intro')}</span>
-      </div>
-
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: narrow ? undefined : 'auto' }}>
-        {failed ? (
-          <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('my_load_error')}</p>
-        ) : !ready ? (
-          <p style={{ margin: 0, padding: '10px 12px', color: 'var(--tx3)', fontSize: 13 }}>{t('nl_loading')}</p>
-        ) : (
-          <>
-          {proposalsFailed && <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('my_prop_load_error')}</p>}
-          {items.length === 0 ? (
-          <p data-testid="overview-mine-empty" style={{ margin: 0, padding: '10px 12px', color: 'var(--tx3)', fontSize: 13 }}>{t('my_empty')}</p>
-          ) : items.map(({ line: l, prop: p }) => {
+  const nodes = items.map(({ line: l, prop: p }) => {
             if (p) return <ProposalRow key={`p${p.id}`} p={p} narrow={narrow} date={date} />
             if (!l) return null
             const where =
@@ -136,7 +123,31 @@ export function OverviewMine({ onGoIdeas, narrow = false }: { onGoIdeas: () => v
                 </div>
               </div>
             )
-          })}
+  })
+
+  return (
+    <div data-testid="overview-mine" style={{ flex: compact && !narrow ? (fit ? '0 1 auto' : 'none') : '1 1 auto', maxHeight: compact && !narrow && fit ? '46%' : undefined, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, borderBottom: compact ? '1px solid var(--bd)' : undefined }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: narrow ? '8px 16px' : '8px 12px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
+        <h2 style={{ margin: 0, fontFamily: 'var(--font-instrument-next), serif', fontWeight: 400, fontSize: 20 }}>{t('my_title')}</h2>
+        <b>{ready ? items.length : '…'}</b>
+        {out > 0 && <span data-testid="overview-mine-out" style={{ fontSize: 12, color: 'var(--rust)' }}>{t('my_discarded_count').replace('{n}', String(out))}</span>}
+        {refused > 0 && <span data-testid="overview-mine-refused" style={{ fontSize: 12, color: 'var(--rust)' }}>{t('my_prop_rejected_count').replace('{n}', String(refused))}</span>}
+        {compact ? null : <span style={{ fontSize: 12, color: 'var(--tx3)', flex: '1 1 200px', minWidth: 0 }}>{t('my_intro')}</span>}
+      </div>
+
+      <div style={{ flex: compact && !narrow ? '0 1 auto' : '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: narrow || compact ? undefined : 'auto' }}>
+        {failed ? (
+          <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('my_load_error')}</p>
+        ) : !ready ? (
+          <p style={{ margin: 0, padding: '10px 12px', color: 'var(--tx3)', fontSize: 13 }}>{t('nl_loading')}</p>
+        ) : (
+          <>
+          {proposalsFailed && <p style={{ margin: 0, padding: '10px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('my_prop_load_error')}</p>}
+          {items.length === 0 ? (
+          <p data-testid="overview-mine-empty" style={{ margin: 0, padding: '10px 12px', color: 'var(--tx3)', fontSize: 13 }}>{t('my_empty')}</p>
+          ) : compact && !narrow ? (
+            <FitList items={nodes} enabled={fit} style={{ flex: fit ? '0 1 auto' : 'none' }} />
+          ) : nodes}
           </>
         )}
       </div>

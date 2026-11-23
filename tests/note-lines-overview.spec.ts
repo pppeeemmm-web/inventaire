@@ -147,8 +147,8 @@ test.describe('Note lines + Overview Fil (R1 step 6 slice 4b)', () => {
     await expect(mine.locator('[data-state=standing]')).toBeVisible()
     await expect(mine.locator('[data-state=discarded]')).toContainText(/Retirée par Pem le|Taken out by Pem on/)
     await expect(page.getByTestId('overview-mine-out')).toBeVisible()
-    // Side rail: every panel starts folded.
-    await expect(page.getByTestId('overview-panel-fold-reminders')).toHaveAttribute('aria-expanded', 'false')
+    // Glance layout: every card starts folded (one widens at a time).
+    await expect(page.getByTestId('overview-card-reminders')).toHaveAttribute('data-open', 'false')
   })
 
   test('admin Overview: the Fil column, ← discards with 6 s undo, → keeps', async ({ page }) => {
@@ -169,7 +169,8 @@ test.describe('Note lines + Overview Fil (R1 step 6 slice 4b)', () => {
     test.skip(await page.getByTestId('overview-mine').isVisible(), 'Needs an admin session (Pem).')
     const fil = page.getByTestId('overview-fil')
     await expect(page.getByTestId('overview-fil-count')).toHaveText('2', { timeout: 30_000 })
-    await expect(page.getByTestId('overview-fil-section-creation')).toContainText('E2E flagged line')
+    // Glance layout: the Fil is one flat list in the left column (no section headers).
+    await expect(fil).toContainText('E2E flagged line')
     await expect(fil.getByTestId('overview-fil-row-note_line')).toBeVisible()
 
     await page.keyboard.press('ArrowLeft')

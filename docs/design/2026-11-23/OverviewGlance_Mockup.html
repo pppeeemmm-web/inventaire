@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vue d'ensemble — maquette « coup d'œil »</title>
+<style>
+/* App tokens (app/globals.css): dark = default. Example numbers only — nothing here is read from the database. */
+:root[data-theme="dark"]{--bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;--bd:#2d2d32;--bd2:#3f3f46;--tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--ac:#d4b886;--rust:#e39a8a;--yel:#d9c46a;--sage:#7fb8a6}
+:root[data-theme="light"]{--bg0:#fcfcfc;--bg1:#f5f5f5;--bg2:#ebebeb;--bg3:#e0e0e0;--bd:#e5e5e5;--bd2:#d4d4d4;--tx:#1a1a1a;--tx2:#4a4a4a;--tx3:#737373;--ac:#b8860b;--rust:#b5513d;--yel:#8a7a12;--sage:#2f7d68}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg0);color:var(--tx);font:13px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0;text-align:left}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--bd2);font-size:12px;color:var(--tx2)}
+.bar b{color:var(--tx)}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:6px;overflow:hidden}
+.seg button{padding:4px 9px}.seg button.on{background:var(--tx);color:var(--bg0)}
+.stage{display:flex;gap:20px;padding:14px;align-items:flex-start;flex-wrap:wrap}
+.lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);margin:0 0 6px}
+/* ── desk ── */
+.deskwrap{flex:1 1 900px;min-width:0}
+.desk{position:relative;border:1px solid var(--bd2);background:var(--bg0);height:max(660px,calc(100vh - 150px));display:flex;flex-direction:column;overflow:hidden}.desk>.foot{flex:none}.desk>.hdr{flex:none}
+.hdr{display:flex;align-items:center;gap:14px;height:44px;padding:0 14px;background:var(--bg1);border-bottom:1px solid var(--bd)}
+.hdr h1{margin:0;font:400 22px Georgia,serif}
+.tally{display:flex;gap:12px;border:1px solid var(--bd2);border-radius:3px;padding:3px 9px}
+.sp{flex:1}
+.m{display:inline-block;width:9px;height:9px;flex:none}
+.m.wrong{background:var(--rust)}.m.attention{background:var(--yel);clip-path:polygon(50% 0,100% 100%,0 100%)}.m.ok{background:var(--sage);border-radius:50%}.m.info{border:1.5px solid var(--tx3);border-radius:50%}
+/* main = Le Fil (always first, left) + one liquid grid of cards. A signal IS a card: hover shows its first rows (inside the card, so you can move into it), click widens it in place. */
+.main{display:grid;grid-template-columns:var(--filw,340px) minmax(0,1fr);flex:1;min-height:0;transition:grid-template-columns .15s}
+.fil{border-right:1px solid var(--bd);min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column}
+.agenda{flex:1 1 0;min-height:0;overflow:hidden}
+.cal-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--bd)}
+.chip{border:1px solid var(--bd2);border-radius:10px;padding:1px 8px;font-size:11px;color:var(--tx2)}.chip.on{background:var(--tx);color:var(--bg0);border-color:var(--tx)}
+.mg{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--bd)}
+.mg .dh{font-size:10px;color:var(--tx3);text-align:center;padding:3px 0}
+.dc{position:relative;height:28px;border-top:1px solid var(--bg2);padding:2px 4px;font-size:11px;color:var(--tx2);cursor:pointer}
+.dc.out{color:var(--tx3);opacity:.55}.dc:hover{background:var(--bg2)}.dc.sel{box-shadow:inset 0 0 0 1px var(--ac)}
+.dc.today b{background:var(--ac);color:var(--bg0);border-radius:50%;padding:0 4px}
+.dc .dots{position:absolute;left:4px;right:4px;bottom:3px;display:flex;gap:2px}
+.dc .dots i{width:5px;height:5px;border-radius:50%}
+.k-dl{background:var(--ac)}.k-ev{background:var(--sage)}.k-rm{background:var(--yel)}
+.dc .pk{width:230px;top:100%;left:0}.dc:hover .pk{display:block}.dc.r .pk{left:auto;right:0}
+.ag-h{position:sticky;top:0;background:var(--bg1);padding:4px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);border-bottom:1px solid var(--bd);border-top:1px solid var(--bd)}
+.ag{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:5px 12px;border-bottom:1px solid var(--bg2);cursor:pointer}.ag:hover{background:var(--bg2)}
+.ag .ok{color:var(--tx3);border-left:1px solid var(--bd);padding-left:8px}
+.fil h2,.card h2{margin:0;display:flex;align-items:center;gap:8px;height:28px;padding:0 12px;background:var(--bg1);border-bottom:1px solid var(--bd);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);font-weight:600}
+.fil h2 a,.card h2 a{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400;color:var(--tx3);cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));grid-auto-rows:minmax(84px,1fr);grid-auto-flow:dense;gap:0;height:100%;min-height:0;overflow:hidden}
+.tile{position:relative;padding:6px 10px 8px;border-top:2px solid var(--bd2);border-right:1px solid var(--bg2);border-bottom:1px solid var(--bg2);display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer;min-height:84px}
+.tile.wrong{border-top-color:var(--rust);background:color-mix(in srgb,var(--rust) 8%,transparent)}
+.tile.attention{border-top-color:var(--yel);background:color-mix(in srgb,var(--yel) 8%,transparent)}
+.tile.ok{border-top-color:var(--sage)}
+.tile:hover,.tile:focus-visible{background:var(--bg2);outline:0}
+.tile.open{grid-column:span 2;grid-row:span 3;overflow:hidden;background:var(--bg1);box-shadow:inset 0 0 0 1px var(--ac);cursor:default}
+.cap{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3)}
+.t1{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);white-space:nowrap}
+.t1 .x{margin-left:auto;color:var(--tx3);font-size:11px}
+.t2{display:flex;align-items:baseline;gap:8px}
+.t2 b{font-size:20px;line-height:1}.t2 small{font-size:11px;color:var(--tx3);white-space:nowrap}
+.viz{display:flex;align-items:flex-end;gap:2px;height:16px}
+.viz i{display:block;width:100%;background:var(--bd2);min-width:3px}
+.viz i.hot{background:var(--rust)}.viz i.acc{background:var(--ac)}.viz i.sg{background:var(--sage)}.viz i.dim{background:var(--bd)}
+.stack{display:flex;height:8px;gap:2px;margin-top:4px}.stack i{display:block}
+/* hover: rows drop out of the card itself (child of the tile, so the pointer can go in and click) */
+.pk{display:none;position:absolute;left:-1px;top:100%;width:max(calc(100% + 2px),300px);z-index:15;background:var(--bg1);border:1px solid var(--ac);box-shadow:0 10px 26px #000a}
+.tile.r .pk{left:auto;right:-1px}
+.tile:hover:not(.open) .pk,.tile:focus-within:not(.open) .pk{display:block}
+.pk .hint,.hint{padding:5px 12px;font-size:11px;color:var(--tx3)}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:5px 12px;border-bottom:1px solid var(--bg2);min-height:26px;align-items:center}
+.row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.open .row{cursor:pointer}.tile.open .row:hover{background:var(--bg2)}
+.tile .body{margin:4px -10px 0;display:block;flex:1;min-height:0;overflow:hidden}.tile:not(.open) .open-screen,.tile:not(.open) .hint{display:none}.tile:not(.open) .row{padding:3px 10px;min-height:22px;font-size:12px;color:var(--tx2)}.tile.open .viz,.tile.open .stack{display:none}
+.open-screen{margin:10px 12px;padding:7px 10px;border:1px solid var(--bd2);border-radius:4px;display:inline-block;cursor:pointer}
+.card{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.card.wide{grid-column:span 2;grid-row:span 2}.card .fillbody{flex:1;min-height:0;overflow:hidden}
+.week{display:grid;grid-template-columns:repeat(7,1fr)}
+.day{padding:6px 8px;border-right:1px solid var(--bg2);min-height:74px;font-size:11px;color:var(--tx2)}
+.day.today{box-shadow:inset 0 -2px 0 var(--ac)}.day b{display:block;font-size:16px;color:var(--tx)}
+.day .ev{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.film{align-content:start;flex:1;min-height:0;overflow:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:3px;padding:6px 12px}
+.film i{aspect-ratio:1;display:block;position:relative;background:var(--bg3)}
+.film i::after{content:attr(data-id);position:absolute;left:3px;bottom:2px;font:10px ui-monospace,monospace;color:var(--tx)}
+.empty{padding:10px 12px;color:var(--tx3);font-size:12px}
+.foot{height:24px;display:flex;align-items:center;padding:0 14px;border-top:1px solid var(--bd);background:var(--bg1);font-size:11px;color:var(--tx3)}
+.done{margin-left:6px;color:var(--tx3);border-left:1px solid var(--bd);padding-left:8px}
+/* ── phone ── */
+.phone{width:375px;flex:0 0 375px;height:760px;border:1px solid var(--bd2);border-radius:26px;overflow:hidden;position:relative;background:var(--bg0)}
+.phone .scroll{height:100%;overflow:auto}
+.ph-h{display:flex;align-items:baseline;gap:10px;padding:12px 16px 8px}.ph-h h1{margin:0;font:400 26px Georgia,serif}
+.ph-tally{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+.ph-tally div{padding:8px 14px;border-top:3px solid var(--bd2)}.ph-tally b{display:block;font-size:24px}
+.ph-sec{height:28px;display:flex;align-items:center;padding:0 16px;background:var(--bg1);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)}
+.ph-row{display:grid;grid-template-columns:14px 1fr auto 14px;gap:10px;align-items:center;min-height:46px;padding:4px 16px;border-bottom:1px solid var(--bg2);width:100%}
+.ph-row .d{font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.ph-row b.n{font-size:18px}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:78%;background:var(--bg1);border-top:1px solid var(--bd2);border-radius:18px 18px 0 0;transform:translateY(102%);transition:transform .2s;display:flex;flex-direction:column;z-index:5;box-shadow:0 -10px 30px #0008}
+.sheet.open{transform:none}
+.sheet .grab{width:40px;height:4px;background:var(--bd2);border-radius:2px;margin:8px auto}
+.sheet h3{margin:0;padding:4px 16px 8px;font-size:15px;display:flex;gap:8px;align-items:center}
+.sheet .body{overflow:auto}.sheet .row{min-height:44px;padding:4px 16px}
+.sheet .open-screen{margin:10px 16px 16px;padding:11px;text-align:center;border:1px solid var(--bd2);border-radius:8px}
+.note{max-width:420px;color:var(--tx3);font-size:12px;line-height:1.5}
+.big .dc{height:auto;min-height:0;padding:3px 5px}.big .mg{flex:1;grid-auto-rows:1fr;min-height:0}
+.dc .lb{display:block;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:7px;position:relative;color:var(--tx2)}
+.dc .lb::before{content:"";position:absolute;left:0;top:3px;width:5px;height:5px;border-radius:50%;background:currentColor}
+.dc .lb.k-dl{background:none;color:var(--ac)}.dc .lb.k-ev{background:none;color:var(--sage)}.dc .lb.k-rm{background:none;color:var(--yel)}
+.dc .lb.cont{margin-left:-5px;padding-left:12px}.dc .lb.cont::before{display:none}
+.dc .lb.cont::after{content:"▸";position:absolute;left:3px;top:0}
+.dc .more{font-size:10px;color:var(--tx3)}
+.xbtn{margin-left:auto;font-size:11px;color:var(--tx2);cursor:pointer;text-transform:none;letter-spacing:0;border:1px solid var(--bd2);padding:0 7px;border-radius:9px}
+/* no scrolling inside the page: lists show what fits, the rest is « + n » */
+.fitmore{padding:4px 12px;font-size:11px;color:var(--tx3);cursor:pointer}
+.tile.open .body{overflow:hidden}
+@media (max-height:759px){.desk{height:auto}.main{flex:none}.fil,.grid{height:auto}.agenda{flex:none}.grid{grid-auto-rows:minmax(84px,auto)}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>Vue d'ensemble — coup d'œil</b>
+  <span>chiffres d'exemple</span>
+  <span class="seg" id="seg-fil"><button data-v="empty" class="on">Le Fil vide</button><button data-v="full">Le Fil : 4 lignes</button></span>
+  <span class="seg" id="seg-w"><button data-v="2000" class="on">Écran 2000 px</button><button data-v="1280">1280 px</button></span>
+  <span class="seg" id="seg-th"><button data-v="dark" class="on">Sombre</button><button data-v="light">Clair</button></span>
+  <span>Une seule page, sans défilement : chaque carte montre ce qui tient · cliquez = la carte s'élargit sur place (une seule à la fois) · « Ouvrir l'écran » = aller à la section · « Ouvrir l'écran » = aller à la section</span>
+</div>
+<div class="stage">
+  <div class="deskwrap" id="deskwrap">
+    <p class="lbl">Bureau</p>
+    <div class="desk" id="desk">
+      <header class="hdr"><h1>Vue d'ensemble</h1><span style="color:var(--tx3)">lun. 23 nov. 2026</span>
+        <div class="tally" id="tally"></div><span class="sp"></span><span style="color:var(--tx3);font-size:12px">chaque signal une seule fois</span></header>
+      <div class="main" id="main"><section class="fil" id="fil"></section><div class="grid" id="grid"></div></div>
+      <div class="foot" id="foot">Cliquez une carte pour l'élargir</div>
+    </div>
+  </div>
+  <div>
+    <p class="lbl">Téléphone (375 px) — mêmes portes</p>
+    <div class="phone" id="phone">
+      <div class="scroll" id="phscroll"></div>
+      
+    </div>
+    <p class="note">Même liste que le bureau, pire d'abord. La ligne de détail est l'aperçu. Toucher une ligne l'élargit sur place (mêmes lignes que sur le bureau) ; « Ouvrir l'écran » mène où la ligne menait avant. Dessous : Le Fil, le calendrier en liste, dernières œuvres, à revoir, idées.</p>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let filFull=false, sel=null;
+/* One definition per signal. peek = first rows (read only). rows = all rows (the drawer). go = the screen it opens today. */
+const S=()=>[
+ {fam:'Agir',id:'needs',label:'Pour vous',kind:'attention',n:'155',viz:{t:'bars',v:[12,61,9,4,3,66,0],c:['','','','','','','']},go:'Inventaire (filtre) / Audit / Production',
+  rows:[['Validations en attente',12],['Photos à valider',61],['Tâches terrain ouvertes',9],['Registre ouvert',4],['Lieu non relié au détenteur',3],['Pas encore catalogué',66],['Sessions à appliquer',0]]},
+ {fam:'Agir',id:'fil',label:'Le Fil',kind:filFull?'attention':'ok',n:filFull?'4':'0',small:filFull?'à trier':'rien à trier',admin:1,viz:null,go:'—  (la carte du Fil est plus bas)',
+  rows:filFull?[['Idée · « Série encres sur verre »','graine'],['Fiche · taille #1204 (à valider)',''],['Kaizen · bouton Retour',''],['Commande ORD-88 · statut','']]:[['Rien à trier ici','']]},
+ {fam:'Agir',id:'rem',label:'Rappels',kind:'attention',n:'2',small:'aujourdʼhui',viz:{t:'bars',v:[0,2,1,3],c:['hot','','','']},go:'Notes / Projet',
+  hdr:'en retard 0 · aujourdʼhui 2 · demain 1 · 7 jours 3',
+  rows:[['Appeler la galerie Nord','aujourdʼhui ✓'],['Envoyer les photos à A. Roy','aujourdʼhui ✓'],['Relancer lʼassurance','demain ✓'],['Facture atelier','dans 3 j ✓'],['Vernissage : carton','dans 5 j ✓'],['Prêt Lyon','dans 6 j ✓']]},
+ {fam:'Catalogue',id:'cat',label:'Catalogue',kind:'wrong',n:'1 946',small:'lacunes',viz:{t:'bars',v:[612,388,301,262,190,98,61,34],c:['hot','hot','hot','','','','','']},go:'Inventaire (filtre du critère)',
+  rows:[['Sans adresse',612],['Sans technique',388],['Sans localisation',301],['Sans dimensions',262],['Sans année',190],['Sans support',98],['Sans photo',61],['Sans titre',34]]},
+ {fam:'Catalogue',id:'int',label:'Intégrité',kind:'ok',n:'0',small:'collision',admin:1,viz:null,go:'Contacts (collisions)',rows:[['Aucune collision de contact','']]},
+ {fam:'Activité',id:'ord',label:'Commandes',kind:'attention',n:'4',small:'2 à envoyer',viz:{t:'bars',v:[2,2],c:['','sg']},go:'Logistique / Ventes',rows:[['En cours',4],['Colis à préparer',2],['Événements ouverts',3]]},
+ {fam:'Activité',id:'money',label:'Argent',kind:'ok',n:'+12,4 k€',small:'net 2026',viz:{t:'bars',v:[31.2,18.8],c:['acc','dim']},go:'Fiscal',rows:[['Recettes TTC','31,2 k€'],['Dépenses TTC','18,8 k€'],['Net','+12,4 k€']]},
+ {fam:'Activité',id:'coll',label:'Collection',kind:'info',n:'412',small:'œuvres',viz:{t:'stack',v:[46,22,14,10,8]},go:'Rapports',
+  rows:[['Valeur totale','640 k€'],['Disponibles',148],['Exposables',97],['Avec prix',301],['Faites en 2026',17],['Cataloguées','74 %'],['Peinture 46 % · Dessin 22 % · Gravure 14 % …','']]},
+ {fam:'Système',id:'jobs',label:'Tâches locales',kind:'ok',n:'0',small:'archive : 3 j',admin:1,viz:{t:'bars',v:[0,0,3],c:['','','sg']},go:'(reste sur la page) — contrôles PC',rows:[['Notes vocales en attente',0],['Index en attente',0],['Dernière archive','il y a 3 j'],['[Lancer l\'archive] [Indexer]','']]},
+ {fam:'Système',id:'sys',label:'Système',kind:'attention',n:'2',small:'erreurs 7 j',admin:1,viz:null,go:'Audit',rows:[['Erreurs, 7 derniers jours',2],['Dernier contrôle des règles','OK']]},
+];
+const open=new Set(),calF=new Set();let calSel=null,calBig=false,calRm=false;
+const CAL=[{d:'11-23',k:'dl',t:'Remise du dossier — Salon d\'automne',s:'aujourd\'hui'},{d:'11-23',k:'rm',t:'Appeler la galerie Nord'},{d:'11-23',k:'rm',t:'Envoyer les photos à A. Roy'},
+{d:'11-24',k:'ev',t:'Visite atelier',s:'14 h'},{d:'11-24',k:'rm',t:'Relancer l\'assurance'},{d:'11-26',k:'dl',t:'Retour de prêt — Lyon',s:'dans 3 j'},{d:'11-26',k:'ev',t:'Appel galerie',s:'11 h'},{d:'11-26',k:'rm',t:'Facture atelier'},
+{d:'11-28',k:'rm',t:'Vernissage : carton'},{d:'11-29',k:'rm',t:'Prêt Lyon'},{d:'12-2',k:'dl',t:'Candidature résidence',s:'dans 9 j'},{d:'12-14',k:'dl',t:'Vernissage Nord',s:'dans 21 j'},{d:'12-23',k:'dl',t:'Bilan fiscal T4',s:'dans 30 j'},{d:'11-27',to:'11-30',k:'ev',t:'Salon dʼautomne (4 jours)',s:'27 → 30 nov.'}];
+function viz(s){const v=s.viz;if(!v)return '<div class="viz"></div>';
+ if(v.t==='bars'){const m=Math.max(...v.v,1);return '<div class="viz">'+v.v.map((x,i)=>`<i class="${v.c[i]||''}" style="height:${Math.max(2,x/m*16)}px"></i>`).join('')+'</div>'}
+ if(v.t==='dots'){return '<div class="viz" style="align-items:center">'+v.v.map(x=>`<i class="${x?'acc':'dim'}" style="height:${x?10:4}px"></i>`).join('')+'</div>'}
+ const cols=['var(--ac)','color-mix(in srgb,var(--ac) 60%,var(--bd2))','var(--tx3)','var(--bd2)','var(--bd)'];
+ return '<div class="stack">'+v.v.map((x,i)=>`<i style="width:${x}%;background:${cols[i]}"></i>`).join('')+'</div>'}
+const mk=k=>`<span class="m ${k}"></span>`;
+const rowsHtml=(s,n,click)=>(n?s.rows.slice(0,n):s.rows).map(r=>`<div class="row"${click?` onclick="go('${s.go.replace(/'/g,"\\'")} — ${String(r[0]).replace(/'/g,"\\'")}')"`:''}><span>${r[0]}</span><span style="color:var(--tx2)">${r[1]}</span></div>`).join('');
+function render(){
+ const sig=S().filter(s=>s.id!=='fil');
+ const tl={wrong:0,attention:0,ok:0};S().forEach(s=>{if(s.kind!=='info')tl[s.kind]++});tl.attention++;
+ $('#tally').innerHTML=['wrong:à corriger','attention:à surveiller','ok:ok'].map(x=>{const[k,l]=x.split(':');return `<span style="display:flex;gap:6px;align-items:center">${mk(k)}<b>${tl[k]}</b>${l}</span>`}).join('');
+ // Left column = Le Fil (height = its content) + the calendar filling the rest: never dead space.
+ $('#main').style.setProperty('--filw',calBig?'min(60%,1000px)':'clamp(250px,17vw,380px)');
+ const filHtml=`<h2>${mk(filFull?'attention':'ok')} Le Fil <b>${filFull?4:0}</b><a>Sur le téléphone</a></h2>`+(filFull?
+  ['Idée · « Série encres sur verre » — graine','Fiche · taille de #1204 à valider','Kaizen · le bouton Retour ne répond pas','Commande ORD-88 · changement de statut'].map(x=>`<div class="row" style="grid-template-columns:1fr auto"><span>${x}</span><span style="color:var(--tx3);font-size:11px">← →</span></div>`).join(''):'<div class="empty" style="padding:5px 12px">Rien à trier ici.</div>');
+ const days=['L','M','M','J','V','S','D'];
+ const cells=[];for(let i=0;i<42;i++){const dt=new Date(2026,9,26+i);cells.push(dt)}
+ const key=d=>d.getMonth()+1+'-'+d.getDate();
+ const by={};CAL.forEach(e=>{if(calF.size&&!calF.has(e.k))return;const a=+e.d.split('-')[1],z=e.to?+e.to.split('-')[1]:a,m=e.d.split('-')[0];for(let n=a;n<=z;n++)(by[m+'-'+n]=by[m+'-'+n]||[]).push(e)});
+ const gl=[['today','Aujourd\'hui · lun. 23'],['tom','Demain · mar. 24'],['wk','Cette semaine'],['later','Plus tard']];
+ const grp=e=>{const n=+e.d.split('-')[1];const m=+e.d.split('-')[0];const off=m===11?n-23:n+7;return off<0?'late':off===0?'today':off===1?'tom':off<=6?'wk':'later'};
+ const list=CAL.filter(e=>(!calF.size||calF.has(e.k))&&(calF.size||calRm||e.k!=='rm')&&(!calSel||e.d===calSel));
+ const ico={dl:'◆',ev:'●',rm:'◔'};
+ let ag='';[['late','En retard'],...gl].forEach(([g,l])=>{const it=list.filter(e=>grp(e)===g);if(!it.length)return;ag+=`<div class="ag-h">${l}</div>`+it.map(e=>`<div class="ag" onclick="go('${e.k==='rm'?'Notes / Projet':'Pipeline'} — ${e.t.replace(/'/g,"\\'")}')"><span class="k-${e.k}" style="width:9px;height:9px;border-radius:${e.k==='dl'?0:'50%'}"></span><span>${e.t}<small style="color:var(--tx3)"> ${e.w||''}</small></span>${e.k==='rm'?'<span class="ok" onclick="event.stopPropagation();this.parentNode.remove()">✓</span>':`<span style="color:var(--tx3);font-size:11px">${e.s}</span>`}</div>`).join('')});
+ const calHtml=`<h2>${mk('attention')} Calendrier <span style="text-transform:none;color:var(--tx3)">novembre 2026</span><span class="xbtn" onclick="calBig=!calBig;render()">${calBig?'⤡ Réduire':'⤢ Agrandir'}</span><a style="margin-left:8px">Pipeline</a></h2>
+  <div class="cal-top"><span class="chip ${calF.size?'':'on'}" onclick="calF.clear();render()">Tout</span>${[['dl','◆ Échéances 5'],['ev','● Événements 3'],['rm','◔ Rappels 6']].map(([k,l])=>`<span class="chip ${calF.has(k)?'on':''}" onclick="calF.has('${k}')?calF.delete('${k}'):calF.add('${k}');render()">${l}</span>`).join('')}<span style="margin-left:auto;font-size:11px;color:var(--tx3)">en retard 0 · aujourd'hui 3</span></div>
+  <div class="mg" style="${calBig?'flex:1;min-height:0':''}">${days.map(d=>`<div class="dh">${d}</div>`).join('')}${cells.map((dt,i)=>{const k=key(dt),it=by[k]||[];const inM=dt.getMonth()===10;return `<div class="dc${inM?'':' out'}${k==='11-23'?' today':''}${calSel===k?' sel':''}" onmouseenter="this.classList.toggle('r',${i%7}>3)" onclick="calSel=calSel==='${k}'?null:'${k}';render()"><b style="font-weight:400">${dt.getDate()}</b>${calBig?it.slice(0,4).map(e=>`<span class="lb k-${e.k}${e.to&&e.d.split('-')[1]!==k.split('-')[1]?' cont':''}">${e.t}</span>`).join('')+(it.length>4?`<span class="more">+${it.length-4}</span>`:''):`<span class="dots">${it.slice(0,4).map(e=>`<i class="k-${e.k}"></i>`).join('')}</span>`}</div>`}).join('')}</div>
+  ${calBig?'':`<div class="agenda fit">${ag||'<div class="empty">Rien ce jour-là.</div>'}</div>`}`;
+ $('#fil').innerHTML=filHtml+`<div style="display:flex;flex-direction:column;flex:1;min-height:0" class="${calBig?'big':''}">${calHtml}</div>`;
+ 
+ const cards=sig.map(s=>{const o=open.has(s.id);
+  return `<div class="tile ${s.kind}${o?' open':''}" data-id="${s.id}" tabindex="0" role="button" aria-expanded="${o}" aria-label="${s.label} : ${s.n}">
+   <span class="t1">${mk(s.kind)}${s.label}<span class="x">${o?'réduire ▴':''}</span></span>
+   <span class="t2"><b>${s.n}</b>${s.small?`<small>${s.small}</small>`:''}</span>${viz(s)}
+   <div class="body fit">${s.hdr?`<div class="hint">${s.hdr}</div>`:''}${rowsHtml(s,0,true)}<span class="open-screen" onclick="event.stopPropagation();go('${s.go.replace(/'/g,"\\'")}')">Ouvrir l'écran → ${s.go}</span></div>
+   </div>`}).join('')+
+ `<section class="card wide"><h2>Dernières œuvres<a>Inventaire</a></h2><div class="film fit">${Array.from({length:18},(_,i)=>`<i data-id="#${1240-i}" style="background:hsl(${(i*47)%360} 18% ${22+(i%4)*5}%)"></i>`).join('')}</div></section>
+ <section class="card"><h2>À revoir</h2><div class="row"><span>#0412 « Nuit blanche » — vue il y a 5 mois</span><span style="color:var(--tx3)">Garder · Plus tard</span></div><div class="row"><span>Idée « Encres sur verre » — il y a 3 sem.</span><span style="color:var(--tx3)">Garder · Plus tard</span></div></section>
+ <section class="card"><h2>Idées mûres<a>Idées</a></h2><div class="row"><span>Série encres sur verre</span><span style="color:var(--tx3)">mûre</span></div><div class="row"><span>Triptyque rouge</span><span style="color:var(--tx3)">pousse</span></div><div class="row"><span>Carnet de Lisbonne</span><span style="color:var(--tx3)">graine</span></div></section>`;
+ $('#grid').innerHTML=cards;
+ document.querySelectorAll('.tile').forEach(t=>{
+  t.onmouseenter=()=>{const g=$('#grid').getBoundingClientRect(),r=t.getBoundingClientRect();t.classList.toggle('r',r.left+300>g.right)};
+  t.onclick=e=>{if(t.classList.contains('open')&&e.target.closest('.body'))return;const id=t.dataset.id;if(open.has(id))open.delete(id);else{open.clear();open.add(id)}render()};
+  t.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();t.click()}}});
+ renderPhone();fit();
+}
+function fit(){
+ if(matchMedia('(max-height:759px)').matches){document.querySelectorAll('.fitmore').forEach(e=>e.remove());document.querySelectorAll('[data-hid]').forEach(e=>{e.style.display='';e.removeAttribute('data-hid')});return}
+ document.querySelectorAll('.fitmore').forEach(e=>e.remove());
+ document.querySelectorAll('[data-hid]').forEach(e=>{e.style.display='';e.removeAttribute('data-hid')});
+ document.querySelectorAll('.fit').forEach(c=>{if(!c.offsetParent)return;const kids=[...c.children].filter(k=>!k.classList.contains('open-screen'));const lim=c.getBoundingClientRect().bottom-22;
+  let cut=-1;kids.forEach((k,i)=>{if(cut<0&&k.getBoundingClientRect().bottom>lim)cut=i});
+  if(cut>=0){const n=kids.length-cut;kids.slice(cut).forEach(k=>{k.style.display='none';k.setAttribute('data-hid',1)});if(c.closest('.tile:not(.open)'))return;const m=document.createElement('div');m.className='fitmore';m.textContent='+ '+n+' autres';kids[cut].before(m)}})}
+addEventListener('resize',fit);
+function go(x){$('#foot').textContent='→ '+x+'   (maquette : rien ne bouge)'}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){open.clear();render()}});
+/* phone */
+function renderPhone(){const sig=S();const order={wrong:0,attention:1,ok:2,info:3};
+ const g=['wrong','attention','ok','info'],gl={wrong:'À corriger',attention:'À surveiller',ok:'Ok',info:'Info'};
+ const tl={wrong:0,attention:0,ok:0};sig.forEach(s=>{if(s.kind!=='info')tl[s.kind]++});
+ $('#phscroll').innerHTML=`<div class="ph-h"><h1>Vue d'ensemble</h1><span style="color:var(--tx3);font-size:12px">lun. 23 nov.</span></div>
+ <div class="ph-tally">${['wrong','attention','ok'].map(k=>`<div style="border-top-color:var(--${k==='wrong'?'rust':k==='attention'?'yel':'sage'})"><span style="font-size:12px;color:var(--tx2)">${gl[k]}</span><b>${tl[k]}</b></div>`).join('')}</div>`+
+ g.map(k=>{const a=sig.filter(s=>s.kind===k);return a.length?`<div class="ph-sec">${gl[k]}</div>`+a.map(s=>`<button class="ph-row" onclick="pho('${s.id}')">${mk(s.kind)}<span><b style="display:block;font-weight:600">${s.label}</b><span class="d">${s.rows.slice(0,3).map(r=>r[1]!==''&&isNaN(r[1])?r[0]:r[1]+' '+r[0].toLowerCase()).join(' · ')}</span></span><b class="n">${s.n}</b><span style="color:var(--tx3)">${pop.has(s.id)?'▾':'›'}</span></button>${pop.has(s.id)?`<div style="background:var(--bg1)">${rowsHtml(s,0,false)}<div class="open-screen" style="margin:8px 16px;display:block;text-align:center;padding:10px">Ouvrir l'écran →</div></div>`:''}`).join(''):''}).join('')+
+ (filFull?`<div class="ph-sec">Le Fil · 4</div><div class="row"><span>Idée · « Série encres sur verre »</span><span>→</span></div>`:'')+
+ `<div class="ph-sec">Calendrier · aujourd'hui 3</div>${CAL.slice(0,7).map(e=>`<div class="ag"><span class="k-${e.k}" style="width:9px;height:9px;border-radius:${e.k==='dl'?0:'50%'}"></span><span>${e.t}</span><span style="color:var(--tx3);font-size:11px">${e.d.replace('11-','')+' nov.'}</span></div>`).join('')}`+
+ `<div class="ph-sec">Dernières œuvres</div><div class="film" style="grid-template-columns:repeat(4,1fr)">${Array.from({length:8},(_,i)=>`<i data-id="#${1240-i}" style="background:hsl(${(i*47)%360} 18% ${22+(i%4)*5}%)"></i>`).join('')}</div><div style="height:40px"></div>`}
+const pop=new Set();function pho(id){pop.has(id)?pop.delete(id):pop.add(id);renderPhone()}
+/* controls */
+function seg(id,f){document.querySelectorAll(id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll(id+' button').forEach(x=>x.classList.toggle('on',x===b));f(b.dataset.v)})}
+seg('#seg-fil',v=>{filFull=v==='full';render();if(sel)openDrawer(sel)});
+seg('#seg-w',v=>{$('#deskwrap').style.flex=v==='2000'?'1 1 900px':'0 0 1280px';$('#deskwrap').style.maxWidth=v==='2000'?'none':'1280px'});
+seg('#seg-th',v=>{document.documentElement.dataset.theme=v});
+render();
+</script>
+</body>
+</html>

@@ -100,6 +100,8 @@ export interface SuiviProcessPulseRow {
   id: string
   nom: string
   type: string
+  /** Start of an event (exposition / collaboration / edition) — the Overview calendar draws the span. */
+  date_debut?: string | null
   date_fin: string | null
   deadline_time: string | null
   statut: string

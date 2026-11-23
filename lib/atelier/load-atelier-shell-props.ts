@@ -26,6 +26,7 @@ const overviewDefault: AtelierOverviewBootstrap = {
   salesIncomeTtc: 0,
   upcomingPulse: [],
   overviewCalendarEvents: [],
+  overviewEventSpans: [],
   burningConcepts: [],
   backlog: { pendingApprovals: 0, openFieldTasks: 0, openLedger: 0, sessionsToApply: 0 },
 }

@@ -25,12 +25,17 @@ export interface AtelierBacklogCounts {
   sessionsToApply: number
 }
 
+/** An event that runs over several days (open exposition / collaboration / edition with a start before its end). */
+export type OverviewEventSpan = { processId: string; label: string; type: string; start: string; end: string }
+
 export interface AtelierOverviewBootstrap {
   expenseTotalTtc: number
   /** Sales income for the fiscal year from sale orders + `payments` (`fetchSalesIncome`). */
   salesIncomeTtc: number
   upcomingPulse: PipelinePulseItem[]
   overviewCalendarEvents: PipelineCalendarEvent[]
+  /** Multi-day events for the Overview calendar (read from the same `suivi_process` select; no new read). */
+  overviewEventSpans: OverviewEventSpan[]
   burningConcepts: ConceptBurningRow[]
   backlog: AtelierBacklogCounts
 }

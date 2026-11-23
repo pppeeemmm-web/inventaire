@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/types/supabase.generated'
 import { ADDRESS_LINE_COLS, type ContactAddress } from '@/components/atelier/contact-editor-types'
+import { EVENT_KINDS } from '@/lib/events/event-model'
 import type { AtelierOverviewBootstrap, TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import {
   computePipelinePulseItems,
@@ -66,7 +67,7 @@ export async function fetchAtelierOverviewBootstrap(
     fetchSalesIncome(supabase, fiscalYear),
     supabase
       .from('suivi_process')
-      .select('id, nom, type, date_fin, deadline_time, statut')
+      .select('id, nom, type, date_debut, date_fin, deadline_time, statut')
       .not('statut', 'in', '("perdu","annule","termine")'),
     supabase
       .from('suivi_etape')
@@ -119,6 +120,11 @@ export async function fetchAtelierOverviewBootstrap(
   const procs = (proRes.data ?? []) as SuiviProcessPulseRow[]
   const etapes = (etRes.data ?? []) as SuiviEtapePulseRow[]
   const processes = buildPulseProcesses(procs, etapes)
+  // Events that last more than a day: the Overview calendar marks every day they cover (Pem 2026-11-23).
+  const eventTypes = new Set<string>(EVENT_KINDS)
+  const overviewEventSpans = procs
+    .filter((p) => eventTypes.has(p.type) && p.date_debut && p.date_fin && p.date_debut < p.date_fin)
+    .map((p) => ({ processId: p.id, label: p.nom, type: p.type, start: p.date_debut as string, end: p.date_fin as string }))
 
   const reminderInputs = reminders.map((r) => ({
     id: r.id,
@@ -133,6 +139,7 @@ export async function fetchAtelierOverviewBootstrap(
     salesIncomeTtc: salesIncome.total,
     upcomingPulse: computePipelinePulseItems(processes).slice(0, 8),
     overviewCalendarEvents: buildPipelineCalendarEvents(processes, reminderInputs),
+    overviewEventSpans,
     burningConcepts: [...((conceptRes.data ?? []) as Array<ConceptBurningRow & { maturity?: string }>)].sort(
       (a, b) => Number(b.maturity === 'mure') - Number(a.maturity === 'mure'),
     ),

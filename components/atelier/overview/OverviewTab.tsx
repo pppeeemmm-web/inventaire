@@ -1,13 +1,13 @@
 'use client'
 
-// Overview — one-glance dashboard (B1, design pass 2026-11-13, mock
-// `docs/archive/design/2026-11-13/Overview.dc.html`, build notes `docs/archive/HANDOFF_2026-11-13_DESIGN_BUILD.md` §2).
-// Desktop (R1 step 6 slice 4b, docs/design/2026-11-17/R1_InputsFeed.notes.md « Where the feed lives »):
-// header · one compact strip of signals in fixed positions (counts and links kept) · the main column —
-// Pem's Fil (`OverviewFil`, admin) or a team member's own lines and what happened to them
-// (`OverviewMine`) — beside a side rail of the other panels, folded by default · status bar.
-// Phone: signal rows, worst first (+ the team member's own lines).
-// Counts over the whole catalogue come from one server read while the catalogue is still loading (TODO 18).
+// Overview — « coup d'œil » (design 2026-11-23, docs/design/2026-11-23/OverviewGlance.md + OverviewGlance_Mockup.html).
+// Each signal appears once, as a card; the old strip + « Le reste » rail (the same counts twice) are gone.
+//   Desktop, one screen and nothing scrolls inside it: header · [ left column: Le Fil (admin) or the team member's
+//   own lines, then the calendar ] · [ one liquid grid: 9 signal cards + Dernières œuvres / À revoir / Idées ] · status bar.
+//   A card shows the rows its size allows (« + n autres » when cut); a click widens it in place (one at a time),
+//   « Ouvrir l'écran » leaves for the section. Short or narrow screens: the page scrolls, nothing inside it does.
+//   Phone: signal rows worst first, a tap opens the row in place; the calendar as a list; the team member's lines.
+// Counts are unchanged (`lib/atelier/overview-counts.ts`, `getOverviewBusiness`, the bootstrap, the reminders read).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,11 +24,13 @@ import { useLocalJobs, LocalJobsControls, ARCHIVE_STALE_DAYS } from '@/component
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import { OverviewFil } from '@/components/atelier/overview/OverviewFil'
 import { OverviewMine } from '@/components/atelier/overview/OverviewMine'
-import { SignalMark, SIGNAL_COLOR, SIGNAL_RANK, type SignalKind } from '@/components/atelier/SignalMark'
+import { FitList } from '@/components/atelier/overview/FitList'
+import { OverviewCalendar, buildCalItems, calStatus, effKey, localKey, type CalItem } from '@/components/atelier/overview/OverviewCalendar'
+import { SignalMark, SIGNAL_COLOR, type SignalKind } from '@/components/atelier/SignalMark'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import { daysUntil } from '@/lib/pipeline-deadlines'
-import { filterEventsInDateKeyRange } from '@/lib/pipeline-calendar'
+import { toLocalDateKey } from '@/lib/pipeline-calendar'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -39,30 +41,45 @@ import {
   type InventoryHandoffCriterion,
 } from '@/lib/atelier/inventory-filter-handoff'
 
-function pad2Local(n: number) {
-  return String(n).padStart(2, '0')
-}
-
-function localDateKeyFromDate(d: Date) {
-  return `${d.getFullYear()}-${pad2Local(d.getMonth() + 1)}-${pad2Local(d.getDate())}`
-}
-
-function mondayStartOfWeek(d: Date) {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  const mon = (x.getDay() + 6) % 7
-  x.setDate(x.getDate() - mon)
-  return x
-}
-
 const tint = (kind: SignalKind, pct = 8) =>
   kind === 'wrong' || kind === 'attention' ? `color-mix(in srgb, ${SIGNAL_COLOR[kind]} ${pct}%, transparent)` : undefined
 
 type CountRow = { key: string; label: string; count: number; go: () => void }
 type Signal = { id: string; kind: SignalKind; label: string; value: string; detail: string; go: () => void }
+/** One line of a card: a label, a value, optionally a jump and a one-tap action (the reminder ✓). */
+type CardRow = {
+  key: string
+  label: string
+  value?: string
+  kind?: SignalKind
+  dim?: boolean
+  go?: () => void
+  action?: { label: string; title: string; testId?: string; onClick: () => void }
+}
+type Card = {
+  id: string
+  sig: Signal
+  viz: ReactNode
+  rows: CardRow[]
+  /** Phone rows when they differ from the desk's (the reminders list has its own section there). */
+  phoneRows?: CardRow[]
+  head?: string
+  /** Tooltip on the card header (the money note). */
+  title?: string
+  /** No « Ouvrir l'écran »: the card has no screen of its own to go to (local jobs). */
+  noScreen?: boolean
+  extra?: ReactNode
+  rowsTestId?: string
+}
 
-/** Below this content width the four columns stack two by two and the page scrolls. */
-const FIXED_MIN_WIDTH = 900
+/** Below this content width the left column goes above the grid and the page scrolls. */
+const STACK_BELOW_WIDTH = 900
+/** Smallest comfortable height of one grid row; fewer pixels than rows × this → the page scrolls instead. */
+const MIN_ROW_H = 96
+const MIN_CARD_W = 190
+const MIN_CARD_W_WIDE_CAL = 140
+const HEADER_H = 44
+const FOOTER_H = 24
 
 export function OverviewTab({
   oeuvres, tM, t, lang, onGoTab, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
@@ -103,7 +120,7 @@ export function OverviewTab({
   const [biz, setBiz] = useState<OverviewBusiness | null>(null)
   useEffect(() => {
     let cancelled = false
-    void getOverviewBusiness().then((b) => { if (!cancelled) setBiz(b) }).catch(() => { /* the three signals show « … » */ })
+    void getOverviewBusiness().then((b) => { if (!cancelled) setBiz(b) }).catch(() => { /* the cards show « … » */ })
     return () => { cancelled = true }
   }, [])
   const loadedCounts = useMemo(() => computeOverviewCounts(oeuvres, thisYear), [oeuvres, thisYear])
@@ -146,7 +163,6 @@ export function OverviewTab({
     { key: 'title', label: t('ov_health_missing_title'), count: missingTitle, go: () => goInventory(t('ov_health_missing_title'), [{ field: 'Titre', op: 'est vide' }]) },
   ].sort((a, b) => b.count - a.count)
   const gapTotal = gapRows.reduce((s, r) => s + r.count, 0)
-  const gapMax = Math.max(1, ...gapRows.map(r => r.count))
 
   // Reminders — whole unread list, refetched on every visit (the shell snapshot goes stale).
   const [reminderRows, setReminderRows] = useState<SuiviReminderListRow[]>(initialReminders)
@@ -176,34 +192,34 @@ export function OverviewTab({
   const remTomorrow = reminders.filter(x => x.days === 1).length
   const remNext7 = reminders.filter(x => x.days >= 2 && x.days <= 7).length
 
-  const { expenseTotalTtc, salesIncomeTtc, upcomingPulse, overviewCalendarEvents, burningConcepts } = initialOverviewBootstrap
+  const { expenseTotalTtc, salesIncomeTtc, overviewCalendarEvents, overviewEventSpans, burningConcepts } = initialOverviewBootstrap
   const income = salesIncomeTtc ?? 0
   const expenses = expenseTotalTtc
   const net = income - expenses
 
-  const deadlines = useMemo(
-    () => upcomingPulse.map(p => ({ p, days: daysUntil(p.date) })).sort((a, b) => a.days - b.days),
-    [upcomingPulse],
-  )
-  const dlOverdue = deadlines.filter(d => d.days < 0).length
-  const dlToday = deadlines.filter(d => d.days === 0).length
-  const dlNext7 = deadlines.filter(d => d.days > 0 && d.days <= 7).length
-
-  const week = useMemo(() => {
-    const start = mondayStartOfWeek(new Date())
-    const end = new Date(start)
-    end.setDate(end.getDate() + 6)
-    const events = filterEventsInDateKeyRange(overviewCalendarEvents, localDateKeyFromDate(start), localDateKeyFromDate(end))
-    const todayKey = localDateKeyFromDate(new Date())
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start)
-      d.setDate(start.getDate() + i)
-      const key = localDateKeyFromDate(d)
-      const evs = events.filter(e => e.dateKey === key)
-      return { key, d, evs, today: key === todayKey }
-    })
-    return { start, end, days }
-  }, [overviewCalendarEvents])
+  // Calendar items: the bootstrap's open deadlines (events = deadlines of an exposition / collaboration / edition)
+  // plus the reminders as they stand now (a ✓ here or in the Rappels card moves both).
+  const todayKey = localKey(new Date())
+  const calItems = useMemo<CalItem[]>(() => {
+    const deadlineItems = buildCalItems(overviewCalendarEvents).filter((i) => i.kind !== 'rm')
+    // Same day key as the deadline's own (`toLocalDateKey`), compared as strings.
+    const endKeyOf = (e: { end: string }) => toLocalDateKey(e.end)
+    const deadlineAt = new Set(deadlineItems.map((i) => `${i.processId}|${i.dateKey}|${i.label}`))
+    // An event that lasts several days is one span (its end-date deadline would only repeat the last day).
+    // A span already over counts only while the Pipeline still shows its end-date deadline (its `skipDateFin` rules):
+    // a deadline hidden there is never « late » here.
+    const liveSpans = overviewEventSpans.filter((e) => endKeyOf(e) >= todayKey || deadlineAt.has(`${e.processId}|${endKeyOf(e)}|${e.label}`))
+    const spanned = new Set(overviewEventSpans.map((e) => `${e.processId}|${endKeyOf(e)}|${e.label}`))
+    const dated = deadlineItems.filter((i) => !(i.processId && spanned.has(`${i.processId}|${i.dateKey}|${i.label}`)))
+    const spans: CalItem[] = liveSpans.map((e) => ({ id: `s:${e.processId}`, kind: 'ev', dateKey: e.start, endKey: endKeyOf(e), label: e.label, processId: e.processId }))
+    const rm: CalItem[] = reminderRows.map((r) => ({
+      id: `r:${r.id}`, kind: 'rm', dateKey: toLocalDateKey(r.remind_at), label: r.message, processId: r.process_id, reminderId: r.id,
+    }))
+    return [...dated, ...spans, ...rm].sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.label.localeCompare(b.label))
+  }, [overviewCalendarEvents, overviewEventSpans, reminderRows, todayKey])
+  // ONE source for the calendar's status line, the tally and the phone rows.
+  const cal = calStatus(calItems, todayKey)
+  const openCalItem = (i: CalItem) => onGoTab(i.kind === 'rm' && !i.processId ? 'notes' : 'pipeline')
 
   const techSegments = useMemo(() => {
     const sorted = [...counts.byTechnique].sort((a, b) => b[1] - a[1])
@@ -212,12 +228,29 @@ export function OverviewTab({
     if (rest > 0) top.push({ label: t('od_other'), n: rest })
     return top
   }, [counts, tM, t])
+  const techTotal = Math.max(1, techSegments.reduce((s, x) => s + x.n, 0))
+  const techColors = ['var(--ac)', 'color-mix(in srgb, var(--ac) 65%, var(--bd3))', 'var(--tx3)', 'var(--bd3)', 'var(--bd2)']
 
-  const recentWorks = useMemo(() => [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 16), [oeuvres])
+  const recentWorks = useMemo(() => [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 24), [oeuvres])
 
   const jobs = useLocalJobs(isAdmin)
   const jobsBacklog = (jobs.voice ?? 0) + (jobs.index ?? 0)
   const jobsLoading = jobs.voice == null && jobs.archiveDays === undefined
+
+  // Which card is widened (one at a time) and how wide the calendar is.
+  const [openCard, setOpenCard] = useState<string | null>(null)
+  const [calBig, setCalBig] = useState(false)
+  const [filCount, setFilCount] = useState<number | null>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      setOpenCard(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // ── Signals (fixed positions; rules from docs/archive/DESIGN_BRIEF_2026-11-13.md) ──
   const signals: Signal[] = []
@@ -247,11 +280,13 @@ export function OverviewTab({
         go: () => onGoTab('contacts'),
       })
     }
+    // Deadlines and events live in the calendar (desk) and are rows of their own on the phone; both read `cal`,
+    // the calendar's own status (overdue = wrong, today = attention) — the tally cannot say another number.
     signals.push({
       id: 'deadlines', label: t('od_sig_deadlines'),
-      kind: dlOverdue > 0 ? 'wrong' : dlToday > 0 ? 'attention' : 'ok',
-      value: num(dlOverdue || dlToday || dlNext7),
-      detail: fmt(dlOverdue > 0 ? 'od_dl_overdue' : dlToday > 0 ? 'od_dl_today' : 'od_dl_next7', { n: deadlines.length }),
+      kind: cal.late > 0 ? 'wrong' : cal.today > 0 ? 'attention' : 'ok',
+      value: num(cal.late || cal.today || cal.next7),
+      detail: fmt(cal.late > 0 ? 'od_dl_overdue' : cal.today > 0 ? 'od_dl_today' : 'od_dl_next7', { n: cal.dl + cal.ev }),
       go: () => onGoTab('pipeline'),
     })
     signals.push({
@@ -259,13 +294,12 @@ export function OverviewTab({
       kind: remOverdue > 0 ? 'wrong' : remToday > 0 ? 'attention' : 'ok',
       value: num(remOverdue || remToday || remTomorrow + remNext7),
       // « Rappels 0 » beside the panel's « Rappels 40 » read as two counts (stress test 2026-11-18): the signal
-      // counts what is due within 7 days, so its line names the total the panel shows.
+      // counts what is due within 7 days, so its line names the total the card shows.
       detail: remOverdue > 0 ? fmt('od_rem_overdue', { n: remToday }) : remToday > 0 ? t('od_rem_today') : fmt('od_rem_next7', { n: reminders.length }),
       go: () => onGoTab('notes'),
     })
     signals.push({
       id: 'money', label: t('od_sig_money'),
-      // D3 (thresholds) open: until Pem sets "cash low", a negative net this year is the alarm.
       // D3 (Pem 2026-11-14): a negative net for the year is wrong (■), not just attention.
       kind: net < 0 ? 'wrong' : 'ok',
       value: `${net > 0 ? '+' : ''}${formatPriceCompact(net, lang)}`,
@@ -280,7 +314,7 @@ export function OverviewTab({
         kind: jobsLoading ? 'info' : jobs.archiveStale ? 'wrong' : jobsBacklog > 0 ? 'attention' : 'ok',
         value: jobs.voice == null ? '…' : num(jobsBacklog),
         detail: fmt('od_jobs_detail', { d: d === undefined ? '…' : d === null ? t('od_jobs_never') : fmt('od_jobs_days', { n: d }) }),
-        go: () => flash('jobs'),
+        go: () => setOpenCard('jobs'),
       })
     }
     signals.push({
@@ -293,7 +327,7 @@ export function OverviewTab({
     signals.push({
       id: 'events', label: t('od_sig_events'),
       kind: 'info',
-      value: biz ? num(biz.events) : '…',
+      value: num(cal.ev),
       detail: t('od_events_detail'),
       go: () => onGoTab('exhibitions'),
     })
@@ -319,8 +353,120 @@ export function OverviewTab({
       go: () => onGoTab('reports'),
     })
   }
+  const sig = (id: string) => signals.find(s => s.id === id)!
+  // The tally counts every signal (the calendar's deadlines included) and, for the admin, the Fil.
   const tally = { wrong: 0, attention: 0, ok: 0 }
   for (const s of signals) if (s.kind !== 'info') tally[s.kind]++
+  if (isAdmin && filCount != null) tally[filCount > 0 ? 'attention' : 'ok']++
+
+  // ── Cards: one per signal that is not the calendar's or the Fil's (fixed order, Pem 2026-11-23) ──
+  const relDay = (days: number) => (days < 0 ? fmt('od_days_late', { n: -days }) : days === 0 ? t('od_today') : days === 1 ? t('od_tomorrow') : fmt('od_in_days', { n: days }))
+  const countRow = (r: CountRow, mark: SignalKind): CardRow => ({
+    key: r.key, label: r.label, value: num(r.count), kind: r.count > 0 ? mark : 'ok', dim: r.count === 0, go: r.count > 0 ? r.go : undefined,
+  })
+  const bars = (v: number[], hot = 0) => {
+    const m = Math.max(1, ...v)
+    return (
+      <span aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 16 }}>
+        {v.map((x, i) => <i key={i} style={{ display: 'block', flex: '1 1 0', minWidth: 3, height: Math.max(2, (x / m) * 16), background: i < hot && x > 0 ? 'var(--rust)' : 'var(--bd2)' }} />)}
+      </span>
+    )
+  }
+  const cards: Card[] = []
+  cards.push({
+    id: 'needs', sig: sig('needs'),
+    viz: bars(needsRows.map((r) => r.count)),
+    rows: needsRows.map((r) => countRow(r, 'attention')),
+  })
+  cards.push({
+    id: 'reminders', sig: sig('reminders'),
+    viz: bars([remOverdue, remToday, remTomorrow, remNext7], 1),
+    head: `${t('od_overdue')} ${remOverdue} · ${t('od_today')} ${remToday} · ${t('od_tomorrow')} ${remTomorrow} · ${t('od_next7')} ${remNext7}`,
+    rowsTestId: 'overview-reminders',
+    rows: reminders.length
+      ? reminders.map(({ r, days }) => ({
+        key: r.id, label: r.message, value: relDay(days), kind: days < 0 ? 'wrong' : days === 0 ? 'attention' : undefined,
+        go: () => onGoTab(r.process_id ? 'pipeline' : 'notes'),
+        action: { label: '✓', title: t('ov_reminder_done'), testId: 'overview-reminder-done', onClick: () => void markReminderDone(r.id) },
+      }))
+      : [{ key: 'none', label: t('od_no_reminder'), dim: true }],
+    phoneRows: ([['od_overdue', remOverdue, 'wrong'], ['od_today', remToday, 'attention'], ['od_tomorrow', remTomorrow, undefined], ['od_next7', remNext7, undefined]] as const)
+      .map(([k, n, kind]) => ({ key: k, label: t(k), value: num(n), kind: n > 0 ? kind : undefined, dim: n === 0 })),
+  })
+  cards.push({
+    id: 'catalogue', sig: sig('catalogue'),
+    viz: bars(gapRows.map((r) => r.count), 3),
+    head: fmt('od_gaps_of', { n: num(worksTotal) }),
+    rows: gapRows.map((r) => countRow(r, 'wrong')),
+  })
+  if (isAdmin) {
+    cards.push({
+      id: 'integrity', sig: sig('integrity'), viz: null,
+      rows: [conflicts.length > 0
+        ? { key: 'conflicts', label: t('od_integrity_row'), value: num(conflicts.length), kind: 'wrong', go: () => onGoTab('contacts') }
+        : { key: 'none', label: t('od_no_collision'), dim: true }],
+    })
+  }
+  cards.push({
+    id: 'orders', sig: sig('orders'),
+    viz: bars([biz?.orders ?? 0, biz?.shipments ?? 0]),
+    rows: [
+      { key: 'open', label: t('card_orders_open'), value: biz ? num(biz.orders) : '…', go: () => onGoTab('sales') },
+      { key: 'ship', label: t('card_orders_ship'), value: biz ? num(biz.shipments) : '…', kind: biz && biz.shipments > 0 ? 'attention' : undefined, go: () => onGoTab('logistics') },
+    ],
+  })
+  cards.push({
+    id: 'money', sig: sig('money'),
+    viz: bars([income, expenses]),
+    head: fmt('od_money', { year: thisYear }),
+    title: t('od_money_note'),
+    rows: [
+      { key: 'income', label: t('od_income'), value: formatPriceCompact(income, lang) },
+      { key: 'expenses', label: t('od_expenses'), value: formatPriceCompact(expenses, lang) },
+      { key: 'net', label: t('od_net'), value: `${net > 0 ? '+' : ''}${formatPriceCompact(net, lang)}`, kind: net < 0 ? 'wrong' : undefined },
+    ],
+  })
+  cards.push({
+    id: 'collection', sig: sig('collection'),
+    viz: (
+      <span role="img" aria-label={techSegments.map((s) => `${s.label} ${Math.round((s.n / techTotal) * 100)} %`).join(', ')} style={{ display: 'flex', height: 8, gap: 2 }}>
+        {techSegments.map((s, i) => <i key={i} title={`${s.label} · ${s.n}`} style={{ display: 'block', width: `${(s.n / techTotal) * 100}%`, background: techColors[i] }} />)}
+      </span>
+    ),
+    rows: [
+      { key: 'value', label: t('od_total_value'), value: formatPriceCompact(totalValue, lang) },
+      { key: 'avail', label: t('ov_stat_available'), value: num(available) },
+      { key: 'expo', label: t('od_exhibitable'), value: num(exposable) },
+      { key: 'priced', label: t('od_priced'), value: num(withPrice) },
+      { key: 'year', label: fmt('od_made_year', { year: thisYear }), value: num(byYear) },
+      { key: 'cat', label: t('od_catalogued'), value: `${Math.round((catalogued / Math.max(1, counts.total)) * 100)} %` },
+      ...techSegments.map((s, i) => ({ key: `tech${i}`, label: s.label, value: `${Math.round((s.n / techTotal) * 100)} %`, dim: true })),
+    ],
+  })
+  if (isAdmin) {
+    const d = jobs.archiveDays
+    cards.push({
+      id: 'jobs', sig: sig('jobs'),
+      viz: bars([jobs.voice ?? 0, jobs.index ?? 0, jobs.archiveStale ? 1 : 0]),
+      head: fmt('od_jobs_alarm', { n: ARCHIVE_STALE_DAYS }),
+      noScreen: true,
+      extra: <LocalJobsControls jobs={jobs} t={t} />,
+      rows: [
+        { key: 'voice', label: t('od_jobs_voice'), value: jobs.voice == null ? '…' : num(jobs.voice), kind: (jobs.voice ?? 0) > 0 ? 'attention' : 'ok' },
+        { key: 'index', label: t('od_jobs_index'), value: jobs.index == null ? '…' : num(jobs.index), kind: (jobs.index ?? 0) > 0 ? 'attention' : 'ok' },
+        { key: 'archive', label: t('od_jobs_archive'), value: d === undefined ? '…' : d === null ? t('od_jobs_never') : fmt('od_jobs_days', { n: d }), kind: jobs.archiveStale ? 'wrong' : 'ok' },
+      ],
+    })
+    const run = biz?.lastRuleRun ?? null
+    const ruleBreaks = run ? (run.error ? 1 : run.breaks) : 0
+    cards.push({
+      id: 'system', sig: sig('system'), viz: null,
+      rows: [
+        { key: 'errors', label: t('card_sys_errors'), value: biz ? num(biz.errors7d ?? 0) : '…', kind: (biz?.errors7d ?? 0) > 0 ? 'attention' : undefined, go: () => onGoTab('audit') },
+        { key: 'rules', label: t('card_sys_rules'), value: !run ? t('od_rules_unknown') : ruleBreaks > 0 ? fmt('od_rules_breaks', { n: ruleBreaks }) : t('od_rules_ok'), kind: ruleBreaks > 0 ? 'wrong' : undefined, go: () => onGoTab('audit') },
+      ],
+    })
+  }
 
   // ── Layout measurement: fill the window under the Atelier chrome ──────
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -340,81 +486,26 @@ export function OverviewTab({
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [narrow])
-  const fixed = !narrow && box.w >= FIXED_MIN_WIDTH
-  const compact = fixed && box.h < 760
-  const rowH = compact ? 22 : 26
-  const hdrH = compact ? 26 : 30
+  const stacked = box.w < STACK_BELOW_WIDTH
+  const leftW = stacked ? box.w : calBig ? Math.min(Math.round(box.w * 0.6), 1000) : Math.min(380, Math.max(250, Math.round(box.w * 0.17)))
+  const gridW = stacked ? box.w : box.w - leftW
+  const mainH = box.h - HEADER_H - FOOTER_H
+  // With the calendar widened the grid is narrow: thinner cards, and Dernières œuvres is one cell, so it still fits one screen.
+  const cols = Math.max(1, Math.floor(gridW / (calBig ? MIN_CARD_W_WIDE_CAL : MIN_CARD_W)))
+  // Cells: one per card, Dernières œuvres 2 × 2, À revoir, Idées; an opened card takes 2 × 3 (one at a time).
+  const cellsNeeded = cards.length + (calBig ? 3 : 6) + (openCard ? 5 : 0)
+  const rows = Math.max(2, Math.ceil(cellsNeeded / cols))
+  // One screen and nothing scrolls inside it — or, when the rows would be too thin, the page scrolls and nothing inside does.
+  const oneScreen = !narrow && !stacked && box.w > 0 && rows * MIN_ROW_H <= mainH
+  const openSpanRows = Math.min(3, rows)
 
   // Loaded-at clock (client only: no hydration mismatch).
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => { setNow(new Date()) }, [])
 
-  // « + n more » inside an opened panel (the hover « liquid grid » left with the four columns, R1 4b).
-  const [openPanel, setOpenPanel] = useState<string | null>(null)
-  const [flashed, setFlashed] = useState<string | null>(null)
-  const toggle = (id: string) => setOpenPanel(p => (p === id ? null : id))
-  // Side rail (R1 4b): every panel starts folded (header + count); a tap opens it.
-  const [unfolded, setUnfolded] = useState<Set<string>>(() => new Set())
-  const foldToggle = (id: string) => setUnfolded(p => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  const toggleAllPanels = () => setUnfolded(p => (p.size ? new Set() : new Set(RAIL_PANELS)))
-  function flash(id: string) {
-    setUnfolded(p => new Set(p).add(id))
-    setFlashed(id)
-    document.getElementById(`ov-panel-${id}`)?.scrollIntoView({ block: 'nearest' })
-    setTimeout(() => setFlashed(f => (f === id ? null : f)), 1200)
-  }
-  const panelProps = (id: string, more: number) => ({
-    id, fixed: false, hdrH, open: openPanel === id, flashed: flashed === id, more, reduceMotion,
-    folded: !unfolded.has(id), onFold: () => foldToggle(id),
-    onToggle: more > 0 ? () => toggle(id) : undefined,
-    moreLabel: fmt('od_more', { n: more }),
-    moreTitle: openPanel === id ? t('od_less_title') : fmt('od_more_title', { n: more }),
-  })
-  const sig = (id: string) => signals.find(s => s.id === id)!
-
-  // ── Rows ──────────────────────────────────────────────────────────────
-  const countLine = (r: CountRow, mark: SignalKind) => (
-    <Line key={r.key} h={rowH} onClick={r.count > 0 ? r.go : undefined} dim={r.count === 0}>
-      <span style={ELLIPSIS}>{r.label}</span>
-      <b style={{ fontWeight: r.count > 0 ? 700 : 400 }}>{num(r.count)}</b>
-      <SignalMark kind={r.count > 0 ? mark : 'ok'} />
-    </Line>
-  )
-
-  const deadlineLine = ({ p, days }: { p: (typeof upcomingPulse)[number]; days: number }, i: number) => {
-    const kind: SignalKind | null = days < 0 ? 'wrong' : days === 0 ? 'attention' : null
-    return (
-      <Line key={`${p.processId}-${p.etapeId ?? 'fin'}-${p.date}-${i}`} h={rowH + 4} onClick={() => onGoTab('pipeline')} bg={kind ? tint(kind) : undefined} cols="84px minmax(0, 1fr) 12px">
-        <span style={{ fontSize: 12, fontWeight: kind ? 700 : 400, color: kind ? SIGNAL_COLOR[kind] : 'var(--tx2)', whiteSpace: 'nowrap' }}>
-          {days < 0 ? fmt('od_days_late', { n: -days }) : days === 0 ? t('od_today') : fmt('od_in_days', { n: days })}
-        </span>
-        <span style={ELLIPSIS} title={p.label}>{p.label}</span>
-        {kind ? <SignalMark kind={kind} /> : <span />}
-      </Line>
-    )
-  }
-
-  const reminderLine = ({ r, days }: { r: SuiviReminderListRow; days: number }) => {
-    const kind: SignalKind | null = days < 0 ? 'wrong' : days === 0 ? 'attention' : null
-    return (
-      <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '12px minmax(0, 1fr) auto 32px', alignItems: 'center', gap: 8, minHeight: narrow ? 46 : rowH, padding: '0 0 0 12px', borderBottom: '1px solid var(--bg2)' }}>
-        {kind ? <SignalMark kind={kind} /> : <span />}
-        <button type="button" onClick={() => onGoTab(r.process_id ? 'pipeline' : 'notes')} title={r.process_id ? t('ov_reminder_open_project') : t('ov_reminder_open_notes')}
-          style={{ ...ELLIPSIS, textAlign: 'left', background: 'none', border: 0, padding: 0, color: 'var(--tx)', font: 'inherit', cursor: 'pointer' }}>
-          {r.message}
-        </button>
-        <span style={{ fontSize: 11, color: kind ? SIGNAL_COLOR[kind] : 'var(--tx3)', whiteSpace: 'nowrap' }}>
-          {days === 0 ? t('ov_reminder_today') : days === 1 ? t('ov_reminder_tomorrow') : days < 0 ? fmt('od_days_late', { n: -days }) : fmt('od_in_days', { n: days })}
-        </span>
-        <button type="button" data-testid="overview-reminder-done" onClick={() => void markReminderDone(r.id)} title={t('ov_reminder_done')} aria-label={t('ov_reminder_done')}
-          style={{ height: narrow ? 44 : rowH, background: 'none', border: 0, borderLeft: '1px solid var(--bg2)', color: 'var(--tx3)', cursor: 'pointer', font: 'inherit' }}>✓</button>
-      </div>
-    )
-  }
-
   const thumb = (o: Oeuvre) => (
     <Link key={o.OeuvreID} href={`/atelier/inventory?work=${o.OeuvreID}`} aria-label={`#${o.OeuvreID} ${o.Titre ?? ''}`.trim()}
-      style={{ display: 'block', aspectRatio: '1', background: 'var(--bg2)', position: 'relative', overflow: 'hidden', color: 'inherit', textDecoration: 'none' }}>
+      style={{ display: 'block', aspectRatio: '1', alignSelf: 'start', background: 'var(--bg2)', position: 'relative', overflow: 'hidden', color: 'inherit', textDecoration: 'none' }}>
       {o.txtImageNameLink ? (
         <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? `#${o.OeuvreID}`} style={{ width: '100%', height: '100%' }}>
           <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
@@ -426,10 +517,18 @@ export function OverviewTab({
     </Link>
   )
 
-  // ── Phone: signal rows, worst first ───────────────────────────────────
+  // ── Phone: signal rows, worst first; a tap opens the row in place ─────
   if (narrow) {
     const groups: SignalKind[] = ['wrong', 'attention', 'ok', 'info']
     const groupLabel: Record<SignalKind, string> = { wrong: t('od_wrong'), attention: t('od_attention'), ok: t('od_ok'), info: t('od_info') }
+    const byId = new Map(cards.map((c) => [c.id, c]))
+    const phoneSignals = signals.filter((s) => byId.has(s.id) || s.id === 'deadlines' || s.id === 'events')
+    // Today first, then what is overdue (nearest first), then what is coming — old items never push today out of the 8.
+    const rank = (i: CalItem) => { const k = effKey(i, todayKey); return k === todayKey ? 0 : k < todayKey ? 1 : 2 }
+    const agenda = calItems
+      .filter((i) => i.kind !== 'rm')
+      .sort((a, b) => rank(a) - rank(b) || (rank(a) === 1 ? effKey(b, todayKey).localeCompare(effKey(a, todayKey)) : effKey(a, todayKey).localeCompare(effKey(b, todayKey))))
+      .slice(0, 8)
     return (
       <div ref={rootRef} style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--tx)', fontVariantNumeric: 'tabular-nums' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 16px 8px' }}>
@@ -445,23 +544,56 @@ export function OverviewTab({
           ))}
         </div>
         {groups.map(g => {
-          const rows = signals.filter(s => s.kind === g)
-          if (!rows.length) return null
+          const list = phoneSignals.filter(s => s.kind === g)
+          if (!list.length) return null
           return (
             <div key={g}>
               <div style={{ ...SECTION, height: 28, padding: '0 16px', background: 'var(--bg1)' }}>{groupLabel[g]}</div>
-              {rows.map(s => (
-                <button key={s.id} type="button" onClick={s.go} aria-label={`${s.label}: ${groupLabel[s.kind]}, ${s.value}`}
-                  style={{ display: 'grid', gridTemplateColumns: '14px minmax(0, 1fr) auto 14px', alignItems: 'center', gap: 10, width: '100%', minHeight: 46, padding: '4px 16px', background: tint(s.kind), border: 0, borderBottom: '1px solid var(--bg2)', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
-                  <SignalMark kind={s.kind} />
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontWeight: 600 }}>{s.label}</span>
-                    <span style={{ ...ELLIPSIS, display: 'block', fontSize: 12, color: 'var(--tx2)' }}>{s.detail}</span>
-                  </span>
-                  <b style={{ fontSize: 18 }}>{s.value}</b>
-                  <span aria-hidden="true" style={{ color: 'var(--tx3)' }}>›</span>
-                </button>
-              ))}
+              {list.map(s => {
+                const c = byId.get(s.id)
+                if (!c) {
+                  // Deadlines / events: no rows of their own here — the row jumps, as it always did.
+                  return (
+                    <button key={s.id} type="button" onClick={s.go} aria-label={`${s.label}: ${groupLabel[s.kind]}, ${s.value}`}
+                      style={{ display: 'grid', gridTemplateColumns: '14px minmax(0, 1fr) auto 14px', alignItems: 'center', gap: 10, width: '100%', minHeight: 46, padding: '4px 16px', background: tint(s.kind), border: 0, borderBottom: '1px solid var(--bg2)', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                      <SignalMark kind={s.kind} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', fontWeight: 600 }}>{s.label}</span>
+                        <span style={{ ...ELLIPSIS, display: 'block', fontSize: 12, color: 'var(--tx2)' }}>{s.detail}</span>
+                      </span>
+                      <b style={{ fontSize: 18 }}>{s.value}</b>
+                      <span aria-hidden="true" style={{ color: 'var(--tx3)' }}>›</span>
+                    </button>
+                  )
+                }
+                const open = openCard === s.id
+                return (
+                  <div key={s.id} data-testid={`overview-card-${s.id}`}>
+                    <button type="button" aria-expanded={open} onClick={() => setOpenCard(open ? null : s.id)} aria-label={`${s.label}: ${groupLabel[s.kind]}, ${s.value}`}
+                      style={{ display: 'grid', gridTemplateColumns: '14px minmax(0, 1fr) auto 14px', alignItems: 'center', gap: 10, width: '100%', minHeight: 46, padding: '4px 16px', background: tint(s.kind), border: 0, borderBottom: '1px solid var(--bg2)', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                      <SignalMark kind={s.kind} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', fontWeight: 600 }}>{s.label}</span>
+                        <span style={{ ...ELLIPSIS, display: 'block', fontSize: 12, color: 'var(--tx2)' }}>{s.detail}</span>
+                      </span>
+                      <b style={{ fontSize: 18 }}>{s.value}</b>
+                      <span aria-hidden="true" style={{ color: 'var(--tx3)' }}>{open ? '▾' : '›'}</span>
+                    </button>
+                    {open && (
+                      <div style={{ background: 'var(--bg1)' }}>
+                        {(c.phoneRows ?? c.rows).map((r) => (
+                          <button key={r.key} type="button" disabled={!r.go} onClick={r.go}
+                            style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', width: '100%', minHeight: 44, padding: '4px 16px', border: 0, borderBottom: '1px solid var(--bg2)', background: 'none', color: r.dim ? 'var(--tx3)' : 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: r.go ? 'pointer' : 'default' }}>
+                            <span style={{ ...ELLIPSIS }}>{r.label}</span>
+                            <b style={{ fontWeight: r.dim ? 400 : 700 }}>{r.value}</b>
+                          </button>
+                        ))}
+                        {c.noScreen ? null : <button type="button" onClick={s.go} style={{ display: 'block', width: 'calc(100% - 32px)', margin: '8px 16px', minHeight: 44, border: '1px solid var(--bd2)', borderRadius: 8, background: 'none', color: 'var(--tx)', font: 'inherit', cursor: 'pointer' }}>{t('card_open_screen')}</button>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )
         })}
@@ -470,13 +602,38 @@ export function OverviewTab({
             <OverviewMine onGoIdeas={() => onGoTab('concepts')} narrow />
           </div>
         )}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ ...SECTION, height: 28, padding: '0 16px', background: 'var(--bg1)' }}>{t('cal_title')}</div>
+          {agenda.length === 0
+            ? <div style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 13 }}>{t('od_no_deadline')}</div>
+            : agenda.map((i) => (
+              <button key={i.id} type="button" onClick={() => openCalItem(i)} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', width: '100%', minHeight: 44, padding: '4px 16px', border: 0, borderBottom: '1px solid var(--bg2)', background: 'none', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                <span style={ELLIPSIS}>{i.kind === 'ev' ? '● ' : '◆ '}{i.label}</span>
+                <span style={{ fontSize: 12, color: effKey(i, todayKey) < todayKey ? 'var(--rust)' : 'var(--tx3)', whiteSpace: 'nowrap' }}>{relDay(Math.round((new Date(`${effKey(i, todayKey)}T12:00:00`).getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86_400_000))}</span>
+              </button>
+            ))}
+        </div>
         {/* Mobile action bar scrolls here (TeamPortalClient `openFieldReminders`). */}
         <div id="atelier-field-reminders" style={{ scrollMarginTop: 96, marginTop: 12 }}>
           <div style={{ ...SECTION, height: 28, padding: '0 16px', background: 'var(--bg1)' }}>{t('ov_reminders_title')} · {reminders.length}</div>
           <div data-testid="overview-reminders">
             {reminders.length === 0
               ? <div style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 13 }}>{t('od_no_reminder')}</div>
-              : reminders.map(reminderLine)}
+              : reminders.map(({ r, days }) => {
+                const kind: SignalKind | null = days < 0 ? 'wrong' : days === 0 ? 'attention' : null
+                return (
+                  <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '12px minmax(0, 1fr) auto 44px', alignItems: 'center', gap: 8, minHeight: 46, padding: '0 0 0 12px', borderBottom: '1px solid var(--bg2)' }}>
+                    {kind ? <SignalMark kind={kind} /> : <span />}
+                    <button type="button" onClick={() => onGoTab(r.process_id ? 'pipeline' : 'notes')} title={r.process_id ? t('ov_reminder_open_project') : t('ov_reminder_open_notes')}
+                      style={{ ...ELLIPSIS, textAlign: 'left', background: 'none', border: 0, padding: 0, color: 'var(--tx)', font: 'inherit', cursor: 'pointer' }}>
+                      {r.message}
+                    </button>
+                    <span style={{ fontSize: 11, color: kind ? SIGNAL_COLOR[kind] : 'var(--tx3)', whiteSpace: 'nowrap' }}>{days === 0 ? t('ov_reminder_today') : days === 1 ? t('ov_reminder_tomorrow') : relDay(days)}</span>
+                    <button type="button" data-testid="overview-reminder-done" onClick={() => void markReminderDone(r.id)} title={t('ov_reminder_done')} aria-label={t('ov_reminder_done')}
+                      style={{ height: 44, background: 'none', border: 0, borderLeft: '1px solid var(--bg2)', color: 'var(--tx3)', cursor: 'pointer', font: 'inherit' }}>✓</button>
+                  </div>
+                )
+              })}
           </div>
         </div>
       </div>
@@ -484,31 +641,24 @@ export function OverviewTab({
   }
 
   // ── Desktop / tablet ──────────────────────────────────────────────────
-  const dlBase = deadlines.slice(0, 5)
-  const dlMore = deadlines.slice(5)
-  const remBase = reminders.filter(x => x.days <= 0)
-  const remMore = reminders.filter(x => x.days > 0)
-  const ideasBase = burningConcepts.slice(0, 3)
-  const ideasMore = burningConcepts.slice(3)
-  const thumbsBase = recentWorks.slice(0, compact ? 3 : 4)
-  const thumbsMore = recentWorks.slice(compact ? 3 : 4)
-  const fmtDay = (d: Date) => d.toLocaleDateString(localeTag, { day: 'numeric', month: 'short' })
-  const cell = (label: string, value: ReactNode, opts?: { color?: string; last?: boolean; title?: string }) => (
-    <div title={opts?.title} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: compact ? '5px 12px' : '8px 12px', minWidth: 0, borderRight: opts?.last ? undefined : '1px solid var(--bg2)', borderBottom: '1px solid var(--bg2)' }}>
-      <span style={{ fontSize: 11, color: 'var(--tx2)', ...ELLIPSIS }}>{label}</span>
-      <b style={{ fontSize: compact ? 16 : 18, color: opts?.color, whiteSpace: 'nowrap' }}>{value}</b>
-    </div>
+  const ideasRows = burningConcepts.map(c => <IdeaLine key={c.id} c={c} h={28} onGo={() => router.push(`/atelier/concepts?concept=${c.id}`)} t={t} />)
+  const contentCard = (id: string, title: string, link: { label: string; onClick: () => void } | null, span: CSSProperties, children: ReactNode) => (
+    <section key={id} data-testid={`overview-card-${id}`} style={{ ...span, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden', borderRight: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)' }}>
+      <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)' }}>
+        <h2 style={{ ...SECTION, margin: 0, flex: 1 }}>{title}</h2>
+        {link && <button type="button" onClick={link.onClick} style={{ background: 'none', border: 0, padding: 0, fontSize: 12, color: 'var(--tx2)', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>{link.label}</button>}
+      </div>
+      {children}
+    </section>
   )
-  const techTotal = Math.max(1, techSegments.reduce((s, x) => s + x.n, 0))
-  const techColors = ['var(--ac)', 'color-mix(in srgb, var(--ac) 65%, var(--bd3))', 'var(--tx3)', 'var(--bd3)', 'var(--bd2)']
 
   return (
     <div ref={rootRef} style={{
-      height: fixed ? box.h || undefined : undefined, display: 'flex', flexDirection: 'column', overflow: fixed ? 'hidden' : undefined,
+      height: oneScreen ? box.h || undefined : undefined, display: 'flex', flexDirection: 'column', overflow: oneScreen ? 'hidden' : undefined,
       background: 'var(--bg0)', color: 'var(--tx)', fontFamily: 'var(--font-ui)', fontSize: 13, lineHeight: 1.25, fontVariantNumeric: 'tabular-nums',
     }}>
-      {/* Header */}
-      <header style={{ flex: 'none', height: 44, display: 'flex', alignItems: 'center', gap: 16, padding: '0 16px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)', minWidth: 0 }}>
+      {/* Header: title, date, the tally */}
+      <header data-testid="atelier-overview-executive" style={{ flex: 'none', height: HEADER_H, display: 'flex', alignItems: 'center', gap: 16, padding: '0 16px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)', minWidth: 0 }}>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-instrument-next), serif', fontWeight: 400, fontSize: 24, whiteSpace: 'nowrap' }}>{t('od_title')}</h1>
         {now && <span style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{now.toLocaleDateString(localeTag, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {now.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' })}</span>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 10px', border: '1px solid var(--bd2)', borderRadius: 3, whiteSpace: 'nowrap' }}>
@@ -516,199 +666,62 @@ export function OverviewTab({
             <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><SignalMark kind={k} /><b>{tally[k]}</b>{t(`od_${k}`)}</span>
           ))}
         </div>
-        <span style={{ flex: 1 }} />
-        {box.w > 1150 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--tx2)', whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 11, color: 'var(--tx3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{t('od_legend')}</span>
-            {(['wrong', 'attention', 'ok', 'info'] as const).map(k => <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SignalMark kind={k} />{t(`od_${k}`)}</span>)}
-          </div>
-        )}
       </header>
 
-      {/* Signal strip (R1 4b): the signals shrink to one line above the Fil; fixed positions, counts and links kept */}
-      <nav aria-label={t('od_signals')} data-testid="atelier-overview-executive"
-        style={{ flex: 'none', display: 'grid', gridTemplateColumns: `repeat(${signals.length}, minmax(0, 1fr))`, borderBottom: '1px solid var(--bd)' }}>
-        {signals.map((s, i) => (
-          <button key={s.id} type="button" onClick={s.go} aria-label={`${s.label}: ${t(`od_${s.kind}`)}, ${s.value}`} title={s.detail}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, height: compact ? 34 : 40, padding: '0 10px',
-              border: 0, borderRight: i < signals.length - 1 ? '1px solid var(--bd)' : 0, borderTop: `2px solid ${s.kind === 'info' ? 'var(--bd2)' : SIGNAL_COLOR[s.kind]}`,
-              background: tint(s.kind) ?? 'transparent', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer',
-            }}>
-            <SignalMark kind={s.kind} />
-            <span style={{ ...ELLIPSIS, flex: '1 1 auto', fontSize: 12, color: 'var(--tx2)' }}>{s.label}</span>
-            <b style={{ fontSize: compact ? 14 : 16, whiteSpace: 'nowrap' }}>{s.value}</b>
-          </button>
-        ))}
-      </nav>
-
-      {/* Main column (R1 4b): Pem's Fil, or a team member's own lines; every other panel folds into the side rail */}
-      <main style={{
-        flex: fixed ? '1 1 0' : undefined, minHeight: 0, display: 'grid',
-        gridTemplateColumns: fixed ? 'minmax(0, 1fr) minmax(300px, 380px)' : 'minmax(0, 1fr)',
-      }}>
-        <section style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, maxHeight: fixed ? undefined : '70vh', borderRight: fixed ? '1px solid var(--bd)' : undefined, borderBottom: fixed ? undefined : '1px solid var(--bd)' }}>
-          {isAdmin ? <OverviewFil /> : <OverviewMine onGoIdeas={() => onGoTab('concepts')} />}
-        </section>
-        <aside aria-label={t('ofil_side')} data-testid="overview-side-rail" style={{ minWidth: 0, minHeight: 0, overflowY: fixed ? 'auto' : undefined }}>
-          <div style={{ ...SECTION, height: 28, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)' }}>
-            <span style={{ flex: 1 }}>{t('ofil_side')}</span>
-            <button type="button" data-testid="overview-side-toggle-all" onClick={toggleAllPanels}
-              style={{ background: 'none', border: 0, padding: 0, fontSize: 11, color: 'var(--tx2)', cursor: 'pointer', font: 'inherit', textTransform: 'none', letterSpacing: 0 }}>
-              {unfolded.size ? t('ofil_collapse_all') : t('ofil_expand_all')}
-            </button>
+      <main style={{ flex: oneScreen ? '1 1 0' : undefined, minHeight: 0, display: 'flex', flexDirection: stacked ? 'column' : 'row', alignItems: stacked ? 'stretch' : oneScreen ? 'stretch' : 'flex-start' }}>
+        {/* Left column: Le Fil (or the team member's lines), then the calendar — never empty, never dead space */}
+        <aside aria-label={t('cal_title')} style={{ flex: 'none', width: stacked ? undefined : leftW, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: stacked ? undefined : '1px solid var(--bd)', height: oneScreen ? '100%' : stacked ? undefined : 'auto', transition: reduceMotion ? undefined : 'width 150ms' }}>
+          {isAdmin
+            ? <OverviewFil compact fit={oneScreen} onCount={setFilCount} />
+            : <OverviewMine compact fit={oneScreen} onGoIdeas={() => onGoTab('concepts')} />}
+          <div style={{ flex: oneScreen ? '1 1 0' : 'none', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <OverviewCalendar
+              items={calItems} big={calBig} onToggleBig={() => setCalBig((b) => !b)} fit={oneScreen}
+              onOpenItem={openCalItem} onReminderDone={(id) => void markReminderDone(id)} onGoPipeline={() => onGoTab('pipeline')}
+            />
           </div>
-        {/* act */}
-          <Panel {...panelProps('needs', 0)} kind={sig('needs').kind} title={t('ov_needs_you')} count={num(needsTotal)}>
-            {needsRows.map(r => countLine(r, 'attention'))}
-          </Panel>
-          <Panel {...panelProps('catalogue', 0)} kind={gapTotal > 0 ? 'wrong' : 'ok'} title={t('od_catalogue_health')} count={num(gapTotal)}
-            extra={fmt('od_gaps_of', { n: num(worksTotal) })} link={{ label: t('od_inventory_link'), onClick: () => onGoTab('inventory') }}>
-            {isAdmin && (
-              <Line h={rowH + 4} onClick={() => onGoTab('contacts')} bg={conflicts.length ? tint('wrong', 9) : undefined} dim={!conflicts.length} cols="12px minmax(0, 1fr) auto auto">
-                <SignalMark kind={conflicts.length ? 'wrong' : 'ok'} />
-                <span style={{ ...ELLIPSIS, fontWeight: conflicts.length ? 600 : 400 }}>{t('od_integrity_row')}</span>
-                <b>{num(conflicts.length)}</b>
-                {conflicts.length > 0 ? <span style={{ fontSize: 12, color: 'var(--rust)' }}>{t('od_resolve_link')}</span> : <span />}
-              </Line>
-            )}
-            {gapRows.map(r => (
-              <Line key={r.key} h={rowH} onClick={r.count > 0 ? r.go : undefined} dim={r.count === 0} cols="minmax(0, 150px) minmax(0, 1fr) 40px 12px">
-                <span style={ELLIPSIS} title={r.label}>{r.label}</span>
-                <span style={{ height: 6, background: 'var(--bg2)', overflow: 'hidden' }}>
-                  <span style={{ display: 'block', height: '100%', width: `${(r.count / gapMax) * 100}%`, background: r.count > 0 ? 'var(--rust)' : 'transparent' }} />
-                </span>
-                <b style={{ textAlign: 'right', fontWeight: r.count > 0 ? 700 : 400 }}>{num(r.count)}</b>
-                <SignalMark kind={r.count > 0 ? 'wrong' : 'ok'} />
-              </Line>
-            ))}
-          </Panel>
-
-        {/* time */}
-          <Panel {...panelProps('pipeline', dlMore.length)} kind={sig('deadlines').kind} title={t('od_pipeline')}
-            extra={fmt('od_active_n', { n: deadlines.length })} link={{ label: t('od_calendar_link'), onClick: () => onGoTab('pipeline') }}
-            moreContent={dlMore.map((d, i) => deadlineLine(d, i + 5))}>
-            {dlBase.length ? dlBase.map((d, i) => deadlineLine(d, i)) : <Empty h={rowH}>{t('od_no_deadline')}</Empty>}
-          </Panel>
-          <Panel {...panelProps('week', 0)} kind="info" title={t('ov_this_week')} extra={`${fmtDay(week.start)} – ${fmtDay(week.end)}`}
-            link={{ label: t('od_calendar_link'), onClick: () => onGoTab('pipeline') }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderBottom: '1px solid var(--bd)' }}>
-              {week.days.map((d, i) => (
-                <button key={d.key} type="button" onClick={() => onGoTab('pipeline')} title={d.evs.map(e => e.label).join('\n') || undefined}
-                  style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, padding: compact ? '4px 6px' : '6px 8px', background: 'none', border: 0, borderRight: i < 6 ? '1px solid var(--bg2)' : 0, borderBottom: d.today ? '2px solid var(--ac)' : '2px solid transparent', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
-                  <span style={{ fontSize: 11, color: d.today ? 'var(--ac)' : 'var(--tx2)' }}>{d.d.toLocaleDateString(localeTag, { weekday: 'short' })} {d.d.getDate()}</span>
-                  <b style={{ fontSize: 16, color: d.evs.length ? 'var(--tx)' : 'var(--tx3)' }}>{d.evs.length}</b>
-                  <span style={{ ...ELLIPSIS, fontSize: 11, color: 'var(--tx2)' }}>{d.evs[0]?.label ?? ''}</span>
-                </button>
-              ))}
-            </div>
-          </Panel>
-          <Panel {...panelProps('reminders', remMore.length)} domId="atelier-field-reminders" kind={sig('reminders').kind} title={t('ov_reminders_title')} count={num(reminders.length)}
-            link={{ label: t('od_notes_link'), onClick: () => onGoTab('notes') }} moreContent={remMore.map(reminderLine)}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', borderBottom: '1px solid var(--bd)' }}>
-              {([['od_overdue', remOverdue, 'wrong'], ['od_today', remToday, 'attention'], ['od_tomorrow', remTomorrow, null], ['od_next7', remNext7, null]] as const).map(([k, n, kind], i) => (
-                <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: compact ? '4px 12px' : '7px 12px', borderRight: i < 3 ? '1px solid var(--bg2)' : 0, background: kind && n > 0 ? tint(kind) : undefined }}>
-                  <span style={{ fontSize: 11, color: 'var(--tx2)', ...ELLIPSIS }}>{t(k)}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: compact ? 17 : 20, fontWeight: 700, color: n > 0 ? 'var(--tx)' : 'var(--tx3)' }}>{n}{kind && n > 0 && <SignalMark kind={kind} />}</span>
-                </div>
-              ))}
-            </div>
-            <div data-testid="overview-reminders">
-              {remBase.length ? remBase.map(reminderLine) : reminders.length === 0 ? <Empty h={rowH}>{t('od_no_reminder')}</Empty> : null}
-            </div>
-          </Panel>
-
-        {/* money + collection */}
-          <Panel {...panelProps('money', 0)} kind={sig('money').kind} title={fmt('od_money', { year: thisYear })} titleTip={t('od_money_note')}
-            link={{ label: t('od_fiscal_link'), onClick: () => onGoTab('fiscal') }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-              {cell(t('od_income'), formatPriceCompact(income, lang))}
-              {cell(t('od_expenses'), formatPriceCompact(expenses, lang))}
-              {cell(t('od_net'), `${net > 0 ? '+' : ''}${formatPriceCompact(net, lang)}`, { color: net < 0 ? 'var(--yellow)' : 'var(--sage)', last: true })}
-            </div>
-            <div role="img" aria-label={`${t('od_income')} ${formatPriceCompact(income, lang)} · ${t('od_expenses')} ${formatPriceCompact(expenses, lang)}`}
-              style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: compact ? '6px 12px' : '10px 12px', borderBottom: '1px solid var(--bd)' }}>
-              {[[t('od_income'), income, 'var(--ac)'], [t('od_expenses'), expenses, 'var(--bd3)']].map(([l, v, c]) => (
-                <div key={String(l)} style={{ display: 'grid', gridTemplateColumns: '80px minmax(0, 1fr)', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--tx2)' }}>
-                  <span>{l}</span>
-                  <span style={{ height: 8, background: 'var(--bg2)' }}>
-                    <span style={{ display: 'block', height: '100%', width: `${(Number(v) / Math.max(1, income, expenses)) * 100}%`, background: String(c) }} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-          <Panel {...panelProps('collection', 0)} kind="info" title={t('od_sig_collection')} count={num(worksTotal)}
-            link={{ label: t('od_reports_link'), onClick: () => onGoTab('reports') }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-              {cell(t('od_total_value'), formatPriceCompact(totalValue, lang))}
-              {cell(t('ov_stat_available'), num(available))}
-              {cell(t('od_exhibitable'), num(exposable), { last: true })}
-              {cell(t('od_priced'), num(withPrice))}
-              {cell(fmt('od_made_year', { year: thisYear }), num(byYear))}
-              {cell(t('od_catalogued'), `${Math.round((catalogued / Math.max(1, counts.total)) * 100)} %`, { last: true })}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? '6px 12px' : '10px 12px' }}>
-              <span style={{ fontSize: 11, color: 'var(--tx2)' }}>{t('byTechnique')}</span>
-              <div role="img" aria-label={techSegments.map(s => `${s.label} ${Math.round((s.n / techTotal) * 100)} %`).join(', ')} style={{ display: 'flex', height: 10, gap: 2 }}>
-                {techSegments.map((s, i) => <span key={i} title={`${s.label} · ${s.n}`} style={{ width: `${(s.n / techTotal) * 100}%`, background: techColors[i] }} />)}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 12, color: 'var(--tx2)' }}>
-                {techSegments.map((s, i) => (
-                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 8, height: 8, background: techColors[i] }} />{s.label} {Math.round((s.n / techTotal) * 100)} %
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Panel>
-
-        {/* studio life */}
-          {isAdmin && (
-            <Panel {...panelProps('jobs', 0)} kind={sig('jobs').kind} title={t('od_sig_jobs')} testId="overview-embedding-index">
-              <Line h={rowH} dim={(jobs.voice ?? 0) === 0}>
-                <span style={ELLIPSIS} data-testid="overview-jobs-voice">{t('od_jobs_voice')}</span>
-                <b>{jobs.voice == null ? '…' : num(jobs.voice)}</b>
-                <SignalMark kind={(jobs.voice ?? 0) > 0 ? 'attention' : 'ok'} />
-              </Line>
-              <Line h={rowH} dim={(jobs.index ?? 0) === 0}>
-                <span style={ELLIPSIS}>{t('od_jobs_index')}</span>
-                <b>{jobs.index == null ? '…' : num(jobs.index)}</b>
-                <SignalMark kind={(jobs.index ?? 0) > 0 ? 'attention' : 'ok'} />
-              </Line>
-              <div data-testid="overview-jobs-archive" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '5px 12px 6px', borderBottom: '1px solid var(--bg2)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ flex: 1, ...ELLIPSIS }}>{t('od_jobs_archive')}</span>
-                  <b>{jobs.archiveDays === undefined ? '…' : jobs.archiveDays === null ? t('od_jobs_never') : fmt('od_jobs_days', { n: jobs.archiveDays })}</b>
-                  <SignalMark kind={jobs.archiveStale ? 'wrong' : 'ok'} />
-                </span>
-                <span role="img" aria-label={fmt('od_jobs_alarm', { n: ARCHIVE_STALE_DAYS })} style={{ position: 'relative', height: 6, background: 'var(--bg2)' }}>
-                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, ((jobs.archiveDays ?? ARCHIVE_STALE_DAYS) / ARCHIVE_STALE_DAYS) * 100)}%`, background: jobs.archiveStale ? 'var(--rust)' : 'var(--sage)' }} />
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{fmt('od_jobs_alarm', { n: ARCHIVE_STALE_DAYS })}</span>
-              </div>
-              <LocalJobsControls jobs={jobs} t={t} />
-            </Panel>
-          )}
-          <Panel {...panelProps('ideas', ideasMore.length)} kind="info" title={t('od_ideas')}
-            link={{ label: t('od_concepts_link'), onClick: () => onGoTab('concepts') }}
-            moreContent={ideasMore.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => router.push(`/atelier/concepts?concept=${c.id}`)} t={t} />)}>
-            {ideasBase.length
-              ? ideasBase.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => router.push(`/atelier/concepts?concept=${c.id}`)} t={t} />)
-              : <Empty h={rowH}>{t('od_no_idea')}</Empty>}
-          </Panel>
-          <Panel {...panelProps('seeagain', 0)} kind="info" title={t('od_see_again')} shrink={10000} scroll>
-            <div style={{ padding: '6px 12px' }}><SeeAgainCard context="overview" /></div>
-          </Panel>
-          <Panel {...panelProps('latest', thumbsMore.length)} kind="info" title={t('od_latest')} link={{ label: t('od_inventory_link'), onClick: () => onGoTab('inventory') }}
-            moreContent={<div style={{ display: 'grid', gridTemplateColumns: `repeat(${compact ? 3 : 4}, minmax(0, 1fr))`, gap: 4, padding: '0 12px 8px' }}>{thumbsMore.map(thumb)}</div>}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${compact ? 3 : 4}, minmax(0, 1fr))`, gap: 4, padding: '8px 12px 4px' }}>{thumbsBase.map(thumb)}</div>
-          </Panel>
         </aside>
+
+        {/* The grid: liquid, rows share the height, so on a big screen the cards just get bigger */}
+        <div data-testid="overview-grid" style={{
+          flex: '1 1 0', minWidth: 0, minHeight: 0, display: 'grid', gridAutoFlow: 'dense',
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: oneScreen ? `repeat(${rows}, minmax(0, 1fr))` : undefined,
+          gridAutoRows: oneScreen ? 'minmax(0, 1fr)' : 'minmax(120px, auto)',
+          height: oneScreen ? '100%' : undefined,
+        }}>
+          {cards.map((c) => (
+            <SignalCardView key={c.id} card={c} open={openCard === c.id} fit={oneScreen} span={openCard === c.id ? { col: Math.min(2, cols), row: openSpanRows } : undefined}
+              onToggle={() => setOpenCard((cur) => (cur === c.id ? null : c.id))} onOpenScreen={c.sig.go} t={t} />
+          ))}
+          {contentCard('latest', t('od_latest'), { label: t('od_inventory_link'), onClick: () => onGoTab('inventory') }, calBig ? {} : { gridColumn: `span ${Math.min(2, cols)}`, gridRow: 'span 2' },
+            <FitList items={recentWorks.map(thumb)} contents enabled={oneScreen} showMore={false}
+              style={{ flex: oneScreen ? '1 1 0' : 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 3, padding: '6px 12px', alignContent: 'start' }} />)}
+          {/* À revoir: a widget with its own buttons — folded it is a clipped, untouchable glance; opened (like a card) it is whole. */}
+          <section data-testid="overview-card-seeagain" data-open={openCard === 'seeagain' ? 'true' : 'false'}
+            onClick={openCard === 'seeagain' ? undefined : () => setOpenCard('seeagain')}
+            style={{
+              gridColumn: openCard === 'seeagain' ? `span ${Math.min(2, cols)}` : undefined, gridRow: openCard === 'seeagain' ? `span ${openSpanRows}` : undefined,
+              display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden', borderRight: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
+              boxShadow: openCard === 'seeagain' ? 'inset 0 0 0 1px var(--ac)' : undefined, cursor: openCard === 'seeagain' ? 'default' : 'pointer',
+            }}>
+            <button type="button" aria-expanded={openCard === 'seeagain'} aria-label={`${t('od_see_again')} — ${t(openCard === 'seeagain' ? 'card_collapse' : 'card_expand')}`}
+              onClick={(e) => { e.stopPropagation(); setOpenCard((cur) => (cur === 'seeagain' ? null : 'seeagain')) }}
+              style={{ ...SECTION, flex: 'none', height: 28, padding: '0 12px', background: 'var(--bg1)', border: 0, borderBottom: '1px solid var(--bd)', font: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+              <span style={{ flex: 1, textAlign: 'left' }}>{t('od_see_again')}</span>
+              {openCard === 'seeagain' && <span style={{ color: 'var(--tx3)', textTransform: 'none', letterSpacing: 0 }}>▴ {t('od_less_title')}</span>}
+            </button>
+            <div style={{ flex: oneScreen ? '1 1 0' : 'none', minHeight: 0, overflow: 'hidden', padding: '6px 12px', pointerEvents: openCard === 'seeagain' ? undefined : 'none' }}><SeeAgainCard context="overview" /></div>
+          </section>
+          {contentCard('ideas', t('od_ideas'), { label: t('od_concepts_link'), onClick: () => onGoTab('concepts') }, {},
+            ideasRows.length
+              ? <FitList items={ideasRows} enabled={oneScreen} style={{ flex: oneScreen ? '1 1 0' : 'none' }} />
+              : <Empty h={28}>{t('od_no_idea')}</Empty>)}
+        </div>
       </main>
 
       {/* Status bar */}
-      <footer style={{ flex: 'none', height: 24, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)', fontSize: 11, color: 'var(--tx3)' }}>
+      <footer style={{ flex: 'none', height: FOOTER_H, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)', fontSize: 11, color: 'var(--tx3)' }}>
         <span style={{ ...ELLIPSIS, flex: 1 }}>{t('od_status_hint')}</span>
         {now && <span style={{ whiteSpace: 'nowrap' }}>{fmt('od_loaded_at', { time: now.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' }) })}</span>}
       </footer>
@@ -718,78 +731,65 @@ export function OverviewTab({
 
 // ── Building blocks (module level so they keep identity between renders) ──
 
-/** Side-rail panels, in rail order (« Tout ouvrir »). */
-const RAIL_PANELS = ['needs', 'catalogue', 'pipeline', 'week', 'reminders', 'money', 'collection', 'jobs', 'ideas', 'seeagain', 'latest']
-
 const ELLIPSIS: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 const SECTION: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--tx2)' }
 
-function Panel({
-  id, domId, fixed, hdrH, open, flashed, more, reduceMotion, onEnter, onLeave, onToggle, moreLabel, moreTitle,
-  kind, title, titleTip, count, extra, link, children, moreContent, testId, shrink = 50, scroll = false, folded = false, onFold,
-}: {
-  id: string; domId?: string; fixed: boolean; hdrH: number; open: boolean; flashed: boolean; more: number; reduceMotion: boolean
-  /** Side rail: header only until opened. */
-  folded?: boolean; onFold?: () => void
-  onEnter?: () => void; onLeave?: () => void; onToggle?: () => void; moreLabel: string; moreTitle: string
-  kind?: SignalKind; title: string; titleTip?: string; count?: string; extra?: string
-  link?: { label: string; onClick: () => void }; children: ReactNode; moreContent?: ReactNode; testId?: string
-  /** How fast this panel gives up height when its column is full (higher = first). */
-  shrink?: number
-  /** Scroll inside instead of clipping when squeezed (See again: its own buttons must stay reachable). */
-  scroll?: boolean
+/** One signal as a card: mark, label, the count once, a chart; the rows that fit; a click widens it in place. */
+function SignalCardView({ card, open, fit, span, onToggle, onOpenScreen, t }: {
+  card: Card; open: boolean; fit: boolean; span?: { col: number; row: number }
+  onToggle: () => void; onOpenScreen: () => void; t: (k: string) => string
 }) {
-  const style: CSSProperties = fixed
-    ? open
-      ? { flex: '1 1 auto', minHeight: 220, overflowY: 'auto' }
-      : { flex: `0 ${shrink} auto`, minHeight: hdrH, overflow: 'hidden', overflowY: scroll ? 'auto' : 'hidden' }
-    : {}
-  return (
-    <div id={domId ?? `ov-panel-${id}`} data-testid={testId} onMouseEnter={onEnter} onMouseLeave={onLeave}
-      style={{
-        ...style, position: 'relative', borderBottom: '1px solid var(--bd)',
-        boxShadow: open ? 'inset 0 2px 0 var(--ac)' : flashed ? 'inset 0 0 0 2px var(--ac)' : undefined,
-        transition: reduceMotion ? undefined : 'box-shadow 200ms',
-        scrollMarginTop: 96,
-      }}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8, height: hdrH, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)', boxShadow: open ? 'inset 0 2px 0 var(--ac)' : undefined }}>
-        {onFold ? (
-          <button type="button" onClick={onFold} aria-expanded={!folded} data-testid={`overview-panel-fold-${id}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto', height: '100%', background: 'none', border: 0, padding: 0, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
-            <span aria-hidden="true" style={{ color: 'var(--tx3)', fontSize: 10, width: 8 }}>{folded ? '▸' : '▾'}</span>
-            {kind && <SignalMark kind={kind} />}
-            <h2 title={titleTip ?? title} style={{ ...SECTION, margin: 0, ...ELLIPSIS, flex: '0 1 auto' }}>{title}</h2>
-            {count != null && <b>{count}</b>}
-            {extra && <span title={extra} style={{ ...ELLIPSIS, flex: '0 20 auto', color: 'var(--tx3)' }}>{extra}</span>}
-          </button>
-        ) : (
-          <>
-            {kind && <SignalMark kind={kind} />}
-            <h2 title={titleTip ?? title} style={{ ...SECTION, margin: 0, ...ELLIPSIS, flex: '0 1 auto' }}>{title}</h2>
-            {count != null && <b>{count}</b>}
-            {extra && <span title={extra} style={{ ...ELLIPSIS, flex: '0 20 auto', color: 'var(--tx3)' }}>{extra}</span>}
-            <span style={{ flex: 1 }} />
-          </>
-        )}
-        {!folded && more > 0 && onToggle && (
-          <button type="button" onClick={onToggle} title={moreTitle} aria-expanded={open}
-            style={{ background: 'none', border: 0, padding: '0 2px', fontSize: 11, color: open ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>
-            {open ? '−' : moreLabel}
-          </button>
-        )}
-        {link && (
-          <button type="button" onClick={link.onClick} style={{ background: 'none', border: 0, padding: 0, fontSize: 12, color: 'var(--tx2)', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>{link.label}</button>
+  const { sig: s } = card
+  const rowEl = (r: CardRow) => {
+    const interactive = open
+    const label = (
+      <span style={{ ...ELLIPSIS, color: r.dim ? 'var(--tx3)' : open ? 'var(--tx)' : 'var(--tx2)' }}>{r.label}</span>
+    )
+    return (
+      <div key={r.key} style={{ display: 'grid', gridTemplateColumns: r.action ? 'minmax(0, 1fr) auto 28px' : 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center', minHeight: open ? 28 : 22, padding: open ? '0 12px' : '0 10px', borderBottom: '1px solid var(--bg2)', fontSize: open ? 13 : 12 }}>
+        {interactive && r.go
+          ? <button type="button" onClick={(e) => { e.stopPropagation(); r.go?.() }} style={{ ...ELLIPSIS, background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', color: 'var(--tx)', cursor: 'pointer' }}>{r.label}</button>
+          : label}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', color: r.kind === 'wrong' ? 'var(--rust)' : r.kind === 'attention' ? 'var(--yellow)' : 'var(--tx2)' }}>
+          {r.value != null && <b style={{ fontWeight: r.dim ? 400 : 700, color: r.dim ? 'var(--tx3)' : 'var(--tx)' }}>{r.value}</b>}
+        </span>
+        {r.action && (
+          <button type="button" data-testid={r.action.testId} title={r.action.title} aria-label={r.action.title} onClick={(e) => { e.stopPropagation(); r.action?.onClick() }}
+            style={{ height: 24, background: 'none', border: 0, borderLeft: '1px solid var(--bd)', color: 'var(--tx3)', cursor: 'pointer', font: 'inherit' }}>{r.action.label}</button>
         )}
       </div>
-      {!folded && children}
-      {!folded && moreContent != null && more > 0 && (
-        <div aria-hidden={!open} style={{
-          maxHeight: open ? 4000 : 0, opacity: open ? 1 : 0, overflow: 'hidden',
-          transition: reduceMotion ? undefined : 'max-height 380ms ease, opacity 380ms ease',
-        }}>
-          {moreContent}
-        </div>
-      )}
+    )
+  }
+  // Collapsed: the rows that fit (on a scrolling page: the first two). Opened: every row that fits, then « + n autres ».
+  const nodes = (open || fit ? card.rows : card.rows.slice(0, 2)).map(rowEl)
+  return (
+    <div id={card.id === 'reminders' ? 'atelier-field-reminders' : undefined} data-testid={`overview-card-${card.id}`} data-open={open ? 'true' : 'false'} title={card.title}
+      onClick={open ? undefined : onToggle}
+      style={{
+        gridColumn: span ? `span ${span.col}` : undefined, gridRow: span ? `span ${span.row}` : undefined,
+        position: 'relative', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden', scrollMarginTop: 96,
+        borderTop: `2px solid ${s.kind === 'info' ? 'var(--bd2)' : SIGNAL_COLOR[s.kind]}`, borderRight: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
+        background: open ? 'var(--bg1)' : tint(s.kind) ?? 'transparent', boxShadow: open ? 'inset 0 0 0 1px var(--ac)' : undefined, cursor: open ? 'default' : 'pointer',
+      }}>
+      <button type="button" aria-expanded={open} aria-label={`${s.label}: ${s.value} — ${t(open ? 'card_collapse' : 'card_expand')}`} onClick={(e) => { e.stopPropagation(); onToggle() }}
+        style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 3, padding: '6px 10px 6px', border: 0, background: 'none', color: 'var(--tx)', font: 'inherit', textAlign: 'left', cursor: 'pointer', width: '100%' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx2)', whiteSpace: 'nowrap' }}>
+          <SignalMark kind={s.kind} />{s.label}
+          {open && <span style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 11 }}>▴ {t('od_less_title')}</span>}
+        </span>
+        <b style={{ fontSize: open ? 26 : 20, lineHeight: 1 }}>{s.value}</b>
+        <span style={{ ...ELLIPSIS, fontSize: 11, color: 'var(--tx3)' }}>{s.detail}</span>
+        {open || !card.viz ? null : card.viz}
+      </button>
+      {open && card.head ? <div style={{ flex: 'none', padding: '0 12px 6px', fontSize: 11, color: 'var(--tx3)' }}>{card.head}</div> : null}
+      <FitList items={nodes} enabled={fit} showMore={open} testId={card.rowsTestId} style={{ flex: fit ? '1 1 0' : 'none' }} />
+      {open && card.extra ? <div style={{ flex: 'none' }} onClick={(e) => e.stopPropagation()}>{card.extra}</div> : null}
+      {open && !card.noScreen ? (
+        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenScreen() }}
+          style={{ flex: 'none', margin: '8px 12px', padding: '6px 10px', alignSelf: 'flex-start', border: '1px solid var(--bd2)', borderRadius: 4, background: 'none', color: 'var(--tx)', font: 'inherit', cursor: 'pointer' }}>
+          {t('card_open_screen')}
+        </button>
+      ) : null}
     </div>
   )
 }

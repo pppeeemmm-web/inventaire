@@ -16,6 +16,7 @@ import { thumbUrl } from '@/lib/data'
 import { dismissToast, toast } from '@/lib/ui/toast'
 import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
 import { orderBody } from '@/lib/orders/fil-order-text'
+import { FitList } from '@/components/atelier/overview/FitList'
 import { decideFil, listFil, type FilDecision, type FilItem, type FilSection } from '@/app/atelier/fil/actions'
 
 const UNDO_MS = 6000
@@ -35,7 +36,13 @@ function changeValue(key: string, value: string | null): string {
   return value.length > 60 ? `${value.slice(0, 60)}…` : value
 }
 
-export function OverviewFil() {
+export function OverviewFil({ compact = false, fit = true, onCount }: {
+  /** Left column of the glance layout: one flat list that never scrolls (the rows that fit, then « + n autres »). */
+  compact?: boolean
+  fit?: boolean
+  /** Tells the Overview how many lines wait (null while loading) — the same read, no second `listFil`. */
+  onCount?: (n: number | null) => void
+} = {}) {
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const [items, setItems] = useState<FilItem[] | null>(null)
@@ -43,6 +50,9 @@ export function OverviewFil() {
   /** Keys decided here (waiting or sent): out of the list until the server agrees or refuses. */
   const [gone, setGone] = useState<Set<string>>(() => new Set())
   const [selKey, setSelKey] = useState<string | null>(null)
+  /** Compact column: how many rows the height shows; the keyboard never acts on a hidden one. */
+  const [visibleN, setVisibleN] = useState<number | null>(null)
+  const [showCooled, setShowCooled] = useState(false)
   const pending = useRef<Pending | null>(null)
 
   useEffect(() => {
@@ -66,7 +76,13 @@ export function OverviewFil() {
   const cooled = useMemo(() => visible.filter((i) => i.cooled), [visible])
   // Keyboard / reading order: Création, then Fiches, then Kaizen (flagged first inside each, from listFil).
   const ordered = useMemo(() => SECTIONS.flatMap((s) => live.filter((i) => i.section === s)), [live])
-  const sel = ordered.find((i) => i.key === selKey) ?? ordered[0] ?? null
+  const shownCount = compact && visibleN != null && !showCooled ? Math.max(1, visibleN) : ordered.length
+  const sel = ordered.slice(0, shownCount).find((i) => i.key === selKey) ?? (showCooled ? null : ordered[0]) ?? null
+  useEffect(() => {
+    onCount?.(items ? live.length : null)
+  }, [items, live.length, onCount])
+  // The Overview must not keep counting a Fil that is no longer on screen.
+  useEffect(() => () => onCount?.(null), [onCount])
 
   const send = useCallback((p: Pending) => {
     void decideFil(p.item.kind, p.item.id, p.decision).then((res) => {
@@ -105,7 +121,7 @@ export function OverviewFil() {
     (item: FilItem, decision: FilDecision) => {
       flush()
       const idx = ordered.findIndex((i) => i.key === item.key)
-      const nextSel = ordered[idx + 1] ?? ordered[idx - 1] ?? null
+      const nextSel = (idx + 1 < shownCount ? ordered[idx + 1] : undefined) ?? ordered[idx - 1] ?? ordered[idx + 1] ?? null
       setGone((g) => new Set(g).add(item.key))
       setSelKey(nextSel?.key ?? null)
       const fiche = item.kind === 'pending_change'
@@ -136,7 +152,7 @@ export function OverviewFil() {
       }
       pending.current = p
     },
-    [flush, ordered, send, t],
+    [flush, ordered, send, shownCount, t],
   )
 
   // ← discard · → keep the selected row; ↑ / ↓ move the selection. Not while typing.
@@ -150,7 +166,8 @@ export function OverviewFil() {
       else if (e.key === 'ArrowRight') decide(sel, 'keep')
       else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const idx = ordered.findIndex((i) => i.key === sel.key)
-        const next = ordered[idx + (e.key === 'ArrowDown' ? 1 : -1)]
+        const nextIdx = idx + (e.key === 'ArrowDown' ? 1 : -1)
+        const next = nextIdx < shownCount ? ordered[nextIdx] : undefined
         if (!next) return
         e.preventDefault()
         setSelKey(next.key)
@@ -159,7 +176,7 @@ export function OverviewFil() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [decide, ordered, sel])
+  }, [decide, ordered, sel, shownCount])
 
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' })
 
@@ -269,6 +286,49 @@ export function OverviewFil() {
               ✓
             </button>
           </div>
+        )}
+      </div>
+    )
+  }
+
+  if (compact) {
+    const LIMIT_WHEN_SCROLLING_PAGE = 8
+    const rows = showCooled ? cooled.map((i) => row(i, true)) : ordered.map((i) => row(i))
+    const perSection = SECTIONS.map((sct) => `${t(SECTION_LABEL[sct])} ${live.filter((i) => i.section === sct).length}`).join(' · ')
+    return (
+      <div data-testid="overview-fil" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, flex: fit ? '0 1 auto' : 'none', maxHeight: fit ? '46%' : undefined, borderBottom: '1px solid var(--bd)' }}>
+        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', background: 'var(--bg1)', borderBottom: '1px solid var(--bd)' }} title={`← ${t('fil_discard')} · ${t('fil_keep')} →`}>
+          <h2 style={{ ...HEAD, margin: 0 }}>{t('ofil_title')}</h2>
+          <b data-testid="overview-fil-count">{items ? live.length : '…'}</b>
+          <span style={{ flex: 1 }} />
+          <Link href="/hub/fil" style={{ fontSize: 11, color: 'var(--tx2)', whiteSpace: 'nowrap' }}>{t('ofil_open_phone')}</Link>
+        </div>
+        {items ? (
+          <div data-testid="overview-fil-sections" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '2px 12px', borderBottom: '1px solid var(--bg2)', fontSize: 11, color: 'var(--tx3)' }}>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{perSection}</span>
+            {cooled.length ? (
+              <button type="button" data-testid="overview-fil-cooled" aria-pressed={showCooled} title={t('fil_cooled_hint')} onClick={() => setShowCooled((v) => !v)}
+                style={{ marginLeft: 'auto', flex: 'none', background: 'none', border: 0, padding: 0, font: 'inherit', color: showCooled ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {t('fil_cooled')} {cooled.length}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {failed ? (
+          <p style={{ margin: 0, padding: '8px 12px', color: 'var(--rust)', fontSize: 13 }}>{t('fil_load_error')}</p>
+        ) : !items ? (
+          <p style={{ margin: 0, padding: '8px 12px', color: 'var(--tx3)', fontSize: 13 }}>{t('fil_loading')}</p>
+        ) : rows.length === 0 ? (
+          <p data-testid="overview-fil-empty" style={{ margin: 0, padding: '5px 12px', color: 'var(--tx3)', fontSize: 12 }}>{t('fil_empty')}</p>
+        ) : (
+          <>
+            <FitList items={fit ? rows : rows.slice(0, LIMIT_WHEN_SCROLLING_PAGE)} enabled={fit} onFit={setVisibleN} style={{ flex: fit ? '0 1 auto' : 'none' }} />
+            {!fit && rows.length > LIMIT_WHEN_SCROLLING_PAGE ? (
+              <Link href="/hub/fil" style={{ display: 'block', padding: '4px 12px', fontSize: 11, color: 'var(--tx3)' }}>
+                {t('fit_more').replace('{n}', String(rows.length - LIMIT_WHEN_SCROLLING_PAGE))}
+              </Link>
+            ) : null}
+          </>
         )}
       </div>
     )
