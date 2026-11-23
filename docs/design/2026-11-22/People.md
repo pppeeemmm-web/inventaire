@@ -1,6 +1,6 @@
 # People on one page — design (2026-11-22)
 
-Status: **local draft**, uncommitted, design only: no SQL. Pem answered every question 2026-11-23 (§11). The §0 fix is code, done on Pem's GO.
+Status: **approved by Pem 2026-11-23** (« If it needs to be built, we start building »). Steps 0–3 of §10 are live (saveContact, places, display, the person page 26f48d3); the next steps need SQL, each with its own OK.
 Read for this page: root `CLAUDE.md`; [`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md); [`MasterPlan.md`](../2026-11-20/MasterPlan.md) §1.1, §2, §5; [`Survey_ContactsCare.md`](../2026-11-21/Survey_ContactsCare.md), [`Survey_LinksDigests.md`](../2026-11-21/Survey_LinksDigests.md); [`CatalogueGaps.notes.md`](../2026-11-19/CatalogueGaps.notes.md) E and I; [`ContactsReview.notes.md`](../2026-11-18/ContactsReview.notes.md); `docs/TODO.md` §3. The Journal design of today (main checkout, `JournalDesign.md`) for its `@person` links.
 Code read: `app/atelier/(portal)/contacts/actions.ts`, `components/atelier/ContactEditorPanel.tsx` (save path), a scout list of every writer and reader (§7). Live database read only, 2026-11-22: foreign keys, triggers, RLS policies and counts — no names or other personal data copied here.
 Mockup: [`People_Mockup.html`](./People_Mockup.html) — desk and phone side by side, clickable, invented people.

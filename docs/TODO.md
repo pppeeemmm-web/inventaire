@@ -9,7 +9,8 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
-- People step 3 (person page, reads only) and the reverse pricing first slice (admin block on the work card, no SQL): built in their sessions; the lead checks each on the copy, then lands.
+- People: steps 0–3 live (person page 26f48d3); next steps need SQL (People.md §10: tags, `moment` touches, person ↔ person, birthdays, `person_timeline`) — design approved, each SQL with Pem's OK.
+- Reverse pricing: first slice live (admin block on the work card); open: the contributions rate and how a consignment receipt is declared (accountant), a database sum for the running-cost rate.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
 - Pem's order « 1 3 2 » is done (see DONE); next if time remains before the pause (Max runs to 17 Dec 2026): the reverse pricing design draft (§3, no build).
 - Tests on the copy, open: the live dev server's auto-login (plan §2B: B2 would also stop the LAN phone's real-account login — Pem decides); `e2e:writes:check` in `ship.ps1` / CI with the first `@writes` spec; the copy's `next dev` can exit mid-run (« exited code=0 », 7 specs then refused) — a rerun passes → [TestsOnDockerCopy](./design/2026-11-23/TestsOnDockerCopy.md).

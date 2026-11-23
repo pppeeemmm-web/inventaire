@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — People step 3: the person page (Pem « If it needs to be built, we start building »)
+
+- `26f48d3`: opening a contact shows its page — works strips owns / holds / bought (counts from the database, paged), orders and papers folded (read on open), « Dans le Journal », coordinates rail (desk) / folded (phone, call / mail); « Modifier » opens the unchanged editor (saveContact); ⋯ = new order / merge / delete on phone and desk. Reads only, no SQL. Checked on the copy: desk 1280 px, phone 375 px (no sideways scroll except the works strip, taps ≥ 44 px), team account (page opens, no « Privé » chip). What's new 3.1.105. Next People steps need SQL (People.md §10: tags, `moment`, person ↔ person, birthdays, the timeline read) — each with Pem's OK.
+
 ## 2026-11-23 — Reverse pricing, first slice (Pem « Ok for the draft », answers in [ReversePricing](./design/2026-11-23/ReversePricing.md) §9)
 
 - `254e7d2`: folded admin-only « Prix inverse » on the work card — from the net wanted to the list price per channel, net kept, max discount, wholesale; one list price by default; 10 € steps under 5 000 €. Read only (its two cost reads start on open). Worked example run through the code; checked on the copy (net 1 000 € → studio floor 1 267 €, gallery 2 112 €, list 2 120 €). Open: the contributions rate to confirm with the accountant; the running-cost rate sums expenses in the app (≤ 1 000 rows, refuses above) — a database sum later.

@@ -7,6 +7,12 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.105 (2026-11-23) — the person page.
+  wn_person_page_t: { fr: 'Une page par personne', en: 'A page for each person' },
+  wn_person_page_d: {
+    fr: 'Ouvrir un contact montre sa page : les œuvres qu’il possède, détient ou a achetées, ses commandes et ses papiers (dépliez pour voir), « Dans le Journal », et ses coordonnées (appeler, écrire). « Modifier » ouvre la fiche comme avant.',
+    en: 'Opening a contact shows their page: the works they own, hold or bought, their orders and papers (unfold to see), « In the Journal », and their details (call, write). « Edit » opens the card as before.',
+  },
   // 3.1.105 (2026-11-23) — reverse pricing (admin).
   wn_reverse_pricing_t: { fr: 'Prix inverse sur la fiche d’une œuvre', en: 'Reverse pricing on a work card' },
   wn_reverse_pricing_d: {
