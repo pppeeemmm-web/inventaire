@@ -135,12 +135,14 @@ export type ContactDeleteBlocker = {
   orders: number
   invoices: number
   supplyOrders: number
+  /** Journal entries naming it (`journal_entry_link.contact_id`). */
+  journal: number
 }
 
 /** `blocked`: nothing was deleted; the client words the reasons (`formatContactDeleteBlockers`). */
 export type ContactDeleteResult = { error: string } | { ok: true } | { blocked: ContactDeleteBlocker[] }
 
-type BlockerCountKey = 'owner' | 'holder' | 'shipments' | 'orders' | 'invoices' | 'supplyOrders'
+type BlockerCountKey = 'owner' | 'holder' | 'shipments' | 'orders' | 'invoices' | 'supplyOrders' | 'journal'
 
 /** Live foreign keys to "Contact" with NO ACTION / RESTRICT (checked 2026-11-18): they make the delete fail. */
 const CONTACT_DELETE_BLOCKING_REFS: { table: string; col: string; key: BlockerCountKey }[] = [
@@ -150,6 +152,7 @@ const CONTACT_DELETE_BLOCKING_REFS: { table: string; col: string; key: BlockerCo
   { table: 'work_order', col: 'party_id', key: 'orders' },
   { table: 'invoice', col: 'party_id', key: 'invoices' },
   { table: 'supply_order', col: 'supplier_id', key: 'supplyOrders' },
+  { table: 'journal_entry_link', col: 'contact_id', key: 'journal' },
 ]
 
 /** Exact count of rows per id in `table.col` (head counts: no row cap). */
@@ -224,7 +227,7 @@ export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult
       id: c.ContactID,
       name: contactListLabel(c),
       login: !!c.auth_user_id,
-      owner: 0, holder: 0, shipments: 0, orders: 0, invoices: 0, supplyOrders: 0,
+      owner: 0, holder: 0, shipments: 0, orders: 0, invoices: 0, supplyOrders: 0, journal: 0,
     }
     CONTACT_DELETE_BLOCKING_REFS.forEach(({ key }, i) => { b[key] = counts[i].get(c.ContactID) ?? 0 })
     if (b.login || CONTACT_DELETE_BLOCKING_REFS.some(({ key }) => b[key] > 0)) blocked.push(b)

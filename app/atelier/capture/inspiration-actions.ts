@@ -20,6 +20,63 @@ type Err = { error: string }
 const MAX_BYTES = 12 * 1024 * 1024
 const MAX_CAPTION = 2000
 
+type Loose = { rpc: (f: string, a: Record<string, unknown>) => any }
+/** A link typed in the photo's text: a work or a person (positive integer id), an idée (uuid). */
+export type PhotoLink = { kind: 'oeuvre' | 'concept' | 'contact'; id: number | string }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function validPhotoLink(l: unknown): l is PhotoLink {
+  if (!l || typeof l !== 'object') return false
+  const { kind, id } = l as { kind?: unknown; id?: unknown }
+  if (kind === 'oeuvre' || kind === 'contact') {
+    return typeof id === 'number' && Number.isInteger(id) && id > 0 && String(id).length <= 9
+  }
+  if (kind === 'concept') return typeof id === 'string' && UUID_RE.test(id)
+  return false
+}
+
+function validPhotoLinks(v: unknown): v is PhotoLink[] {
+  return Array.isArray(v) && v.every(validPhotoLink)
+}
+
+// The RPCs raise one word (not_found, hidden, text_required, bad_link, not_allowed); it is passed on as is,
+// any other Postgres message too.
+function mapRpcError(message: string): string {
+  return message
+}
+
+const META_STR_KEYS = ['taken_at', 'make', 'model', 'lens', 'file_name'] as const
+const META_NUM_KEYS = ['f_number', 'exposure', 'iso', 'focal', 'width', 'height'] as const
+
+/** Keeps only the known camera fields (strings ≤ 120 chars, finite numbers) and a valid gps; else null. */
+function cleanMeta(raw: string): Record<string, unknown> | null {
+  let o: unknown
+  try {
+    o = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null
+  const src = o as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  const okStr = (v: unknown): v is string => typeof v === 'string' && v.length <= 120
+  const okNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+  for (const k of [...META_STR_KEYS, ...META_NUM_KEYS]) {
+    const v = src[k]
+    if (okStr(v) || okNum(v)) out[k] = v
+  }
+  if (typeof out.taken_at === 'string' && !Number.isFinite(Date.parse(out.taken_at))) delete out.taken_at
+  const g = src.gps
+  if (g && typeof g === 'object' && !Array.isArray(g)) {
+    const { lat, lon, alt } = g as Record<string, unknown>
+    if (okNum(lat) && lat >= -90 && lat <= 90 && okNum(lon) && lon >= -180 && lon <= 180) {
+      out.gps = okNum(alt) ? { lat, lon, alt } : { lat, lon }
+    }
+  }
+  return Object.keys(out).length ? out : null
+}
+
 function inspirationTable(supabase: Awaited<ReturnType<typeof createClient>>) {
   return supabase.from('inspiration_photo')
 }
@@ -52,7 +109,7 @@ async function recycle(keys: string[]): Promise<void> {
  * day a queued capture was taken (`taken_at`), else today. A resend of the same one-time id answers
  * `already: true` with the day the photo is on (design 2026-11-23 JournalDesk §3: never a silent « ok »).
  */
-export async function addInspirationPhoto(formData: FormData): Promise<{ ok: true; id: string; day: string; already?: true } | Err> {
+export async function addInspirationPhoto(formData: FormData): Promise<{ ok: true; id: string; day: string; already?: true; textError?: string } | Err> {
   if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }
   const supabase = await createClient()
   const who = await adminUser(supabase)
@@ -65,6 +122,21 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   if (clientId) {
     const { data: already } = await inspirationTable(supabase).select('id, day').eq('id', clientId).maybeSingle()
     if (already) return { ok: true, id: clientId, day: String((already as { day: string }).day), already: true }
+  }
+
+  const metaRaw = String(formData.get('meta') ?? '').trim()
+  const meta = metaRaw ? cleanMeta(metaRaw) : null
+  const linksRaw = String(formData.get('links') ?? '').trim()
+  let extraLinks: PhotoLink[] = []
+  if (linksRaw) {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(linksRaw)
+    } catch {
+      return { error: 'bad_link' }
+    }
+    if (!validPhotoLinks(parsed)) return { error: 'bad_link' }
+    extraLinks = parsed
   }
 
   const file = formData.get('photo')
@@ -127,7 +199,7 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   }
 
   const { data, error } = await inspirationTable(supabase)
-    .insert({ ...(clientId ? { id: clientId } : {}), day, author_id: who.user.id, image_key: mainKey, caption, oeuvre_id, concept_id })
+    .insert({ ...(clientId ? { id: clientId } : {}), day, author_id: who.user.id, image_key: mainKey, caption: null, oeuvre_id, concept_id, meta } as never)
     .select('id')
     .single()
   // Two sends of the same one-time id at once: the other one saved it (same image keys) — not an error.
@@ -137,9 +209,25 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
     return { error: error?.message ?? 'insert' }
   }
 
+  const newId = (data as { id: string }).id
+  let textError: string | undefined
+  const links: PhotoLink[] = [...extraLinks]
+  if (oeuvre_id != null) links.push({ kind: 'oeuvre', id: oeuvre_id })
+  if (concept_id != null) links.push({ kind: 'concept', id: concept_id })
+  // No text → no entry (the set_text door refuses an empty one): a picked work / idea stays in the photo's columns.
+  if (caption) {
+    const { error: textErr } = await (supabase as unknown as Loose).rpc('inspiration_photo_set_text', {
+      p_photo: newId,
+      p_text: caption ?? '',
+      p_links: links,
+    })
+    // The photo stays saved whatever happens to its text.
+    if (textErr) textError = mapRpcError(String(textErr.message ?? 'text'))
+  }
+
   revalidatePath('/atelier/journal')
   revalidatePath('/hub')
-  return { ok: true, id: (data as { id: string }).id, day }
+  return { ok: true, id: newId, day, ...(textError ? { textError } : {}) }
 }
 
 /**
@@ -148,32 +236,43 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
  * No path refresh: each of the two readers takes this answer — the desk Journal day patches its list, the phone
  * day (`TodayEntries`, server-rendered) asks its page again (`router.refresh()`).
  */
-export async function setInspirationCaption(id: string, text: string): Promise<{ ok: true; caption: string | null } | Err> {
+export async function setInspirationCaption(
+  id: string,
+  text: string,
+  links: PhotoLink[] = [],
+): Promise<{ ok: true; caption: string | null; changed: boolean; entryId: number | null } | Err> {
   if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }
   if (!/^[0-9a-f-]{36}$/i.test(String(id))) return { error: 'not_found' }
+  if (!validPhotoLinks(links)) return { error: 'bad_link' }
   const supabase = await createClient()
   const who = await adminUser(supabase)
   if (!who.user) return { error: who.error ?? 'auth' }
-  const caption = String(text ?? '').trim().slice(0, MAX_CAPTION) || null
-  const { data, error } = await inspirationTable(supabase).update({ caption }).eq('id', id).select('caption')
-  if (error) return { error: error.message }
-  const rows = (data ?? []) as Array<{ caption: string | null }>
-  if (!rows.length) return { error: 'not_found' }
-  return { ok: true, caption: rows[0].caption }
+  const { data, error } = await (supabase as unknown as Loose).rpc('inspiration_photo_set_text', {
+    p_photo: id,
+    p_text: String(text ?? ''),
+    p_links: links,
+  })
+  if (error) return { error: mapRpcError(String(error.message ?? 'error')) }
+  const r = (data ?? {}) as { caption?: string | null; changed?: boolean; entry_id?: number | null }
+  return { ok: true, caption: r.caption ?? null, changed: r.changed === true, entryId: r.entry_id != null ? Number(r.entry_id) : null }
 }
 
 /** Removes an inspiration photo (admin): the row goes, the image + thumb go to R2 `recycle/`. */
-export async function removeInspirationPhoto(id: string): Promise<{ ok: true } | Err> {
+export async function removeInspirationPhoto(id: string): Promise<{ ok: true; result: 'deleted' | 'hidden' } | Err> {
   if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }
   const supabase = await createClient()
   const who = await adminUser(supabase)
   if (!who.user) return { error: who.error ?? 'auth' }
-  const { data, error } = await inspirationTable(supabase).delete().eq('id', id).select('image_key')
-  if (error) return { error: error.message }
-  const rows = (data ?? []) as Array<{ image_key: string }>
-  if (!rows.length) return { error: 'not_found' }
-  await recycle(rows.flatMap((r) => (r.image_key.startsWith('inspiration/') ? [r.image_key, `thumbs/${r.image_key}`] : [])))
+  const { data, error } = await (supabase as unknown as Loose).rpc('inspiration_photo_remove', { p_photo: id })
+  if (error) return { error: mapRpcError(String(error.message ?? 'error')) }
+  const r = (data ?? {}) as { result?: string; image_key?: string }
+  let result: 'deleted' | 'hidden' = 'hidden'
+  if (r.result === 'deleted') {
+    result = 'deleted'
+    const key = String(r.image_key ?? '')
+    if (key.startsWith('inspiration/')) await recycle([key, `thumbs/${key}`])
+  }
   revalidatePath('/atelier/journal')
   revalidatePath('/hub')
-  return { ok: true }
+  return { ok: true, result }
 }

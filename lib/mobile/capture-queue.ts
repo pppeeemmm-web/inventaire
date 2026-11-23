@@ -86,7 +86,16 @@ export function isNetworkFailure(err: unknown): boolean {
   return /fetch|network|load failed|offline|timed? ?out|aborted/i.test(msg)
 }
 
-async function sendOne(c: QueuedCapture): Promise<{ ok: true; day?: string } | { error: string }> {
+/**
+ * A photo that was saved but whose text was not (`textError` from addInspirationPhoto). The photo counts as sent
+ * (a resend would only answer « already »); the failure waits here until the screen takes it and says it.
+ */
+const textFailures: Array<{ id: string; why: string }> = []
+export function takeCaptureTextFailures(): Array<{ id: string; why: string }> {
+  return textFailures.splice(0)
+}
+
+async function sendOne(c: QueuedCapture): Promise<{ ok: true; day?: string; textError?: string } | { error: string }> {
   const fd = new FormData()
   for (const [k, v] of Object.entries(c.fields)) fd.set(k, v)
   fd.set('client_id', c.id)
@@ -97,7 +106,7 @@ async function sendOne(c: QueuedCapture): Promise<{ ok: true; day?: string } | {
   }
   fd.set('photo', c.blob, c.blobName)
   const res = await addInspirationPhoto(fd)
-  return 'error' in res ? { error: res.error } : { ok: true, day: res.day }
+  return 'error' in res ? { error: res.error } : { ok: true, day: res.day, ...(res.textError ? { textError: res.textError } : {}) }
 }
 
 let flushing: Promise<number> | null = null
@@ -122,6 +131,7 @@ export function flushCaptures(): Promise<number> {
           res = { error: err instanceof Error ? err.message : String(err) }
         }
         if ('ok' in res) {
+          if (res.textError) textFailures.push({ id: c.id, why: res.textError })
           await removeCapture(c.id)
           sent++
         } else {

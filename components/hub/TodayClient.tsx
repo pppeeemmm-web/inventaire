@@ -281,7 +281,7 @@ export function TodayEntries({
   const items: DayItem[] = [
     ...entries.map((e) => ({ at: e.created_at, entry: e })),
     ...voices.filter((v) => !v.hasEntry).map((v) => ({ at: v.created_at, voice: v })),
-    ...photos.map((p) => ({ at: p.created_at, photo: p })),
+    ...photos.filter((p) => !p.hidden).map((p) => ({ at: p.created_at, photo: p })),
   ].sort((a, b) => a.at.localeCompare(b.at))
   const meta: CSSProperties = { fontSize: 12, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4, minHeight: 20 }
   const more = (key: string) => (
@@ -321,9 +321,29 @@ export function TodayEntries({
                   </ImageLoupe>
                   {/* The page is server-rendered: after a save, ask it again so the picture's alt, the loupe and a later « back » show the new text. */}
                   <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin} render={(text) => <WorkRefText text={text} />} onSaved={() => router.refresh()} />
-                  {p.oeuvre_id != null ? (
-                    <div style={{ marginTop: 4 }}>
-                      <WorkPreviewChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" />
+                  {p.works?.length || p.concepts?.length || p.people?.length || p.oeuvre_id != null || p.conceptTitle ? (
+                    <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                      {p.works?.length
+                        ? p.works.map((w) => <WorkPreviewChip key={`w-${w.id}`} id={w.id} href={workHref(w.id)} size="chip" />)
+                        : p.oeuvre_id != null
+                          ? <WorkPreviewChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" />
+                          : null}
+                      {p.concepts?.length
+                        ? p.concepts.map((c) => (
+                            <Link key={`c-${c.id}`} href={`/atelier/concepts?concept=${c.id}`} style={{ color: 'var(--ac)', fontSize: 12 }}>
+                              ✦ {c.title ?? '—'}
+                            </Link>
+                          ))
+                        : p.concept_id ? (
+                            <Link href={`/atelier/concepts?concept=${p.concept_id}`} style={{ color: 'var(--ac)', fontSize: 12 }}>
+                              ✦ {p.conceptTitle ?? '—'}
+                            </Link>
+                          ) : null}
+                      {(p.people ?? []).map((q) => (
+                        <Link key={`q-${q.id}`} href={`/atelier/contacts?contact=${q.id}`} style={{ color: 'var(--ac)', fontSize: 12 }}>
+                          @ {q.name}
+                        </Link>
+                      ))}
                     </div>
                   ) : null}
                 </li>

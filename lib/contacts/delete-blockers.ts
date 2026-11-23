@@ -4,7 +4,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import type { ContactDeleteBlocker } from '@/app/atelier/(portal)/contacts/actions'
 
-type CountKey = 'owner' | 'holder' | 'shipments' | 'orders' | 'invoices' | 'supplyOrders'
+type CountKey = 'owner' | 'holder' | 'shipments' | 'orders' | 'invoices' | 'supplyOrders' | 'journal'
 
 const REASONS: { key: CountKey; one: DictKey; fmt: DictKey }[] = [
   { key: 'owner', one: 'contact_delete_owner_one', fmt: 'contact_delete_owner_fmt' },
@@ -13,6 +13,7 @@ const REASONS: { key: CountKey; one: DictKey; fmt: DictKey }[] = [
   { key: 'shipments', one: 'contact_delete_shipments_one', fmt: 'contact_delete_shipments_fmt' },
   { key: 'invoices', one: 'contact_delete_invoices_one', fmt: 'contact_delete_invoices_fmt' },
   { key: 'supplyOrders', one: 'contact_delete_supply_one', fmt: 'contact_delete_supply_fmt' },
+  { key: 'journal', one: 'contact_delete_journal_one', fmt: 'contact_delete_journal_fmt' },
 ]
 
 /** « Rien n'a été supprimé : / Marie Dupont : propriétaire de 3 œuvres, 1 commande / … / hint ». */

@@ -251,7 +251,7 @@ export function JournalDayExtras({
   }> = [
     ...(data?.entries ?? []).map((e) => ({ at: e.created_at, entry: e })),
     ...pendingVoices.map((v) => ({ at: v.created_at, voice: v })),
-    ...(data?.inspirations ?? []).map((p) => ({ at: p.created_at, photo: p })),
+    ...(data?.inspirations ?? []).filter((p) => !p.hidden).map((p) => ({ at: p.created_at, photo: p })),
   ].sort((a, b) => a.at.localeCompare(b.at))
 
   function removePhoto(id: string) {
@@ -262,7 +262,7 @@ export function JournalDayExtras({
         return
       }
       setDeleteAsk(null)
-      toast.success(t('insp_deleted'))
+      toast.success(t(res.result === 'hidden' ? 'js_photo_hidden' : 'insp_deleted'))
       await load()
     })
   }
@@ -464,26 +464,39 @@ export function JournalDayExtras({
                     caption={p.caption}
                     canEdit={!!data?.isAdmin}
                     render={(text) => <EntryText text={text} />}
-                    onSaved={(caption) =>
-                      setData((d) => (d ? { ...d, inspirations: d.inspirations.map((x) => (x.id === p.id ? { ...x, caption } : x)) } : d))
-                    }
+                    onSaved={() => void load()}
                   />
                 </div>
               </div>
-              {p.oeuvre_id != null || p.concept_id ? (
+              {p.works?.length || p.concepts?.length || p.people?.length || p.oeuvre_id != null || p.concept_id ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8, alignItems: 'center' }}>
-                  {p.oeuvre_id != null ? <WorkChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" /> : null}
-                  {p.concept_id ? (
-                    <Link href={`/atelier/concepts?concept=${p.concept_id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                      {t('je_concept_prefix')} {p.conceptTitle ?? '—'}
+                  {p.works?.length
+                    ? p.works.map((w) => <WorkChip key={`w-${w.id}`} id={w.id} href={workHref(w.id)} size="chip" />)
+                    : p.oeuvre_id != null
+                      ? <WorkChip id={p.oeuvre_id} href={workHref(p.oeuvre_id)} size="chip" />
+                      : null}
+                  {p.concepts?.length
+                    ? p.concepts.map((c) => (
+                        <Link key={`c-${c.id}`} href={`/atelier/concepts?concept=${c.id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                          {t('je_concept_prefix')} {c.title ?? '—'}
+                        </Link>
+                      ))
+                    : p.concept_id ? (
+                        <Link href={`/atelier/concepts?concept=${p.concept_id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                          {t('je_concept_prefix')} {p.conceptTitle ?? '—'}
+                        </Link>
+                      ) : null}
+                  {(p.people ?? []).map((q) => (
+                    <Link key={`q-${q.id}`} href={`/atelier/contacts?contact=${q.id}`} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                      @ {q.name}
                     </Link>
-                  ) : null}
+                  ))}
                 </div>
               ) : null}
               {data?.isAdmin ? (
                 deleteAsk === p.id ? (
                   <div role="alertdialog" aria-label={t('je_voice_delete')} style={{ marginTop: 8, padding: 10, border: '1px solid var(--rust)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{t('insp_delete_ask')}</p>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{p.entryId != null ? t('js_photo_delete_ask_hide') : t('insp_delete_ask')}</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       <button type="button" className="btn sm" disabled={pending} onClick={() => removePhoto(p.id)} style={{ minHeight: 44, color: 'var(--rust)', borderColor: 'var(--rust)' }}>
                         {t('je_voice_delete_yes')}

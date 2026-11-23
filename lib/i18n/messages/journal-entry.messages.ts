@@ -136,6 +136,7 @@ export const journalEntryMessages = defineMessages({
   insp_idea_none: { fr: 'Aucune', en: 'None' },
   insp_save: { fr: 'Ajouter au Journal', en: 'Add to the Journal' },
   insp_saved: { fr: 'Photo ajoutée au Journal', en: 'Photo added to the Journal' },
+  insp_text_failed: { fr: 'Photo enregistrée, mais pas son texte : {why}', en: 'Photo saved, but not its text: {why}' },
   insp_waiting: {
     fr: 'En attente de la base de données : rien n’est enregistré pour l’instant.',
     en: 'Waiting for the database: nothing is saved yet.',
@@ -153,4 +154,19 @@ export const journalEntryMessages = defineMessages({
   insp_text_save: { fr: 'Enregistrer le texte', en: 'Save the text' },
   insp_text_cancel: { fr: 'Annuler', en: 'Cancel' },
   insp_text_saved: { fr: 'Texte enregistré', en: 'Text saved' },
+  insp_text_required: {
+    fr: 'Le texte d’une photo au Journal se corrige, il ne s’efface pas',
+    en: 'The text of a photo in the Journal can be corrected, not erased',
+  },
+  insp_text_unchanged: { fr: 'Rien à enregistrer', en: 'Nothing to save' },
+  // One picker for `#` (work or idea) and `@` (person), wherever text is typed (principle 13).
+  lp_list: { fr: 'Suggestions de liens', en: 'Link suggestions' },
+  lp_new_person: { fr: '+ Personne « {name} »', en: '+ Person "{name}"' },
+  lp_remove: { fr: 'Retirer le lien {label}', en: 'Remove the link {label}' },
+  lp_chips: { fr: 'Liens', en: 'Links' },
+  lp_kind_oeuvre: { fr: 'Œuvre', en: 'Work' },
+  lp_kind_concept: { fr: 'Idée', en: 'Idea' },
+  lp_kind_contact: { fr: 'Personne', en: 'Person' },
+  lp_person_failed: { fr: 'La personne n’a pas pu être créée', en: 'The person could not be created' },
+  lp_link_error: { fr: 'Entrée enregistrée, mais un lien n’a pas pu l’être : {msg}', en: 'Entry saved, but a link could not be: {msg}' },
 })

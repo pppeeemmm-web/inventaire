@@ -36,10 +36,13 @@ export type IdeaListRow = {
 
 export type IdeaHistory = { id: number; what: 'planted' | 'stage' | 'title' | 'text' | 'parent'; from: string | null; to: string | null; at: string; by: string | null }
 
+/** A moment; a photo's text is one too (`photo` set: the idea page draws the image above the caption). */
+export type IdeaMoment = JournalDayEntry & { photo?: { id: string; image_key: string; caption: string | null } }
+
 export type IdeaDesk = {
   idea: IdeaListRow & { text: string; oldNotes: string | null; createdAt: string; canMoveStage: boolean; canDelete: boolean; becameProject: boolean; sketch: string | null }
   /** Moments, newest first (each also lives on its day). */
-  moments: JournalDayEntry[]
+  moments: IdeaMoment[]
   history: IdeaHistory[]
   documents: ConceptDocument[]
   works: Array<{ id: number; title: string | null; thumb: string | null; mentions: number }>
@@ -151,7 +154,7 @@ export async function readIdeaDesk(id: string): Promise<IdeaDesk | { error: stri
     ? ((await supabase.from('journal_entry').select('id').in('voice_note_id', notes.map((n) => n.id)).is('corrects_id', null)).data ?? [])
     : []
   const entryIds = [...new Set([...(linksRes.data ?? []).map((l) => l.entry_id as number), ...carriers.map((c) => c.id as number)])]
-  const moments: JournalDayEntry[] = []
+  const moments: IdeaMoment[] = []
   if (entryIds.length) {
     const { data: days } = await supabase.from('journal_entry').select('id, event_on').in('id', entryIds).is('corrects_id', null)
     const byDay = [...new Set((days ?? []).map((d) => d.event_on as string))].sort()
@@ -165,7 +168,37 @@ export async function readIdeaDesk(id: string): Promise<IdeaDesk | { error: stri
       i++
       const res = await readJournalDays(supabase, { userId: c.userId, isAdmin: c.isAdmin }, from, to, { folds: false, ideas: false })
       if ('error' in res) continue
-      for (const extras of res.values()) for (const e of extras.entries) if (wanted.has(e.id)) moments.push(e)
+      for (const extras of res.values()) {
+        for (const e of extras.entries) if (wanted.has(e.id)) moments.push(e)
+        // A photo's text is an entry too (journal_entry.photo_id): the day read puts it on the photo, not in `entries`.
+        for (const p of extras.inspirations) {
+          if (p.hidden || !p.concepts?.some((x) => x.id === id) || moments.some((m) => m.photo?.id === p.id)) continue
+          moments.push({
+            id: p.entryId ?? 0,
+            created_at: p.created_at,
+            event_on: p.day,
+            event_precision: 'day',
+            kind: 'note',
+            body: p.caption ?? '',
+            provenance: 'photo',
+            verification: 'verified',
+            visibility: 'team',
+            original: null,
+            author: p.author,
+            mine: false,
+            hidden: false,
+            voiceNoteId: null,
+            audioKey: null,
+            engine: null,
+            voiceLinks: null,
+            works: p.works ?? [],
+            concepts: p.concepts ?? [],
+            people: p.people,
+            proposals: [],
+            photo: { id: p.id, image_key: p.image_key, caption: p.caption },
+          })
+        }
+      }
     }
     moments.sort((a, b) => (a.event_on === b.event_on ? b.created_at.localeCompare(a.created_at) : b.event_on.localeCompare(a.event_on)))
   }

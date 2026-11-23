@@ -114,6 +114,7 @@ function dayWorks(d: JournalStreamDay): Array<{ id: number; thumb: string | null
   for (const w of d.sessionWorks) if (w.id != null && !out.has(w.id)) out.set(w.id, w.thumb)
   for (const r of d.extras.remarks) if (r.oeuvreId != null && !out.has(r.oeuvreId)) out.set(r.oeuvreId, r.workThumb)
   for (const e of d.extras.entries) for (const w of e.works) if (!out.has(w.id)) out.set(w.id, w.thumb ?? null)
+  for (const p of d.extras.inspirations) for (const w of p.works ?? []) if (!out.has(w.id)) out.set(w.id, w.thumb ?? null)
   return [...out].map(([id, thumb]) => ({ id, thumb }))
 }
 
@@ -189,6 +190,36 @@ function ConfirmRow({ text, yes, onYes, onNo, pending }: { text: string; yes: st
 function Audio({ file }: { file: string | null }) {
   const src = imageUrl(file)
   return src ? <audio controls preload="none" src={src} style={{ display: 'block', width: '100%', margin: '6px 0', height: 36 }} /> : null
+}
+
+/** Works, ideas and people a card is linked to, as chips. */
+function ChipRow({
+  works,
+  concepts,
+  people,
+}: {
+  works?: Array<{ id: number }>
+  concepts?: Array<{ id: string; title: string | null }>
+  people?: Array<{ id: number; name: string }>
+}) {
+  if (!works?.length && !concepts?.length && !people?.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0 2px' }}>
+      {(works ?? []).map((w) => (
+        <WorkRef key={w.id} id={w.id} href={workHref(w.id)} style={chipStyle} />
+      ))}
+      {(concepts ?? []).map((c) => (
+        <a key={c.id} href={`/atelier/concepts?concept=${c.id}`} style={{ ...chipStyle, padding: '2px 9px', borderStyle: 'dashed' }}>
+          ✦ {c.title ?? '—'}
+        </a>
+      ))}
+      {(people ?? []).map((q) => (
+        <a key={q.id} href={`/atelier/contacts?contact=${q.id}`} data-testid={`js-person-${q.id}`} style={{ ...chipStyle, padding: '2px 9px' }}>
+          @ {q.name}
+        </a>
+      ))}
+    </div>
+  )
 }
 
 function originLabel(e: JournalDayEntry, t: (k: never) => string): string {
@@ -328,18 +359,8 @@ export function EntryCard({
         </div>
       )}
       <CorrectedOriginal original={e.original} />
-      {e.works.length || e.concepts.length ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0 2px' }}>
-          {e.works.map((w) => (
-            <WorkRef key={w.id} id={w.id} href={workHref(w.id)} style={chipStyle} />
-          ))}
-          {e.concepts.map((c) => (
-            <a key={c.id} href={`/atelier/concepts?concept=${c.id}`} style={{ ...chipStyle, padding: '2px 9px', borderStyle: 'dashed' }}>
-              ✦ {c.title ?? '—'}
-            </a>
-          ))}
-        </div>
-      ) : null}
+      <ChipRow works={e.works} concepts={e.concepts} people={e.people} />
+
       {e.labels?.length ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0 2px' }}>
           {e.labels.map((l) => (
@@ -535,16 +556,38 @@ function PhotoCard({
   const src = imageUrl(p.image_key)
   const menu: MenuItem[] = []
   if (p.oeuvre_id != null) menu.push({ key: 'work', label: t('js_menu_open_work'), on: () => window.location.assign(workHref(p.oeuvre_id as number)) })
-  if (isAdmin) menu.push({ key: 'del', label: t('js_menu_delete'), on: () => setAsking(true), danger: true })
+  if (isAdmin && !p.hidden) menu.push({ key: 'del', label: t('js_menu_delete'), on: () => setAsking(true), danger: true })
+  // Camera facts from the file: the day it was taken when that is not this day, the time, the phone model.
+  const takenIso = typeof p.meta?.taken_at === 'string' ? p.meta.taken_at : null
+  const takenOk = takenIso != null && !Number.isNaN(new Date(takenIso).getTime())
+  const takenDay = takenOk ? calendarDayInParisFromIso(takenIso as string) : null
+  const model = typeof p.meta?.model === 'string' && p.meta.model.trim() ? p.meta.model.trim() : null
+  const otherDay = takenOk && takenDay != null && takenDay !== day
+  const showMeta = otherDay || !!model
+  const takenPart = takenOk
+    ? t(otherDay ? 'js_photo_taken_on' : 'js_photo_taken_at').replace('{d}', takenDay ? shortDay(takenDay) : '').replace('{hm}', time(takenIso as string))
+    : null
+  const metaText = [takenPart, model].filter(Boolean).join(' · ')
   return (
-    <article data-testid={`js-photo-${p.id}`} style={cardStyle}>
+    <article data-testid={`js-photo-${p.id}`} style={{ ...cardStyle, opacity: p.hidden ? 0.55 : 1 }}>
       <div style={metaStyle}>
         <span>{time(p.created_at)}</span>
         <span style={{ color: 'var(--ac)' }}>{t('js_kind_photo')}</span>
         {addedOn && addedOn !== day ? <span data-testid={`js-photo-added-${p.id}`}>· {t('jd_added_on').replace('{day}', shortDay(addedOn))}</span> : null}
-        {p.conceptTitle ? <span>· ✦ {p.conceptTitle}</span> : null}
+        {p.conceptTitle && !p.concepts?.length ? <span>· ✦ {p.conceptTitle}</span> : null}
         {p.author !== '—' ? <span>· {p.author}</span> : null}
+        {showMeta ? <span data-testid={`js-photo-meta-${p.id}`}>· {metaText}</span> : null}
       </div>
+      {p.hidden ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '6px 0' }}>
+          <span style={{ fontSize: 13, color: 'var(--tx3)' }}>{t('js_photo_removed_line')}</span>
+          {p.entryId != null ? (
+            <button type="button" className="btn sm" disabled={pending} data-testid={`js-photo-restore-${p.id}`} onClick={() => run(() => setJournalEntryHidden(p.entryId as number, false), t('js_photo_restored'))} style={{ minHeight: 44 }}>
+              {t('js_photo_restore')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {/* Hold = the picture large (same piece as the day page); a tap opens it in a tab. */}
       <ImageLoupe file={p.image_key} alt={p.caption ?? ''} caption={p.caption?.trim() || undefined} style={{ display: 'block', maxWidth: '100%', margin: '6px 0' }}>
         <a href={src ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
@@ -552,12 +595,27 @@ function PhotoCard({
           <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, background: 'var(--bg3)' }} />
         </a>
       </ImageLoupe>
-      <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin} startEditing={isAdmin && editing} render={(text) => <WorkRefText text={text} />} onSaved={() => void refresh()} />
+      <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin && !p.hidden} startEditing={isAdmin && !p.hidden && editing} render={(text) => <WorkRefText text={text} />} onSaved={() => void refresh()} />
+      <ChipRow works={p.works} concepts={p.concepts} people={p.people} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
         <MoreMenu items={menu} testId={`js-more-photo-${p.id}`} />
       </div>
       {asking ? (
-        <ConfirmRow text={t('js_photo_delete_ask')} yes={t('je_voice_delete_yes')} pending={pending} onNo={() => setAsking(false)} onYes={() => { setAsking(false); run(() => removeInspirationPhoto(p.id), t('insp_deleted')) }} />
+        <ConfirmRow
+          text={t(p.entryId != null ? 'js_photo_delete_ask_hide' : 'js_photo_delete_ask')}
+          yes={t('je_voice_delete_yes')}
+          pending={pending}
+          onNo={() => setAsking(false)}
+          onYes={() => {
+            setAsking(false)
+            // The answer says which way it went: gone for good, or hidden (an admin can bring it back).
+            run(async () => {
+              const r = await removeInspirationPhoto(p.id)
+              if ('ok' in r) toast.success(t(r.result === 'hidden' ? 'js_photo_hidden' : 'insp_deleted'))
+              return r
+            })
+          }}
+        />
       ) : null}
     </article>
   )
@@ -633,8 +691,9 @@ function DayCards({
       key: `p${p.id}`,
       node: <PhotoCard p={p} day={d.day} isAdmin={isAdmin} run={run} refresh={rf} pending={pending} editing={editPhotoId === p.id} />,
       sel: sel(`p${p.id}`, p.created_at, 'photo', p.caption ?? '', {
-        works: p.oeuvre_id != null ? [{ id: p.oeuvre_id, title: null, thumb: null }] : [],
-        concepts: p.concept_id ? [{ id: p.concept_id, title: p.conceptTitle }] : [],
+        // The photo's own links (its entry, journal_step_b2.sql); before it, the two columns.
+        works: p.works?.length ? p.works.map((w) => ({ id: w.id, title: w.title, thumb: w.thumb ?? null })) : p.oeuvre_id != null ? [{ id: p.oeuvre_id, title: null, thumb: null }] : [],
+        concepts: p.concepts?.length ? p.concepts : p.concept_id ? [{ id: p.concept_id, title: p.conceptTitle }] : [],
       }),
     })
   for (const r of x.remarks) {

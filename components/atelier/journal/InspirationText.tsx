@@ -7,6 +7,7 @@
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { setInspirationCaption } from '@/app/atelier/capture/inspiration-actions'
 import { useI18n } from '@/lib/i18n/context'
+import { useLinkPicker } from '@/components/journal/LinkPicker'
 import { toast } from '@/lib/ui/toast'
 
 export function InspirationText({
@@ -30,17 +31,23 @@ export function InspirationText({
   const [text, setText] = useState(caption)
   const [draft, setDraft] = useState<string | null>(startEditing ? (caption ?? '') : null)
   const [pending, startTransition] = useTransition()
+  const picker = useLinkPicker(draft ?? '', (v) => setDraft(v))
 
   useEffect(() => setText(caption), [caption])
 
   function save() {
     if (draft == null) return
     startTransition(async () => {
-      const res = await setInspirationCaption(id, draft)
+      const res = await setInspirationCaption(id, draft, picker.links.map((l) => ({ kind: l.kind, id: l.id })))
       if ('error' in res) {
-        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        toast.error(res.error === 'text_required' ? t('insp_text_required') : t('je_err_fmt').replace('{msg}', res.error))
         return
       }
+      if (!res.changed) {
+        toast.error(t('insp_text_unchanged'))
+        return
+      }
+      picker.clear()
       setText(res.caption)
       setDraft(null)
       onSaved?.(res.caption)
@@ -60,9 +67,19 @@ export function InspirationText({
           maxLength={2000}
           value={draft}
           placeholder={t('insp_text_placeholder')}
-          onChange={(ev) => setDraft(ev.target.value)}
+          onChange={(ev) => {
+            setDraft(ev.target.value)
+            picker.onChange(ev)
+          }}
+          onClick={picker.onChange}
+          onKeyUp={picker.onCaret}
+          onKeyDown={(ev) => {
+            picker.onKeyDown(ev)
+          }}
           style={{ fontSize: 16, width: '100%', boxSizing: 'border-box' }}
         />
+        {picker.popover}
+        {picker.chips}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="button" className="btn primary sm" disabled={pending} onClick={save} style={{ minHeight: 44 }} data-testid={`inspiration-text-save-${id}`}>
             {t(pending ? 'je_saving' : 'insp_text_save')}

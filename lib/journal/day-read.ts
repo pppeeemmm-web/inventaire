@@ -11,6 +11,7 @@ import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { changedVersionFields } from '@/lib/oeuvre-version-fields'
 import type { Tables } from '@/lib/types/supabase.generated'
 import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-photo'
+import { contactListLabel } from '@/lib/contacts/contact-display'
 import { latestCorrectionRows, latestCorrections } from '@/lib/journal-corrections'
 import { isPlaceholderText } from '@/lib/journal/nothing-heard'
 import { addAuthor, authorIdsOf, authorOfRow, type AuthorContactRow, type AuthorRow, type ChangeAuthor } from '@/lib/journal/authors'
@@ -60,7 +61,8 @@ export async function readJournalDays(
   const inRange = (day: string) => day >= from && day <= to
 
   type VoiceRow = Omit<JournalDayVoice, 'audioKey' | 'author' | 'mine' | 'hasEntry'> & { audio_r2_key: string | null; user_id: string }
-  type InspirationRow = Omit<InspirationPhoto, 'conceptTitle' | 'author'> & { author_id: string }
+  // `hidden_at` / `meta`: journal_step_b2.sql (absent before it: read with `*`).
+  type InspirationRow = Omit<InspirationPhoto, 'conceptTitle' | 'author' | 'entryId' | 'hidden' | 'works' | 'concepts' | 'people'> & { author_id: string; hidden_at?: string | null }
   type IdeaChangeRow = { id: number; concept_id: string; what: string; to_value: string | null; changed_at: string; changed_by: string | null }
   type RemarkRow = { id: number; created_at: string; body: string; image_key: string | null; oeuvre_id: number | null; concept_id: string | null; author_id: string | null }
 
@@ -107,7 +109,7 @@ export async function readJournalDays(
     withEntries && INSPIRATION_SQL_LIVE
       ? supabase
           .from('inspiration_photo')
-          .select('id, created_at, day, image_key, caption, oeuvre_id, concept_id, author_id')
+          .select('*')
           .gte('day', from)
           .lte('day', to)
           .order('created_at', { ascending: true })
@@ -166,6 +168,7 @@ export async function readJournalDays(
     entry_id: number
     oeuvre_id: number | null
     concept_id: string | null
+    contact_id?: number | null
     validated_at: string | null
     proposed_by: string
     rejected_at?: string | null
@@ -218,10 +221,18 @@ export async function readJournalDays(
         ...remarkRows.map((n) => n.oeuvre_id).filter((x): x is number => x != null),
       ]),
     ]
-    const works = workIds.length
-      ? (((await supabase.from('Oeuvres').select('*').in('OeuvreID', workIds)).data ?? []) as Array<Record<string, unknown>>)
-      : []
-    return { links, works }
+    // People named with `@` (journal_step_b2.sql): their list name; a contact the reader cannot see is left out.
+    const personIds = [...new Set(links.filter((l) => l.contact_id != null && l.validated_at).map((l) => Number(l.contact_id)))]
+    const [worksRes, peopleRes] = await Promise.all([
+      workIds.length ? supabase.from('Oeuvres').select('*').in('OeuvreID', workIds) : Promise.resolve({ data: [] }),
+      personIds.length ? supabase.from('Contact').select('*').in('ContactID', personIds) : Promise.resolve({ data: [] }),
+    ])
+    const works = (worksRes.data ?? []) as Array<Record<string, unknown>>
+    const people = new Map<number, string>()
+    for (const c of (peopleRes.data ?? []) as Array<Record<string, unknown>>) {
+      people.set(Number(c.ContactID), contactListLabel(c as Parameters<typeof contactListLabel>[0], { fallback: `#${c.ContactID}` }))
+    }
+    return { links, works, people }
   })()
   // Step B (journal_step_b.sql): labels and suites. Before that SQL is live these reads fail and are empty.
   type LabelRow = { id: number; entry_id: number; label: string }
@@ -235,7 +246,7 @@ export async function readJournalDays(
     ])
     return { labels: (labelsRes.error ? [] : labelsRes.data ?? []) as LabelRow[], incoming: (incomingRes.error ? [] : incomingRes.data ?? []) as SuiteLinkRow[] }
   })()
-  const [{ links: linkRows, works }, laterRes, contactsRes, audioRes, carriedRes, stepBRes] = await Promise.all([
+  const [{ links: linkRows, works, people }, laterRes, contactsRes, audioRes, carriedRes, stepBRes] = await Promise.all([
     linksAndWorks,
     changedIds.length
       ? supabase
@@ -416,8 +427,29 @@ export async function readJournalDays(
   // A correction (`corrects_id`) is shown in place of its original, never as a card of its own.
   const latestFix = latestCorrections(rows)
   const fixRows = latestCorrectionRows(rows)
+
+  const photoEntries = new Map<string, number>()
+  const worksOf = (id: number) =>
+    linkRows
+      .filter((l) => l.entry_id === id && l.oeuvre_id != null && l.validated_at)
+      .map((l) => ({ id: l.oeuvre_id as number, title: titles.get(l.oeuvre_id as number) ?? null, thumb: covers.get(l.oeuvre_id as number) ?? null }))
+  const conceptsOf = (id: number) =>
+    linkRows
+      .filter((l) => l.entry_id === id && l.concept_id != null && l.validated_at)
+      .map((l) => ({ id: l.concept_id as string, title: conceptTitles.get(l.concept_id as string) ?? null }))
+  const peopleOf = (id: number) =>
+    linkRows
+      .filter((l) => l.entry_id === id && l.contact_id != null && l.validated_at && people.has(Number(l.contact_id)))
+      .map((l) => ({ id: Number(l.contact_id), name: people.get(Number(l.contact_id)) as string }))
+
   for (const r of rows) {
     if (r.corrects_id != null || (r.hidden_at && !isAdmin)) continue
+    // A photo's text is its entry (journal_step_b2.sql): drawn on the photo's card, never as a card of its own.
+    const photoId = (r as { photo_id?: string | null }).photo_id
+    if (photoId) {
+      photoEntries.set(photoId, r.id)
+      continue
+    }
     const entry: JournalDayEntry = {
       id: r.id,
       created_at: r.created_at,
@@ -454,6 +486,7 @@ export async function readJournalDays(
       concepts: linkRows
         .filter((l) => l.entry_id === r.id && l.concept_id != null && l.validated_at)
         .map((l) => ({ id: l.concept_id as string, title: conceptTitles.get(l.concept_id as string) ?? null })),
+      people: peopleOf(r.id),
       labels: stepBRes.labels.filter((l) => Number(l.entry_id) === r.id).map((l) => ({ id: Number(l.id), label: l.label })),
       suiteOf: (() => {
         const l = outgoing.find((x) => x.entry_id === r.id)
@@ -505,11 +538,20 @@ export async function readJournalDays(
     dayOf(calendarDayInParisFromIso(k.created_at)).creation.push(item)
   }
 
-  for (const { author_id, ...p } of inspirationRows) {
+  for (const { author_id, hidden_at, ...p } of inspirationRows) {
+    // Removed with its text (journal_step_b2.sql): hidden, never gone — only an admin sees it, to bring it back.
+    if (hidden_at && !isAdmin) continue
+    const entryId = photoEntries.get(p.id) ?? null
     dayOf(String(p.day)).inspirations.push({
       ...p,
       conceptTitle: p.concept_id ? conceptTitles.get(p.concept_id) ?? null : null,
       author: names[author_id] || '—',
+      entryId,
+      hidden: !!hidden_at,
+      meta: (p as { meta?: Record<string, unknown> | null }).meta ?? null,
+      works: entryId != null ? worksOf(entryId) : [],
+      concepts: entryId != null ? conceptsOf(entryId) : [],
+      people: entryId != null ? peopleOf(entryId) : [],
     })
   }
 

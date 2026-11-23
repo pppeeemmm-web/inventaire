@@ -198,3 +198,11 @@ A. Desk rail: **always there when the window is wide** (as proposed).
 ### Fidelity to the mockup (Pem 2026-11-22)
 
 « I like what I see, and I will be disappointed if I don't see what I was proposed. » The build follows `Journal_Mockup.html` as the spec: the same parts in the same places (sticky day divider with pictures and counts, one filled action per card, « ⋯ » menu items in that order, rail sections, Jours / Mois / Années, the record bar with 🎤 in the middle). Each build step ends with screenshots of the real screen at 1280 px and 375 px set beside the same view of the mockup; a difference is either fixed or named to Pem before landing.
+
+### Step B part 2 — Pem's answers (2026-11-23, chat « Yes, plan it »)
+
+SQL `supabase/sql/journal_step_b2.sql` (proven on the throwaway copy 2026-11-23, live only with Pem's OK):
+- `@` links a person (`journal_entry_link.contact_id`). **A person named in the Journal is never deleted — merge instead** (Pem: « Correct »): the link is ON DELETE RESTRICT, the delete screen says why; `merge_contacts` moves the links to the kept contact.
+- A photo's text is a Journal entry (`journal_entry.photo_id`, door `inspiration_photo_set_text`): first text = the entry, later text = a correction; its `#` / `@` are real links. **Removing a photo that has text hides it with its entry; an admin can bring it back** (Pem: « Correct »). A photo with no text is deleted as before.
+- The photo's own data in `inspiration_photo.meta` (team read); **the place (GPS) is kept, admin only**, in `inspiration_photo_place` (Pem: « Keep it »). Never on the public site or in the archive export.
+- Re-suggest corrected entries: nothing to do — checked live, the 3 corrected entries were proposed again after their correction.

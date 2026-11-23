@@ -15,7 +15,36 @@ import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { doorErrorText, putImageOnDay } from '@/components/journal/DeskImageCapture'
 
 /* ── what the agent writes (tray.json) ── */
-export type TrayItem = { id: string; rel: string; name: string; day: string; dayFrom: 'folder' | 'taken' | 'file'; preview: string; send: string }
+/** The photo's own data as tray.mjs reads it (EXIF of the original file; `taken` = the phone's clock, Paris). */
+export type TrayMeta = { taken?: string | null; camera?: string | null; lens?: string | null; fnumber?: string | null; exposure?: string | null; iso?: string | null; gps?: { lat: number; lon: number } | null }
+export type TrayItem = { id: string; rel: string; name: string; day: string; dayFrom: 'folder' | 'taken' | 'file'; preview: string; send: string; meta?: TrayMeta | null; w?: number | null; h?: number | null }
+
+/** tray.json's meta → the door's `meta` field (journal_step_b2.sql: the place goes to its admin-only row). */
+export function trayMetaForDoor(it: TrayItem): Record<string, unknown> | null {
+  const m = it.meta ?? {}
+  const num = (v: string | null | undefined) => {
+    if (!v) return undefined
+    const f = /^(\d+)\/(\d+)$/.exec(v.trim())
+    const n = f ? Number(f[1]) / Number(f[2]) : Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+  // « 2026:06:03 11:17:11 » is Paris wall time: kept as an ISO string without zone (shown as written).
+  const t = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(m.taken ?? '')
+  const out: Record<string, unknown> = {
+    taken_at: t ? `${t[1]}-${t[2]}-${t[3]}T${t[4]}:${t[5]}:${t[6]}` : undefined,
+    model: m.camera || undefined,
+    lens: m.lens || undefined,
+    f_number: num(m.fnumber),
+    exposure: num(m.exposure),
+    iso: num(m.iso),
+    width: it.w ?? undefined,
+    height: it.h ?? undefined,
+    file_name: it.name,
+    gps: m.gps ?? undefined,
+  }
+  for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k]
+  return Object.keys(out).length ? out : null
+}
 type TrayFile = { v: number; from: string; updatedAt: string; items: TrayItem[]; failed?: { rel: string; reason: string }[] }
 
 /* ── Chrome's folder access (not in TypeScript's DOM types yet) ── */
@@ -262,7 +291,7 @@ export function DayTray({ tray, day, onSaved }: { tray: PcTray; day: string; onS
     for (const it of chosen) {
       try {
         const blob = await tray.readFile(it.send)
-        const res = await putImageOnDay(blob, it.name.replace(/\.[^.]+$/, '.jpg'), day, it.id)
+        const res = await putImageOnDay(blob, it.name.replace(/\.[^.]+$/, '.jpg'), day, it.id, trayMetaForDoor(it))
         if ('error' in res) {
           toast.error(`${it.name} — ${doorErrorText(res.error, t)}`)
           continue

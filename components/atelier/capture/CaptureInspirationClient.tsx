@@ -104,6 +104,7 @@ export function CaptureInspirationClient() {
         return
       }
       if (res.already) toast.info(t('jd_already').replace('{day}', new Date(`${res.day}T12:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })))
+      else if (res.textError) toast.error(t('insp_text_failed').replace('{why}', doorErrorText(res.textError, t)))
       else toast.success(t('insp_saved'))
       window.location.href = `/atelier/journal?day=${res.day}`
     })

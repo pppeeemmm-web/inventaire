@@ -178,7 +178,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
 /** Works linked (validated) from the entries of the days in `rows`, by day. */
 async function linkedWorksByDay(supabase: Supabase, rows: JournalScaleRow[]): Promise<Map<string, JournalSessionWork[]>> {
   const out = new Map<string, JournalSessionWork[]>()
-  const withEntries = rows.filter((r) => r.entries > 0)
+  const withEntries = rows.filter((r) => r.entries > 0 || r.photos > 0)
   if (!withEntries.length) return out
   const from = withEntries[withEntries.length - 1].bucket
   const to = withEntries[0].bucket

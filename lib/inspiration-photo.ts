@@ -18,6 +18,14 @@ export type InspirationPhoto = {
   concept_id: string | null
   conceptTitle: string | null
   author: string
+  /** Journal Step B part 2 (journal_step_b2.sql): the photo's text is a Journal entry — its id and links. */
+  entryId?: number | null
+  hidden?: boolean
+  /** The photo's own data (taken_at, model, lens…); the place is never here (admin-only table). */
+  meta?: Record<string, unknown> | null
+  works?: Array<{ id: number; title: string | null; thumb?: string | null }>
+  concepts?: Array<{ id: string; title: string | null }>
+  people?: Array<{ id: number; name: string }>
 }
 
 /** Long side of the stored AVIF (like a session shot / constat photo). */

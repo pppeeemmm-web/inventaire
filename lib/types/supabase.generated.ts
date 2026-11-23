@@ -1470,8 +1470,10 @@ export type Database = {
           concept_id: string | null
           created_at: string
           day: string
+          hidden_at: string | null
           id: string
           image_key: string
+          meta: Json | null
           oeuvre_id: number | null
         }
         Insert: {
@@ -1480,8 +1482,10 @@ export type Database = {
           concept_id?: string | null
           created_at?: string
           day: string
+          hidden_at?: string | null
           id?: string
           image_key: string
+          meta?: Json | null
           oeuvre_id?: number | null
         }
         Update: {
@@ -1490,8 +1494,10 @@ export type Database = {
           concept_id?: string | null
           created_at?: string
           day?: string
+          hidden_at?: string | null
           id?: string
           image_key?: string
+          meta?: Json | null
           oeuvre_id?: number | null
         }
         Relationships: [
@@ -1515,6 +1521,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
+      inspiration_photo_place: {
+        Row: {
+          alt: number | null
+          created_at: string
+          lat: number
+          lon: number
+          photo_id: string
+        }
+        Insert: {
+          alt?: number | null
+          created_at?: string
+          lat: number
+          lon: number
+          photo_id: string
+        }
+        Update: {
+          alt?: number | null
+          created_at?: string
+          lat?: number
+          lon?: number
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspiration_photo_place_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: true
+            referencedRelation: "inspiration_photo"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1727,6 +1765,7 @@ export type Database = {
           hidden_by: string | null
           id: number
           kind: string
+          photo_id: string | null
           provenance: string
           source_key: string | null
           verification: string
@@ -1746,6 +1785,7 @@ export type Database = {
           hidden_by?: string | null
           id?: never
           kind: string
+          photo_id?: string | null
           provenance?: string
           source_key?: string | null
           verification?: string
@@ -1765,6 +1805,7 @@ export type Database = {
           hidden_by?: string | null
           id?: never
           kind?: string
+          photo_id?: string | null
           provenance?: string
           source_key?: string | null
           verification?: string
@@ -1777,6 +1818,13 @@ export type Database = {
             columns: ["corrects_id"]
             isOneToOne: false
             referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "inspiration_photo"
             referencedColumns: ["id"]
           },
           {
@@ -1870,6 +1918,7 @@ export type Database = {
       journal_entry_link: {
         Row: {
           concept_id: string | null
+          contact_id: number | null
           created_at: string
           created_by: string | null
           entry_id: number
@@ -1884,6 +1933,7 @@ export type Database = {
         }
         Insert: {
           concept_id?: string | null
+          contact_id?: number | null
           created_at?: string
           created_by?: string | null
           entry_id: number
@@ -1898,6 +1948,7 @@ export type Database = {
         }
         Update: {
           concept_id?: string | null
+          contact_id?: number | null
           created_at?: string
           created_by?: string | null
           entry_id?: number
@@ -1917,6 +1968,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "concept"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_link_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
           },
           {
             foreignKeyName: "journal_entry_link_entry_id_fkey"
@@ -5353,6 +5411,11 @@ export type Database = {
           p_parent?: string
           p_title: string
         }
+        Returns: Json
+      }
+      inspiration_photo_remove: { Args: { p_photo: string }; Returns: Json }
+      inspiration_photo_set_text: {
+        Args: { p_links?: Json; p_photo: string; p_text: string }
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }

@@ -242,6 +242,8 @@ export async function searchInspirationText(query: string): Promise<InspirationT
     .from('inspiration_photo')
     .select('id, day, caption')
     .ilike('caption', pattern)
+    // A photo removed with its text is hidden (journal_step_b2.sql), never found again by search.
+    .is('hidden_at' as never, null)
     .order('day', { ascending: false })
     .limit(6)
   if (error) {

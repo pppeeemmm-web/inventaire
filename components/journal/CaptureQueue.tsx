@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
-import { CAPTURE_QUEUE_EVENT, flushCaptures, listCaptures, removeCapture, type QueuedCapture } from '@/lib/mobile/capture-queue'
+import { CAPTURE_QUEUE_EVENT, flushCaptures, listCaptures, removeCapture, takeCaptureTextFailures, type QueuedCapture } from '@/lib/mobile/capture-queue'
 import { doorErrorText } from '@/components/journal/DeskImageCapture'
 
 export function useCaptureQueue(): QueuedCapture[] {
@@ -39,6 +39,7 @@ export function CaptureQueueFlusher({ onSent }: { onSent?: () => void }) {
   const waiting = items.length > 0
   const run = useCallback(() => {
     void flushCaptures().then((n) => {
+      for (const f of takeCaptureTextFailures()) toast.error(t('insp_text_failed').replace('{why}', doorErrorText(f.why, t)))
       if (n > 0) {
         toast.success(`${t('cq_sent')} (${n})`)
         onSent?.()
@@ -74,6 +75,7 @@ function QueuedCard({ c, onSent }: { c: QueuedCapture; onSent?: () => void }) {
   const sendNow = async () => {
     setBusy(true)
     const n = await flushCaptures()
+    for (const f of takeCaptureTextFailures()) toast.error(t('insp_text_failed').replace('{why}', doorErrorText(f.why, t)))
     setBusy(false)
     if (n > 0) {
       toast.success(`${t('cq_sent')} (${n})`)

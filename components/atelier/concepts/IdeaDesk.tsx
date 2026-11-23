@@ -18,7 +18,8 @@ import { ideaErrorText, SEED, STAGES, stageOffer, type Stage } from '@/component
 import { deleteIdea, saveIdeaText, setIdeaParent, setIdeaStage, writeInIdea } from '@/app/atelier/(portal)/concepts/idea-actions'
 import { promoteConcept } from '@/app/atelier/(portal)/concepts/actions'
 import { convertConceptToProcess } from '@/app/atelier/(portal)/pipeline/actions'
-import { imageUrl } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import type { IdeaDesk as Desk, IdeaHistory, IdeaListRow } from '@/lib/ideas/read'
@@ -121,6 +122,17 @@ export function IdeaDesk({
           <div style={{ fontSize: 12, color: 'var(--ac)', margin: '0 0 4px 2px' }}>
             <a href={`/atelier/journal?day=${e.event_on}`} style={{ color: 'inherit' }}>{shortDay(e.event_on)} ↗</a>
           </div>
+          {e.photo ? (
+            <div style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: '8px 12px', background: 'var(--bg1)' }}>
+              <ImageLoupe file={e.photo.image_key} alt={e.photo.caption ?? ''} caption={e.photo.caption?.trim() || undefined} style={{ display: 'block', maxWidth: '100%', margin: '6px 0' }}>
+                <a href={imageUrl(e.photo.image_key) ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- R2 AVIF thumb, like the Journal */}
+                  <img src={thumbUrl(e.photo.image_key) ?? undefined} alt={e.photo.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', borderRadius: 8, background: 'var(--bg3)' }} />
+                </a>
+              </ImageLoupe>
+              {e.photo.caption?.trim() ? <p style={{ margin: '4px 0', fontSize: 15, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.photo.caption}</p> : null}
+            </div>
+          ) : (
           <EntryCard
             e={e}
             isAdmin={desk.isAdmin}
@@ -137,6 +149,7 @@ export function IdeaDesk({
               })
             }
           />
+          )}
         </div>
       ),
     })),

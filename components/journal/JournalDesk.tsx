@@ -15,6 +15,7 @@ import { toast } from '@/lib/ui/toast'
 import { thumbUrl } from '@/lib/data'
 import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
+import { useLinkPicker } from '@/components/journal/LinkPicker'
 import { JournalScaleSwitch, JournalStream, type JournalSelection } from '@/components/journal/JournalStream'
 import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
@@ -134,27 +135,37 @@ function Composer({ today, onAdded }: { today: string; onAdded: () => void }) {
   const { t } = useI18n()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  const picker = useLinkPicker(text, setText)
   const send = async () => {
     const body = text.trim()
     if (!body || busy) return
     setBusy(true)
-    const res = await createJournalEntry({ day: today, kind: 'note', body })
+    const res = await createJournalEntry({ day: today, kind: 'note', body, links: picker.links })
     setBusy(false)
     if ('error' in res) {
       toast.error(t('je_err_fmt').replace('{msg}', res.error))
       return
     }
     setText('')
-    toast.success(t('js_composer_done'))
+    picker.clear()
+    if (res.linkError) toast.error(t('lp_link_error').replace('{msg}', res.linkError))
+    else toast.success(t('js_composer_done'))
     onAdded()
   }
   return (
-    <div data-testid="js-composer" style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+    <div data-testid="js-composer" style={{ marginTop: 4, display: 'grid', gap: 6, minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
       <input
         className="input"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value)
+          picker.onChange(e)
+        }}
+        onClick={picker.onChange}
+        onKeyUp={picker.onCaret}
         onKeyDown={(e) => {
+          if (picker.onKeyDown(e)) return
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             void send()
@@ -167,6 +178,9 @@ function Composer({ today, onAdded }: { today: string; onAdded: () => void }) {
       <button type="button" className="btn sm" disabled={busy || !text.trim()} onClick={() => void send()} style={{ minHeight: 40, ...(text.trim() ? MAIN_ACTION_STYLE : {}) }}>
         {t('js_composer_send')}
       </button>
+      </div>
+      {picker.popover}
+      {picker.chips}
     </div>
   )
 }

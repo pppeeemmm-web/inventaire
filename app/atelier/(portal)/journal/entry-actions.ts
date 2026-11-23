@@ -50,6 +50,8 @@ export type JournalDayEntry = {
   voiceLinks: VoiceNoteLinks | null
   works: Array<{ id: number; title: string | null; thumb?: string | null }>
   concepts: Array<{ id: string; title: string | null }>
+  /** People named with `@` (journal_step_b2.sql); a « Privé » contact is left out for the team (RLS). */
+  people?: Array<{ id: number; name: string }>
   /** Labels beside the entry (journal_step_b.sql); empty until that SQL is live. */
   labels?: Array<{ id: number; label: string }>
   /** This entry is a suite of an earlier one (« suite de … »). */
@@ -223,7 +225,7 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
   } = await supabase.auth.getUser()
   if (!user) return []
   const [entriesRes, creationRes, voicesRes, proposalsRes, photosRes] = await Promise.all([
-    supabase.from('journal_entry').select('id, event_on, hidden_at, corrects_id').limit(5000),
+    supabase.from('journal_entry').select('id, event_on, hidden_at, corrects_id, photo_id' as never).limit(5000),
     supabase.from('kaizen_item').select('created_at').eq('section', 'creation').limit(5000),
     supabase.from('voice_note').select('created_at').limit(5000),
     supabase
@@ -234,7 +236,7 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
       .is('rejected_at', null)
       .limit(5000),
     INSPIRATION_SQL_LIVE
-      ? supabase.from('inspiration_photo').select('day').limit(5000)
+      ? supabase.from('inspiration_photo').select('day').is('hidden_at' as never, null).limit(5000)
       : Promise.resolve({ data: [] as Array<{ day: string }> }),
   ])
   const byDay = new Map<string, JournalSourceDay>()
@@ -245,8 +247,9 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
     byDay.set(day, row)
   }
   const dayByEntry = new Map<number, string>()
-  for (const e of entriesRes.data ?? []) {
-    if (e.hidden_at || e.corrects_id != null) continue
+  for (const e of (entriesRes.data ?? []) as unknown as Array<{ id: number; event_on: string; hidden_at: string | null; corrects_id: number | null; photo_id?: string | null }>) {
+    // A photo's text is counted as the photo, not as an entry.
+    if (e.hidden_at || e.corrects_id != null || e.photo_id != null) continue
     dayByEntry.set(Number(e.id), e.event_on)
     bump(e.event_on, 'entries')
   }
@@ -269,7 +272,9 @@ export async function createJournalEntry(input: {
   dictated?: boolean
   /** Concepts (Recherche) picked in the form. */
   conceptIds?: string[]
-}): Promise<{ ok: true; id: number } | Err> {
+  /** Targets picked with `#` / `@` (one shared picker, principle 13): each becomes a link row on the entry. */
+  links?: Array<{ kind: 'oeuvre' | 'concept' | 'contact'; id: number | string }>
+}): Promise<{ ok: true; id: number; linkError?: string } | Err> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -312,8 +317,29 @@ export async function createJournalEntry(input: {
     const { error: linkErr } = await supabase.from('journal_entry_link').insert(linkRows)
     if (linkErr) await logError('journal entry links failed', linkErr, { source: 'journal.createJournalEntry', metadata: { id: data.id } })
   }
+  // Picked targets, one row each so a duplicate (23505: already linked by `#1234` or the concept list) skips only itself.
+  // `contact_id` is not in the generated types until journal_step_b2.sql is live.
+  let linkError: string | undefined
+  const picked = new Map<string, Record<string, unknown>>()
+  for (const l of input.links ?? []) {
+    const id = String(l?.id ?? '')
+    if (l?.kind === 'oeuvre' && /^\d{1,9}$/.test(id)) picked.set(`o${id}`, { oeuvre_id: Number(id) })
+    else if (l?.kind === 'contact' && /^\d{1,9}$/.test(id)) picked.set(`c${id}`, { contact_id: Number(id) })
+    else if (l?.kind === 'concept' && /^[0-9a-f-]{36}$/i.test(id)) picked.set(`i${id}`, { concept_id: id })
+    else linkError = 'bad_link'
+  }
+  const loose = supabase as unknown as { from: (t: string) => { insert: (r: unknown) => PromiseLike<{ error: { code?: string; message: string } | null }> } }
+  for (const target of picked.values()) {
+    const { error: pErr } = await loose
+      .from('journal_entry_link')
+      .insert({ entry_id: data.id, ...target, created_by: user.id, proposed_by: 'pem', validated_at: now })
+    if (pErr && pErr.code !== '23505') {
+      linkError = pErr.message
+      await logError('journal entry picked link failed', pErr, { source: 'journal.createJournalEntry', metadata: { id: data.id } })
+    }
+  }
   revalidatePath('/atelier/journal')
-  return { ok: true, id: data.id }
+  return linkError ? { ok: true, id: data.id, linkError } : { ok: true, id: data.id }
 }
 
 /** Admin only (RLS: link update = admin). Validate = the proposal becomes a link; reject = kept, marked rejected. */
@@ -440,6 +466,15 @@ export async function correctJournalEntry(id: number, text: string): Promise<{ o
     root = r.data
   }
   if (root.corrects_id != null) return { error: 'not_found' }
+  // A photo's text is corrected only through setInspirationCaption (photo_id is not in generated types).
+  const photoRows = await supabase
+    .from('journal_entry')
+    .select('id, photo_id' as never)
+    .in('id', [target.id, root.id])
+  if (photoRows.error) return { error: photoRows.error.message }
+  if (((photoRows.data ?? []) as unknown as Array<{ photo_id?: string | null }>).some((r) => r.photo_id != null)) {
+    return { error: 'photo_text' }
+  }
   if (root.provenance === 'typed') return { error: 'typed' }
 
   const { data: fixes } = await supabase

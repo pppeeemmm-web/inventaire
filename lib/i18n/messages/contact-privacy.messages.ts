@@ -70,4 +70,12 @@ export const contactPrivacyMessages = defineMessages({
     fr: '{n} commandes fournisseur',
     en: '{n} supply orders',
   },
+  contact_delete_journal_one: {
+    fr: 'nommé(e) dans le Journal (1) — fusionnez plutôt avec la bonne fiche',
+    en: 'named in the Journal (1) — merge it into the right contact instead',
+  },
+  contact_delete_journal_fmt: {
+    fr: 'nommé(e) dans le Journal ({n}) — fusionnez plutôt avec la bonne fiche',
+    en: 'named in the Journal ({n}) — merge it into the right contact instead',
+  },
 })

@@ -7,6 +7,12 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.104 (2026-11-23) — Journal Step B part 2: @ links a person, a photo's text is a Journal note.
+  wn_journal_at_person_t: { fr: 'Journal : @ relie une personne', en: 'Journal: @ links a person' },
+  wn_journal_at_person_d: {
+    fr: 'En écrivant dans le Journal, tapez # puis un titre pour relier une œuvre ou une idée, @ puis un nom pour relier une personne ; choisissez dans la liste (ou « + Personne » si elle n’existe pas). La fiche du contact montre « Dans le Journal » : les notes qui la nomment. Une personne nommée dans le Journal ne se supprime plus : on la fusionne avec la bonne fiche.',
+    en: 'When writing in the Journal, type # then a title to link a work or an idea, @ then a name to link a person; pick from the list (or « + Person » if they don’t exist yet). A contact’s card shows « In the Journal »: the notes that name them. A person named in the Journal can no longer be deleted: merge them into the right contact instead.',
+  },
   wn_journal_desk_capture_t: { fr: 'Le Journal sur l’ordinateur : images, voix, photos du téléphone', en: 'The Journal on the computer: images, voice, phone photos' },
   wn_journal_desk_capture_d: {
     fr: 'Collez une image (Ctrl+V) sur le jour affiché, ou glissez-la sur n’importe quel jour : elle devient la photo d’inspiration de ce jour, avec un texte dessous. Le 🎤 enregistre avec le micro de l’ordinateur ; le PC transcrit juste après. « Sur ce PC » montre les photos de l’iPhone arrivées par Syncthing, sur le jour où elles ont été prises : cochez celles à garder, seules celles-là partent. La première fois, « Relier le dossier » ouvre le dossier PEM-Tray.',

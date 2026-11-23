@@ -187,12 +187,12 @@ async function main() {
   for (const [y, list] of byYear) {
     const text = list.map((e) => {
       const links = (linksBy.get(e.id) ?? [])
-        .map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : l.target_entry_id ? `${l.relation === 'suite' ? 'suite of' : 'cites'} entry ${l.target_entry_id}` : conceptName.get(l.concept_id)))
+        .map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : l.contact_id ? (contactName.get(l.contact_id) ? `@${contactName.get(l.contact_id)}` : null) : l.target_entry_id ? `${l.relation === 'suite' ? 'suite of' : 'cites'} entry ${l.target_entry_id}` : conceptName.get(l.concept_id)))
         .filter(Boolean)
       const labels = (labelsBy.get(e.id) ?? []).map((l) => l.label)
       const moved = (movesBy.get(e.id) ?? []).map((m) => `moved from ${m.from_day} on ${String(m.changed_at).slice(0, 10)}`)
       const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null, e.corrects_id ? `corrects entry ${e.corrects_id}` : null, ...moved].filter(Boolean).join(' · ')
-      return `## ${e.event_on} — entry ${e.id}\n_${meta}_${labels.length ? `\nLabels: ${labels.join(', ')}` : ''}${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}\n`
+      return `## ${e.event_on} — entry ${e.id}\n_${meta}_${labels.length ? `\nLabels: ${labels.join(', ')}` : ''}${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}${e.photo_id ? ' (photo)' : ''}\n`
     }).join('\n---\n\n')
     await writeText(`journal/${y}.md`, `# Journal ${y}\n\n${text}`)
   }

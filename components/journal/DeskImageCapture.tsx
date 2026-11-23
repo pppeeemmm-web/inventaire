@@ -50,18 +50,21 @@ export type PutResult = { ok: true; id: string; day: string; already: boolean } 
  * One image onto one day through the door; the same for a paste, a drop and the PC tray. No network → kept on
  * this PC (the capture queue) and sent later. `id` = the one-time id (from the image's bytes).
  */
-export async function putImageOnDay(blob: Blob, name: string, day: string, id: string): Promise<PutResult> {
+export async function putImageOnDay(blob: Blob, name: string, day: string, id: string, meta?: Record<string, unknown> | null): Promise<PutResult> {
   const fd = new FormData()
   fd.set('photo', blob, name)
   fd.set('day', day)
   fd.set('client_id', id)
+  // The photo's own data (time taken, phone, place…), read before the image is re-encoded (journal_step_b2.sql).
+  const metaJson = meta ? JSON.stringify(meta) : null
+  if (metaJson) fd.set('meta', metaJson)
   try {
     const res = await addInspirationPhoto(fd)
     return 'error' in res ? { error: res.error } : { ok: true, id: res.id, day: res.day, already: !!res.already }
     // eslint-disable-next-line pem-i18n/no-silent-catch -- network → kept on this PC (the caller says so); otherwise returned
   } catch (err) {
     if (isNetworkFailure(err)) {
-      await enqueueCapture({ id, kind: 'photo', fields: { day }, blob, blobName: name, createdAt: Date.now() })
+      await enqueueCapture({ id, kind: 'photo', fields: metaJson ? { day, meta: metaJson } : { day }, blob, blobName: name, createdAt: Date.now() })
       return { queued: true }
     }
     return { error: err instanceof Error ? err.message : String(err) }

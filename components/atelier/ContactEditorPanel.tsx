@@ -35,6 +35,7 @@ import type {
   ContactWebsite,
 } from '@/components/atelier/contact-editor-types'
 import { ContactKitsSection } from '@/components/atelier/kits/ContactKitsSection'
+import { ContactJournalSection } from '@/components/atelier/ContactJournalSection'
 import { decideAiJob } from '@/app/atelier/(portal)/ai/actions'
 import { sameAddress, sameEmail, samePhone, sameUrl, type CardSuggestion } from '@/lib/ai-card-suggestion'
 import { contactLinks, LINK_GLYPH } from '@/lib/contacts/contact-links'
@@ -1284,6 +1285,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                 {locs.length > 0 && <WorkMini label={t('contactEditorWorksLoc')} items={locs} />}
                 {buys.length > 0 && <WorkMini label={t('contactEditorWorksBuyer')} items={buys} />}
                 <ContactKitsSection contactId={contact!.ContactID} />
+                <ContactJournalSection contactId={contact!.ContactID} />
               </>
             )}
 

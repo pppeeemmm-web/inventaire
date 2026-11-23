@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
+import { useLinkPicker } from '@/components/journal/LinkPicker'
 
 const KINDS = [
   { id: 'spark', label: 'je_kind_spark' },
@@ -25,6 +26,7 @@ export function DayWriteSheet({ day, initialText = '', onClose }: { day: string;
   const [body, setBody] = useState(initialText ? `${initialText.trim()} ` : '')
   const [pending, startTransition] = useTransition()
   const box = useRef<HTMLTextAreaElement>(null)
+  const picker = useLinkPicker(body, setBody)
 
   useEffect(() => {
     // Phone: the keyboard opens with the sheet.
@@ -45,12 +47,13 @@ export function DayWriteSheet({ day, initialText = '', onClose }: { day: string;
       return
     }
     startTransition(async () => {
-      const res = await createJournalEntry({ day, kind, body })
+      const res = await createJournalEntry({ day, kind, body, links: picker.links })
       if ('error' in res) {
         toast.error(t('je_err_fmt').replace('{msg}', res.error))
         return
       }
-      toast.success(t('pn_write_saved'))
+      if (res.linkError) toast.error(t('lp_link_error').replace('{msg}', res.linkError))
+      else toast.success(t('pn_write_saved'))
       onClose()
       router.refresh()
     })
@@ -97,9 +100,19 @@ export function DayWriteSheet({ day, initialText = '', onClose }: { day: string;
           maxLength={20_000}
           placeholder={t('je_body_placeholder')}
           aria-label={t('je_body_label')}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => {
+            setBody(e.target.value)
+            picker.onChange(e)
+          }}
+          onClick={picker.onChange}
+          onKeyUp={picker.onCaret}
+          onKeyDown={(e) => {
+            picker.onKeyDown(e)
+          }}
           style={{ width: '100%', boxSizing: 'border-box', fontSize: 16, lineHeight: 1.45, padding: 10, borderRadius: 8, border: '1px solid var(--bd2)', background: 'var(--bg1)', color: 'var(--tx)', resize: 'vertical' }}
         />
+        {picker.popover}
+        {picker.chips}
         <p style={{ margin: 0, fontSize: 11, color: 'var(--tx3)' }}>{t('je_append_only_hint')}</p>
         <button type="button" className="btn primary" data-testid="day-write-save" disabled={pending || !body.trim()} onClick={save} style={{ minHeight: 48 }}>
           {t(pending ? 'je_saving' : 'je_save')}

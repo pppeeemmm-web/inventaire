@@ -97,7 +97,7 @@
 // '3.1.101' (2026-11-23): a similar contact is flagged before creating; quick add / import write a contact in one go.
 // '3.1.102' (2026-11-23): phone sale — the buyer step is a search with « + Nouveau contact ».
 // '3.1.103' (2026-11-23): desk Journal — paste / drop an image on a day, 🎤 with the PC microphone, « Sur ce PC » tray (admin).
-export const WHATS_NEW_RELEASE = '3.1.103'
+export const WHATS_NEW_RELEASE = '3.1.104'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -123,6 +123,7 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_at_person', day: '2026-11-23', spot: 'journal' },
   { id: 'journal_desk_capture', day: '2026-11-23', spot: 'journal', admin: true },
   { id: 'phone_sale_buyer_search', day: '2026-11-23', spot: 'sales' },
   { id: 'contact_similar_warning', day: '2026-11-23', spot: 'contacts' },
