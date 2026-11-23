@@ -9,6 +9,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { CAPTURE_QUEUE_EVENT, flushCaptures, listCaptures, removeCapture, type QueuedCapture } from '@/lib/mobile/capture-queue'
+import { doorErrorText } from '@/components/journal/DeskImageCapture'
 
 export function useCaptureQueue(): QueuedCapture[] {
   const [items, setItems] = useState<QueuedCapture[]>([])
@@ -84,7 +85,7 @@ function QueuedCard({ c, onSent }: { c: QueuedCapture; onSent?: () => void }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: 'var(--tx3)' }}>
         <span>{time}</span>
         <span style={{ color: 'var(--ac)' }}>{t(c.kind === 'voice' ? 'js_kind_voice' : 'js_kind_photo')}</span>
-        <span style={{ color: c.error ? 'var(--rust)' : 'var(--tx3)' }}>· {c.error ? t('cq_refused').replace('{msg}', c.error) : t('cq_waiting')}</span>
+        <span style={{ color: c.error ? 'var(--rust)' : 'var(--tx3)' }}>· {c.error ? t('cq_refused').replace('{msg}', doorErrorText(c.error, t)) : t('cq_waiting')}</span>
       </div>
       {url && c.kind === 'voice' ? <audio controls preload="none" src={url} style={{ display: 'block', width: '100%', margin: '6px 0', height: 36 }} /> : null}
       {/* eslint-disable-next-line @next/next/no-img-element -- local picture waiting on the phone */}

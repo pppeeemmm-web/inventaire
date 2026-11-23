@@ -5,8 +5,11 @@
 // phone, wide, and on the right the rail — what the clicked card is connected to (its works and the other
 // days that mention them, its ✦ suggestions, its ideas). Today ends with a composer. Shown in the Journal
 // tab while the switch is on (`?stream=1`, a cookie; `?stream=0` goes back).
+// Capture on the desk (design 2026-11-23 JournalDesk.md): paste or drop an image onto a day (admin, Jours),
+// and 🎤 — the phone's recorder with the PC microphone, live words off unless this PC turned them on.
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import dynamic from 'next/dynamic'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { thumbUrl } from '@/lib/data'
@@ -16,6 +19,10 @@ import { JournalScaleSwitch, JournalStream, type JournalSelection } from '@/comp
 import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import type { JournalStreamPage, JournalWorkMentions } from '@/lib/journal/stream'
+import { useDeskImageCapture } from '@/components/journal/DeskImageCapture'
+import { DayTray, TrayPane, usePcTray } from '@/components/journal/PcTray'
+
+const VoiceNoteSheet = dynamic(() => import('@/components/shared/VoiceNoteSheet').then((m) => m.VoiceNoteSheet), { ssr: false })
 
 type Scale = 0 | 1 | 2
 
@@ -173,6 +180,31 @@ export function JournalDesk() {
   const [jump, setJump] = useState<string | null>(null)
   const [dateInput, setDateInput] = useState('')
   const [refreshSignal, setRefreshSignal] = useState(0)
+  const [voiceOpen, setVoiceOpen] = useState(false)
+  const [refreshDaySignal, setRefreshDaySignal] = useState<{ day: string } | null>(null)
+  const [editPhotoId, setEditPhotoId] = useState<string | null>(null)
+  const streamRef = useRef<HTMLDivElement>(null)
+  const [trayOpen, setTrayOpen] = useState(false)
+  const tray = usePcTray(!!page?.isAdmin)
+  // A photo landed (paste, drop or the tray): read its day again; a single new one opens its text box, once.
+  const onPhotoSaved = useCallback((day: string, id: string, isNew: boolean) => {
+    setEditPhotoId(isNew && id ? id : null)
+    setRefreshDaySignal({ day })
+    if (isNew && id) window.setTimeout(() => setEditPhotoId((cur) => (cur === id ? null : cur)), 15_000)
+  }, [])
+  const dayTop = useCallback((day: string) => <DayTray tray={tray} day={day} onSaved={onPhotoSaved} />, [tray, onPhotoSaved])
+  const capture = useDeskImageCapture({
+    // Not while the recorder is open (a paste there is not meant for the stream).
+    enabled: !!page?.isAdmin && scale === 0 && !voiceOpen,
+    scrollRef: streamRef,
+    onSaved: useCallback((day: string, id: string, isNew: boolean) => {
+      onPhotoSaved(day, id, isNew)
+      if (!isNew) {
+        setJump(null)
+        requestAnimationFrame(() => setJump(day))
+      }
+    }, [onPhotoSaved]),
+  })
 
   useEffect(() => {
     let alive = true
@@ -219,9 +251,53 @@ export function JournalDesk() {
             style={{ minHeight: 34, width: 150 }}
           />
         </label>
+        {page?.isAdmin && scale === 0 ? <span style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('jd_hint')}</span> : null}
+        {page?.isAdmin && tray.status !== 'unsupported' ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="jt-open"
+            aria-pressed={trayOpen}
+            title={t('jt_button_aria')}
+            onClick={() => setTrayOpen((v) => !v)}
+            style={{ marginLeft: 'auto', minHeight: 36, borderRadius: 999, border: '1px solid var(--ac)', color: 'var(--ac)' }}
+          >
+            {t('jt_button').replace('{n}', tray.status === 'ready' ? String(tray.count) : '…')}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn sm"
+          data-testid="journal-desk-mic"
+          aria-label={t('jd_mic_aria')}
+          title={t('jd_mic_aria')}
+          onClick={() => setVoiceOpen(true)}
+          style={{ ...MAIN_ACTION_STYLE, marginLeft: page?.isAdmin && tray.status !== 'unsupported' ? 0 : 'auto', minHeight: 36, borderRadius: 999, padding: '0 14px' }}
+        >
+          🎤 {t('jd_mic')}
+        </button>
       </div>
+      {voiceOpen ? (
+        <VoiceNoteSheet
+          open={voiceOpen}
+          liveWordsOffByDefault
+          onClose={() => {
+            setVoiceOpen(false)
+            setRefreshSignal((n) => n + 1)
+          }}
+          onSaved={() => setRefreshSignal((n) => n + 1)}
+        />
+      ) : null}
       <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px' }}>
-        <div data-testid="journal-desk-stream" style={{ overflow: 'auto', padding: '0 28px 40px', borderRight: '1px solid var(--bd)' }}>
+        <div ref={streamRef} data-testid="journal-desk-stream" {...capture.handlers} style={{ overflow: 'auto', padding: '0 28px 40px', borderRight: '1px solid var(--bd)', position: 'relative' }}>
+          {capture.dropDay ? (
+            <style>{`#js-day-${capture.dropDay}{outline:2px dashed var(--ac);outline-offset:-2px;border-radius:10px;background:color-mix(in srgb,var(--ac) 8%,transparent)}`}</style>
+          ) : null}
+          {capture.dropLabel ? (
+            <div data-testid="journal-desk-drop-label" style={{ position: 'sticky', top: 52, zIndex: 5, height: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+              <span style={{ background: 'var(--ac)', color: 'var(--onac, #14110a)', fontWeight: 600, padding: '6px 14px', borderRadius: 999, whiteSpace: 'nowrap', height: 'fit-content' }}>{capture.dropLabel}</span>
+            </div>
+          ) : null}
           <div style={{ maxWidth: 780, margin: '0 auto' }}>
             {page ? (
               <JournalStream
@@ -233,6 +309,9 @@ export function JournalDesk() {
                 selectedKey={sel?.key ?? null}
                 jumpTo={jump}
                 refreshSignal={refreshSignal}
+                refreshDaySignal={refreshDaySignal}
+                editPhotoId={editPhotoId}
+                dayTop={page.isAdmin && tray.status === 'ready' ? dayTop : undefined}
                 todayExtra={<Composer today={page.today} onAdded={() => setRefreshSignal((n) => n + 1)} />}
               />
             ) : failed ? (
@@ -243,7 +322,7 @@ export function JournalDesk() {
           </div>
         </div>
         <aside aria-label={t('js_rail_aria')} style={{ overflow: 'auto', padding: 14, background: 'var(--bg1)' }}>
-          <Rail sel={sel} onJump={onJump} />
+          {trayOpen ? <TrayPane tray={tray} onClose={() => setTrayOpen(false)} onJump={onJump} /> : <Rail sel={sel} onJump={onJump} />}
         </aside>
       </div>
     </div>

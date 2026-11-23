@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journal desk capture</title>
+<!-- Mockup for docs/design/2026-11-23/JournalDesk.md — local draft. Same look as ../2026-11-22/Journal_Mockup.html. Nothing here is real data. -->
+<style>
+:root{--bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;--bd:#2d2d32;--bd2:#3f3f46;--tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--ac:#d4b886;--ac2:#a68b55;--rust:oklch(0.72 0.16 35);--onac:#14110a}
+:root[data-theme="light"]{--bg0:#fcfcfc;--bg1:#f5f5f5;--bg2:#ebebeb;--bg3:#e0e0e0;--bd:#e5e5e5;--bd2:#d4d4d4;--tx:#1a1a1a;--tx2:#4a4a4a;--tx3:#737373;--ac:#b8860b;--ac2:#8b6914;--rust:oklch(0.6 0.16 35);--onac:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg0);color:var(--tx);font:14px/1.45 'Sofia Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
+button{font:inherit;color:inherit}
+.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd)}
+.top h1{font-size:16px;margin:0}
+.top .note{color:var(--tx3);font-size:12px;flex:1;min-width:200px}
+.wrap{max-width:1300px;margin:0 auto;padding:16px}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:8px;overflow:hidden}
+.seg button{background:none;border:0;padding:6px 12px;cursor:pointer;color:var(--tx2);min-height:32px}
+.seg button[aria-pressed="true"]{background:var(--bg3);color:var(--tx)}
+.desk{border:1px solid var(--bd);border-radius:10px;background:var(--bg1);overflow:hidden}
+.desk-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--bd)}
+.input{background:var(--bg2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;color:var(--tx);min-height:32px}
+.chipf{border:1px solid var(--bd2);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--tx2);background:none;cursor:pointer;min-height:32px}
+.chipf.acc{border-color:var(--ac);color:var(--ac)}
+.mic-top{background:var(--ac);color:var(--onac);border:0;border-radius:999px;min-width:40px;min-height:36px;padding:0 14px;font-weight:600;cursor:pointer}
+.desk-body{display:grid;grid-template-columns:1fr 300px;height:720px}
+.desk-stream{overflow:auto;padding:0 28px 40px;border-right:1px solid var(--bd);position:relative}
+.rail{overflow:auto;padding:14px;background:var(--bg0)}
+.rail h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:16px 0 6px}
+.rail h3:first-child{margin-top:0}
+.rail .empty{color:var(--tx3);font-size:13px;margin:0}
+.day{position:relative;border-radius:10px;transition:background .12s}
+.day.drop{background:color-mix(in srgb,var(--ac) 10%,transparent);outline:2px dashed var(--ac);outline-offset:-2px}
+.droplabel{display:none;position:absolute;left:50%;top:48px;transform:translateX(-50%);background:var(--ac);color:var(--onac);font-weight:600;padding:6px 14px;border-radius:999px;z-index:5;white-space:nowrap}
+.day.drop .droplabel{display:block}
+.divider{position:sticky;top:0;z-index:3;background:color-mix(in srgb,var(--bg1) 94%,transparent);backdrop-filter:blur(6px);display:flex;align-items:center;gap:8px;padding:10px 0 8px;border-bottom:1px solid var(--bd)}
+.divider .d{font-weight:600;white-space:nowrap}
+.divider .d.today{color:var(--ac)}
+.divider .counts{margin-left:auto;color:var(--tx3);font-size:12px;white-space:nowrap}
+.pcchip{border:1px dashed var(--bd2);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--tx2);background:none;cursor:pointer;min-height:28px}
+.pcchip:hover,.pcchip[aria-expanded="true"]{border-color:var(--ac);color:var(--ac)}
+.thumb{width:22px;height:22px;border-radius:4px;flex:none;display:inline-block}
+.day-cards{display:grid;gap:10px;padding:12px 0 22px}
+.card{border:1px solid var(--bd);border-radius:10px;background:var(--bg2);padding:10px 12px;position:relative}
+.card.new{animation:pop .5s}
+@keyframes pop{from{box-shadow:0 0 0 3px var(--ac)}to{box-shadow:none}}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--tx3)}
+.card .meta .k{color:var(--ac)}
+.card .meta .warn{color:var(--rust)}
+.card .txt{margin:6px 0 4px;white-space:pre-wrap}
+.wref{display:inline-flex;align-items:center;gap:4px;color:var(--ac);text-decoration:underline;text-underline-offset:2px}
+.wref .thumb{width:18px;height:18px}
+.pending{color:var(--tx3);font-style:italic}
+.photo{height:150px;border-radius:8px;margin:6px 0;background:linear-gradient(135deg,#6b5a3a,#2a3b4a 60%,#1b1b20)}
+.photo.b{background:linear-gradient(160deg,#c9a46a,#5b3d2e 55%,#20181a)}
+.photo.c{background:linear-gradient(120deg,#3b5a4a,#a7b39a 50%,#2a2a30)}
+.photo.d{background:linear-gradient(200deg,#8a8f9c,#3a3f52 60%,#14141a)}
+.sending{height:3px;background:var(--bd2);border-radius:2px;overflow:hidden;margin:4px 0}
+.sending i{display:block;height:100%;width:40%;background:var(--ac);animation:send 1s linear infinite}
+@keyframes send{from{margin-left:-40%}to{margin-left:100%}}
+.audio{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:999px;padding:4px 12px 4px 4px;margin:6px 0;font-size:12px;color:var(--tx2)}
+.audio b{width:28px;height:28px;border-radius:50%;background:var(--bg1);display:grid;place-items:center;font-weight:400}
+.audio i{flex:1;height:3px;background:var(--bd2);border-radius:2px}
+.actions{display:flex;align-items:center;gap:6px;margin-top:8px}
+.btn-main{background:var(--ac);color:var(--onac);border:0;border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer;min-height:36px}
+.btn-s{background:none;border:1px solid var(--bd2);border-radius:8px;padding:6px 12px;cursor:pointer;min-height:36px}
+.btn-q{background:none;border:0;color:var(--tx3);cursor:pointer;min-width:36px;min-height:36px;border-radius:8px;font-size:16px;margin-left:auto}
+.caption{display:flex;gap:6px;margin-top:6px;position:relative}
+.caption .input{flex:1;min-height:36px}
+.picker{position:absolute;left:0;top:40px;z-index:6;background:var(--bg1);border:1px solid var(--bd2);border-radius:10px;min-width:260px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.picker button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:7px 10px;border-radius:7px;cursor:pointer}
+.picker button:hover,.picker button.on{background:var(--bg3)}
+.picker small{color:var(--tx3)}
+.tray{border:1px dashed var(--bd2);border-radius:10px;padding:10px;margin:10px 0 0;background:var(--bg0)}
+.tray .head{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--tx3);margin-bottom:8px}
+.tray .head b{color:var(--tx2);font-weight:600}
+.tray .grid{display:flex;gap:8px;flex-wrap:wrap}
+.tile{position:relative;width:112px;height:84px;border-radius:8px;cursor:pointer;border:2px solid transparent}
+.tile.on{border-color:var(--ac)}
+.tile .tick{position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);border:1px solid #fff8;display:grid;place-items:center;font-size:13px;color:#fff}
+.tile.on .tick{background:var(--ac);color:var(--onac);border-color:var(--ac)}
+.tile small{position:absolute;right:4px;bottom:3px;font-size:10px;color:#fff;background:rgba(0,0,0,.5);padding:0 4px;border-radius:3px}
+.tray .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.composer{margin:12px 0 0;display:flex;gap:8px}
+.composer .input{flex:1;min-height:40px}
+.kbd{font-size:11px;color:var(--tx3);border:1px solid var(--bd2);border-radius:4px;padding:0 4px;margin-left:4px}
+.panel{position:absolute;top:0;right:0;bottom:0;width:340px;background:var(--bg1);border-left:1px solid var(--bd2);z-index:20;padding:16px;box-shadow:-8px 0 30px rgba(0,0,0,.4);display:none}
+.panel.on{display:block}
+.panel h3{margin:0 0 4px;font-size:15px}
+.level{display:flex;gap:3px;align-items:flex-end;height:48px;margin:16px 0}
+.level i{flex:1;background:var(--ac2);border-radius:2px}
+.timer{font-size:32px;font-variant-numeric:tabular-nums;text-align:center}
+.muted{color:var(--tx3);font-size:12.5px}
+.traypane{position:absolute;inset:0 0 0 auto;width:420px;background:var(--bg1);border-left:1px solid var(--bd2);z-index:20;padding:16px;overflow:auto;display:none;box-shadow:-8px 0 30px rgba(0,0,0,.4)}
+.traypane.on{display:block}
+.traypane .dh{font-weight:600;margin:14px 0 6px;display:flex;gap:8px;align-items:center}
+.traypane .dh small{color:var(--tx3);font-weight:400}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--bd2);padding:8px 14px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.legend{margin:16px 0 40px;color:var(--tx2);font-size:13px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.legend div{border:1px solid var(--bd);border-radius:8px;padding:10px 12px;background:var(--bg1)}
+.legend b{color:var(--tx)}
+@media (max-width:900px){.desk-body{grid-template-columns:1fr}.rail{display:none}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Journal · bureau — coller, déposer, 🎤, photos du PC</h1>
+  <span class="note">Maquette de JournalDesk.md (2026-11-23). Rien n'est réel. Les boutons « Essayer » jouent chaque scénario.</span>
+  <div class="seg" role="group" aria-label="Thème"><button aria-pressed="true" data-theme="dark">Sombre</button><button aria-pressed="false" data-theme="light">Clair</button></div>
+</div>
+
+<div class="wrap">
+  <div class="steps">
+    <button class="btn-s" id="tryPaste">Essayer · Ctrl+V (image copiée)</button>
+    <button class="btn-s" id="tryDrop">Essayer · glisser un JPG sur le 14 nov.</button>
+    <button class="btn-s" id="tryDup">Essayer · redéposer le même</button>
+    <button class="btn-s" id="tryHeic">Essayer · déposer un HEIC</button>
+    <button class="btn-s" id="tryOffline">Essayer · coller sans réseau</button>
+  </div>
+
+  <div class="desk">
+    <div class="desk-bar">
+      <div class="seg" role="group" aria-label="Échelle"><button aria-pressed="true">Jours</button><button aria-pressed="false">Mois</button><button aria-pressed="false">Années</button></div>
+      <input class="input" placeholder="aller au…" style="width:120px">
+      <input class="input" placeholder="Chercher dans le Journal" style="flex:1;min-width:160px">
+      <button class="chipf acc" id="openTray" title="Photos arrivées par Syncthing, pas encore dans le Journal">📁 Sur ce PC · 41</button>
+      <button class="mic-top" id="openMic" title="Note vocale (micro du PC)">🎤</button>
+    </div>
+    <div class="desk-body">
+      <div class="desk-stream" id="stream">
+
+        <section class="day" data-day="2026-11-23" data-label="aujourd'hui">
+          <div class="droplabel">Déposer sur aujourd'hui</div>
+          <div class="divider">
+            <span class="d today">Aujourd'hui · dim. 23 nov.</span>
+            <button class="pcchip" data-tray="t23" aria-expanded="false">📁 3 sur ce PC</button>
+            <span class="counts">✍ 1 · 🎤 1 · 📷 0</span>
+          </div>
+          <div class="tray" id="t23" hidden>
+            <div class="head"><b>Sur ce PC · 23 nov.</b> · dossier « Sync all\2026-11-23 » · rien n'est envoyé avant « Mettre sur ce jour »</div>
+            <div class="grid">
+              <div class="tile photo b" data-pick><span class="tick">✓</span><small>HEIC</small></div>
+              <div class="tile photo c" data-pick><span class="tick">✓</span><small>HEIC</small></div>
+              <div class="tile photo d" data-pick><span class="tick">✓</span><small>JPG</small></div>
+            </div>
+            <div class="row">
+              <button class="btn-main" data-put="2026-11-23" disabled>Mettre sur ce jour (0)</button>
+              <button class="btn-s" data-skip>Pas pour le Journal</button>
+              <span class="muted">Les photos non choisies restent sur le PC et sur le téléphone, intactes.</span>
+            </div>
+          </div>
+          <div class="day-cards">
+            <div class="card"><div class="meta"><span>09:12</span><span class="k">écrit</span></div><div class="txt">Reprendre la série bleue — le fond trop plat.</div></div>
+            <div class="card"><div class="meta"><span>11:40</span><span class="k">note vocale</span><span class="warn">dicté · non vérifié</span></div><div class="audio"><b>▶</b><i></i><span>0:42</span></div><div class="txt">le prisme sur la toile du milieu, la saturation à reprendre</div><div class="actions"><button class="btn-main">Vérifier · corriger</button><button class="btn-q">⋯</button></div></div>
+          </div>
+          <div class="composer"><input class="input" placeholder="Écrire sur aujourd'hui… (# œuvre ou idée, @ personne)"><button class="btn-s" id="micInline" title="Note vocale">🎤</button><span class="kbd">Entrée</span></div>
+          <p class="muted" style="margin:8px 0 18px">Coller une image (Ctrl+V hors d'un champ : sur le jour à l'écran) ou la déposer sur n'importe quel jour.</p>
+        </section>
+
+        <section class="day" data-day="2026-11-21" data-label="ven. 21 nov.">
+          <div class="droplabel">Déposer sur ven. 21 nov.</div>
+          <div class="divider"><span class="d">Ven. 21 nov.</span><span class="counts">✍ 2 · 📷 1</span></div>
+          <div class="day-cards">
+            <div class="card"><div class="meta"><span>16:05</span><span class="k">photo</span></div><div class="photo"></div><div class="txt">Lumière rasante sur <span class="wref"><span class="thumb photo" style="height:18px;margin:0"></span>Coquillages</span></div></div>
+          </div>
+        </section>
+
+        <section class="day" data-day="2026-11-14" data-label="ven. 14 nov.">
+          <div class="droplabel">Déposer sur ven. 14 nov.</div>
+          <div class="divider"><span class="d">Ven. 14 nov.</span><button class="pcchip" data-tray="t14" aria-expanded="false">📁 4 sur ce PC</button><span class="counts">✍ 1</span></div>
+          <div class="tray" id="t14" hidden>
+            <div class="head"><b>Sur ce PC · 14 nov.</b> · 4 photos · 1 datée par le fichier · les AVIF Lightroom (œuvres) ne sont pas listés</div>
+            <div class="grid">
+              <div class="tile photo" data-pick><span class="tick">✓</span><small>HEIC</small></div>
+              <div class="tile photo b" data-pick><span class="tick">✓</span><small>HEIC</small></div>
+              
+              <div class="tile photo d" data-pick><span class="tick">✓</span><small>PNG</small></div>
+              <div class="tile photo" data-pick style="filter:hue-rotate(60deg)"><span class="tick">✓</span><small>date du fichier</small></div>
+            </div>
+            <div class="row"><button class="btn-main" data-put="2026-11-14" disabled>Mettre sur ce jour (0)</button><button class="btn-s" data-skip>Pas pour le Journal</button></div>
+          </div>
+          <div class="day-cards">
+            <div class="card"><div class="meta"><span>10:20</span><span class="k">écrit</span></div><div class="txt">Visite atelier — parler des formats avec @Claire.</div></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="rail">
+        <h3>Cette carte</h3><p class="empty">Clique une carte pour voir ses liens.</p>
+        <h3>Sur ce PC</h3>
+        <p class="empty">41 photos arrivées par Syncthing, pas dans le Journal. Dernier passage du PC : 08:51.</p>
+        <p style="margin:8px 0"><button class="btn-s" id="prep">Préparer les nouvelles</button></p>
+        <p class="empty">Lance le PC (lien pem-ai:) : il lit « Sync all », convertit les HEIC, fait les aperçus — sur le PC seulement.</p>
+      </aside>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div><b>Coller · déposer.</b> Ctrl+V hors d'un champ = sur le jour à l'écran (son titre épinglé en haut). Glisser un fichier = sur le jour sous le pointeur (jour passé : la carte dit « ajouté le … »). JPG, PNG, WebP, GIF, AVIF. HEIC refusé ici (Chrome ne le lit pas) → dossier Sync.</div>
+    <div><b>Le texte sous la photo.</b> Champ ouvert tout de suite. <b>#</b> une œuvre ou une idée, <b>@</b> une personne — même sélecteur partout. Avant l'étape B : le premier # œuvre et la première idée sont reliés, @ reste du texte « lien à venir ».</div>
+    <div><b>🎤.</b> Même enregistreur que le téléphone, micro du PC. Pas de mots en direct (Chrome enverrait le son à Google) : « Transcrire sur ce PC » lance Whisper ici.</div>
+    <div><b>Sur ce PC.</b> Une puce par jour qui a des photos non triées. Rien ne part avant le choix ; une photo choisie part avec ses données (date de prise, appareil…) lues avant l'envoi. Même fichier = même fiche (empreinte), jamais de double.</div>
+  </div>
+</div>
+
+<div class="panel" id="micPanel" role="dialog" aria-label="Note vocale">
+  <h3>Note vocale · aujourd'hui</h3>
+  <p class="muted">Micro du PC (Chrome l'a demandé une fois). L'enregistrement continue si tu changes de fenêtre.</p>
+  <div class="timer" id="timer">0:00</div>
+  <div class="level" id="level"></div>
+  <p class="muted">Pas de mots en direct sur le bureau : le PC transcrit juste après.</p>
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn-main" id="stopMic" style="flex:1">■ Arrêter</button><button class="btn-s" id="cancelMic">Annuler</button></div>
+</div>
+
+<div class="traypane" id="trayPane" role="dialog" aria-label="Sur ce PC">
+  <div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:15px">📁 Sur ce PC · 41</h3><button class="btn-q" id="closeTray">✕</button></div>
+  <p class="muted">Photos arrivées par Syncthing (« Sync all »), pas encore dans le Journal, par jour. Rien n'est envoyé avant ton choix.</p>
+  <div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-s" id="prep2">Préparer les nouvelles</button><button class="btn-s">Tout masquer avant le…</button></div>
+  <div class="dh">dim. 23 nov. <small>3</small></div><div class="grid" style="display:flex;gap:6px;flex-wrap:wrap"><div class="tile photo b" style="width:88px;height:66px"></div><div class="tile photo c" style="width:88px;height:66px"></div><div class="tile photo d" style="width:88px;height:66px"></div></div>
+  <div class="dh">ven. 14 nov. <small>5</small></div><div class="grid" style="display:flex;gap:6px;flex-wrap:wrap"><div class="tile photo" style="width:88px;height:66px"></div><div class="tile photo b" style="width:88px;height:66px"></div><div class="tile photo c" style="width:88px;height:66px"></div><div class="tile photo d" style="width:88px;height:66px"></div></div>
+  <p class="muted">Cliquer un jour ouvre son bandeau dans le flux. Le plateau commence le jour de la mise en service (les jours ci-dessus sont pour l'exemple).</p>
+  <div class="dh">Écartées <small>2</small></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><div class="tile photo d" style="width:66px;height:50px;opacity:.6"></div><div class="tile photo" style="width:66px;height:50px;opacity:.6"></div><button class="btn-s" onclick="toast('Remise dans le plateau')">Remettre</button></div>
+  <p style="margin:12px 0 0"><button class="btn-s" onclick="toast('Anciennes photos (avant la mise en service), par jour — rien n\'est envoyé')">voir les plus anciens</button></p>
+  <hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
+  <p class="muted">Première fois : « Relier le dossier » → choisir « PEM-Tray » dans ton dossier personnel. Chrome garde l'accès (« Autoriser à chaque visite »).</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2600)};
+$$('[data-theme]').forEach(b=>b.onclick=()=>{document.documentElement.dataset.theme=b.dataset.theme;$$('[data-theme]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+const now=()=>{const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')};
+const daySec=(d)=>$(`.day[data-day="${d}"]`);
+const works=[['Coquillages','œuvre #1182'],['Coquelicots bleus','œuvre #0934'],['Série bleue','idée · pousse']];
+
+function photoCard(day,{cls='',past=false,pending=false}={}){
+  const c=document.createElement('div');c.className='card new';
+  c.innerHTML=`<div class="meta"><span>${now()}</span><span class="k">photo</span><span>prise le 14 nov. à 10:12 · iPhone SE</span>${past?'<span>ajouté le 23 nov.</span>':''}${pending?'<span class="warn">en attente d\'envoi</span>':''}</div>
+  <div class="photo ${cls}"></div>${pending?'':'<div class="sending"><i></i></div>'}
+  <div class="caption"><input class="input" placeholder="Qu'est-ce que c'est ? (# œuvre ou idée, @ personne)"><button class="btn-s">OK</button></div>`;
+  daySec(day).querySelector('.day-cards').appendChild(c);
+  c.scrollIntoView({behavior:'smooth',block:'center'});
+  if(!pending) setTimeout(()=>{c.querySelector('.sending')?.remove()},1200);
+  wireCaption(c);return c;
+}
+function wireCaption(c){
+  const inp=c.querySelector('.caption input'), ok=c.querySelector('.caption .btn-s');let pk=null;
+  const close=()=>{pk?.remove();pk=null};
+  inp.addEventListener('input',()=>{close();const m=inp.value.match(/#(\w*)$/u);if(!m)return;
+    pk=document.createElement('div');pk.className='picker';
+    pk.innerHTML=works.filter(w=>w[0].toLowerCase().startsWith(m[1].toLowerCase())).map((w,i)=>`<button class="${i?'':'on'}"><span class="thumb photo" style="height:22px;margin:0"></span><span>${w[0]}<br><small>${w[1]}</small></span></button>`).join('')+'<button><span>+ Œuvre</span></button>';
+    c.querySelector('.caption').appendChild(pk);
+    $$('button',pk).forEach(b=>b.onclick=()=>{inp.value=inp.value.replace(/#\w*$/u,'#'+b.textContent.split(/œuvre|idée/)[0].trim()+' ');close();inp.focus()});
+  });
+  const save=()=>{close();const v=inp.value.trim();const t=document.createElement('div');t.className='txt';
+    t.innerHTML=v?v.replace(/#([\wÀ-ÿ]+(?: [\wÀ-ÿ]+)?)/gu,'<span class="wref"><span class="thumb photo" style="height:18px;margin:0"></span>$1</span>').replace(/@(\w+)/gu,'<span title="lien à venir (étape B)" style="color:var(--tx3)">@$1</span>'):'<span class="pending">sans texte</span>';
+    c.querySelector('.caption').replaceWith(t);toast(v?'Texte enregistré':'Photo gardée sans texte')};
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save()}if(e.key==='Escape')save()});
+  ok.onclick=save;
+}
+
+// paste
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='v'&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();doPaste()}});
+function doPaste(){const top=$('#stream').getBoundingClientRect().top+40;const s=$$('.day').find(x=>x.getBoundingClientRect().bottom>top)||daySec('2026-11-23');photoCard(s.dataset.day,{cls:'d',past:s.dataset.day!=='2026-11-23'}).querySelector('input').focus();toast('Collée sur '+s.dataset.label+' (le jour à l\'écran)')}
+$('#tryPaste').onclick=doPaste;
+
+// drop (simulated hover then drop)
+let dropped=false;
+function simDrop(day,after){const s=daySec(day);s.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>s.classList.add('drop'),400);setTimeout(()=>{s.classList.remove('drop');after()},1500)}
+$('#tryDrop').onclick=()=>simDrop('2026-11-14',()=>{dropped=true;photoCard('2026-11-14',{cls:'c',past:true});toast('Déposée sur ven. 14 nov.')});
+$('#tryDup').onclick=()=>{if(!dropped){toast('Essaie d\'abord « glisser un JPG sur le 14 nov. »');return}simDrop('2026-11-21',()=>toast('Déjà dans le Journal, le 14 nov. — rien d\'ajouté'))};
+$('#tryHeic').onclick=()=>simDrop('2026-11-21',()=>toast('HEIC : mets-la dans le dossier Sync, le PC la convertit'));
+$('#tryOffline').onclick=()=>{const c=photoCard('2026-11-23',{cls:'b',pending:true});toast('Pas de réseau — gardée sur ce PC, envoyée au retour');setTimeout(()=>{c.querySelector('.warn').remove();toast('Réseau revenu — envoyée (une fois)')},3500)};
+// real drag-and-drop too
+$$('.day').forEach(s=>{s.addEventListener('dragover',e=>{e.preventDefault();s.classList.add('drop')});s.addEventListener('dragleave',e=>{if(!s.contains(e.relatedTarget))s.classList.remove('drop')});s.addEventListener('drop',e=>{e.preventDefault();s.classList.remove('drop');const f=e.dataTransfer.files[0];if(f&&/heic/i.test(f.name)){toast('HEIC : mets-la dans le dossier Sync, le PC la convertit');return}photoCard(s.dataset.day,{cls:'b',past:s.dataset.day!=='2026-11-23'});toast('Déposée sur '+s.dataset.label)})});
+
+// mic
+let tm=null,sec=0;
+function openMic(){$('#micPanel').classList.add('on');sec=0;$('#timer').textContent='0:00';const lv=$('#level');lv.innerHTML='';for(let i=0;i<32;i++)lv.appendChild(document.createElement('i'));
+  tm=setInterval(()=>{sec++;$('#timer').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');$$('i',lv).forEach(i=>i.style.height=(8+Math.random()*40)+'px')},1000);
+  $$('i',lv).forEach(i=>i.style.height=(8+Math.random()*40)+'px')}
+function closeMic(){clearInterval(tm);$('#micPanel').classList.remove('on')}
+$('#openMic').onclick=openMic;$('#micInline').onclick=openMic;$('#cancelMic').onclick=()=>{closeMic();toast('Annulé — rien enregistré')};
+$('#stopMic').onclick=()=>{closeMic();const c=document.createElement('div');c.className='card new';const d=Math.max(sec,3);
+  c.innerHTML=`<div class="meta"><span>${now()}</span><span class="k">note vocale</span><span>micro du PC</span></div><div class="audio"><b>▶</b><i></i><span>0:${String(d).padStart(2,'0')}</span></div><div class="txt pending">transcription en attente</div><div class="actions"><button class="btn-main">Transcrire sur ce PC</button><button class="btn-q">⋯</button></div>`;
+  daySec('2026-11-23').querySelector('.day-cards').appendChild(c);c.scrollIntoView({behavior:'smooth',block:'center'});
+  c.querySelector('.btn-main').onclick=(e)=>{e.target.textContent='Le PC transcrit…';e.target.disabled=true;setTimeout(()=>{c.querySelector('.txt').className='txt';c.querySelector('.txt').textContent='la toile du milieu demande un fond plus chaud';c.querySelector('.meta').insertAdjacentHTML('beforeend','<span class="warn">non vérifié</span>');e.target.textContent='Vérifier · corriger';e.target.disabled=false},2200)};
+  toast('Note vocale sur aujourd\'hui')};
+
+// trays
+$$('.pcchip').forEach(b=>b.onclick=()=>{const t=$('#'+b.dataset.tray);t.hidden=!t.hidden;b.setAttribute('aria-expanded',!t.hidden)});
+$$('.tray').forEach(t=>{const put=$('[data-put]',t);const upd=()=>{const n=$$('.tile.on',t).length;put.textContent=`Mettre sur ce jour (${n})`;put.disabled=!n};
+  $$('[data-pick]',t).forEach(x=>x.onclick=()=>{x.classList.toggle('on');upd()});
+  put.onclick=()=>{const day=put.dataset.put;const sel=$$('.tile.on',t);sel.forEach(x=>{const cls=[...x.classList].find(k=>/^[bcd]$/.test(k))||'';photoCard(day,{cls,past:false});x.remove()});
+    const left=$$('[data-pick]',t).length;const chip=$(`[data-tray="${t.id}"]`);if(left){chip.textContent=`📁 ${left} sur ce PC`}else{chip.remove();t.hidden=true}upd();toast(`${sel.length} photo(s) sur ce jour — avec leurs données de prise`)};
+  $('[data-skip]',t).onclick=()=>{const sel=$$('.tile.on',t);if(!sel.length){toast('Coche d\'abord les photos à écarter');return}sel.forEach(x=>x.remove());const left=$$('[data-pick]',t).length;const chip=$(`[data-tray="${t.id}"]`);if(left)chip.textContent=`📁 ${left} sur ce PC`;else{chip.remove();t.hidden=true}upd();toast('Écartées — restent sur le PC et le téléphone')};
+});
+$('#openTray').onclick=()=>$('#trayPane').classList.add('on');$('#closeTray').onclick=()=>$('#trayPane').classList.remove('on');
+const prep=()=>{toast('Le PC prépare les photos (lien pem-ai:) — aperçus faits sur le PC seulement')};$('#prep').onclick=prep;$('#prep2').onclick=prep;
+</script>
+</body>
+</html>

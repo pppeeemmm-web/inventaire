@@ -48,11 +48,13 @@ const LEVEL_BARS = 24
 /** Per-device switch for live words (on by default); the audio is kept either way. */
 const LIVE_WORDS_KEY = 'pem.voice-note.live-words.v1'
 
-function readLiveWordsPref(): boolean {
+/** `fallback`: when this device never chose (the desk passes false: Chrome's live words go to Google). */
+function readLiveWordsPref(fallback = true): boolean {
   try {
-    return window.localStorage.getItem(LIVE_WORDS_KEY) !== 'off'
+    const v = window.localStorage.getItem(LIVE_WORDS_KEY)
+    return v == null ? fallback : v !== 'off'
   } catch {
-    return true
+    return fallback
   }
 }
 
@@ -166,6 +168,8 @@ export type VoiceNoteSheetProps = {
   /** Recording into an idea (Idées 🎤, 2026-11-23): the note and its Journal entry are linked to it. */
   conceptId?: string | null
   onSaved?: () => void
+  /** Live words off unless this device turned them on (desk Journal, design JournalDesk §5 A4). */
+  liveWordsOffByDefault?: boolean
 }
 
 export function VoiceNoteSheet({
@@ -175,6 +179,7 @@ export function VoiceNoteSheet({
   defaultOeuvreId = null,
   conceptId = null,
   onSaved,
+  liveWordsOffByDefault = false,
 }: VoiceNoteSheetProps) {
   const conceptRef = useRef<string | null>(conceptId)
   conceptRef.current = conceptId
@@ -501,7 +506,7 @@ export function VoiceNoteSheet({
     startedAtRef.current = { ms: startMs, at: new Date(startMs) }
     phaseRef.current = 'recording'
     setPhase('recording')
-    if (readLiveWordsPref()) void startLiveWords(gen)
+    if (readLiveWordsPref(!liveWordsOffByDefault)) void startLiveWords(gen)
     tickRef.current = window.setInterval(() => setElapsedMs(Date.now() - startMs), 250)
 
     try {
@@ -537,7 +542,7 @@ export function VoiceNoteSheet({
     } catch {
       /* not granted / not supported */
     }
-  }, [defaultWork, revokeAudioUrl, startLiveWords, stopDictation, stopLiveWords])
+  }, [defaultWork, liveWordsOffByDefault, revokeAudioUrl, startLiveWords, stopDictation, stopLiveWords])
 
   const toggleLiveWords = useCallback(() => {
     const next = !liveWordsOn
@@ -573,7 +578,7 @@ export function VoiceNoteSheet({
   useEffect(() => {
     if (!open) return
     setDictationAvailability(getLiveDictationAvailability())
-    setLiveWordsOn(readLiveWordsPref())
+    setLiveWordsOn(readLiveWordsPref(!liveWordsOffByDefault))
     void startRecording()
     // startRecording reads defaultWork; reopening is what should restart, not prop churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps

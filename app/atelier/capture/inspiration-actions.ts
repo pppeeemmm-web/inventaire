@@ -46,8 +46,13 @@ async function recycle(keys: string[]): Promise<void> {
   }
 }
 
-/** Saves one inspiration photo on today's Journal day (Paris), optionally linked to a work and / or an idée. */
-export async function addInspirationPhoto(formData: FormData): Promise<{ ok: true; id: string; day: string } | Err> {
+/**
+ * Saves one inspiration photo on a Journal day (Paris), optionally linked to a work and / or an idée.
+ * The day: `day` when sent (the desk's paste / drop onto a day — any past day, never ahead of today), else the
+ * day a queued capture was taken (`taken_at`), else today. A resend of the same one-time id answers
+ * `already: true` with the day the photo is on (design 2026-11-23 JournalDesk §3: never a silent « ok »).
+ */
+export async function addInspirationPhoto(formData: FormData): Promise<{ ok: true; id: string; day: string; already?: true } | Err> {
   if (!INSPIRATION_SQL_LIVE) return { error: 'sql_waiting' }
   const supabase = await createClient()
   const who = await adminUser(supabase)
@@ -59,7 +64,7 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   const clientId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientIdRaw) ? clientIdRaw.toLowerCase() : null
   if (clientId) {
     const { data: already } = await inspirationTable(supabase).select('id, day').eq('id', clientId).maybeSingle()
-    if (already) return { ok: true, id: clientId, day: String((already as { day: string }).day) }
+    if (already) return { ok: true, id: clientId, day: String((already as { day: string }).day), already: true }
   }
 
   const file = formData.get('photo')
@@ -68,6 +73,8 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
   const raw = Buffer.from(await file.arrayBuffer())
   const valid = await validateWorkImageBuffer(raw)
   if ('error' in valid) return { error: 'invalid_format' }
+  // Sharp here has no HEIC decoder (checked 2026-11-23): say so instead of failing later as `r2_failed`.
+  if (valid.ext === 'heic') return { error: 'heic' }
 
   const caption = String(formData.get('caption') ?? '').trim().slice(0, MAX_CAPTION) || null
   const workRaw = String(formData.get('oeuvre_id') ?? '').trim().replace(/^#/, '')
@@ -89,7 +96,11 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
     clientId && Number.isFinite(takenMs) && takenMs <= Date.now() + 5 * 60_000 && takenMs >= Date.now() - 14 * 86_400_000
       ? calendarDayInParisFromIso(new Date(takenMs).toISOString())
       : null
-  const day = takenDay && takenDay <= today ? takenDay : today
+  const dayRaw = String(formData.get('day') ?? '').trim()
+  const dayMs = /^\d{4}-\d{2}-\d{2}$/.test(dayRaw) ? Date.parse(`${dayRaw}T12:00:00Z`) : NaN
+  const realDay = Number.isFinite(dayMs) && new Date(dayMs).toISOString().startsWith(dayRaw)
+  if (dayRaw && (!realDay || dayRaw > today)) return { error: 'day' }
+  const day = dayRaw || (takenDay && takenDay <= today ? takenDay : today)
   const hash8 = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)
   const base = `I_${day.replace(/-/g, '')}_${(clientId ?? crypto.randomUUID()).slice(0, 8)}_${hash8}`
   const mainKey = `inspiration/${base}.avif`
@@ -120,7 +131,7 @@ export async function addInspirationPhoto(formData: FormData): Promise<{ ok: tru
     .select('id')
     .single()
   // Two sends of the same one-time id at once: the other one saved it (same image keys) — not an error.
-  if (error && clientId && error.code === '23505') return { ok: true, id: clientId, day }
+  if (error && clientId && error.code === '23505') return { ok: true, id: clientId, day, already: true }
   if (error || !data) {
     await recycle([mainKey, thumbKey])
     return { error: error?.message ?? 'insert' }

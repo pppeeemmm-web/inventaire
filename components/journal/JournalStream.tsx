@@ -26,6 +26,7 @@ import { isNothingHeard, isPlaceholderText, isWaitingTranscript } from '@/lib/jo
 import { CaptureQueueFlusher, QueuedCaptureCards } from '@/components/journal/CaptureQueue'
 import { addJournalLabel, addJournalSuite, moveJournalEntry, removeJournalLabel } from '@/app/atelier/(portal)/journal/step-b-actions'
 import { JOURNAL_LABELS } from '@/lib/journal/labels'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { PlantIdeaSheet } from '@/components/atelier/concepts/PlantIdeaSheet'
 import {
   decideJournalLink,
@@ -509,8 +510,27 @@ function VoiceCard({ v, isAdmin, run, refresh, pending }: { v: JournalDayVoice; 
   )
 }
 
-function PhotoCard({ p, isAdmin, run, refresh, pending }: { p: InspirationPhoto; isAdmin: boolean; run: (fn: Act, done?: string) => void; refresh: () => Promise<void>; pending: boolean }) {
-  const { t, time } = useFormat()
+function PhotoCard({
+  p,
+  day,
+  isAdmin,
+  run,
+  refresh,
+  pending,
+  editing,
+}: {
+  p: InspirationPhoto
+  day: string
+  isAdmin: boolean
+  run: (fn: Act, done?: string) => void
+  refresh: () => Promise<void>
+  pending: boolean
+  /** Desk: just pasted or dropped — the text box opens at once. */
+  editing?: boolean
+}) {
+  const { t, time, shortDay } = useFormat()
+  // Put on another day than the one it was added (desk drop on a past day, a capture that waited offline).
+  const addedOn = calendarDayInParisFromIso(p.created_at)
   const [asking, setAsking] = useState(false)
   const src = imageUrl(p.image_key)
   const menu: MenuItem[] = []
@@ -521,6 +541,7 @@ function PhotoCard({ p, isAdmin, run, refresh, pending }: { p: InspirationPhoto;
       <div style={metaStyle}>
         <span>{time(p.created_at)}</span>
         <span style={{ color: 'var(--ac)' }}>{t('js_kind_photo')}</span>
+        {addedOn && addedOn !== day ? <span data-testid={`js-photo-added-${p.id}`}>· {t('jd_added_on').replace('{day}', shortDay(addedOn))}</span> : null}
         {p.conceptTitle ? <span>· ✦ {p.conceptTitle}</span> : null}
         {p.author !== '—' ? <span>· {p.author}</span> : null}
       </div>
@@ -531,7 +552,7 @@ function PhotoCard({ p, isAdmin, run, refresh, pending }: { p: InspirationPhoto;
           <img src={thumbUrl(p.image_key) ?? undefined} alt={p.caption ?? ''} loading="lazy" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, background: 'var(--bg3)' }} />
         </a>
       </ImageLoupe>
-      <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin} render={(text) => <WorkRefText text={text} />} onSaved={() => void refresh()} />
+      <InspirationText id={p.id} caption={p.caption} canEdit={isAdmin} startEditing={isAdmin && editing} render={(text) => <WorkRefText text={text} />} onSaved={() => void refresh()} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
         <MoreMenu items={menu} testId={`js-more-photo-${p.id}`} />
       </div>
@@ -554,6 +575,7 @@ function DayCards({
   after,
   today,
   reloadTop,
+  editPhotoId,
 }: {
   d: JournalStreamDay
   isAdmin: boolean
@@ -566,6 +588,7 @@ function DayCards({
   after?: ReactNode
   today: string
   reloadTop: () => Promise<void>
+  editPhotoId?: string | null
 }) {
   const { t, time } = useFormat()
   const x = d.extras
@@ -608,7 +631,7 @@ function DayCards({
     items.push({
       at: p.created_at,
       key: `p${p.id}`,
-      node: <PhotoCard p={p} isAdmin={isAdmin} run={run} refresh={rf} pending={pending} />,
+      node: <PhotoCard p={p} day={d.day} isAdmin={isAdmin} run={run} refresh={rf} pending={pending} editing={editPhotoId === p.id} />,
       sel: sel(`p${p.id}`, p.created_at, 'photo', p.caption ?? '', {
         works: p.oeuvre_id != null ? [{ id: p.oeuvre_id, title: null, thumb: null }] : [],
         concepts: p.concept_id ? [{ id: p.concept_id, title: p.conceptTitle }] : [],
@@ -824,6 +847,9 @@ export function JournalStream({
   jumpTo,
   todayExtra,
   refreshSignal,
+  refreshDaySignal,
+  editPhotoId,
+  dayTop,
 }: {
   initial: JournalStreamPage
   narrow: boolean
@@ -836,6 +862,12 @@ export function JournalStream({
   todayExtra?: ReactNode
   /** Bump to read today again (after the composer wrote). */
   refreshSignal?: number
+  /** Desk: read one day again (an image pasted or dropped onto it); a new object each time. */
+  refreshDaySignal?: { day: string } | null
+  /** Desk: the photo just added — its text box opens. */
+  editPhotoId?: string | null
+  /** Desk: under a day's divider (the « Sur ce PC » chip and strip). */
+  dayTop?: (day: string) => ReactNode
   /** Desk: the scale switch lives in the toolbar and drives this. Phone: pinch drives it. */
   scale?: Scale
   onScaleChange?: (s: Scale) => void
@@ -1018,6 +1050,9 @@ export function JournalStream({
   useEffect(() => {
     if (refreshSignal) void refreshDay(today)
   }, [refreshSignal, refreshDay, today])
+  useEffect(() => {
+    if (refreshDaySignal) void refreshDay(refreshDaySignal.day)
+  }, [refreshDaySignal, refreshDay])
 
   const thumbsCount = narrow ? 3 : 4
   const toggleFold = (day: string) =>
@@ -1053,6 +1088,7 @@ export function JournalStream({
                 <QueuedCaptureCards onSent={() => void reloadTop()} />
               </div>
             ) : null}
+            {dayTop && !folded.has(d.day) ? dayTop(d.day) : null}
             {folded.has(d.day) ? null : empty && isToday ? (
               <div style={{ padding: narrow ? '14px 12px 22px' : '14px 0 22px' }}>
                 <p style={{ margin: 0, color: 'var(--tx3)', fontSize: 14 }}>{narrow || !todayExtra ? t('js_empty_today') : null}</p>
@@ -1071,6 +1107,7 @@ export function JournalStream({
                   after={isToday ? todayExtra : null}
                   today={today}
                   reloadTop={reloadTop}
+                  editPhotoId={editPhotoId}
                 />
               </div>
             )}
@@ -1078,7 +1115,7 @@ export function JournalStream({
         )
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [days, folded, narrow, pending, isAdmin, today, selectedKey, todayExtra, onSelect, reloadTop],
+    [days, folded, narrow, pending, isAdmin, today, selectedKey, todayExtra, onSelect, reloadTop, editPhotoId, dayTop],
   )
 
   return (

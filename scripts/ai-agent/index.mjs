@@ -15,6 +15,8 @@
  *   card     → card.mjs: the Vault card photo read by gemma3:4b → a contact SUGGESTION in `result` (phase 3)
  *   npm run ai:agent -- --try cards/K_…avif   read one card photo, print the suggestion, write nothing
  * Kind 'web' is left waiting until this agent can read it.
+ * Every pass, after its jobs, readies the Journal tray (tray.mjs): the iPhone's synced photos, previews made on this PC only.
+ *   npm run ai:agent -- --tray   the tray step alone
  * Uses the service key from .env.local (never leaves the PC). Nothing is sent to any other AI service.
  */
 import { spawn } from 'node:child_process'
@@ -25,6 +27,7 @@ import { supabaseAdmin } from '../embed-worker/supabase-admin.mjs'
 import { ollamaBaseUrl } from '../embed-worker/ollama-client.mjs'
 import { ensureOllamaRunning } from '../embed-worker/ensure-ollama.mjs'
 import { checkCardKey, readCard } from './card.mjs'
+import { runTray } from './tray.mjs'
 
 const AGENT_ID = process.env.AI_AGENT_ID?.trim() || 'studio-pc'
 const KINDS = ['voice', 'describe', 'embed', 'card']
@@ -180,7 +183,21 @@ async function drainQueue() {
   }
 }
 
+/** The Journal tray (local files only); a failure there never stops the jobs. */
+async function trayStep() {
+  try {
+    await runTray(log)
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- logged above; the jobs carry on
+  } catch (e) {
+    log('tray failed:', e instanceof Error ? e.message : String(e))
+  }
+}
+
 async function main() {
+  if (process.argv.includes('--tray')) {
+    await runTray(log)
+    return
+  }
   const tryAt = process.argv.indexOf('--try')
   if (tryAt > -1) {
     const key = process.argv[tryAt + 1]
@@ -209,6 +226,8 @@ async function main() {
       await drainQueue()
     }
     await heartbeat()
+    // After the jobs and the check-in, so a voice note and « Dernier passage » never wait for photos.
+    await trayStep()
     log('nothing left — stopping')
     return
   }
@@ -228,6 +247,16 @@ async function main() {
   }
   await tick()
   setInterval(() => void tick(), POLL_MS)
+  // The tray on its own timer (every 10 min), never in the way of the jobs.
+  let trayBusy = false
+  const trayTick = async () => {
+    if (trayBusy) return
+    trayBusy = true
+    await trayStep()
+    trayBusy = false
+  }
+  void trayTick()
+  setInterval(() => void trayTick(), 10 * 60_000)
 }
 
 main().catch((e) => {

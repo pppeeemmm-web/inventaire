@@ -15,6 +15,7 @@ import { WorkChip } from '@/components/atelier/WorkChip'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { INSPIRATION_MAX_EDGE, INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 import { addInspirationPhoto } from '@/app/atelier/capture/inspiration-actions'
+import { doorErrorText } from '@/components/journal/DeskImageCapture'
 import { enqueueCapture, isNetworkFailure, newCaptureId } from '@/lib/mobile/capture-queue'
 import { listNoteRouteTargets } from '@/app/atelier/(portal)/notes/actions'
 
@@ -99,10 +100,11 @@ export function CaptureInspirationClient() {
         return
       }
       if ('error' in res) {
-        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        toast.error(doorErrorText(res.error, t))
         return
       }
-      toast.success(t('insp_saved'))
+      if (res.already) toast.info(t('jd_already').replace('{day}', new Date(`${res.day}T12:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })))
+      else toast.success(t('insp_saved'))
       window.location.href = `/atelier/journal?day=${res.day}`
     })
   }

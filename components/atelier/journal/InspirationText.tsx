@@ -15,6 +15,7 @@ export function InspirationText({
   canEdit,
   render,
   onSaved,
+  startEditing = false,
 }: {
   id: string
   caption: string | null
@@ -22,10 +23,12 @@ export function InspirationText({
   /** How this screen shows a text (work mentions `#123` included). */
   render: (text: string) => ReactNode
   onSaved?: (caption: string | null) => void
+  /** Open with the text box ready (desk: right after an image was pasted or dropped, design JournalDesk §4 A2). */
+  startEditing?: boolean
 }) {
   const { t } = useI18n()
   const [text, setText] = useState(caption)
-  const [draft, setDraft] = useState<string | null>(null)
+  const [draft, setDraft] = useState<string | null>(startEditing ? (caption ?? '') : null)
   const [pending, startTransition] = useTransition()
 
   useEffect(() => setText(caption), [caption])
