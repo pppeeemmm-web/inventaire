@@ -10,7 +10,7 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - First: the Journal stream is the default (`?stream=0` keeps the old day screens); the desk waits ~1.5 s for its page shell before the first read — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2, waits on `merge_contacts`), the desk hotkey, `npm run gen:types` → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées open pieces: the Mois / Années lines and the old `?stream=0` day screens do not count or draw idea changes, the Overview idea tile opens the idea itself (`?concept=`), 🎤 inside an idea, delete the unmounted `Concepts.tsx` tree (Pem's OK) → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
-- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
+- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the reverse pricing design draft (§3, no build).
 
 ## 1. Finish first — small, before anything new
 
@@ -33,7 +33,8 @@ Small fixes
 - [ ] A theme or group made, deleted or copied anywhere (Thèmes, batch edit, export, catalogue save, an exhibition) reaches the other screens (Inventory filters, drawer pickers, per-work chips and counts) only after a reload → one shared refresh after any change (a first try that only covered Thèmes is parked on branch `wt-themes-push`).
 
 Checks
-- [ ] One automated stress round once the contact merge transaction lands: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
+- [ ] One automated stress round: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
+- [ ] Push-blocking checks for the building principles: no table write from a browser file, no new whole-Atelier refresh — today's files listed as the debt, the list may only shrink → [BuildingPrinciples §1](./design/2026-11-21/BuildingPrinciples.md).
 - [ ] AI desk « Lancer »: confirm on Pem's PC that a job starts; what still fails is fixed or removed.
 
 ## 2. Waiting on you, Pem
@@ -42,7 +43,7 @@ Checks
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.
 - [ ] **Restore drill (O4):** run it once ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
-- [ ] **Phone capture gesture:** on the first working Journal prototype, two minutes with the phone in hand — tap the back twice → the recorder opens on today; the Journal design states the other iPhone limits as assumptions → [survey](./design/2026-11-21/Survey_JournalCapture.md).
+- [ ] **Phone capture gesture:** on the live Journal stream, two minutes with the phone in hand — tap the back twice → the recorder opens on today; the Journal design states the other iPhone limits as assumptions → [survey](./design/2026-11-21/Survey_JournalCapture.md).
 - [ ] **Delacroix's notebooks:** read Hannoosh's article, or allow one page fetch → [survey §3](./design/2026-11-21/Survey_DelacroixJournal.md).
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.
@@ -95,7 +96,6 @@ Storage and Vault
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
-- [ ] Push-blocking checks for the building principles: no table write from a browser file, no new whole-Atelier refresh — today's files listed as the debt, the list may only shrink → [BuildingPrinciples §1](./design/2026-11-21/BuildingPrinciples.md).
 - [ ] `saveContact`: one server door for a contact and its addresses, emails, phones and links, in one transaction — before any People build.
 - [ ] Eight kinds of record the museum standards expect (inscriptions, moves with « seen on », valuations, treatments, licences / reproductions, literature, objects coming in, details of each showing): place each on the map of homes, with the catalogue-gaps steps → [survey](./design/2026-11-21/Survey_MuseumStandards.md).
 - [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
