@@ -130,6 +130,7 @@ export async function searchKitContacts(q: string): Promise<KitContactHit[]> {
     .from('Contact')
     .select('ContactID, "Prénom", Nom, NomInstitution, Email, Ville')
     .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like},Email.ilike.${like}`)
+    .is('archived_at', null)
   // « Privé » contacts are not searchable by the team (Pem 2026-11-19); an admin finds them.
   const { data: isAdmin } = await g.supabase.rpc('is_admin')
   if (!isAdmin) query = query.not('is_private', 'is', true)

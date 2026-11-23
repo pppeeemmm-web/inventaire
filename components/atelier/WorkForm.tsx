@@ -912,7 +912,7 @@ export function WorkForm({
                     <div style={{ display: 'flex', gap: 8 }}>
                       <select value={contactId} onChange={e => setContactId(e.target.value)} style={FIS}>
                         <option value="">{t('select_option_placeholder')}</option>
-                        {sortedLocalContacts.map(c => (
+                        {sortedLocalContacts.filter(c => !c.archived_at || String(c.ContactID) === contactId).map(c => (
                           <option key={c.ContactID} value={c.ContactID}>
                             {contactListLabel(c)}
                           </option>

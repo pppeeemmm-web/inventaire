@@ -17,6 +17,7 @@ import {
 import { TIMELINE_KINDS, type TimelineKind } from '@/lib/contacts/person-timeline-kinds'
 
 const KIND_COLOUR: Record<TimelineKind, string> = {
+  moment: 'var(--ac2)',
   order: 'var(--ac)',
   payment: 'var(--green)',
   shipment: 'var(--teal)',
@@ -33,7 +34,7 @@ const LABEL: React.CSSProperties = { fontSize: 9, letterSpacing: '0.12em', textT
 
 type State = { items: TimelineItem[]; next: TimelineCursor | null; loading: boolean; failed: boolean }
 
-export function PersonTimeline({ contactId, narrow }: { contactId: number; narrow: boolean }) {
+export function PersonTimeline({ contactId, narrow, reloadKey = 0 }: { contactId: number; narrow: boolean; reloadKey?: number }) {
   const { t, lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const [kind, setKind] = useState<TimelineKind | null>(null)
@@ -54,7 +55,7 @@ export function PersonTimeline({ contactId, narrow }: { contactId: number; narro
     return () => {
       live = false
     }
-  }, [contactId])
+  }, [contactId, reloadKey])
 
   const reqId = useRef(0)
 
@@ -69,7 +70,7 @@ export function PersonTimeline({ contactId, narrow }: { contactId: number; narro
     return () => {
       live = false
     }
-  }, [contactId, kind])
+  }, [contactId, kind, reloadKey])
 
   const older = useCallback(() => {
     if (!state.next) return
@@ -93,6 +94,8 @@ export function PersonTimeline({ contactId, narrow }: { contactId: number; narro
 
   const describe = (it: TimelineItem): { main: string; side: string } => {
     switch (it.kind) {
+      case 'moment':
+        return { main: [t(`pp_tl_moment_${it.title}` as DictKey), it.detail].filter(Boolean).join(' · '), side: it.status ?? '' }
       case 'order':
         return { main: [keyed('ord_kind_', it.title, ORDER_KINDS), it.detail].filter(Boolean).join(' · '), side: it.status ? keyed('ord_st_', it.status, ORDER_STATUSES) : '' }
       case 'payment':

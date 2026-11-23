@@ -15,6 +15,7 @@ import { PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
 import { PhoneInputBar } from '@/components/shared/PhoneInputBar'
 import { PhoneHomeChip, PhoneMenuButton } from '@/components/shared/PhoneMenu'
 import { SwipeDeck, type SwipeDecision, type SwipeResult } from '@/components/shared/SwipeDeck'
+import { toast } from '@/lib/ui/toast'
 import { decideFil, listFil, type FilItem, type FilSection } from '@/app/atelier/fil/actions'
 
 const VoiceNoteSheet = dynamic(
@@ -75,9 +76,12 @@ export function FilClient() {
   // Sent by the deck once the 6 s undo window is over; the item then leaves the lists and counts.
   const onDecide = useCallback(async (item: FilItem, decision: SwipeDecision): Promise<SwipeResult> => {
     const res = await decideFil(item.kind, item.id, decision)
-    if ('ok' in res) setItems((prev) => (prev ? prev.filter((i) => i.key !== item.key) : prev))
+    if ('ok' in res) {
+      setItems((prev) => (prev ? prev.filter((i) => i.key !== item.key) : prev))
+      if ('note' in res && res.note) toast.info(t(res.note as DictKey))
+    }
     return res
-  }, [])
+  }, [t])
 
   const fiches = active === 'fiches'
 
@@ -136,18 +140,36 @@ export function FilClient() {
               ) : !items ? (
                 <p style={muted}>{t('fil_loading')}</p>
               ) : (
-                <SwipeDeck<FilItem>
-                  key={active}
-                  testId="hub-fil-deck"
-                  items={live.filter((i) => i.section === active)}
-                  getKey={(i) => i.key}
-                  renderCard={(i) => <FilCard item={i} />}
-                  onDecide={onDecide}
-                  keepLabel={t(fiches ? 'fil_approve' : 'fil_keep')}
-                  discardLabel={t(fiches ? 'fil_reject' : 'fil_discard')}
-                  emptyText={t('fil_empty')}
-                  arrows
-                />
+                <>
+                  {fiches && live.some((i) => i.kind === 'contact_change') && !live.some((i) => i.section === 'fiches' && i.kind !== 'contact_change') ? null : <SwipeDeck<FilItem>
+                    key={active}
+                    testId="hub-fil-deck"
+                    items={live.filter((i) => i.section === active && i.kind !== 'contact_change')}
+                    getKey={(i) => i.key}
+                    renderCard={(i) => <FilCard item={i} />}
+                    onDecide={onDecide}
+                    keepLabel={t(fiches ? 'fil_approve' : 'fil_keep')}
+                    discardLabel={t(fiches ? 'fil_reject' : 'fil_discard')}
+                    emptyText={t('fil_empty')}
+                    arrows
+                  />}
+                  {/* Team changes to a person: « Vu » / « Revenir » (own deck, own buttons). */}
+                  {fiches && live.some((i) => i.kind === 'contact_change') ? (
+                    <div style={{ marginTop: 14 }}>
+                      <SwipeDeck<FilItem>
+                        testId="hub-fil-deck-contact"
+                        items={live.filter((i) => i.kind === 'contact_change')}
+                        getKey={(i) => i.key}
+                        renderCard={(i) => <FilCard item={i} />}
+                        onDecide={onDecide}
+                        keepLabel={t('fil_seen')}
+                        discardLabel={t('fil_revert')}
+                        emptyText={t('fil_empty')}
+                        arrows
+                      />
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
 
@@ -233,6 +255,8 @@ function FilCard({ item, compact = false }: { item: FilItem; compact?: boolean }
         </Link>
       ) : null}
 
+      {item.contact?.lists ? <p style={{ ...muted, fontSize: 13 }}>{t('fil_c_lists').replace('{lists}', item.contact.lists)}</p> : null}
+
       {item.changes?.length ? (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4, fontSize: 13 }}>
           {item.changes.map((c) => (
@@ -261,6 +285,10 @@ function filSentence(item: FilItem, t: (k: DictKey) => string): string {
       const kind = ['sale', 'consignment', 'loan', 'gift', 'entrusted'].includes(k) ? t(`ord_kind_${k}` as DictKey) : k
       return fill('fil_s_order').replace('{kind}', kind).replace('{party}', item.order?.party ?? '')
     }
+    case 'contact_change':
+      return fill('fil_s_contact')
+        .replace('{contact}', item.contact?.name ?? '')
+        .replace('{action}', item.contact ? t(`fil_c_${item.contact.action}` as DictKey) : '')
     case 'idea':
       return fill('fil_s_idea')
     case 'kaizen_item':

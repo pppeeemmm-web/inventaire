@@ -234,7 +234,7 @@ export function CommandPalette({
     // Contacts (search by name, min 2 chars)
     if (q.length >= 2) {
       let cCount = 0
-      for (const c of [...pickableContacts(contacts, { isAdmin })].sort(compareContactsByName(lang))) {
+      for (const c of [...pickableContacts(contacts, { isAdmin, includeArchived: true })].sort(compareContactsByName(lang))) {
         if (contactSearchText(c).includes(qLow)) {
           result.push({ id: `contact:${c.ContactID}`, label: contactListLabel(c), group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
           if (++cCount >= 4) break

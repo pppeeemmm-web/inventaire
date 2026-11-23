@@ -20,7 +20,7 @@ export default async function NewWorkPage({
   const supabase = await createClient()
   // « Privé » contacts are not offered to the team in pickers (Pem 2026-11-19): a new work has no tie to keep.
   const { data: isAdmin } = await supabase.rpc('is_admin')
-  const contactsQ = supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays').order('NomInstitution', { ascending: true })
+  const contactsQ = supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, archived_at').order('NomInstitution', { ascending: true })
 
   const [
     { data: techniques },

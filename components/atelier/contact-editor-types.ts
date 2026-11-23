@@ -27,6 +27,7 @@ export interface ContactRow {
   Actif?: boolean | null
   is_private?: boolean | null
   is_team_member?: boolean | null
+  archived_at?: string | null
   auth_user_id?: string | null
 }
 

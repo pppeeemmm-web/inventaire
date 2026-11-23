@@ -14,6 +14,14 @@ export const contactDisplayMessages = defineMessages({
     fr: 'Privé ({n})',
     en: 'Private ({n})',
   },
+  cs_archived_fmt: {
+    fr: 'Archivés ({n})',
+    en: 'Archived ({n})',
+  },
+  cs_archived_title: {
+    fr: 'Afficher seulement les personnes archivées',
+    en: 'Show only archived people',
+  },
   contacts_private_filter_title: {
     fr: 'Afficher seulement les contacts privés',
     en: 'Show only private contacts',

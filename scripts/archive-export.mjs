@@ -118,7 +118,7 @@ async function main() {
     condition_report: 'id', condition_issue: 'id', kaizen_item: 'id', document: 'created_at', work_session: 'created_at',
     work_order: 'created_at', work_order_work: null, payments: 'payment_date', suivi_process: null, suivi_etape: null, expense: null, stock_item: null,
   }
-  const privateTables = { Contact: 'ContactID', contact_addresses: null, place: 'id', contact_place: 'id', place_address_map: null, contact_emails: null, contact_phones: null, contact_websites: null, contact_socials: null, contact_tag: null, contact_sphere: null, tblrelations: null }
+  const privateTables = { Contact: 'ContactID', contact_addresses: null, place: 'id', contact_place: 'id', place_address_map: null, contact_emails: null, contact_phones: null, contact_websites: null, contact_socials: null, contact_tag: null, contact_sphere: null, tblrelations: null, moment: null, moment_person: null, moment_work: null }
   const db = {}
   for (const [t, order] of Object.entries({ ...tables, ...privateTables })) {
     db[t] = await all(t, order)

@@ -134,8 +134,19 @@ export type JournalDayRemark = {
   author: string
 }
 
+/** A touch (`moment`, day precision, not replaced) that happened that day — read from its home, never copied (People.md §4). */
+export type JournalDayMoment = {
+  id: number
+  kind: string
+  summary: string | null
+  people: Array<{ id: number; name: string }>
+  works: Array<{ id: number; title: string | null; thumb: string | null }>
+}
+
 export type JournalDayExtras = {
   isAdmin: boolean
+  /** Touches of the day (people, works); absent on older callers. */
+  moments?: JournalDayMoment[]
   /** Remarks on works / ideas written that day (empty when entries are not read). */
   remarks: JournalDayRemark[]
   entries: JournalDayEntry[]

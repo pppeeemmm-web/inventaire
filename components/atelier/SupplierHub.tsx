@@ -147,7 +147,7 @@ export function SupplierHub({ contacts }: Props) {
   )
   // Browse surface: « Privé » suppliers are not listed to the team (Pem 2026-11-19); item supplier names still resolve
   // through `contacts`.
-  const suppliers = useMemo(() => pickableContacts(allSuppliers, { isAdmin }), [allSuppliers, isAdmin])
+  const suppliers = useMemo(() => pickableContacts(allSuppliers, { isAdmin, includeArchived: true }), [allSuppliers, isAdmin])
 
   const suppliersEnriched = useMemo(
     () =>

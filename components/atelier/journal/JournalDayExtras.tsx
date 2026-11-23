@@ -13,6 +13,7 @@ import { EntryText } from '@/components/atelier/journal/EntryText'
 import { EntryCorrectAction, canCorrectEntry } from '@/components/atelier/journal/EntryCorrection'
 import { isNothingHeard, isWaitingTranscript } from '@/lib/journal/nothing-heard'
 import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOriginal'
+import { JournalDayMoments } from '@/components/atelier/journal/JournalDayMoments'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { WorkChip } from '@/components/atelier/WorkChip'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
@@ -781,6 +782,8 @@ export function JournalDayExtras({
           ))}
         </section>
       ) : null}
+
+      <JournalDayMoments moments={data?.moments} />
 
       {captureSlot}
 

@@ -124,6 +124,22 @@ export async function setContactSpheres(contactId: number, keys: string[]): Prom
   return mapSave(data)
 }
 
+export async function archiveContact(
+  contactId: number,
+  archive: boolean,
+): Promise<{ ok: true; archived: boolean } | { unchanged: true } | { refused: string; detail?: string }> {
+  if (!validId(contactId) || typeof archive !== 'boolean') return { refused: 'bad_field' }
+  const supabase = await teamClient()
+  if (!supabase) return { refused: 'forbidden' }
+  const { data, error } = await loose(supabase).rpc('archive_contact', { p_contact: contactId, p_archive: archive })
+  if (error) return { refused: 'error', detail: error.message }
+  const d = (data ?? {}) as { ok?: boolean; archived?: boolean; unchanged?: boolean; refused?: string; detail?: string }
+  if (d.refused) return { refused: d.refused, ...(d.detail ? { detail: d.detail } : {}) }
+  if (d.ok) return { ok: true, archived: d.archived === true }
+  if (d.unchanged) return { unchanged: true }
+  return { refused: 'error', detail: 'unexpected answer' }
+}
+
 export async function readPersonLinks(contactId: number): Promise<{ ok: true; items: PersonLink[] } | { error: string }> {
   if (!validId(contactId)) return { error: 'not_found' }
   const ctx = await teamCtx()

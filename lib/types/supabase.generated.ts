@@ -515,6 +515,8 @@ export type Database = {
         Row: {
           Actif: boolean | null
           Adresse: string | null
+          archived_at: string | null
+          archived_by: string | null
           auth_user_id: string | null
           born_on: string | null
           born_precision: string | null
@@ -556,6 +558,8 @@ export type Database = {
         Insert: {
           Actif?: boolean | null
           Adresse?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           auth_user_id?: string | null
           born_on?: string | null
           born_precision?: string | null
@@ -597,6 +601,8 @@ export type Database = {
         Update: {
           Actif?: boolean | null
           Adresse?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           auth_user_id?: string | null
           born_on?: string | null
           born_precision?: string | null
@@ -2143,6 +2149,149 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      moment: {
+        Row: {
+          channel: string | null
+          corrects_id: number | null
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          external_id: string | null
+          happened_on: string
+          id: number
+          is_private: boolean
+          kind: string
+          precision: string
+          replaced_by: number | null
+          source: string | null
+          summary: string
+        }
+        Insert: {
+          channel?: string | null
+          corrects_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          external_id?: string | null
+          happened_on: string
+          id?: never
+          is_private?: boolean
+          kind: string
+          precision?: string
+          replaced_by?: number | null
+          source?: string | null
+          summary?: string
+        }
+        Update: {
+          channel?: string | null
+          corrects_id?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          external_id?: string | null
+          happened_on?: string
+          id?: never
+          is_private?: boolean
+          kind?: string
+          precision?: string
+          replaced_by?: number | null
+          source?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_corrects_id_fkey"
+            columns: ["corrects_id"]
+            isOneToOne: false
+            referencedRelation: "moment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "document"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "moment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moment_person: {
+        Row: {
+          contact_id: number
+          moment_id: number
+          role: string | null
+        }
+        Insert: {
+          contact_id: number
+          moment_id: number
+          role?: string | null
+        }
+        Update: {
+          contact_id?: number
+          moment_id?: number
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_person_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "moment_person_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moment_work: {
+        Row: {
+          moment_id: number
+          oeuvre_id: number
+        }
+        Insert: {
+          moment_id: number
+          oeuvre_id: number
+        }
+        Update: {
+          moment_id?: number
+          oeuvre_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moment_work_moment_id_fkey"
+            columns: ["moment_id"]
+            isOneToOne: false
+            referencedRelation: "moment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moment_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "oeuvre_place_unlinked"
+            referencedColumns: ["oeuvre_id"]
+          },
+          {
+            foreignKeyName: "moment_work_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
       }
       nodes: {
         Row: {
@@ -5438,6 +5587,10 @@ export type Database = {
         Returns: undefined
       }
       _oeuvre_node: { Args: { p_oeuvre: number }; Returns: string }
+      archive_contact: {
+        Args: { p_archive: boolean; p_contact: number }
+        Returns: Json
+      }
       audit_log_prune: {
         Args: never
         Returns: {
@@ -5603,6 +5756,7 @@ export type Database = {
         Args: { p_contact: number; p_rows: Json }
         Returns: Json
       }
+      save_moment: { Args: { p: Json }; Returns: Json }
       save_person_link: { Args: { p: Json }; Returns: Json }
       set_contact_spheres: {
         Args: { p_contact: number; p_keys: string[] }

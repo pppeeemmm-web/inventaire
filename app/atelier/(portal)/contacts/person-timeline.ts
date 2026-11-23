@@ -4,7 +4,8 @@
 // built from the tables that already hold it: orders, payments, shipments, events, kits, papers, enquiries.
 // Paged by a keyset per source (each source keeps its own (date, id) cursor), merged newest first, 20 a page.
 // Counts per kind are asked of the database (principle 7). Team only; RLS stays the backstop.
-// Not here yet: touches (`moment`, needs SQL), custody changes (needs a database read over work versions).
+// Touches come from `moment` (RLS hides private ones and those naming a private person from non-admins).
+// Not here yet: custody changes (needs a database read over work versions).
 
 import { createClient } from '@/lib/supabase/server'
 import { TIMELINE_KINDS, type TimelineKind } from '@/lib/contacts/person-timeline-kinds'
@@ -23,9 +24,10 @@ export type TimelineItem = {
   href: string | null
 }
 
-type Source = 'order' | 'payment' | 'shipment' | 'event' | 'process' | 'kit' | 'paper' | 'enquiry'
-const SOURCES: Source[] = ['order', 'payment', 'shipment', 'event', 'process', 'kit', 'paper', 'enquiry']
+type Source = 'moment' | 'order' | 'payment' | 'shipment' | 'event' | 'process' | 'kit' | 'paper' | 'enquiry'
+const SOURCES: Source[] = ['moment', 'order','payment', 'shipment', 'event', 'process', 'kit', 'paper', 'enquiry']
 const KIND_OF: Record<Source, TimelineKind> = {
+  moment: 'moment',
   order: 'order',
   payment: 'payment',
   shipment: 'shipment',
@@ -46,10 +48,16 @@ type Row = { item: TimelineItem; source: Source; key: { at: string; id: string }
 type Q = any
 type Loose = { from: (t: string) => Q }
 
-async function teamClient() {
+/** Team only; a private card's timeline is admin only (Contact RLS lets the team read private cards). */
+async function teamClient(contactId: number) {
   const supabase = await createClient()
-  const { data: isTeam } = await supabase.rpc('is_team')
-  return isTeam ? supabase : null
+  const [{ data: isTeam }, { data: isAdmin }] = await Promise.all([supabase.rpc('is_team'), supabase.rpc('is_admin')])
+  if (!isTeam) return null
+  if (!isAdmin) {
+    const { data } = await supabase.from('Contact').select('is_private').eq('ContactID', contactId).maybeSingle()
+    if (!data || data.is_private === true) return null
+  }
+  return supabase
 }
 
 function quote(v: string): string {
@@ -86,6 +94,22 @@ function enquiryFilter(emails: string[]): string {
 async function readSource(db: Loose, src: Source, contactId: number, cur: { at: string; id: string } | undefined, emails: string[], limit: number): Promise<Row[] | { error: string }> {
   let res: { data: unknown[] | null; error: { message: string } | null }
   switch (src) {
+    case 'moment':
+      res = await after(
+        db.from('moment').select('id, happened_on, kind, summary, moment_person!inner(contact_id, role)').eq('moment_person.contact_id', contactId).is('replaced_by', null),
+        'happened_on',
+        'id',
+        cur,
+      ).limit(limit)
+      if (res.error) return { error: res.error.message }
+      return (res.data as { id: number; happened_on: string; kind: string; summary: string | null; moment_person: { role: string | null }[] }[]).map((m) => {
+        const s = (m.summary ?? '').replace(/\s+/g, ' ').trim()
+        return {
+          source: src,
+          key: { at: day(m.happened_on), id: String(m.id) },
+          item: { kind: 'moment', id: String(m.id), at: day(m.happened_on), title: m.kind, detail: s.length > 140 ? `${s.slice(0, 139).trimEnd()}…` : s || null, status: m.moment_person?.[0]?.role ?? null, amount: null, href: null },
+        }
+      })
     case 'order':
       res = await after(db.from('work_order').select('id, ref, kind, status, created_at, price_final').eq('party_id', contactId), 'created_at', 'id', cur).limit(limit)
       if (res.error) return { error: res.error.message }
@@ -199,7 +223,7 @@ export async function readPersonTimeline(
 ): Promise<{ ok: true; items: TimelineItem[]; next: TimelineCursor | null } | { error: string }> {
   if (!Number.isInteger(contactId) || contactId <= 0) return { error: 'not_found' }
   if (kind && !TIMELINE_KINDS.includes(kind)) return { error: 'not_found' }
-  const supabase = await teamClient()
+  const supabase = await teamClient(contactId)
   if (!supabase) return { error: 'auth' }
   const db = supabase as unknown as Loose
   const cur = cursor ?? {}
@@ -243,12 +267,13 @@ export async function readPersonTimeline(
 /** How many rows of each kind this person has — counted by the database, one head query per source. */
 export async function readPersonTimelineCounts(contactId: number): Promise<{ ok: true; counts: Record<TimelineKind, number> } | { error: string }> {
   if (!Number.isInteger(contactId) || contactId <= 0) return { error: 'not_found' }
-  const supabase = await teamClient()
+  const supabase = await teamClient(contactId)
   if (!supabase) return { error: 'auth' }
   const db = supabase as unknown as Loose
   const emails = await personEmails(db, contactId)
   const head = { count: 'exact', head: true }
-  const [order, payment, shipment, event, process, kit, paper, enquiry] = await Promise.all([
+  const [moment, order, payment, shipment, event, process, kit, paper, enquiry] = await Promise.all([
+    db.from('moment').select('id, moment_person!inner(contact_id)', head).eq('moment_person.contact_id', contactId).is('replaced_by', null).not('happened_on', 'is', null),
     db.from('work_order').select('id', head).eq('party_id', contactId).not('created_at', 'is', null),
     db.from('payments').select('id, work_order!inner(party_id)', head).eq('work_order.party_id', contactId).not('payment_date', 'is', null),
     db.from('shipment').select('id', head).eq('to_contact_id', contactId).not('created_at', 'is', null),
@@ -258,12 +283,13 @@ export async function readPersonTimelineCounts(contactId: number): Promise<{ ok:
     db.from('document').select('id', head).eq('contact_id', contactId).not('created_at', 'is', null),
     emails.length ? db.from('inquiry').select('id', head).or(enquiryFilter(emails)).not('created_at', 'is', null) : Promise.resolve({ count: 0, error: null }),
   ])
-  const parts = { order, payment, shipment, event, process, kit, paper, enquiry } as Record<Source, { count: number | null; error: { message: string } | null }>
+  const parts = { moment, order, payment, shipment, event, process, kit, paper, enquiry } as Record<Source, { count: number | null; error: { message: string } | null }>
   for (const p of Object.values(parts)) if (p.error) return { error: p.error.message }
   const n = (s: Source) => parts[s].count ?? 0
   return {
     ok: true,
     counts: {
+      moment: n('moment'),
       order: n('order'),
       payment: n('payment'),
       shipment: n('shipment'),

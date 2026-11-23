@@ -129,14 +129,17 @@ async function hydrateSemanticHits(
 
   // « Privé » contacts are not searchable by the team (Pem 2026-11-19; the service client reads them all).
   const hiddenContacts = new Set<string>()
-  if (!isAdmin) {
+  {
     const contactIds = [...byId.values()]
       .filter((e) => e.node_type === 'contact' && e.legacy_int_id != null)
       .map((e) => e.legacy_int_id as number)
     if (contactIds.length > 0) {
-      const { data: priv, error: privErr } = await svc.from('Contact').select('ContactID').in('ContactID', contactIds).eq('is_private', true)
+      // Archived people are hidden for everyone; private ones only for non-admins.
+      const { data: priv, error: privErr } = await svc.from('Contact').select('ContactID, is_private, archived_at').in('ContactID', contactIds)
       if (privErr) throw new Error(privErr.message)
-      for (const row of priv ?? []) hiddenContacts.add(String(row.ContactID))
+      for (const row of priv ?? []) {
+        if (row.archived_at || (!isAdmin && row.is_private === true)) hiddenContacts.add(String(row.ContactID))
+      }
     }
   }
   const hidden = (nodeId: string) => {

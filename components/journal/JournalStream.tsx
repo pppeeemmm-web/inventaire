@@ -13,6 +13,7 @@ import { AuthorBadges } from '@/components/shared/AuthorBadge'
 import { toast } from '@/lib/ui/toast'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { JournalDayMoments } from '@/components/atelier/journal/JournalDayMoments'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { EntryText } from '@/components/atelier/journal/EntryText'
@@ -853,6 +854,7 @@ function DayCards({
           ) : null}
         </article>
       ) : null}
+      <JournalDayMoments moments={x.moments} />
       {after}
     </div>
   )
@@ -1127,7 +1129,7 @@ export function JournalStream({
       days.map((d) => {
         const works = dayWorks(d)
         const isToday = d.day === today
-        const empty = !d.extras.entries.length && !d.extras.voices.length && !d.extras.inspirations.length && !d.extras.remarks.length && !d.extras.creation.length && !d.sessionWorks.length && !d.extras.changes.length && !(d.extras.ideaChanges ?? []).length
+        const empty = !d.extras.entries.length && !d.extras.voices.length && !d.extras.inspirations.length && !d.extras.remarks.length && !d.extras.creation.length && !d.sessionWorks.length && !d.extras.changes.length && !(d.extras.ideaChanges ?? []).length && !(d.extras.moments?.length ?? 0)
         return (
           <section key={d.day} id={`js-day-${d.day}`} data-testid={`js-day-${d.day}`} style={{ scrollMarginTop: 0 }}>
             <button type="button" aria-expanded={!folded.has(d.day)} aria-label={t('js_fold')} onClick={() => toggleFold(d.day)} style={dividerStyle(narrow)} data-testid={`js-divider-${d.day}`}>

@@ -78,6 +78,10 @@ interface Props {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+function isArchivedRow(c: ContactRow): boolean {
+  return !!(c as ContactRow & { archived_at?: string | null }).archived_at
+}
+
 /** Lists: `DUPONT Marie · Galerie X`, `Galerie X`, else `#id` (lib/contacts/contact-display.ts). */
 function displayName(c: ContactRow): string {
   return contactListLabel(c)
@@ -143,6 +147,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [role,       setRole]       = useState('all')
   /** Admin only: show only « Privé » contacts. */
   const [privateOnly, setPrivateOnly] = useState(false)
+  /** Show only archived cards (the default list hides them). */
+  const [archivedOnly, setArchivedOnly] = useState(false)
   /** Sphere filter: '' = all; sphereIds = contacts carrying the chosen sphere (asked of the database). */
   const [sphere, setSphere] = useState('')
   const [sphereIds, setSphereIds] = useState<Set<number> | null>(null)
@@ -260,7 +266,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       ] = await Promise.all([
         sb.rpc('is_admin'),
         sb.from('Contact')
-          .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private')
+          .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private, archived_at')
           .order('ContactID'),
         sb.from('Contact')
           .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Adresse, CodePostal, Ville, Pays, Notes, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id, born_on, born_precision, died_on, died_precision'),
@@ -411,12 +417,13 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   // « Privé »: a team member does not browse or search private contacts here (admins see all). The full list still
   // goes up to the Atelier (onContactsChange) so works / orders tied to them keep their names.
-  const browsable = useMemo(() => pickableContacts(contacts, { isAdmin, keepIds: [activeId] }), [contacts, isAdmin, activeId])
+  const browsable = useMemo(() => pickableContacts(contacts, { isAdmin, keepIds: [activeId], includeArchived: true }), [contacts, isAdmin, activeId])
 
   const filtered = useMemo(() => {
     const sq = q.trim().toLowerCase()
     const base = browsable.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
+      if (isArchivedRow(c) !== archivedOnly) return false
       if (isAdmin && privateOnly && !c.is_private) return false
       if (sphere && sphereIds && !sphereIds.has(c.ContactID)) return false
       if (sq) {
@@ -502,9 +509,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [browsable, q, role, isAdmin, privateOnly, sphere, sphereIds, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
+  }, [browsable, q, role, isAdmin, privateOnly, archivedOnly, sphere, sphereIds, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale, lang])
 
   const privateCount = useMemo(() => contacts.filter((c) => c.is_private).length, [contacts])
+  // The list is loaded whole client-side (as for « Privé »), so the count comes from it. Private cards stay out for non-admins.
+  const archivedCount = useMemo(() => browsable.filter(isArchivedRow).length, [browsable])
+  const handleArchivedChanged = useCallback((archived: boolean) => {
+    if (activeId == null) return
+    const stamp = archived ? new Date().toISOString() : null
+    setContacts((prev) => prev.map((c) => (c.ContactID === activeId ? ({ ...c, archived_at: stamp } as ContactRow) : c)))
+  }, [activeId])
 
   const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => [...prev, c])
@@ -882,6 +896,22 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             ))}
           </select>
         )}
+        <button
+          type="button"
+          className="btn ghost sm"
+          data-testid="contacts-archived-filter"
+          aria-pressed={archivedOnly}
+          title={t('cs_archived_title')}
+          onClick={() => setArchivedOnly((v) => !v)}
+          style={{
+            whiteSpace: 'nowrap', flexShrink: 0, minHeight: narrow ? 44 : undefined,
+            background: archivedOnly ? 'var(--bg2)' : undefined,
+            borderColor: archivedOnly ? 'var(--ac)' : undefined,
+            color: archivedOnly ? 'var(--ac)' : undefined,
+          }}
+        >
+          {t('cs_archived_fmt').replace('{n}', String(archivedCount))}
+        </button>
         {isAdmin && (
           <button
             type="button"
@@ -1256,6 +1286,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             onBack={() => setActiveId(null)}
             onDelete={requestDeleteActive}
             onSpheresChanged={refreshSpheres}
+            onArchivedChanged={handleArchivedChanged}
           />
         ) : showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
           <ContactEditorPanel

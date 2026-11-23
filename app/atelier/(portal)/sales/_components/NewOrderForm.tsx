@@ -27,7 +27,7 @@ import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
-export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null; is_team_member?: boolean | null }
+export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null; is_team_member?: boolean | null; archived_at?: string | null }
 
 const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
 const KIND_LABEL: Record<WorkOrderKind, DictKey> = {

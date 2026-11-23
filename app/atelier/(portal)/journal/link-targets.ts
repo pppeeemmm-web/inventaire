@@ -35,6 +35,7 @@ export async function searchLinkTargets(kind: 'hash' | 'at', q: string): Promise
       .from('Contact')
       .select('ContactID, "Prénom", Nom, NomInstitution')
       .or(`"Prénom".ilike.%${term}%,Nom.ilike.%${term}%,NomInstitution.ilike.%${term}%`)
+      .is('archived_at', null)
     // Team RLS can read private cards; only an admin may see their names.
     if (!isAdmin) query = query.or('is_private.is.null,is_private.eq.false')
     const { data } = await query.limit(MAX_RESULTS)

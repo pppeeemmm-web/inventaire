@@ -11,6 +11,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { thumbUrl } from '@/lib/data'
 import { dismissToast, toast } from '@/lib/ui/toast'
@@ -95,9 +96,13 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
         })
       } else {
         setItems((prev) => (prev ? prev.filter((i) => i.key !== p.item.key) : prev))
+        if (p.item.kind === 'contact_change' && p.decision === 'discard') {
+          toast.success(t('fil_reverted'))
+          if ('note' in res && res.note) toast.info(t(res.note as DictKey))
+        }
       }
     })
-  }, [])
+  }, [t])
 
   const flush = useCallback(() => {
     const p = pending.current
@@ -119,13 +124,16 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
 
   const decide = useCallback(
     (item: FilItem, decision: FilDecision) => {
-      flush()
       const idx = ordered.findIndex((i) => i.key === item.key)
       const nextSel = (idx + 1 < shownCount ? ordered[idx + 1] : undefined) ?? ordered[idx - 1] ?? ordered[idx + 1] ?? null
       setGone((g) => new Set(g).add(item.key))
       setSelKey(nextSel?.key ?? null)
       const fiche = item.kind === 'pending_change'
-      const label = t(decision === 'keep' ? (fiche ? 'fil_approve' : 'fil_keep') : fiche ? 'fil_reject' : 'fil_discard')
+      if (item.kind === 'contact_change' && decision === 'discard' && !window.confirm(t('fil_revert_confirm'))) return
+      flush()
+      const label = item.kind === 'contact_change'
+        ? t(decision === 'keep' ? 'fil_seen' : 'fil_revert')
+        : t(decision === 'keep' ? (fiche ? 'fil_approve' : 'fil_keep') : fiche ? 'fil_reject' : 'fil_discard')
       const undo = () => {
         const p = pending.current
         if (!p || p.item.key !== item.key) return
@@ -162,7 +170,9 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
       if (!sel) return
-      if (e.key === 'ArrowLeft') decide(sel, 'discard')
+      if (e.key === 'ArrowLeft') {
+        if (sel.kind !== 'contact_change') decide(sel, 'discard') // a revert is never a keystroke
+      }
       else if (e.key === 'ArrowRight') decide(sel, 'keep')
       else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const idx = ordered.findIndex((i) => i.key === sel.key)
@@ -183,8 +193,17 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
   const row = (item: FilItem, readOnly = false) => {
     const on = !readOnly && sel?.key === item.key
     const fiche = item.kind === 'pending_change'
+    const contactChange = item.kind === 'contact_change'
+    const contactSentence = contactChange
+      ? t('fil_s_contact')
+          .replace('{who}', item.author?.trim() || t('fil_s_someone'))
+          .replace('{contact}', item.contact?.name ?? '')
+          .replace('{action}', item.contact ? t(`fil_c_${item.contact.action}` as DictKey) : '')
+      : null
     const kindLabel =
-      item.kind === 'work_order'
+      contactChange
+        ? t('fil_log_kind_contact_change')
+        : item.kind === 'work_order'
         ? t('fil_order_title').replace('{ref}', item.order?.ref ?? '')
         : item.kind === 'idea'
         ? t('fil_idea')
@@ -230,6 +249,8 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
             ) : null}
             {item.newLines ? <span>{item.newLines === 1 ? t('fil_new_line_one') : t('fil_new_lines').replace('{n}', String(item.newLines))}</span> : null}
           </div>
+          {contactSentence ? <div style={{ fontWeight: 600, fontSize: 13, overflowWrap: 'anywhere' }}>{contactSentence}</div> : null}
+          {contactChange && item.contact?.lists ? <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('fil_c_lists').replace('{lists}', item.contact.lists)}</div> : null}
           {item.title ? <div style={{ fontWeight: 600, fontSize: 13, ...ELLIPSIS }}>{item.title}</div> : null}
           {(item.order ? orderBody(item.order, t) : item.body).trim() ? (
             <div
@@ -255,7 +276,35 @@ export function OverviewFil({ compact = false, fit = true, onCount }: {
             </div>
           ) : null}
         </div>
-        {readOnly ? null : (
+        {readOnly ? null : contactChange ? (
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid="overview-fil-discard"
+              onClick={(e) => {
+                e.stopPropagation()
+                decide(item, 'discard')
+              }}
+              style={{ minHeight: 32, color: 'var(--rust)' }}
+            >
+              {t('fil_revert')}
+            </button>
+            <button
+              type="button"
+              className="btn sm"
+              data-testid="overview-fil-keep"
+              title={`${t('fil_seen')} (→)`}
+              onClick={(e) => {
+                e.stopPropagation()
+                decide(item, 'keep')
+              }}
+              style={{ minHeight: 32 }}
+            >
+              {t('fil_seen')}
+            </button>
+          </div>
+        ) : (
           <div style={{ display: 'flex', gap: 4 }}>
             <button
               type="button"

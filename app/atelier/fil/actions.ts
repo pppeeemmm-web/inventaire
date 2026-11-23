@@ -21,8 +21,11 @@ import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 import { approvePendingChange, rejectPendingChange } from '@/app/atelier/(portal)/audit/pending-actions'
 import { cancelWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
+import { saveContact, type ContactFields } from '@/app/atelier/(portal)/contacts/save-contact'
+import { archiveContact, savePersonLink, setContactSpheres, type LinkInput } from '@/app/atelier/(portal)/contacts/people-actions'
 
-export type FilKind = 'note_line' | 'idea' | 'kaizen_item' | 'pending_change' | 'work_order'
+export type FilKind = 'note_line' | 'idea' | 'kaizen_item' | 'pending_change' | 'work_order' | 'contact_change'
+export type ContactChangeAction = 'changed' | 'spheres' | 'link_add' | 'link_remove' | 'archived' | 'recalled'
 export type FilSection = 'creation' | 'fiches' | 'kaizen'
 export type FilDecision = 'keep' | 'discard'
 
@@ -47,6 +50,8 @@ export type FilItem = {
   image?: string | null
   /** Draft order (R7): the order to open, its kind and the other party. */
   order?: { id: string; ref: string | null; kind: string; party: string }
+  /** Team change to a person (People.md §3): whose card, what was done, list kinds touched (not revertible). */
+  contact?: { id: number; name: string; action: ContactChangeAction; lists: string | null }
   flagged: boolean
   cooled: boolean
 }
@@ -62,7 +67,56 @@ export type FilLogEntry = {
 }
 
 type Err = { error: string }
-type Ok = { ok: true }
+type Ok = { ok: true; note?: string }
+
+type LogRow = {
+  id: number
+  action: string
+  table_name: string | null
+  row_id: string | null
+  old_value: unknown
+  new_value: unknown
+  author_id: string | null
+  created_at: string | null
+}
+
+const CONTACT_ACTION: Record<string, ContactChangeAction> = {
+  'Contact modifié': 'changed',
+  'Sphères modifiées': 'spheres',
+  'Lien ajouté': 'link_add',
+  'Lien retiré': 'link_remove',
+  'Contact archivé': 'archived',
+  'Contact rappelé': 'recalled',
+}
+
+function obj(v: unknown): Record<string, unknown> {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+}
+
+function show(v: unknown): string | null {
+  if (v == null || v === '') return null
+  if (Array.isArray(v)) return v.length ? v.join(', ') : null
+  return typeof v === 'object' ? JSON.stringify(v) : String(v)
+}
+
+/** The log row as « champ : avant → après » lines and the list kinds touched. */
+function contactChanges(row: LogRow, action: ContactChangeAction): { changes: Array<{ key: string; before: string | null; after: string | null }>; lists: string | null } {
+  const o = obj(row.old_value)
+  const n = obj(row.new_value)
+  if (action === 'changed') {
+    const lists = Array.isArray(n._lists) ? (n._lists as unknown[]).join(', ') : null
+    const keys = Object.keys(n).filter((k) => k !== '_lists')
+    return { changes: keys.map((k) => ({ key: k, before: show(o[k]), after: show(n[k]) })), lists }
+  }
+  if (action === 'spheres') return { changes: [{ key: 'spheres', before: show(o.spheres), after: show(n.spheres) }], lists: null }
+  if (action === 'archived' || action === 'recalled') {
+    return { changes: [{ key: 'archived', before: show(o.archived), after: show(n.archived) }], lists: null }
+  }
+  const p = action === 'link_add' ? n : o
+  const target = p.to_contact != null ? `#${String(p.to_contact)}` : p.to_work != null ? `work #${String(p.to_work)}` : '—'
+  const text = `${String(p.kind ?? '')} → ${target}`
+  return { changes: [{ key: 'lien', before: action === 'link_remove' ? text : null, after: action === 'link_add' ? text : null }], lists: null }
+}
 
 const COOL_DAYS = 14
 
@@ -110,14 +164,20 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
   const { supabase, user } = g
   const me = user.id
 
-  const [linesRes, kaizenRes, pendingRes, statesRes, ordersRes] = await Promise.all([
+  const [linesRes, kaizenRes, pendingRes, statesRes, ordersRes, contactLogRes] = await Promise.all([
     supabase.from('note_line').select('*').is('discarded_at', null).order('created_at', { ascending: false }).limit(500),
     supabase.from('kaizen_item').select('id, created_at, title, body, author_id, section, work_ids, done_at').is('done_at', null).order('created_at', { ascending: false }).limit(300),
     supabase.from('pending_changes').select('*').eq('status', 'pending').order('created_at', { ascending: false }).limit(200),
     supabase.from('feed_item_state').select('item_kind, item_id, state, at, recalled_at'),
     supabase.from('work_order').select('id, ref, kind, party_id, created_at, created_by').eq('status', 'draft').not('created_by', 'is', null).neq('created_by', me).order('created_at', { ascending: false }).limit(100),
+    supabase
+      .from('system_log')
+      .select('id, action, table_name, row_id, old_value, new_value, author_id, created_at')
+      .eq('event_type', 'contact_team_change')
+      .order('created_at', { ascending: false })
+      .limit(200),
   ])
-  for (const r of [linesRes, kaizenRes, pendingRes, statesRes, ordersRes]) {
+  for (const r of [linesRes, kaizenRes, pendingRes, statesRes, ordersRes, contactLogRes]) {
     if (r.error) {
       await logError('fil list failed', r.error, { source: 'fil.listFil' })
       return { error: r.error.message }
@@ -174,10 +234,24 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     ...pending.map((p) => p.oeuvre_id),
     ...[...firstWorkOf.values()],
   ].filter((x): x is number => typeof x === 'number')
-  const authorIds = [...lines.map((l) => l.author_id), ...kaizen.map((k) => k.author_id), ...pending.map((p) => p.author_id), ...drafts.map((d) => d.created_by)].filter(
-    (x): x is string => !!x,
-  )
-  const [works, names] = await Promise.all([worksFor(supabase, [...new Set(workIds)]), namesFor(supabase, [...new Set(authorIds)])])
+  const contactLog = ((contactLogRes.data ?? []) as LogRow[]).filter((r) => CONTACT_ACTION[r.action] && r.row_id && !state.has(`contact_change:${r.id}`))
+  const authorIds = [
+    ...lines.map((l) => l.author_id),
+    ...kaizen.map((k) => k.author_id),
+    ...pending.map((p) => p.author_id),
+    ...drafts.map((d) => d.created_by),
+    ...contactLog.map((r) => r.author_id),
+  ].filter((x): x is string => !!x)
+  const contactIds = [...new Set(contactLog.map((r) => Number(r.row_id)).filter((n) => Number.isInteger(n)))]
+  const [works, names, contactRows] = await Promise.all([
+    worksFor(supabase, [...new Set(workIds)]),
+    namesFor(supabase, [...new Set(authorIds)]),
+    contactIds.length ? supabase.from('Contact').select('*').in('ContactID', contactIds) : Promise.resolve({ data: [] }),
+  ])
+  const contactName = new Map<number, string>()
+  for (const c of (contactRows.data ?? []) as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]) {
+    contactName.set(c.ContactID, contactListLabel(c))
+  }
   const name = (id: string | null) => (id ? names.get(id) ?? null : null)
 
   const items: FilItem[] = []
@@ -279,6 +353,28 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     })
   }
 
+  for (const r of contactLog) {
+    const action = CONTACT_ACTION[r.action]
+    const cid = Number(r.row_id)
+    const { changes, lists } = contactChanges(r, action)
+    items.push({
+      key: `contact_change:${r.id}`,
+      kind: 'contact_change',
+      id: String(r.id),
+      section: 'fiches',
+      author: name(r.author_id),
+      at: r.created_at ?? new Date(0).toISOString(),
+      title: null,
+      body: '',
+      work: null,
+      changes: changes.slice(0, 12),
+      contact: { id: cid, name: contactName.get(cid) ?? `#${cid}`, action, lists },
+      flagged: false,
+      // Team changes wait for Pem: they never cool.
+      cooled: false,
+    })
+  }
+
   // Flagged first (« Une idée pour Pem ? »), then newest.
   items.sort((a, b) => Number(b.flagged) - Number(a.flagged) || b.at.localeCompare(a.at))
   return { items }
@@ -320,6 +416,69 @@ export async function decideFil(kind: FilKind, id: string, decision: FilDecision
     }
     revalidatePath('/hub/fil')
     return { ok: true }
+  }
+
+  // A team change to a person: « Vu » marks it seen; « Revenir » re-applies the old values through the
+  // people doors first (a refusal is returned, nothing marked), then marks it seen.
+  if (kind === 'contact_change') {
+    let note: string | undefined
+    if (decision === 'discard') {
+      const { data: row, error } = await supabase
+        .from('system_log')
+        .select('id, action, table_name, row_id, old_value, new_value, author_id, created_at')
+        .eq('id', Number(id))
+        .eq('event_type', 'contact_team_change')
+        .maybeSingle()
+      if (error) return { error: error.message }
+      const log = row as LogRow | null
+      const action = log ? CONTACT_ACTION[log.action] : undefined
+      const contactId = Number(log?.row_id)
+      if (!log || !action || !Number.isInteger(contactId)) return { error: 'not_found' }
+      const o = obj(log.old_value)
+      const n = obj(log.new_value)
+      const refusal = (r: unknown): Err | null => {
+        const x = r as { refused?: string; detail?: unknown; error?: string }
+        if (x.error) return { error: x.error }
+        if (x.refused) return { error: `${x.refused}${x.detail ? ` (${typeof x.detail === 'string' ? x.detail : JSON.stringify(x.detail)})` : ''}` }
+        return null
+      }
+      if (action === 'changed') {
+        const fields = { ...o }
+        delete fields._lists
+        if (Object.keys(fields).length) {
+          const res = await saveContact({ id: contactId, fields: fields as ContactFields })
+          const bad = refusal(res)
+          if (bad) return bad
+        }
+        if (Array.isArray(n._lists) && n._lists.length) note = resolveMessage('fr', 'fil_c_revert_lists_note')
+      } else if (action === 'spheres') {
+        const keys = Array.isArray(o.spheres) ? (o.spheres as unknown[]).filter((k): k is string => typeof k === 'string') : []
+        const bad = refusal(await setContactSpheres(contactId, keys))
+        if (bad) return bad
+      } else if (action === 'link_add' || action === 'link_remove') {
+        const p = obj(action === 'link_add' ? n : o)
+        const input: LinkInput = {
+          op: action === 'link_add' ? 'remove' : 'add',
+          from: Number(p.from ?? contactId),
+          kind: p.kind as LinkInput['kind'],
+          toContact: p.to_contact != null ? Number(p.to_contact) : null,
+          toWork: p.to_work != null ? Number(p.to_work) : null,
+          sourceKind: typeof p.source_kind === 'string' ? p.source_kind : null,
+          sourceRef: typeof p.source_ref === 'string' ? p.source_ref : null,
+        }
+        const bad = refusal(await savePersonLink(input))
+        if (bad) return bad
+      } else {
+        // archived → back to active; recalled → archived again.
+        const bad = refusal(await archiveContact(contactId, action === 'recalled'))
+        if (bad) return bad
+      }
+    }
+    // A successful revert is stored as 'discarded' so the Fil log lists it; « Vu » stays 'seen'.
+    const st = await setState(supabase, user.id, kind, id, decision === 'discard' ? 'discarded' : 'seen')
+    if (st) return st
+    revalidatePath('/hub/fil')
+    return note ?{ ok: true, note } : { ok: true }
   }
 
   if (decision === 'discard' && kind === 'note_line') {
@@ -408,6 +567,8 @@ export async function listFilLog(limit = 100): Promise<{ entries: FilLogEntry[] 
         const p = pendingMap.get(r.item_id)
         label = p?.oeuvre_id != null ? `#${p.oeuvre_id}` : r.item_id
         recallable = p?.change_kind !== 'image_add'
+      } else if (kind === 'contact_change') {
+        recallable = false
       }
       return { kind, id: r.item_id, at: r.at, recalledAt: r.recalled_at, label, recallable }
     }),
@@ -419,6 +580,9 @@ export async function recallFil(kind: FilKind, id: string): Promise<Ok | Err> {
   const g = await gate()
   if (!g.ok) return { error: g.error }
   const { supabase } = g
+
+  // A revert went through the people doors; it cannot be redone from here.
+  if (kind === 'contact_change') return { error: 'cannot_recall' }
 
   if (kind === 'note_line') {
     const { error } = await supabase.from('note_line').update({ discarded_at: null, discarded_by: null }).eq('id', Number(id))

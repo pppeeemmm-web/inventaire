@@ -23,7 +23,9 @@ import {
   type PersonPaper,
   type PersonWork,
 } from '@/app/atelier/(portal)/contacts/person-page'
+import { archiveContact } from '@/app/atelier/(portal)/contacts/people-actions'
 import { PersonTimeline } from '@/components/atelier/PersonTimeline'
+import { MomentSheet } from '@/components/atelier/MomentSheet'
 import { PersonSpheres } from '@/components/atelier/PersonSpheres'
 import { PersonLinks } from '@/components/atelier/PersonLinks'
 import type {
@@ -49,6 +51,8 @@ type Props = {
   onDelete: () => void
   /** A save of this person's spheres was answered ok (the list's sphere filter re-reads). */
   onSpheresChanged?: () => void
+  /** The card was archived or recalled (answered ok). */
+  onArchivedChanged?: (archived: boolean) => void
 }
 
 type Paged<T> = { items: T[]; count: number; failed: boolean; loading: boolean }
@@ -243,17 +247,40 @@ function telHref(p: ContactPhone): string {
   return num.startsWith('+') || !cc ? num : `${cc.startsWith('+') ? cc : `+${cc}`}${num.replace(/^0/, '')}`
 }
 
-export function PersonPage({ contact, emails, phones, addresses, websites, socials, isAdmin, narrow, onEdit, onBack, onDelete, onSpheresChanged }: Props) {
+export function PersonPage({ contact, emails, phones, addresses, websites, socials, isAdmin, narrow, onEdit, onBack, onDelete, onSpheresChanged, onArchivedChanged }: Props) {
   const { t, lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const id = contact.ContactID
   const [menu, setMenu] = useState(false)
+  const [momentOpen, setMomentOpen] = useState(false)
+  const [timelineKey, setTimelineKey] = useState(0)
   const [folded, setFolded] = useState(false)
+  const [confirmArchive, setConfirmArchive] = useState(false)
+  const [archiveBusy, setArchiveBusy] = useState(false)
+  const [archiveRefused, setArchiveRefused] = useState<string | null>(null)
+  const archived = !!(contact as ContactRow & { archived_at?: string | null }).archived_at
 
   useEffect(() => {
     setMenu(false)
     setFolded(false)
+    setConfirmArchive(false)
+    setArchiveRefused(null)
   }, [id])
+
+  const runArchive = async (next: boolean) => {
+    setArchiveBusy(true)
+    setArchiveRefused(null)
+    const res = await archiveContact(id, next)
+    setArchiveBusy(false)
+    if ('refused' in res) {
+      const k = `pp_refused_${res.refused}`
+      setArchiveRefused(k in { pp_refused_forbidden: 1, pp_refused_not_found: 1, pp_refused_team_member: 1 } ? t(k as DictKey) : t('pp_refused_error'))
+      return
+    }
+    setConfirmArchive(false)
+    setMenu(false)
+    if ('ok' in res) onArchivedChanged?.(res.archived)
+  }
 
 
   const person = contactPersonProseName(contact)
@@ -340,7 +367,23 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
     menu ? (
       <div style={{ position: 'absolute', right: 0, ...(side === 'top' ? { top: '100%' } : { bottom: '100%' }), zIndex: 5, minWidth: 200, background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 4, padding: 4, display: 'flex', flexDirection: 'column' }}>
         <Link href={`/atelier/sales?new=sale&party=${id}`} className="btn ghost sm" style={{ justifyContent: 'flex-start', minHeight: narrow ? 44 : undefined }}>{t('pp_new_order')}</Link>
-        <button type="button" className="btn ghost sm" onClick={() => { setMenu(false); onDelete() }} style={{ color: 'var(--rust)', justifyContent: 'flex-start', minHeight: narrow ? 44 : undefined }}>{t('delete')}</button>
+        {archived ? (
+          <button type="button" className="btn ghost sm" disabled={archiveBusy} data-testid="person-recall" onClick={() => void runArchive(false)} style={{ justifyContent: 'flex-start', minHeight: narrow ? 44 : undefined }}>{t('pp_recall')}</button>
+        ) : confirmArchive ? (
+          <div style={{ padding: 6, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div>{t('pp_archive_confirm').replace('{name}', name)}</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btn sm" disabled={archiveBusy} data-testid="person-archive-yes" onClick={() => void runArchive(true)} style={{ minHeight: narrow ? 44 : undefined }}>{t('pp_archive_yes')}</button>
+              <button type="button" className="btn ghost sm" onClick={() => { setConfirmArchive(false); setArchiveRefused(null) }} style={{ minHeight: narrow ? 44 : undefined }}>{t('cancel')}</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="btn ghost sm" data-testid="person-archive" onClick={() => setConfirmArchive(true)} style={{ justifyContent: 'flex-start', minHeight: narrow ? 44 : undefined }}>{t('pp_archive')}</button>
+        )}
+        {archiveRefused ? <div style={{ padding: '4px 6px', fontSize: 12, color: 'var(--rust)' }}>{archiveRefused}</div> : null}
+        {isAdmin ? (
+          <button type="button" className="btn ghost sm" onClick={() => { setMenu(false); onDelete() }} style={{ color: 'var(--rust)', justifyContent: 'flex-start', minHeight: narrow ? 44 : undefined }}>{t('delete')}</button>
+        ) : null}
       </div>
     ) : null
 
@@ -356,6 +399,14 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
         <h2 data-testid="person-name" style={{ margin: 0, fontSize: narrow ? 20 : 22, lineHeight: 1.2, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
           {name}
           {diedYear ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: 'var(--tx2)' }}>{diedYear}</span> : null}
+          {archived ? (
+            <span
+              data-testid="person-archived-chip"
+              style={{ marginLeft: 8, border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 9, padding: '1px 5px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle', fontWeight: 400 }}
+            >
+              {t('pp_archived_chip')}
+            </span>
+          ) : null}
           {isAdmin && contact.is_private ? (
             <span
               title={t('contacts_private_chip_title')}
@@ -367,6 +418,7 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
         </h2>
         {!narrow ? (
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, position: 'relative' }}>
+            {!archived ? <button type="button" className="btn primary sm" onClick={() => setMomentOpen(true)} data-testid="person-add-moment">{t('pp_add_moment')}</button> : null}
             <button type="button" className="btn sm" onClick={onEdit} data-testid="person-edit">{t('pp_edit')}</button>
             {moreButton}
             {menuPanel('top')}
@@ -417,7 +469,7 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
         </div>
       ) : null}
 
-      <PersonTimeline contactId={id} narrow={narrow} />
+      <PersonTimeline contactId={id} narrow={narrow} reloadKey={timelineKey} />
 
       <ListBlock
         title={t('pp_orders')}
@@ -451,6 +503,9 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
         )}
       />
       <ContactJournalSection contactId={id} />
+      {!archived ? (
+        <MomentSheet open={momentOpen} contactId={id} contactName={name} narrow={narrow} onClose={() => setMomentOpen(false)} onSaved={() => setTimelineKey((k) => k + 1)} />
+      ) : null}
     </>
   )
 
@@ -462,7 +517,10 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
           {main}
         </div>
         <div style={{ position: 'sticky', bottom: 0, zIndex: 2, flexShrink: 0, borderTop: '1px solid var(--bd)', padding: '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))', display: 'flex', gap: 8, background: 'var(--bg1)' }}>
-          <button type="button" className="btn primary sm" onClick={onEdit} data-testid="person-edit" style={{ flex: 1, minHeight: 44 }}>{t('pp_edit')}</button>
+          {!archived ? (
+            <button type="button" className="btn primary sm" onClick={() => setMomentOpen(true)} data-testid="person-add-moment" style={{ flex: 1, minHeight: 44 }}>{t('pp_add_moment')}</button>
+          ) : null}
+          <button type="button" className={archived ? 'btn primary sm' : 'btn sm'} onClick={onEdit} data-testid="person-edit" style={{ flex: archived ? 1 : undefined, minHeight: 44 }}>{t('pp_edit')}</button>
           {moreButton}
           {menuPanel('bottom')}
         </div>

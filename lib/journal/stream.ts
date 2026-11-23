@@ -139,7 +139,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     const extras = await readJournalDays(supabase, { userId: user.id, isAdmin }, from, shiftDay(upper, -1), { folds: true })
     if ('error' in extras) return extras
     const found = [...extras]
-      .filter(([day, x]) => (!before && day === today) || x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || sessions.has(day))
+      .filter(([day, x]) => (!before && day === today) || x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || (x.moments?.length ?? 0) > 0 || sessions.has(day))
       .map(([day]) => day)
       .sort((a, b) => b.localeCompare(a))
       .slice(0, n)
@@ -170,7 +170,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     .filter((d) => {
       if (d.day === today) return true
       const x = d.extras
-      return x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || d.sessionWorks.length
+      return x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || (x.moments?.length ?? 0) > 0 || d.sessionWorks.length
     })
   return { isAdmin, today, days: shown, next: days.length < n ? null : from }
 }

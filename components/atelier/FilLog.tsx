@@ -15,6 +15,7 @@ const KIND_LABEL = {
   pending_change: 'fil_log_kind_pending_change',
   // Draft orders leave no log line (« Retirer » cancels the order itself); listed for the type.
   work_order: 'ord_title',
+  contact_change: 'fil_log_kind_contact_change',
 } as const satisfies Record<FilKind, string>
 
 export function FilLog() {
@@ -93,6 +94,8 @@ export function FilLog() {
                           {' · '}
                           {new Date(e.recalledAt).toLocaleDateString(locale)}
                         </span>
+                      ) : e.kind === 'contact_change' ? (
+                        <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('fil_log_reverted')}</span>
                       ) : !e.recallable ? (
                         <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('fil_log_image')}</span>
                       ) : (

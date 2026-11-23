@@ -21,6 +21,7 @@ import type {
   JournalDayEntry,
   JournalDayExtras,
   JournalDayIdeaChange,
+  JournalDayMoment,
   JournalDayRemark,
   JournalDayVoice,
   VoiceNoteLinks,
@@ -38,7 +39,7 @@ function utcWindow(from: string, to: string): { from: string; to: string } {
 }
 
 function emptyDay(isAdmin: boolean, conceptOptions: JournalDayExtras['conceptOptions']): JournalDayExtras {
-  return { isAdmin, entries: [], changes: [], changedWorks: 0, voices: [], creation: [], conceptOptions, inspirations: [], remarks: [] }
+  return { isAdmin, entries: [], changes: [], changedWorks: 0, voices: [], creation: [], conceptOptions, inspirations: [], remarks: [], moments: [] }
 }
 
 /**
@@ -569,6 +570,65 @@ export async function readJournalDays(
       author: (n.author_id && names[n.author_id]) || '—',
     }
     dayOf(calendarDayInParisFromIso(n.created_at)).remarks.push(remark)
+  }
+
+  // Touches of the run (People.md §4): read from `moment`, never copied into the notebook. Day precision only,
+  // not replaced; RLS hides private moments from non-admins. Private cards are dropped for non-admins.
+  // `entries: false` (an idea's own desk) skips it.
+  if (withEntries) {
+    const loose = supabase as unknown as { from: (t: string) => any }
+    const momRes = await loose
+      .from('moment')
+      .select('id, happened_on, kind, summary')
+      .eq('precision', 'day')
+      .is('replaced_by', null)
+      .gte('happened_on', from)
+      .lte('happened_on', to)
+      .order('id', { ascending: true })
+      .limit(400)
+    if (momRes.error) {
+      await logError('journal read failed', momRes.error, { source: 'journal.readJournalDays', metadata: { table: 'moment', from, to } })
+    } else {
+      const moms = (momRes.data ?? []) as Array<{ id: number; happened_on: string; kind: string; summary: string | null }>
+      const ids = moms.map((m) => m.id)
+      if (ids.length) {
+        const [mpRes, mwRes] = await Promise.all([
+          loose.from('moment_person').select('moment_id, contact_id').in('moment_id', ids).limit(2000),
+          loose.from('moment_work').select('moment_id, oeuvre_id').in('moment_id', ids).limit(2000),
+        ])
+        const mp = (mpRes.error ? [] : mpRes.data ?? []) as Array<{ moment_id: number; contact_id: number }>
+        const mw = (mwRes.error ? [] : mwRes.data ?? []) as Array<{ moment_id: number; oeuvre_id: number }>
+        const cIds = [...new Set(mp.map((r) => Number(r.contact_id)))]
+        const wIds = [...new Set(mw.map((r) => Number(r.oeuvre_id)))]
+        const [cRes, wRes] = await Promise.all([
+          cIds.length ? supabase.from('Contact').select('*').in('ContactID', cIds) : Promise.resolve({ data: [] }),
+          wIds.length ? supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', wIds) : Promise.resolve({ data: [] }),
+        ])
+        const cNames = new Map<number, string>()
+        const privateIds = new Set<number>()
+        for (const c of (cRes.data ?? []) as Array<Record<string, unknown>>) {
+          if (!isAdmin && c.is_private === true) { privateIds.add(Number(c.ContactID)); continue } // private card: same as invisible
+          cNames.set(Number(c.ContactID), contactListLabel(c as Parameters<typeof contactListLabel>[0], { fallback: `#${c.ContactID}` }))
+        }
+        const wMap = new Map<number, { title: string | null; thumb: string | null }>()
+        for (const w of (wRes.data ?? []) as Array<{ OeuvreID: number; Titre: string | null; txtImageNameLink: string | null }>) {
+          wMap.set(w.OeuvreID, { title: w.Titre ?? null, thumb: w.txtImageNameLink ?? null })
+        }
+        for (const m of moms) {
+          if (!inRange(m.happened_on)) continue
+          // A touch with a private person is hidden whole from non-admins: its summary is about that person.
+          if (mp.some((r) => r.moment_id === m.id && privateIds.has(Number(r.contact_id)))) continue
+          const item: JournalDayMoment = {
+            id: m.id,
+            kind: m.kind,
+            summary: m.summary,
+            people: mp.filter((r) => r.moment_id === m.id && cNames.has(Number(r.contact_id))).map((r) => ({ id: Number(r.contact_id), name: cNames.get(Number(r.contact_id)) as string })),
+            works: mw.filter((r) => r.moment_id === m.id && wMap.has(Number(r.oeuvre_id))).map((r) => ({ id: Number(r.oeuvre_id), ...(wMap.get(Number(r.oeuvre_id)) as { title: string | null; thumb: string | null }) })),
+          }
+          dayOf(m.happened_on).moments?.push(item)
+        }
+      }
+    }
   }
 
   return out

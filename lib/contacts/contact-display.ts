@@ -153,12 +153,16 @@ export function sortContactsByName<T extends ContactNameFields>(rows: readonly T
  * a shipment, an event, a paper) its name and address still show and the team works normally: name lookups use the
  * full list, never this one. `keepIds`: the field's current value(s), so an existing pick stays in its select.
  */
-export function pickableContacts<T extends { ContactID: number; is_private?: boolean | null }>(
+export function pickableContacts<T extends { ContactID: number; is_private?: boolean | null; archived_at?: string | null }>(
   rows: readonly T[],
-  opts: { isAdmin: boolean; keepIds?: Iterable<number | string | null | undefined> },
+  opts: { isAdmin: boolean; keepIds?: Iterable<number | string | null | undefined>; includeArchived?: boolean },
 ): T[] {
-  if (opts.isAdmin) return rows as T[]
   const keep = new Set<number>()
   for (const id of opts.keepIds ?? []) if (id != null && id !== '' && Number.isFinite(Number(id))) keep.add(Number(id))
-  return rows.filter((c) => !c.is_private || keep.has(c.ContactID))
+  // An archived person is never offered (Pem 2026-11-23) unless it is the field's current value or the caller browses archives.
+  return rows.filter(
+    (c) =>
+      (opts.includeArchived || !c.archived_at || keep.has(c.ContactID)) &&
+      (opts.isAdmin || !c.is_private || keep.has(c.ContactID)),
+  )
 }

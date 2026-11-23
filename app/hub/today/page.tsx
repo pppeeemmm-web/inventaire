@@ -22,6 +22,7 @@ import { listWorkSessionJournal, type WorkSessionJournalRow } from '@/app/atelie
 import { countFil } from '@/app/atelier/fil/actions'
 import { worksPhotographedOn } from './photographed'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
+import { JournalDayMoments } from '@/components/atelier/journal/JournalDayMoments'
 import { TodayCachedNote } from '@/components/hub/TodayCachedNote'
 import {
   TodayEntries,
@@ -199,13 +200,20 @@ async function EntriesSection({ extras, isToday }: { extras: Promise<Extras>; is
   if ('error' in x) return <TodayLoadError />
   // An admin sees hidden entries dimmed (to unhide them); everyone else does not.
   return (
-    <TodayEntries
-      entries={x.isAdmin ? x.entries : x.entries.filter((e) => !e.hidden)}
-      voices={x.voices}
-      photos={x.inspirations}
-      isToday={isToday}
-      isAdmin={x.isAdmin}
-    />
+    <>
+      <TodayEntries
+        entries={x.isAdmin ? x.entries : x.entries.filter((e) => !e.hidden)}
+        voices={x.voices}
+        photos={x.inspirations}
+        isToday={isToday}
+        isAdmin={x.isAdmin}
+      />
+      {x.moments?.length ? (
+        <div style={{ padding: '0 16px 12px', minWidth: 0, overflowWrap: 'anywhere' }}>
+          <JournalDayMoments moments={x.moments} />
+        </div>
+      ) : null}
+    </>
   )
 }
 

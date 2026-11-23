@@ -28,6 +28,7 @@ export default async function SaleNewPage() {
     .select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays')
     // Pem and the team accounts are never the buyer (stress test 2026-11-18): not asked for.
     .neq('ContactID', PEM_CONTACT_ID)
+    .is('archived_at', null)
     .not('is_team_member', 'is', true)
     .order('NomInstitution', { ascending: true, nullsFirst: false })
     .order('Nom', { ascending: true, nullsFirst: false })

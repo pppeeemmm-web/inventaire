@@ -174,6 +174,7 @@ export async function searchShareAttachTargets(
     const like = pattern.replace(/[,()]/g, ' ')
     let cq = g.supabase.from('Contact')
       .select('ContactID, Nom, "Prénom", NomInstitution')
+      .is('archived_at', null)
       .or(`Nom.ilike.${like},"Prénom".ilike.${like},NomInstitution.ilike.${like}`)
     // « Privé » contacts are not searchable by the team (Pem 2026-11-19); an admin finds them.
     const { data: isAdmin } = await g.supabase.rpc('is_admin')
