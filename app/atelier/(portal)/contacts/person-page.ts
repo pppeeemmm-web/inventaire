@@ -66,6 +66,47 @@ export async function readPersonWorks(contactId: number, rel: PersonWorkRel, off
   }
 }
 
+export type PersonSeenRel = 'kit' | 'event'
+
+/**
+ * « Vu » — works this person was shown: sent in a kit (`private_link_work` through `private_link.contact_id`) or
+ * hung at an event they took part in (`event_work` through `event_contact`). The count is the number of showings
+ * (a work sent in two kits counts twice), asked of the database; thumbs of one page, repeats folded.
+ */
+export async function readPersonSeen(contactId: number, rel: PersonSeenRel, offset = 0): Promise<Page<PersonWork>> {
+  if (!validId(contactId) || (rel !== 'kit' && rel !== 'event')) return { error: 'not_found' }
+  const supabase = await teamClient()
+  if (!supabase) return { error: 'auth' }
+  const from = validOffset(offset)
+  // Embedded filters are outside the generated types: a loose builder, rows mapped by hand.
+  const db = supabase as unknown as { from: (t: string) => any }
+  const res =
+    rel === 'kit'
+      ? await db
+          .from('private_link_work')
+          .select('token, oeuvre_id, Oeuvres!inner(OeuvreID, Titre, txtImageNameLink, deleted_at), private_link!inner(contact_id)', { count: 'exact' })
+          .eq('private_link.contact_id', contactId)
+          .is('Oeuvres.deleted_at', null)
+          .order('oeuvre_id', { ascending: false })
+          .order('token', { ascending: true })
+          .range(from, from + PERSON_WORKS_PAGE - 1)
+      : await db
+          .from('event_work')
+          .select('process_id, oeuvre_id, Oeuvres!inner(OeuvreID, Titre, txtImageNameLink, deleted_at), suivi_process!inner(event_contact!inner(contact_id))', { count: 'exact' })
+          .eq('suivi_process.event_contact.contact_id', contactId)
+          .is('Oeuvres.deleted_at', null)
+          .order('oeuvre_id', { ascending: false })
+          .order('process_id', { ascending: true })
+          .range(from, from + PERSON_WORKS_PAGE - 1)
+  if (res.error) return { error: res.error.message as string }
+  const rows = (res.data ?? []) as { Oeuvres: { OeuvreID: number; Titre: string | null; txtImageNameLink: string | null } }[]
+  return {
+    ok: true,
+    count: res.count ?? 0,
+    items: rows.map((r) => ({ id: r.Oeuvres.OeuvreID, title: r.Oeuvres.Titre, image: r.Oeuvres.txtImageNameLink })),
+  }
+}
+
 /** Orders where this person is the party, newest first. */
 export async function readPersonOrders(contactId: number, offset = 0): Promise<Page<PersonOrder>> {
   if (!validId(contactId)) return { error: 'not_found' }

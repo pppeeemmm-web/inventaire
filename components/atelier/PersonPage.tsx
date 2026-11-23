@@ -17,12 +17,13 @@ import { ContactJournalSection } from '@/components/atelier/ContactJournalSectio
 import {
   readPersonOrders,
   readPersonPapers,
+  readPersonSeen,
   readPersonWorks,
   type PersonOrder,
   type PersonPaper,
   type PersonWork,
-  type PersonWorkRel,
 } from '@/app/atelier/(portal)/contacts/person-page'
+import { PersonTimeline } from '@/components/atelier/PersonTimeline'
 import type {
   ContactAddress,
   ContactEmail,
@@ -80,9 +81,23 @@ function usePaged<T>(reader: (offset: number) => Promise<{ ok: true; count: numb
 const LABEL: React.CSSProperties = { fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)' }
 const TILE = 64
 
-function WorkStrip({ contactId, rel, label, narrow }: { contactId: number; rel: PersonWorkRel; label: string; narrow: boolean }) {
+function WorkStrip({
+  contactId,
+  rel,
+  label,
+  narrow,
+  reader,
+}: {
+  contactId: number
+  rel: string
+  label: string
+  narrow: boolean
+  reader: (offset: number) => Promise<{ ok: true; count: number; items: PersonWork[] } | { error: string }>
+}) {
   const { t } = useI18n()
-  const { items, count, failed, loading, more } = usePaged<PersonWork>((o) => readPersonWorks(contactId, rel, o), `${contactId}-${rel}`)
+  const { items: raw, count, failed, loading, more } = usePaged<PersonWork>(reader, `${contactId}-${rel}`)
+  // « Vu » counts showings: the same work sent twice shows one thumb.
+  const items = raw.filter((w, i) => raw.findIndex((x) => x.id === w.id) === i)
   return (
     <div style={{ marginBottom: 14 }} data-testid={`person-works-${rel}`}>
       <div style={{ ...LABEL, marginBottom: 6 }}>
@@ -131,7 +146,7 @@ function WorkStrip({ contactId, rel, label, narrow }: { contactId: number; rel: 
               </Link>
             )
           })}
-          {items.length < count ? (
+          {raw.length < count ? (
             <button
               type="button"
               className="btn ghost sm"
@@ -139,7 +154,7 @@ function WorkStrip({ contactId, rel, label, narrow }: { contactId: number; rel: 
               disabled={loading}
               style={{ flex: '0 0 auto', width: TILE, height: TILE, minHeight: 44 }}
             >
-              {loading ? '…' : `+${count - items.length}`}
+              {loading ? '…' : `+${count - raw.length}`}
             </button>
           ) : null}
         </div>
@@ -357,9 +372,11 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
 
   const main = (
     <>
-      <WorkStrip contactId={id} rel="owns" label={t('pp_works_owns')} narrow={narrow} />
-      <WorkStrip contactId={id} rel="holds" label={t('pp_works_holds')} narrow={narrow} />
-      <WorkStrip contactId={id} rel="bought" label={t('pp_works_bought')} narrow={narrow} />
+      <WorkStrip contactId={id} rel="owns" label={t('pp_works_owns')} narrow={narrow} reader={(o) => readPersonWorks(id, 'owns', o)} />
+      <WorkStrip contactId={id} rel="holds" label={t('pp_works_holds')} narrow={narrow} reader={(o) => readPersonWorks(id, 'holds', o)} />
+      <WorkStrip contactId={id} rel="bought" label={t('pp_works_bought')} narrow={narrow} reader={(o) => readPersonWorks(id, 'bought', o)} />
+      <WorkStrip contactId={id} rel="seen-kit" label={t('pp_works_seen_kit')} narrow={narrow} reader={(o) => readPersonSeen(id, 'kit', o)} />
+      <WorkStrip contactId={id} rel="seen-event" label={t('pp_works_seen_event')} narrow={narrow} reader={(o) => readPersonSeen(id, 'event', o)} />
 
       {narrow ? (
         <div style={{ marginTop: 8, borderTop: '1px solid var(--bd)', paddingTop: 4 }}>
@@ -376,6 +393,8 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
           {folded ? detailRows : null}
         </div>
       ) : null}
+
+      <PersonTimeline contactId={id} narrow={narrow} />
 
       <ListBlock
         title={t('pp_orders')}
