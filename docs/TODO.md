@@ -10,7 +10,7 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - First: the Journal stream is the default (`?stream=0` keeps the old day screens); the desk waits ~1.5 s for its page shell before the first read — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2, waits on `merge_contacts`), the desk hotkey, `npm run gen:types` → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
-- Next session, in order: (1) work-change badges: design + mockup on branch `claude/quizzical-burnell-8da83f` (worktree, uncommitted), Pem's answers recorded — review, then build; (2) Journal on the desk (§1 Checks line) — design first.
+- Next session, in order: (1) work-change badges: build → [WorkChangeBadges](./design/2026-11-23/WorkChangeBadges.md) §5 (design + mockup reviewed, Pem's answers in §7; SQL draft `oeuvre_version_author.sql` not live — Docker copy first, then Pem's OK); tests that write run on the Docker copy → `TestsOnDockerCopy.md` on branch `claude/eloquent-tesla-8a10c1` (uncommitted); (2) Journal on the desk (§1 Checks line) — design first.
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the reverse pricing design draft (§3, no build).
 
 ## 1. Finish first — small, before anything new

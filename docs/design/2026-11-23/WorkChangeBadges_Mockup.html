@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Badges de modification — maquette</title>
+<style>
+/* App tokens (app/globals.css): dark = default, light below. */
+:root[data-theme="dark"]{
+  --bg0:#080809; --bg1:#101011; --bg2:#19191b; --bg3:#222225; --bd:#2d2d32; --bd2:#3f3f46;
+  --tx:#f8f7f3; --tx2:#b4afa1; --tx3:#807c72; --ac:#d4b886; --ac2:#a68b55;
+  --p1:#d4b886; --p2:#7fb8a6; --p3:#9db4e6; --p4:#e39a8a; --p5:#c39be0; --p6:#d9c46a;
+}
+:root[data-theme="light"]{
+  --bg0:#fcfcfc; --bg1:#f5f5f5; --bg2:#ebebeb; --bg3:#e0e0e0; --bd:#e5e5e5; --bd2:#d4d4d4;
+  --tx:#1a1a1a; --tx2:#4a4a4a; --tx3:#737373; --ac:#b8860b; --ac2:#8b6914;
+  --p1:#b8860b; --p2:#2f7d68; --p3:#3d63b8; --p4:#b5513d; --p5:#8048a8; --p6:#8a7a12;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg0);color:var(--tx);font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.top h1{font-size:15px;margin:0}.top .note{color:var(--tx3);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 10px}.seg button.on{background:var(--tx);color:var(--bg0)}
+.stage{display:flex;gap:24px;padding:16px;align-items:flex-start;flex-wrap:wrap}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);margin:0 0 6px}
+.desk{flex:1 1 620px;max-width:760px}
+.phone{width:375px;flex:0 0 375px;border:1px solid var(--bd2);border-radius:24px;overflow:hidden;background:var(--bg0)}
+.divider{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:10px 0 8px;border-bottom:1px solid var(--bd);font-weight:600}
+.divider .who{margin-left:auto;display:flex;gap:6px;align-items:center;font-weight:400;color:var(--tx3);font-size:12px}
+.card{background:var(--bg1);border:1px solid var(--bd);border-radius:11px;padding:10px 12px;margin-top:10px}
+.meta{font-size:12px;color:var(--tx3);display:flex;gap:8px;align-items:center}
+.kind{color:var(--ac)}
+ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:26px}
+.ref{color:var(--ac);text-decoration:none;font-variant-numeric:tabular-nums}
+.ttl{color:var(--tx2)} .flds{color:var(--tx3)}
+.b{--h:var(--p1);display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;flex:0 0 auto;
+  font-size:9.5px;font-weight:700;letter-spacing:.02em;color:var(--h);
+  background:color-mix(in srgb,var(--h) 18%,var(--bg1));border:1px solid color-mix(in srgb,var(--h) 55%,transparent)}
+.b.m{color:var(--tx3);background:var(--bg3);border-color:var(--bd2);font-size:11px}
+.b.u{color:var(--tx3);background:transparent;border:1px dashed var(--bd2)}
+.b.pm{--h:var(--p1)} .b.tg{--h:var(--p2)} .b.x{--h:var(--p3)}
+.phone .b{width:22px;height:22px;font-size:10px}
+.phone .head{padding:12px 14px 6px;font-weight:600;font-size:15px;border-bottom:1px solid var(--bd)}
+.phone .body{padding:0 12px 16px}
+.phone .divider{padding:10px 0 8px}
+.phone li{min-height:44px;border-bottom:1px solid var(--bd);gap:8px;flex-wrap:nowrap}
+.phone li:last-child{border-bottom:0}
+.phone .txt{display:flex;flex-direction:column;min-width:0}
+.phone .txt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.more{border:1px solid var(--bd2);background:transparent;border-radius:8px;padding:0 12px;min-height:44px;margin-top:6px;color:var(--tx2)}
+.entry{color:var(--tx2)}
+.legend{margin:16px;padding:12px;border:1px dashed var(--bd2);border-radius:10px;color:var(--tx2);max-width:1160px}
+.legend li{min-height:0}
+.hist{margin-top:14px}
+.hist table{width:100%;border-collapse:collapse;font-size:12px}
+.hist th,.hist td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd)}
+.hist th{color:var(--tx3);font-weight:500;position:sticky;top:0;background:var(--bg1)}
+.hist td .nm{display:inline-flex;gap:6px;align-items:center}
+.stack{display:inline-flex;flex:0 0 auto}.stack .b+.b{margin-left:-3px;box-shadow:0 0 0 2px var(--bg1)}
+.ok{position:relative}.ok::after{content:"✓";position:absolute;right:-4px;bottom:-4px;width:11px;height:11px;border-radius:50%;
+  background:var(--ac);color:var(--bg0);font-size:8px;line-height:11px;text-align:center;font-weight:800}
+.b.dev{color:var(--tx3);background:var(--bg3);border-color:var(--bd2);font-size:8px;letter-spacing:0}
+.later{opacity:.45;border:1px dashed var(--bd2);border-radius:8px;padding:2px 6px}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Badges de modification — Journal</h1>
+  <span class="note">Maquette 2026-11-23 · données inventées · aucune action ne s'enregistre</span>
+  <span class="seg" style="margin-left:auto"><button id="tDark" class="on">Sombre</button><button id="tLight">Clair</button></span>
+</div>
+
+<div class="stage">
+  <!-- ───────── DESK ───────── -->
+  <section class="desk">
+    <p class="lbl">Bureau · Journal, un jour</p>
+    <div class="divider">Dimanche 23 novembre
+      <span class="who later" title="Plus tard (Pem 2026-11-23)">
+        <span class="b pm" title="Pierre Emmanuel Moulin">PM</span>9
+        <span class="b tg" title="Terena Gill">TG</span>2
+        <span class="b m" title="Automatique (tâche planifiée, script ou import)">⚙</span>14
+      </span>
+    </div>
+
+    <article class="card"><div class="meta"><span>09:12</span><span>Note</span></div>
+      <div class="entry">Accrochage chez Lise : #1204 et #1311 reviennent lundi.</div></article>
+
+    <article class="card">
+      <div class="meta"><span class="kind">Œuvres modifiées</span><span>· 6 œuvres</span></div>
+      <ul>
+        <li><span class="stack"><span class="b pm" title="Pierre Emmanuel Moulin" aria-label="Pierre Emmanuel Moulin">PM</span><span class="b tg ok" title="Proposé par Terena Gill · validé par Pierre Emmanuel Moulin" aria-label="Proposé par Terena Gill, validé par Pierre Emmanuel Moulin">TG</span></span>
+            <a class="ref" href="#">#1204</a><span class="ttl">Marée basse</span><span class="flds">Lieu, Étape, Prix</span></li>
+        <li><span class="b pm" title="Pierre Emmanuel Moulin">PM</span>
+            <a class="ref" href="#">#1311</a><span class="ttl">Ligne d'eau II</span><span class="flds">Prix, TVA</span></li>
+        <li><span class="b tg" title="Terena Gill">TG</span>
+            <a class="ref" href="#">#0987</a><span class="ttl">Sans titre (bleu)</span><span class="flds">Dimensions</span></li>
+        <li><span class="b m" title="Automatique (tâche planifiée, script ou import)" aria-label="Automatique">⚙</span>
+            <a class="ref" href="#">#0412</a><span class="ttl">Atelier, nuit</span><span class="flds">Portfolio</span></li>
+        <li><span class="b u" title="Auteur inconnu" aria-label="Auteur inconnu">?</span>
+            <a class="ref" href="#">#0733</a><span class="ttl">Étude 7</span><span class="flds">Date de retour</span></li>
+        <li><span class="b dev" title="Profil de test (Dev profile)" aria-label="Profil de test">DEV</span>
+            <a class="ref" href="#">#0215</a><span class="ttl">Essai</span><span class="flds">Commentaires</span></li>
+      </ul>
+    </article>
+
+    <div class="card hist">
+      <div class="meta"><span class="kind">Historique de l'œuvre #1204</span><span>· tiroir, onglet Versions</span></div>
+      <table>
+        <thead><tr><th>Quand</th><th>Qui</th><th>Champs</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>23 nov. 16:40</td><td><span class="nm"><span class="b tg ok" title="Proposé par Terena Gill · validé par Pierre Emmanuel Moulin" aria-label="Proposé par Terena Gill, validé par Pierre Emmanuel Moulin">TG</span>Terena Gill · validé par PM</span></td><td>Prix</td><td><button class="more" style="min-height:28px;margin:0">Restaurer</button></td></tr>
+          <tr><td>23 nov. 10:05</td><td><span class="nm"><span class="b pm">PM</span>Pierre Emmanuel Moulin</span></td><td>Lieu, Étape</td><td><button class="more" style="min-height:28px;margin:0">Restaurer</button></td></tr>
+          <tr><td>15 nov. 02:13</td><td><span class="nm" style="color:var(--tx3)">— non enregistré</span></td><td>Historique</td><td><button class="more" style="min-height:28px;margin:0">Restaurer</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────── PHONE 375 ───────── -->
+  <section>
+    <p class="lbl">Téléphone · 375 px</p>
+    <div class="phone">
+      <div class="head">Journal</div>
+      <div class="body">
+        <div class="divider">Dim. 23 nov.
+          <span class="who later"><span class="b pm">PM</span>9 <span class="b tg">TG</span>2 <span class="b m">⚙</span>14</span>
+        </div>
+        <article class="card">
+          <div class="meta"><span class="kind">Œuvres modifiées</span><span>· 6</span></div>
+          <ul>
+            <li><span class="stack"><span class="b pm" aria-label="Pierre Emmanuel Moulin">PM</span><span class="b tg ok" title="Proposé par Terena Gill · validé par Pierre Emmanuel Moulin" aria-label="Proposé par Terena Gill, validé par Pierre Emmanuel Moulin">TG</span></span>
+              <span class="txt"><span><a class="ref" href="#">#1204</a> <span class="ttl">Marée basse</span></span><span class="flds">Lieu, Étape, Prix</span></span></li>
+            <li><span class="b pm">PM</span>
+              <span class="txt"><span><a class="ref" href="#">#1311</a> <span class="ttl">Ligne d'eau II</span></span><span class="flds">Prix, TVA</span></span></li>
+            <li><span class="b tg">TG</span>
+              <span class="txt"><span><a class="ref" href="#">#0987</a> <span class="ttl">Sans titre (bleu)</span></span><span class="flds">Dimensions</span></span></li>
+            <li><span class="b m" aria-label="Automatique">⚙</span>
+              <span class="txt"><span><a class="ref" href="#">#0412</a> <span class="ttl">Atelier, nuit</span></span><span class="flds">Portfolio</span></span></li>
+            <li><span class="b u" aria-label="Auteur inconnu">?</span>
+              <span class="txt"><span><a class="ref" href="#">#0733</a> <span class="ttl">Étude 7</span></span><span class="flds">Date de retour</span></span></li>
+          </ul>
+          <button class="more">Voir les 14 autres</button>
+        </article>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="legend">
+  <b>Lecture</b>
+  <ul>
+    <li><span class="b pm">PM</span> une personne de l'équipe — initiales de sa fiche, une couleur fixe par personne (Pem = or).</li>
+    <li><span class="b m">⚙</span> automatique — tâche planifiée, script, import, ou import. Les actions lancées par quelqu'un (portfolio, diffusion, sélection) portent son badge.</li>
+    <li><span class="b u">?</span> enregistré, mais personne n'est connu.</li>
+    <li>Sans badge / « non enregistré » : modification d'avant ce changement (le passé n'est pas deviné).</li>
+    <li>Une œuvre modifiée par plusieurs personnes le même jour = une ligne, un badge par personne (#1204 ci-dessus).</li>
+    <li><span class="b tg ok">TG</span> proposition de Terena, validée par Pem : le badge de qui a proposé, avec ✓.</li>
+    <li><span class="b dev">DEV</span> profil de test.</li>
+    <li>Le résumé « PM 9 · TG 2 · ⚙ 14 » (en pointillé) : plus tard, pas dans la première version.</li>
+  </ul>
+</div>
+
+<script>
+const d=document.documentElement, a=document.getElementById('tDark'), b=document.getElementById('tLight');
+a.onclick=()=>{d.dataset.theme='dark';a.classList.add('on');b.classList.remove('on')};
+b.onclick=()=>{d.dataset.theme='light';b.classList.add('on');a.classList.remove('on')};
+</script>
+</body>
+</html>
