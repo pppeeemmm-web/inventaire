@@ -65,6 +65,16 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** What the recording drawer hands to the full form (new work only). */
+export type WorkRecordHandoff = {
+  titre: string; techniqueId: string; supportId: string; formatId: string
+  h: string; w: string; d: string
+  files: File[]
+  techniques: { TechniqueID: number; Technique: string | null }[]
+  supports: { SupportID: number; Support: string | null }[]
+  formats: { FormatID: number; Format: string | null }[]
+}
+
 export type WorkRecordPhoneProps = {
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports: { SupportID: number; Support: string | null }[]
@@ -72,8 +82,8 @@ export type WorkRecordPhoneProps = {
   action: (fd: FormData) => Promise<SaveResult>
   shareInboxPrefill?: ShareInboxWorkPrefill | null
   pemContactId?: number | null
-  /** « Tous les champs » → the full WorkForm. */
-  onAllFields: () => void
+  /** « Tous les champs » → the full WorkForm, carrying what was typed / photographed. */
+  onAllFields: (draft: WorkRecordHandoff) => void
   /** First mode shown (`/atelier/works/new?record=reprise` → « Reprise »). */
   initialMode?: Mode
 }
@@ -526,7 +536,22 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     <div data-testid="work-record-phone" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left))', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
         <span style={{ fontWeight: 700, fontSize: 16, flex: 1, minWidth: 0 }}>{t('wr_title')}</span>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={onAllFields} data-testid="work-record-all-fields">{t('wr_all_fields')}</button>
+        {/* A new work only: a Reprise adds to an existing work, its photos must never become a new one (flow review). */}
+        {mode === 'new' ? (
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} data-testid="work-record-all-fields"
+            onClick={() => {
+              // The kept « Brouillon » is cleared only when this drawer loaded it (it is carried now); otherwise it stays.
+              if (initialMode === 'new' && !shareInboxPrefill) clearRecordDraft()
+              // Place, source, period and « peint sur » have no field in the full form: say so, never drop them silently.
+              if (placeId || newPlace || sourceId || periodId || paintedOn) toast.info(t('wr_all_fields_not_carried'))
+              onAllFields({
+                titre, techniqueId, supportId, formatId, h, w, d, files,
+                techniques: tech.map((r) => ({ TechniqueID: r.id, Technique: r.label })),
+                supports: supp.map((r) => ({ SupportID: r.id, Support: r.label })),
+                formats: fmts.map((r) => ({ FormatID: r.id, Format: r.label })),
+              })
+            }}>{t('wr_all_fields')}</button>
+        ) : null}
         <button type="button" className="btn ghost sm" aria-label={t('wr_close')} style={{ width: 44, height: 44, padding: 0, fontSize: 20 }} onClick={close}>×</button>
       </div>
 

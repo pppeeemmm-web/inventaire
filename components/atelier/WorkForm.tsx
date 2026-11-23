@@ -96,6 +96,8 @@ export function WorkForm({
   // themes, history, production, ownership and finance hidden (still mounted: their inputs stay
   // in the form and save as before) until "Tous les champs".
   const [allFields, setAllFields] = useState(false)
+  /** New work on the phone: true once « Tous les champs » left the recording drawer (never goes back). */
+  const [leftDrawer, setLeftDrawer] = useState(false)
   const fieldMode = narrow && !allFields
   const PRODUCTION_STAGES = useMemo(
     () => [
@@ -611,7 +613,7 @@ export function WorkForm({
 
   // R3 step 3: on the phone a new work opens the recording drawer (Nouvelle œuvre / Reprise);
   // « Tous les champs » comes back here.
-  if (narrow && !oeuvre && !allFields) {
+  if (narrow && !oeuvre && !leftDrawer) {
     return (
       <WorkRecordPhone
         techniques={localTechniques}
@@ -620,7 +622,21 @@ export function WorkForm({
         action={action}
         shareInboxPrefill={shareInboxPrefill}
         pemContactId={pemContact?.ContactID ?? null}
-        onAllFields={() => setAllFields(true)}
+        onAllFields={(dr) => {
+          // Carry the drawer's draft into this form; from here the toggle only folds / unfolds. An empty drawer
+          // field never wipes a value this form already holds (e.g. its own restored draft — flow review).
+          if (dr.titre) setTitre(dr.titre)
+          if (dr.techniqueId) setTechniqueId(dr.techniqueId)
+          if (dr.supportId) setSupportId(dr.supportId)
+          if (dr.formatId) setFormatId(dr.formatId)
+          if (dr.h) setHauteur(dr.h)
+          if (dr.w) setLargeur(dr.w)
+          if (dr.d) setProfondeur(dr.d)
+          if (dr.files.length) setNewImageFiles((cur) => [...cur, ...dr.files])
+          setLocalTechniques(dr.techniques); setLocalSupports(dr.supports); setLocalFormats(dr.formats)
+          setLeftDrawer(true)
+          setAllFields(true)
+        }}
         initialMode={recordMode}
       />
     )

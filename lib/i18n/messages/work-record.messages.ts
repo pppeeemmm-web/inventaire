@@ -4,6 +4,10 @@ import { defineMessages } from '../message-core'
 export const workRecordMessages = defineMessages({
   wr_title: { fr: 'Enregistrer', en: 'Record' },
   wr_all_fields: { fr: 'Tous les champs', en: 'All fields' },
+  wr_all_fields_not_carried: {
+    fr: 'Le lieu, la source, la période et « peint sur » ne passent pas dans le formulaire complet : ajoutez-les depuis la fiche une fois l’œuvre enregistrée.',
+    en: 'The place, source, period and « painted on » do not carry into the full form: add them from the card once the work is saved.',
+  },
   wr_close: { fr: 'Fermer', en: 'Close' },
   wr_mode_aria: { fr: 'Que faut-il enregistrer ?', en: 'What to record?' },
   wr_mode_new: { fr: 'Nouvelle œuvre', en: 'New work' },
