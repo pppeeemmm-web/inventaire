@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { diffPendingPayload } from '@/lib/work-pending-keys'
 import { resolveMessage } from '@/lib/i18n/resolve-message'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 import { approvePendingChange, rejectPendingChange } from '@/app/atelier/(portal)/audit/pending-actions'
 import { cancelWorkOrder } from '@/app/atelier/(portal)/sales/orders-actions'
@@ -100,7 +101,11 @@ function show(v: unknown): string | null {
 }
 
 /** The log row as « champ : avant → après » lines and the list kinds touched. */
-function contactChanges(row: LogRow, action: ContactChangeAction): { changes: Array<{ key: string; before: string | null; after: string | null }>; lists: string | null } {
+function contactChanges(
+  row: LogRow,
+  action: ContactChangeAction,
+  nameOf: { contacts: Map<number, string>; works: Map<number, { title: string | null }> } = { contacts: new Map(), works: new Map() },
+): { changes: Array<{ key: string; before: string | null; after: string | null }>; lists: string | null } {
   const o = obj(row.old_value)
   const n = obj(row.new_value)
   if (action === 'changed') {
@@ -113,7 +118,12 @@ function contactChanges(row: LogRow, action: ContactChangeAction): { changes: Ar
     return { changes: [{ key: 'archived', before: show(o.archived), after: show(n.archived) }], lists: null }
   }
   const p = action === 'link_add' ? n : o
-  const target = p.to_contact != null ? `#${String(p.to_contact)}` : p.to_work != null ? `work #${String(p.to_work)}` : '—'
+  const target =
+    p.to_contact != null
+      ? nameOf.contacts.get(Number(p.to_contact)) ?? `#${String(p.to_contact)}`
+      : p.to_work != null
+        ? nameOf.works.get(Number(p.to_work))?.title ?? `#${String(p.to_work)}`
+        : '—'
   const text = `${String(p.kind ?? '')} → ${target}`
   return { changes: [{ key: 'lien', before: action === 'link_remove' ? text : null, after: action === 'link_add' ? text : null }], lists: null }
 }
@@ -228,13 +238,24 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     : { data: [] as Array<{ id: string; titre: string }> }
   const conceptTitle = new Map((concepts ?? []).map((c) => [c.id, c.titre]))
 
+  const contactLog = ((contactLogRes.data ?? []) as LogRow[]).filter((r) => CONTACT_ACTION[r.action] && r.row_id && !state.has(`contact_change:${r.id}`))
+  // Link changes name another contact or a work: collect them to resolve in one read each.
+  const linkContactIds: number[] = []
+  const linkWorkIds: number[] = []
+  for (const r of contactLog) {
+    const a = CONTACT_ACTION[r.action]
+    if (a !== 'link_add' && a !== 'link_remove') continue
+    const p = obj(a === 'link_add' ? r.new_value : r.old_value)
+    if (p.to_contact != null && Number.isInteger(Number(p.to_contact))) linkContactIds.push(Number(p.to_contact))
+    if (p.to_work != null && Number.isInteger(Number(p.to_work))) linkWorkIds.push(Number(p.to_work))
+  }
   const workIds = [
+    ...linkWorkIds,
     ...lines.map((l) => l.oeuvre_id),
     ...kaizen.map((k) => (k.work_ids ?? [])[0]),
     ...pending.map((p) => p.oeuvre_id),
     ...[...firstWorkOf.values()],
   ].filter((x): x is number => typeof x === 'number')
-  const contactLog = ((contactLogRes.data ?? []) as LogRow[]).filter((r) => CONTACT_ACTION[r.action] && r.row_id && !state.has(`contact_change:${r.id}`))
   const authorIds = [
     ...lines.map((l) => l.author_id),
     ...kaizen.map((k) => k.author_id),
@@ -242,7 +263,7 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
     ...drafts.map((d) => d.created_by),
     ...contactLog.map((r) => r.author_id),
   ].filter((x): x is string => !!x)
-  const contactIds = [...new Set(contactLog.map((r) => Number(r.row_id)).filter((n) => Number.isInteger(n)))]
+  const contactIds = [...new Set([...contactLog.map((r) => Number(r.row_id)).filter((n) => Number.isInteger(n)), ...linkContactIds])]
   const [works, names, contactRows] = await Promise.all([
     worksFor(supabase, [...new Set(workIds)]),
     namesFor(supabase, [...new Set(authorIds)]),
@@ -356,7 +377,7 @@ export async function listFil(): Promise<{ items: FilItem[] } | Err> {
   for (const r of contactLog) {
     const action = CONTACT_ACTION[r.action]
     const cid = Number(r.row_id)
-    const { changes, lists } = contactChanges(r, action)
+    const { changes, lists } = contactChanges(r, action, { contacts: contactName, works })
     items.push({
       key: `contact_change:${r.id}`,
       kind: 'contact_change',
@@ -544,6 +565,17 @@ export async function listFilLog(limit = 100): Promise<{ entries: FilLogEntry[] 
   const lineIds = rows.filter((r) => r.item_kind === 'note_line').map((r) => Number(r.item_id))
   const kaizenIds = rows.filter((r) => r.item_kind === 'kaizen_item').map((r) => Number(r.item_id))
   const pendingIds = rows.filter((r) => r.item_kind === 'pending_change').map((r) => Number(r.item_id))
+  const contactLogIds = rows.filter((r) => r.item_kind === 'contact_change').map((r) => Number(r.item_id)).filter((n) => Number.isInteger(n))
+  const logRowsRes = contactLogIds.length
+    ? await supabase.from('system_log').select('id, action, row_id').eq('event_type', 'contact_team_change').in('id', contactLogIds)
+    : { data: [] as Array<{ id: number; action: string; row_id: string | null }> }
+  const logById = new Map((logRowsRes.data ?? []).map((l) => [String(l.id), l]))
+  const logContactIds = [...new Set((logRowsRes.data ?? []).map((l) => Number(l.row_id)).filter((n) => Number.isInteger(n)))]
+  const logContactRes = logContactIds.length ? await supabase.from('Contact').select('*').in('ContactID', logContactIds) : { data: [] }
+  const logContactName = new Map<number, string>()
+  for (const c of (logContactRes.data ?? []) as { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]) {
+    logContactName.set(c.ContactID, contactListLabel(c))
+  }
   const [lines, kaizen, pending] = await Promise.all([
     lineIds.length ? supabase.from('note_line').select('id, body, oeuvre_id').in('id', lineIds) : Promise.resolve({ data: [] as Array<{ id: number; body: string; oeuvre_id: number | null }> }),
     kaizenIds.length ? supabase.from('kaizen_item').select('id, title').in('id', kaizenIds) : Promise.resolve({ data: [] as Array<{ id: number; title: string }> }),
@@ -569,6 +601,13 @@ export async function listFilLog(limit = 100): Promise<{ entries: FilLogEntry[] 
         recallable = p?.change_kind !== 'image_add'
       } else if (kind === 'contact_change') {
         recallable = false
+        const l = logById.get(r.item_id)
+        const act = l ? CONTACT_ACTION[l.action] : undefined
+        if (l && act) {
+          const cid = Number(l.row_id)
+          const who = logContactName.get(cid) ?? `#${l.row_id}`
+          label = `${who} · ${resolveMessage('fr', `fil_c_${act}` as DictKey)}`
+        }
       }
       return { kind, id: r.item_id, at: r.at, recalledAt: r.recalled_at, label, recallable }
     }),

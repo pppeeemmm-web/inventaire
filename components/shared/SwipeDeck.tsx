@@ -27,6 +27,7 @@ export function SwipeDeck<T>({
   emptyText,
   testId = 'swipe-deck',
   arrows = false,
+  confirmDiscard,
 }: {
   items: T[]
   getKey: (item: T) => string
@@ -39,6 +40,8 @@ export function SwipeDeck<T>({
   testId?: string
   /** The buttons say which way each swipe goes: « ← Retirer » · « Garder → » (the Fil, PhoneNav.notes.md). */
   arrows?: boolean
+  /** Asked before a discard (button, swipe, key); false = cancelled, nothing happens. */
+  confirmDiscard?: (item: T) => boolean
 }) {
   const { t } = useI18n()
   /** Keys decided here (waiting or sent): they stay out of the deck until the list changes. */
@@ -49,6 +52,8 @@ export function SwipeDeck<T>({
   // Props in refs: `send` / `flush` stay stable, so the unmount flush runs on real unmount only.
   const onDecideRef = useRef(onDecide)
   onDecideRef.current = onDecide
+  const confirmDiscardRef = useRef(confirmDiscard)
+  confirmDiscardRef.current = confirmDiscard
   const getKeyRef = useRef(getKey)
   getKeyRef.current = getKey
 
@@ -94,6 +99,10 @@ export function SwipeDeck<T>({
   const decide = useCallback(
     (decision: SwipeDecision) => {
       if (!card) return
+      if (decision === 'discard' && confirmDiscardRef.current && !confirmDiscardRef.current(card)) {
+        setDx(0) // cancelled: the card springs back, nothing is sent
+        return
+      }
       flush()
       const key = getKey(card)
       setGone((g) => new Set(g).add(key))

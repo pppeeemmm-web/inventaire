@@ -79,6 +79,7 @@ export function FilClient() {
     if ('ok' in res) {
       setItems((prev) => (prev ? prev.filter((i) => i.key !== item.key) : prev))
       if ('note' in res && res.note) toast.info(t(res.note as DictKey))
+      if (item.kind === 'contact_change' && decision === 'discard') toast.info(t('fil_reverted'))
     }
     return res
   }, [t])
@@ -164,6 +165,7 @@ export function FilClient() {
                         onDecide={onDecide}
                         keepLabel={t('fil_seen')}
                         discardLabel={t('fil_revert')}
+                        confirmDiscard={() => window.confirm(t('fil_revert_confirm'))}
                         emptyText={t('fil_empty')}
                         arrows
                       />
