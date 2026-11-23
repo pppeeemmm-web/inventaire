@@ -738,6 +738,36 @@ export function JournalDayExtras({
         ) : null}
       </section>
 
+      {data?.ideaChanges?.length ? (
+        // Ideas planted / moved / reworked / grafted that day (Idées 2026-11-23), as in the stream.
+        <section data-testid="journal-day-ideas" style={{ display: 'grid', gap: 6 }}>
+          {data.ideaChanges.map((c) => (
+            <Link
+              key={c.key}
+              href={`/atelier/concepts?concept=${c.conceptId}`}
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: 44, padding: '6px 12px', border: '1px dashed var(--bd2)', borderRadius: 10, fontSize: 13, color: 'var(--tx3)', textDecoration: 'none' }}
+            >
+              <span style={{ color: 'var(--ac)' }}>{t('js_kind_idea')}</span>
+              <span style={{ color: 'var(--tx)' }}>{c.title ?? '—'}</span>
+              <span>
+                ·{' '}
+                {c.what === 'planted'
+                  ? t('js_idea_planted')
+                  : c.what === 'stage'
+                    ? t('js_idea_stage').replace('{seed}', c.to ? t(`ideas_maturity_${c.to}` as never) : '')
+                    : c.what === 'text'
+                      ? t('js_idea_text')
+                      : c.what === 'title'
+                        ? t('js_idea_title')
+                        : t(c.to ? 'js_idea_parent' : 'js_idea_trunk')}
+              </span>
+              {c.count > 1 ? <span>· {t('js_idea_times').replace('{n}', String(c.count))}</span> : null}
+              {c.by ? <span>· {c.by}</span> : null}
+            </Link>
+          ))}
+        </section>
+      ) : null}
+
       {captureSlot}
 
       <details className="pem-fold" data-testid="journal-day-creation">

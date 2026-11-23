@@ -28,6 +28,8 @@ export type JournalScaleRow = {
   proposals: number
   /** Distinct works photographed in field sessions (day grain only; 0 otherwise). */
   sessionWorks: number
+  /** Idea lines (one per idea and kind of change per day, `concept_change`; merged here, not counted by `journal_scale`). */
+  ideas?: number
   /** Up to 4 works photographed that day, for the « Mois » line (day grain only). */
   works?: JournalSessionWork[]
 }
@@ -226,6 +228,32 @@ async function adminHiddenDays(supabase: Supabase, upper: string, n: number): Pr
   return [...new Set((data ?? []).map((r) => String(r.event_on)))].slice(0, n)
 }
 
+/**
+ * Idea lines per day / month / year before `before` (Paris time): one per idea and kind of change per day, as the
+ * day shows them. Read from `concept_change` (team reads); the newest 2000 changes are enough for the scale views.
+ */
+async function ideaLinesByBucket(supabase: Supabase, grain: JournalGrain, before: string | null): Promise<Map<string, number>> {
+  let q = supabase.from('concept_change').select('concept_id, what, changed_at').order('changed_at', { ascending: false }).limit(2000)
+  if (before) q = q.lt('changed_at', `${before}T03:00:00Z`)
+  const { data, error } = await q
+  if (error) {
+    await logError('idea lines for the scale failed', error, { source: 'journal.readJournalScale' })
+    return new Map()
+  }
+  const seen = new Set<string>()
+  const out = new Map<string, number>()
+  for (const r of data ?? []) {
+    const day = calendarDayInParisFromIso(String(r.changed_at))
+    if (before && day >= before) continue
+    const k = `${day}:${r.concept_id}:${r.what}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    const b = grain === 'day' ? day : grain === 'month' ? `${day.slice(0, 7)}-01` : `${day.slice(0, 4)}-01-01`
+    out.set(b, (out.get(b) ?? 0) + 1)
+  }
+  return out
+}
+
 /** Paris days (before `upper`, newest first) on which an idea was planted, moved, reworked or grafted (team reads). */
 async function ideaChangeDays(supabase: Supabase, upper: string, n: number): Promise<string[]> {
   const { data } = await supabase
@@ -298,7 +326,18 @@ export async function readJournalScale(grain: JournalGrain, before: string | nul
   if (!user) return { error: 'auth' }
   const rows = await scale(supabase, before, Math.min(Math.max(limit, 1), 400), grain)
   if (!rows) return { error: 'scale' }
-  if (grain !== 'day') return rows
+  const ideas = await ideaLinesByBucket(supabase, grain, before)
+  if (grain !== 'day') {
+    const byBucket = new Map(rows.map((r) => [r.bucket, r]))
+    const oldestB = rows.length ? rows[rows.length - 1].bucket : null
+    for (const [b, n] of ideas) {
+      if (oldestB && b < oldestB && rows.length >= limit) continue
+      const r = byBucket.get(b) ?? zero(b)
+      r.ideas = n
+      byBucket.set(b, r)
+    }
+    return [...byBucket.values()].sort((a, b) => b.bucket.localeCompare(a.bucket)).slice(0, limit)
+  }
   const [sessions, linked] = await Promise.all([sessionWorksByDay(), linkedWorksByDay(supabase, rows)])
   const byDay = new Map(rows.map((r) => [r.bucket, r]))
   const oldest = rows.length ? rows[rows.length - 1].bucket : null
@@ -308,6 +347,12 @@ export async function readJournalScale(grain: JournalGrain, before: string | nul
     const r = byDay.get(day) ?? zero(day)
     r.sessionWorks = works.filter((w) => w.id != null).length || works.length
     r.works = works.filter((w) => w.id != null).slice(0, 4)
+    byDay.set(day, r)
+  }
+  for (const [day, n] of ideas) {
+    if (oldest && day < oldest && rows.length >= limit) continue
+    const r = byDay.get(day) ?? zero(day)
+    r.ideas = n
     byDay.set(day, r)
   }
   // Works linked from that day's notes fill the line's pictures after the photographed ones.

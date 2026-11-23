@@ -96,7 +96,8 @@ function countsLine(c: JournalScaleRow, changes = 0, ideas = 0): ReactNode {
   if (c.photos) parts.push(`📷 ${c.photos}`)
   if (c.sessionWorks) parts.push(`🖼 ${c.sessionWorks}`)
   if (changes) parts.push(`✎ ${changes}`)
-  if (ideas) parts.push(`🌱 ${ideas}`)
+  const ideaLines = ideas || c.ideas || 0
+  if (ideaLines) parts.push(`🌱 ${ideaLines}`)
   return (
     <>
       {parts.join(' · ')}

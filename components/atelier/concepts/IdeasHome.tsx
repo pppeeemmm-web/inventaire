@@ -150,7 +150,7 @@ export function IdeasHome({ isAdmin = false }: { isAdmin?: boolean }) {
   if (narrow) {
     if (selected) return <IdeaDesk id={selected} wide={false} onOpen={open} onBack={() => open(null)} onChanged={() => void load()} />
     return (
-      <div style={{ padding: '10px 12px 24px', display: 'grid', gap: 10 }} data-testid="ideas-home">
+      <div style={{ padding: '10px 12px 24px', display: 'grid', gap: 10 }} data-testid="concepts-tab-root">
         <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('it_search')} style={{ minHeight: 44, fontSize: 15 }} />
         {filterBar}
         {planting ? (
@@ -195,7 +195,7 @@ export function IdeasHome({ isAdmin = false }: { isAdmin?: boolean }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '250px minmax(0,1fr)', height: 'calc(100vh - 120px)', minHeight: 520, border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', background: 'var(--bg1)' }} data-testid="ideas-home">
+    <div style={{ display: 'grid', gridTemplateColumns: '250px minmax(0,1fr)', height: 'calc(100vh - 120px)', minHeight: 520, border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', background: 'var(--bg1)' }} data-testid="concepts-tab-root">
       <nav aria-label={t('it_tree')} style={{ overflow: 'auto', padding: 10, borderRight: '1px solid var(--bd)', background: 'var(--bg0)', display: 'grid', alignContent: 'start', gap: 8 }}>
         <button type="button" className="btn sm" onClick={() => setPlanting((v) => !v)} data-testid="idea-plant-open" style={{ minHeight: 40, ...MAIN_ACTION_STYLE }}>
           {t('it_plant_open')}

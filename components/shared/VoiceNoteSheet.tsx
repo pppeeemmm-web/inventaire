@@ -163,6 +163,8 @@ export type VoiceNoteSheetProps = {
   /** Optional œuvre labels for link picker (Atelier); Hub passes `[]`. */
   oeuvreOptions?: { OeuvreID: number; Titre: string | null }[]
   defaultOeuvreId?: number | null
+  /** Recording into an idea (Idées 🎤, 2026-11-23): the note and its Journal entry are linked to it. */
+  conceptId?: string | null
   onSaved?: () => void
 }
 
@@ -171,8 +173,11 @@ export function VoiceNoteSheet({
   onClose,
   oeuvreOptions = [],
   defaultOeuvreId = null,
+  conceptId = null,
   onSaved,
 }: VoiceNoteSheetProps) {
+  const conceptRef = useRef<string | null>(conceptId)
+  conceptRef.current = conceptId
   const { t, lang } = useI18n()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const speechLang = locale
@@ -332,6 +337,7 @@ export function VoiceNoteSheet({
       recorded_at: p.recordedAt.toISOString(),
       client_id: p.clientId,
       ...(d.oeuvreId.trim() ? { oeuvre_id: d.oeuvreId.trim() } : {}),
+      ...(conceptRef.current ? { concept_id: conceptRef.current } : {}),
     }
     // No network: the note stays on the phone and is sent when the network returns (capture queue).
     const keepOnPhone = async () => {
@@ -670,7 +676,10 @@ export function VoiceNoteSheet({
     }
     setDetailsSaving(true)
     try {
-      const res = await createVoiceNote(detailsFormData(d, t(nextActionLabelKey(d.nextAction))))
+      const fd = detailsFormData(d, t(nextActionLabelKey(d.nextAction)))
+      // Typed instead of spoken (mic blocked) inside an idea: the note still goes into the idea.
+      if (conceptRef.current) fd.append('concept_id', conceptRef.current)
+      const res = await createVoiceNote(fd)
       if ('error' in res) {
         toast.error(res.error === 'auth' ? t('login_restricted') : t('voice_note_save_failed'))
         return false

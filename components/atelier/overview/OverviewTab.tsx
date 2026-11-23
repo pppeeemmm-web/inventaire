@@ -10,6 +10,7 @@
 // Counts over the whole catalogue come from one server read while the catalogue is still loading (TODO 18).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { openReadOr, primeOverviewOpen } from '@/lib/atelier/open-reads'
 import { OVERVIEW_REMINDER_LIMIT, overviewOpenKey } from '@/lib/atelier/open-read-keys'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
@@ -80,6 +81,8 @@ export function OverviewTab({
   oeuvresCataloguePartial?: boolean
   oeuvresCatalogueTotal?: number
 }) {
+  // An idea line opens that idea's desk (Idées 2026-11-23), not the bare tab.
+  const router = useRouter()
   const fmt = (k: string, vars: Record<string, string | number>) => interpolateMessage(t(k), vars)
   const localeTag = lang === 'en' ? 'en-GB' : 'fr-FR'
   const num = (n: number) => n.toLocaleString(localeTag)
@@ -687,9 +690,9 @@ export function OverviewTab({
           )}
           <Panel {...panelProps('ideas', ideasMore.length)} kind="info" title={t('od_ideas')}
             link={{ label: t('od_concepts_link'), onClick: () => onGoTab('concepts') }}
-            moreContent={ideasMore.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => onGoTab('concepts')} t={t} />)}>
+            moreContent={ideasMore.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => router.push(`/atelier/concepts?concept=${c.id}`)} t={t} />)}>
             {ideasBase.length
-              ? ideasBase.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => onGoTab('concepts')} t={t} />)
+              ? ideasBase.map(c => <IdeaLine key={c.id} c={c} h={rowH + 2} onGo={() => router.push(`/atelier/concepts?concept=${c.id}`)} t={t} />)
               : <Empty h={rowH}>{t('od_no_idea')}</Empty>}
           </Panel>
           <Panel {...panelProps('seeagain', 0)} kind="info" title={t('od_see_again')} shrink={10000} scroll>
@@ -806,11 +809,12 @@ function Empty({ children, h }: { children: ReactNode; h: number }) {
   return <div style={{ display: 'flex', alignItems: 'center', minHeight: h, padding: '0 12px', color: 'var(--tx3)', fontSize: 12, borderBottom: '1px solid var(--bg2)' }}>{children}</div>
 }
 
-function IdeaLine({ c, h, onGo, t }: { c: { id: string; titre: string; weight: string }; h: number; onGo: () => void; t: (k: string) => string }) {
+function IdeaLine({ c, h, onGo, t }: { c: { id: string; titre: string; weight: string; maturity?: string }; h: number; onGo: () => void; t: (k: string) => string }) {
   return (
     <Line h={h} onClick={onGo} cols="minmax(0, 1fr) auto">
       <span style={ELLIPSIS} title={c.titre}>{c.titre}</span>
-      <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(c.weight === 'recherche' ? 'ideas_weight_recherche' : 'ideas_weight_petite')}</span>
+      {/* The seed is the idea's one mark (Idées 2026-11-23); weight left the screens. */}
+      <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t(c.maturity === 'mure' ? 'ideas_maturity_mure' : c.maturity === 'pousse' ? 'ideas_maturity_pousse' : 'ideas_maturity_graine')}</span>
     </Line>
   )
 }

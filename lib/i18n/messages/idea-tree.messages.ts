@@ -48,6 +48,7 @@ export const ideaTreeMessages = defineMessages({
     fr: 'Écrire dans cette idée… (va aussi sur la page d’aujourd’hui · #1234 relie une œuvre)',
     en: 'Write into this idea… (also goes on today’s page · #1234 links a work)',
   },
+  it_record: { fr: 'Dicter dans cette idée', en: 'Dictate into this idea' },
   it_write_go: { fr: 'Écrire', en: 'Write' },
   it_write_aim: { fr: 'Écrit dans « {title} » et sur aujourd’hui', en: 'Written into « {title} » and on today' },
   it_written: { fr: 'Écrit dans l’idée et sur la page d’aujourd’hui', en: 'Written into the idea and on today’s page' },

@@ -121,6 +121,8 @@ export interface ConceptBurningRow {
   id: string
   titre: string
   weight: string
+  /** The idea's seed (graine / pousse / mûre) — the one mark shown (Idées 2026-11-23). */
+  maturity?: string
 }
 
 /** `work_session` field capture row (Verb 1). */

@@ -19,6 +19,7 @@ import { deleteIdea, saveIdeaText, setIdeaParent, setIdeaStage, writeInIdea } fr
 import { promoteConcept } from '@/app/atelier/(portal)/concepts/actions'
 import { convertConceptToProcess } from '@/app/atelier/(portal)/pipeline/actions'
 import { imageUrl } from '@/lib/data'
+import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import type { IdeaDesk as Desk, IdeaHistory, IdeaListRow } from '@/lib/ideas/read'
 
@@ -53,6 +54,7 @@ export function IdeaDesk({
   const [grafting, setGrafting] = useState(false)
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const [pending, start] = useTransition()
 
   const load = useCallback(async () => {
@@ -152,6 +154,17 @@ export function IdeaDesk({
 
   const composer = (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+      {/* 🎤 into the idea (Idées 2026-11-23): the Journal's recorder, aimed here — the note lands on today and in the idea. */}
+      <button
+        type="button"
+        aria-label={t('it_record')}
+        title={t('it_record')}
+        data-testid="idea-record"
+        onClick={() => setVoiceOpen(true)}
+        style={{ flex: 'none', width: 52, height: 52, borderRadius: '50%', border: 0, fontSize: 24, cursor: 'pointer', ...MAIN_ACTION_STYLE }}
+      >
+        🎤
+      </button>
       <textarea
         className="input"
         value={draft}
@@ -174,6 +187,17 @@ export function IdeaDesk({
       >
         {t('it_write_go')}
       </button>
+      {voiceOpen ? (
+        <VoiceNoteSheet
+          open={voiceOpen}
+          conceptId={id}
+          onClose={() => setVoiceOpen(false)}
+          onSaved={() => {
+            void load()
+            onChanged()
+          }}
+        />
+      ) : null}
     </div>
   )
 

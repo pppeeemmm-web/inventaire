@@ -115,6 +115,9 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
   // 14 days for a note that waited on the phone with no network; not ahead of the server by more than
   // 5 min); otherwise the DB default (now).
   const recordedAtRaw = (formData.get('recorded_at') as string | null)?.trim() || null
+  // Recorded inside an idea (Idées 🎤): the note and its Journal entry are linked to it.
+  const conceptRaw = (formData.get('concept_id') as string | null)?.trim() || ''
+  let conceptId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conceptRaw) ? conceptRaw : null
   let created_at: string | undefined
   if (recordedAtRaw) {
     const ts = new Date(recordedAtRaw).getTime()
@@ -144,6 +147,12 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     }
   }
 
+  // The idea may have been deleted while the note waited in the phone's queue: keep the recording, drop the idea.
+  if (conceptId) {
+    const { data: idea } = await supabase.from('concept').select('id').eq('id', conceptId).maybeSingle()
+    if (!idea) conceptId = null
+  }
+
   const { error } = await voiceNoteTable(supabase).insert({
     id,
     user_id: user.id,
@@ -155,6 +164,7 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     audio_mime: audio_r2_key ? audioMime : null,
     duration_ms,
     oeuvre_id,
+    ...(conceptId ? { concept_id: conceptId } : {}),
     ...(created_at ? { created_at } : {}),
   })
 
@@ -176,13 +186,21 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
   // with the words the phone heard (or a placeholder until the PC transcribes; its transcript then arrives
   // as a correction of this entry). A typed note (no audio) is a typed entry. A failure here keeps the
   // voice note: the PC transcript then creates the entry as before.
-  await addVoiceNoteEntry(supabase, {
+  const entryId = await addVoiceNoteEntry(supabase, {
     noteId: id,
     userId: user.id,
     text: transcript,
     hasAudio: !!audio_r2_key,
     createdAt: created_at ?? new Date().toISOString(),
   })
+  // Into an idea: the entry becomes a moment of the idea (human link, validated). If the entry could not be
+  // written, the note keeps `concept_id` and the idea's desk still reads it through the note.
+  if (conceptId && entryId != null) {
+    const { error: linkErr } = await supabase
+      .from('journal_entry_link')
+      .insert({ entry_id: entryId, concept_id: conceptId, created_by: user.id, proposed_by: 'pem', validated_at: new Date().toISOString() })
+    if (linkErr) await logError('voice note idea link failed', linkErr, { source: 'notes.createVoiceNote', metadata: { noteId: id, conceptId } })
+  }
 
   const followUpOk = await insertFollowUp(supabase, formData, subjectRaw)
 
@@ -229,10 +247,10 @@ const PHONE_ENGINE = 'téléphone (mots en direct)'
 async function addVoiceNoteEntry(
   supabase: Awaited<ReturnType<typeof createClient>>,
   v: { noteId: string; userId: string; text: string; hasAudio: boolean; createdAt: string },
-): Promise<void> {
+): Promise<number | null> {
   const words = v.text.trim().slice(0, 20_000)
-  if (!words && !v.hasAudio) return
-  const { error } = await supabase.from('journal_entry').insert({
+  if (!words && !v.hasAudio) return null
+  const { data, error } = await supabase.from('journal_entry').insert({
     kind: v.hasAudio ? 'voice' : 'note',
     body: words || WAITING_TRANSCRIPT,
     event_on: calendarDayInParisFromIso(v.createdAt),
@@ -244,8 +262,9 @@ async function addVoiceNoteEntry(
     engine: v.hasAudio ? PHONE_ENGINE : null,
     // No AI link proposals on the waiting placeholder (the embed worker would propose from it once, then never).
     ...(words ? {} : { ai_links_at: new Date().toISOString() }),
-  })
+  }).select('id').single()
   if (error) await logError('voice note journal entry failed', error, { source: 'notes.createVoiceNote', metadata: { noteId: v.noteId } })
+  return data?.id ?? null
 }
 
 /**
