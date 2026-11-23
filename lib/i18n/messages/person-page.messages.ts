@@ -1,0 +1,32 @@
+import { defineMessages } from '../message-core'
+
+/** The person page on /atelier/contacts (People.md §5, step 3 — reads only). */
+export const personPageMessages = defineMessages({
+  pp_back: { fr: '‹ Personnes', en: '‹ People' },
+  pp_edit: { fr: 'Modifier', en: 'Edit' },
+  pp_more: { fr: 'Plus d’actions', en: 'More actions' },
+  pp_new_order: { fr: 'Nouvelle commande…', en: 'New order…' },
+  pp_inactive: { fr: 'inactif', en: 'inactive' },
+  pp_call: { fr: 'Appeler', en: 'Call' },
+  pp_write: { fr: 'Écrire', en: 'Write' },
+  pp_works_owns: { fr: 'Possède', en: 'Owns' },
+  pp_works_holds: { fr: 'Détient', en: 'Holds' },
+  pp_works_bought: { fr: 'A acheté', en: 'Bought' },
+  pp_works_none: { fr: 'Aucune œuvre', en: 'No works' },
+  pp_works_more: { fr: 'Plus', en: 'More' },
+  pp_works_err: { fr: 'Lecture des œuvres impossible', en: 'Could not read the works' },
+  pp_orders: { fr: 'Commandes', en: 'Orders' },
+  pp_orders_none: { fr: 'Aucune commande', en: 'No orders' },
+  pp_papers: { fr: 'Papiers', en: 'Papers' },
+  pp_papers_none: { fr: 'Aucun papier', en: 'No papers' },
+  pp_list_more: { fr: 'Charger plus', en: 'Load more' },
+  pp_list_err: { fr: 'Lecture impossible', en: 'Could not read this' },
+  pp_loading: { fr: 'Chargement…', en: 'Loading…' },
+  pp_work_open_fmt: { fr: 'Ouvrir l’œuvre {id}', en: 'Open work {id}' },
+  pp_contact: { fr: 'Coordonnées', en: 'Contact details' },
+  pp_contact_phone_tab: { fr: 'Coordonnées, notes', en: 'Contact details, notes' },
+  pp_contact_none: { fr: 'Rien encore', en: 'Nothing yet' },
+  pp_map_open: { fr: 'Ouvrir dans Plans', en: 'Open in Maps' },
+  pp_notes: { fr: 'Notes', en: 'Notes' },
+  pp_responsible: { fr: 'Personne responsable', en: 'Responsible person' },
+})

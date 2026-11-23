@@ -15,6 +15,8 @@ test.describe('Contacts tab unsaved guard', () => {
     test.skip(n < 2, 'Need at least two contacts for this scenario.')
 
     await rows.nth(0).locator('td').nth(2).click()
+    // A contact opened shows the person page; « Modifier » opens the editor.
+    await page.getByTestId('person-edit').click()
     await expect(page.getByTestId('contact-editor-root')).toBeVisible({ timeout: 15_000 })
     await page.getByTestId('contact-editor-institution').fill('E2E CONTACT UNSAVED')
 

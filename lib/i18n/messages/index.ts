@@ -77,6 +77,7 @@ import { aideMessages } from './aide.messages'
 import { aiDeskMessages } from './ai-desk.messages'
 import { contactPrivacyMessages } from './contact-privacy.messages'
 import { contactJournalMessages } from './contact-journal.messages'
+import { personPageMessages } from './person-page.messages'
 import { contactLinksMessages } from './contact-links.messages'
 import { contactDisplayMessages } from './contact-display.messages'
 
@@ -161,6 +162,7 @@ export const featureMessages = {
   ...aiDeskMessages,
   ...contactPrivacyMessages,
   ...contactJournalMessages,
+  ...personPageMessages,
   ...contactLinksMessages,
   ...contactDisplayMessages,
 } as const

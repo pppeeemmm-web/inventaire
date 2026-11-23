@@ -38,6 +38,7 @@ import {
   ContactEditorPanel,
   type ContactEditorPanelHandle,
 } from '@/components/atelier/ContactEditorPanel'
+import { PersonPage } from '@/components/atelier/PersonPage'
 import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
 import type {
   ContactAddress,
@@ -148,6 +149,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   }
   const [activeId,   setActiveId]   = useState<number | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  /** A contact opened shows the person page; « Modifier » turns this on and shows the editor (People.md §5). */
+  const [editing, setEditing] = useState(false)
+  useEffect(() => {
+    setEditing(false)
+  }, [activeId])
   const [editorNonce, setEditorNonce] = useState(0)
   const [editorDirty, setEditorDirty] = useState(false)
   const editorRef = useRef<ContactEditorPanelHandle | null>(null)
@@ -156,6 +162,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   useEffect(() => {
     activeIdRef.current = activeId
   }, [activeId])
+  const editingRef = useRef(false)
+  useEffect(() => {
+    editingRef.current = editing
+  }, [editing])
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
   const [busy,       setBusy]       = useState(false)
   const [importing,  setImporting]  = useState(false)
@@ -305,7 +315,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             if ('error' in res) {
               if (res.error === 'gone') toast.error(t('ai_card_gone'))
             }
-            else if (res.contactId === id) setAiSuggestion({ jobId: aiJob, contactId: id, contact: res.contact })
+            else if (res.contactId === id) { setAiSuggestion({ jobId: aiJob, contactId: id, contact: res.contact }); setEditing(true) }
           })
           .catch((e: unknown) => toast.error(`${t('error_prefix')} ${e instanceof Error ? e.message : String(e)}`))
       }
@@ -482,6 +492,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   )
 
   const dismissEditor = useCallback(() => {
+    // Closing the editor of an opened contact goes back to its page; closing a new card closes the panel.
+    if (activeIdRef.current != null && editingRef.current) {
+      setEditing(false)
+      return
+    }
     setIsCreating(false)
     setActiveId(null)
   }, [])
@@ -710,6 +725,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   }, [activeId, attemptUnsavedProceed, editorDirty, handleDeleteOne])
 
   const showEditor = isCreating || activeId != null
+  const showPage = !isCreating && activeId != null && !editing
   const editorSourceRow = activeId != null ? contacts.find((c) => c.ContactID === activeId) ?? null : null
   const editorContactResolved: ContactRow | null =
     !isCreating && activeId != null && editorSourceRow ? { ...editorSourceRow, ...extra[activeId] } : null
@@ -775,7 +791,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
       {/* Filter bar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: narrow && showPage ? 'none' : 'flex', alignItems: 'center', gap: 8,
         padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px',
         borderBottom: '1px solid var(--bd)', flexShrink: 0, flexWrap: 'wrap',
       }}>
@@ -1053,6 +1069,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         <div
           className={narrow ? undefined : 'contacts-list-scroll'}
           style={{
+            display: narrow && showPage ? 'none' : undefined,
             flex: 1,
             minWidth: 0,
             overflow: 'auto',
@@ -1158,7 +1175,21 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           </table>
         </div>
 
-        {showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
+        {showPage && editorContactResolved ? (
+          <PersonPage
+            contact={editorContactResolved}
+            emails={emails[activeId!] ?? []}
+            phones={phones[activeId!] ?? []}
+            addresses={addresses[activeId!] ?? []}
+            websites={websites[activeId!] ?? []}
+            socials={socials[activeId!] ?? []}
+            isAdmin={isAdmin}
+            narrow={narrow}
+            onEdit={() => setEditing(true)}
+            onBack={() => setActiveId(null)}
+            onDelete={requestDeleteActive}
+          />
+        ) : showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
           <ContactEditorPanel
             // Remounted once when the junction rows arrive: an editor opened from a link before them started with
             // empty lists, and its Save (rows not in the form are removed) would have dropped the contact's emails / phones / addresses.
