@@ -7,6 +7,12 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
+  // 3.1.105 (2026-11-23) — the Overview at a glance.
+  wn_overview_glance_t: { fr: 'Vue d’ensemble : tout d’un coup d’œil', en: 'Overview: everything at a glance' },
+  wn_overview_glance_d: {
+    fr: 'Chaque signal n’apparaît qu’une fois : une grille de cartes (cliquez-en une pour l’agrandir), à gauche vos lignes et un calendrier du mois où une exposition sur plusieurs jours est marquée sur chacun de ses jours. Les mêmes chiffres partout, y compris sur le téléphone.',
+    en: 'Each signal shows only once: a grid of cards (click one to widen it), your lines on the left and a month calendar where a multi-day exhibition is marked on each of its days. The same numbers everywhere, phone included.',
+  },
   // 3.1.104 (2026-11-23) — Journal Step B part 2: @ links a person, a photo's text is a Journal note.
   wn_journal_at_person_t: { fr: 'Journal : @ relie une personne', en: 'Journal: @ links a person' },
   wn_journal_at_person_d: {

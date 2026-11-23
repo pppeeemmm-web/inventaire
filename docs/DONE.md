@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Overview « coup d'œil » (Pem « Go, go, go! », design [OverviewGlance](./design/2026-11-23/OverviewGlance.md))
+
+- `1f867fe`: each signal once (card grid, one widens at a time), Fil compact with its sections and « refroidies », a month calendar with multi-day events drawn on each day (existing `suivi_process` select + `date_debut`; Pipeline's end-date rules respected), one source per number (deadlines, reminders, events), phone rows kept. No SQL. Flow review's 10 points fixed before landing; checked on the copy at 1280 px, 375 px (no sideways scroll, taps ≥ 44 px) and as a team member (admin-only cards hidden). What's new 3.1.105. Left: the desk tally counts the empty Fil as one more « OK » than the phone (6 vs 5).
+
 ## 2026-11-23 — Six small fixes (Pem « All of them », « Ok, exifr »)
 
 - A: the desk order form and the Pipeline no longer offer a team account as a sale buyer (same rule as `createWorkOrder` / the phone sale; the shared contact list now reads `is_team_member`).
