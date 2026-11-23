@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idées — maquette</title>
+<style>
+:root{--bg0:#080809;--bg1:#101011;--bg2:#19191b;--bg3:#222225;--bd:#2d2d32;--bd2:#3f3f46;--tx:#f8f7f3;--tx2:#b4afa1;--tx3:#807c72;--ac:#d4b886;--ac2:#a68b55;--rust:oklch(0.72 0.16 35);--sage:#8fb08a;--onac:#14110a}
+:root[data-theme="light"]{--bg0:#fcfcfc;--bg1:#f5f5f5;--bg2:#ebebeb;--bg3:#e0e0e0;--bd:#e5e5e5;--bd2:#d4d4d4;--tx:#1a1a1a;--tx2:#4a4a4a;--tx3:#737373;--ac:#b8860b;--ac2:#8b6914;--rust:oklch(0.6 0.16 35);--sage:#4f7a49;--onac:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg0);color:var(--tx);font:14px/1.45 'Sofia Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd)}
+.top h1{font-size:16px;margin:0;font-weight:600}
+.top .note{color:var(--tx3);font-size:12px;flex:1;min-width:200px}
+.seg{display:inline-flex;border:1px solid var(--bd2);border-radius:8px;overflow:hidden}
+.seg button{background:none;border:0;padding:6px 12px;color:var(--tx2);min-height:32px}
+.seg button[aria-pressed="true"]{background:var(--bg3);color:var(--tx)}
+.stage{display:flex;gap:28px;padding:20px 16px 40px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.frame-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:0 0 6px}
+.btn{border:1px solid var(--bd2);background:var(--bg2);border-radius:8px;padding:6px 12px;min-height:34px}
+.btn.main{background:var(--ac);color:var(--onac);border-color:var(--ac);font-weight:600}
+.btn.sm{min-height:28px;padding:3px 9px;font-size:12.5px}
+.input{background:var(--bg2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;color:var(--tx);min-height:34px;width:100%}
+.muted{color:var(--tx3)}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--bd2);border-radius:999px;padding:1px 8px;font-size:12px;color:var(--tx2);background:none;white-space:nowrap}
+.chip.idea{border-color:var(--ac2);color:var(--ac)}
+.thumb{width:22px;height:22px;border-radius:4px;flex:none;display:inline-block;vertical-align:middle}
+/* desk */
+.desk{width:min(1100px,100%);border:1px solid var(--bd);border-radius:10px;background:var(--bg1);overflow:hidden}
+.desk-bar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--bd)}
+.desk-bar .title{font-weight:600;margin-right:auto}
+.desk-body{display:grid;grid-template-columns:240px 1fr 290px;height:720px}
+.tree{overflow:auto;padding:10px;border-right:1px solid var(--bd);background:var(--bg0)}
+.tree h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:14px 4px 4px}
+.tnode{display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:5px 6px;color:var(--tx2)}
+.tnode:hover{background:var(--bg2)}
+.tnode.sel{background:var(--bg3);color:var(--tx)}
+.tnode .n{margin-left:auto;font-size:11px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.centre{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--bd)}
+.ihead{padding:14px 20px 8px;border-bottom:1px solid var(--bd)}
+.ihead h2{margin:0;font-size:19px;font-weight:600}
+.ihead .crumb{font-size:12px;color:var(--tx3)}
+.tabs{display:flex;gap:4px;margin-top:8px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:6px 10px;color:var(--tx3);min-height:36px}
+.tabs button[aria-pressed="true"]{color:var(--tx);border-color:var(--ac)}
+.fil{flex:1;overflow:auto;padding:12px 20px}
+.composer{border-top:1px solid var(--bd);padding:10px 20px;display:flex;gap:8px}
+.rail{overflow:auto;padding:14px;background:var(--bg0)}
+.rail h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:16px 0 6px}
+.rail h3:first-child{margin-top:0}
+.ritem{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:13px}
+.ritem small{display:block;color:var(--tx3);font-size:11.5px}
+/* seed */
+.seedbox{border:1px solid var(--bd);border-radius:10px;padding:10px;background:var(--bg1)}
+.ladder{display:flex;gap:4px;margin:6px 0 8px}
+.ladder button{flex:1;border:1px solid var(--bd2);background:var(--bg2);border-radius:8px;padding:6px 2px;font-size:12px;min-height:44px;color:var(--tx3)}
+.ladder button[aria-pressed="true"]{border-color:var(--ac);color:var(--tx);background:var(--bg3)}
+.signals{font-size:12px;color:var(--tx2);font-variant-numeric:tabular-nums}
+.offer{margin-top:8px;font-size:12.5px;color:var(--tx2)}
+/* cards (as the Journal) */
+.card{border:1px solid var(--bd);border-radius:10px;background:var(--bg2);padding:9px 12px;margin-bottom:10px}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--tx3)}
+.card .meta .d{color:var(--ac)}
+.card .txt{margin:5px 0 3px;white-space:pre-wrap}
+.card .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px}
+.card.hist{background:none;border-style:dashed;color:var(--tx3);font-size:12.5px;padding:6px 12px}
+.card.suite{margin-left:22px;border-left:2px solid var(--ac2)}
+.textarea{width:100%;min-height:380px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);padding:12px;font:15px/1.6 Georgia,serif}
+/* phone */
+.phone{width:375px;height:720px;border:10px solid #000;border-radius:34px;background:var(--bg0);position:relative;overflow:hidden;box-shadow:0 0 0 1px var(--bd2)}
+.pscroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:110px}
+.phead{display:flex;align-items:center;gap:4px;padding:10px 8px 4px}
+.phead .ico{min-width:44px;min-height:44px;display:grid;place-items:center;background:none;border:0;font-size:20px;color:var(--tx2)}
+.phead .t{flex:1;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pseg{display:flex;gap:4px;overflow-x:auto;padding:4px 12px 8px;border-bottom:1px solid var(--bd)}
+.pseg button{flex:none;border:1px solid var(--bd2);background:none;border-radius:999px;padding:0 12px;min-height:36px;color:var(--tx2);font-size:13px}
+.pseg button[aria-pressed="true"]{border-color:var(--ac);color:var(--ac)}
+.pbody{padding:10px 12px}
+.prow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;min-height:56px}
+.prow .s{font-size:22px}
+.prow small{display:block;color:var(--tx3);font-size:12px}
+.pgroup{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin:12px 2px 6px}
+.recbar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-around;padding:10px 12px max(14px,env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg1) 92%,transparent);border-top:1px solid var(--bd);backdrop-filter:blur(8px)}
+.recbar button{min-width:52px;min-height:52px;border-radius:14px;border:1px solid var(--bd2);background:var(--bg2);font-size:20px}
+.recbar .mic{min-width:72px;min-height:72px;border-radius:50%;background:var(--ac);color:var(--onac);border:0;font-size:28px;margin-top:-22px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.recbar .aim{position:absolute;top:-22px;left:0;right:0;text-align:center;font-size:11.5px;color:var(--ac)}
+.fab{position:absolute;right:14px;bottom:20px;min-height:52px;padding:0 18px;border-radius:26px;border:0;background:var(--ac);color:var(--onac);font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg1);border-top:1px solid var(--bd2);border-radius:16px 16px 0 0;padding:16px 16px 24px;z-index:20;box-shadow:0 -8px 30px rgba(0,0,0,.5)}
+.sheet h3{margin:0 0 8px;font-size:15px}
+.sheet label{display:block;font-size:12px;color:var(--tx3);margin:10px 0 4px}
+.sheet .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.sheet .acts .btn{min-height:44px}
+.menu{border:1px solid var(--bd2);border-radius:10px;background:var(--bg1);margin-top:6px;overflow:hidden}
+.menu button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--bd);padding:10px 12px;min-height:44px}
+.menu button.hi{color:var(--ac);font-weight:600}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--bd2);border-radius:10px;padding:8px 14px;font-size:13px;z-index:99;display:none}
+@media (max-width:1180px){.desk-body{grid-template-columns:200px 1fr 250px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Idées — bureaux de recherche nourris par le Journal</h1>
+  <div class="note">Maquette cliquable (données fictives). Bureau à gauche, téléphone à droite : mêmes portes. Rien n'est enregistré.</div>
+  <div class="seg" role="group" aria-label="Thème"><button id="thDark" aria-pressed="true">Sombre</button><button id="thLight" aria-pressed="false">Clair</button></div>
+</div>
+
+<div class="stage">
+  <div>
+    <p class="frame-label">Bureau · 1280 px</p>
+    <div class="desk">
+      <div class="desk-bar"><span class="title">Idées</span><input class="input" style="width:200px" placeholder="Chercher une idée…"><button class="btn main" id="dPlant">+ Planter une idée</button></div>
+      <div class="desk-body">
+        <nav class="tree" id="dTree" aria-label="Idées"></nav>
+        <section class="centre">
+          <div class="ihead"><div class="crumb" id="dCrumb"></div><h2 id="dTitle"></h2>
+            <div class="tabs" role="group"><button id="dTabFil" aria-pressed="true">Fil</button><button id="dTabTxt" aria-pressed="false">Texte</button><label class="muted" style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="dDeep"> avec les branches</label></div>
+          </div>
+          <div class="composer" id="dComp" style="border-top:0;border-bottom:1px solid var(--bd)"><input class="input" id="dInput" placeholder="Écrire dans cette idée… (va aussi sur la page d'aujourd'hui · # œuvre ou idée · @ personne)"><button class="btn main" id="dSend">Écrire</button></div>
+          <div class="fil" id="dFil"></div>
+        </section>
+        <aside class="rail" id="dRail"></aside>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label">Téléphone · 375 px</p>
+    <div class="phone" id="phone">
+      <div class="pscroll" id="pScroll"></div>
+      <div id="pBottom"></div>
+      <div id="pSheet"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SEED={graine:'🌰',pousse:'🌱',mure:'🌳'};
+const SEEDNAME={graine:'graine',pousse:'pousse',mure:'mûre'};
+const TODAY='23 nov.';
+let uid=100;
+const ideas=[
+ {id:1,title:'Coquillages dans le sel',stage:'pousse',by:'Pem',parent:null,
+  text:"Le sel comme une peau qui garde. Les coquillages ne sont pas posés : ils sont pris, et la croûte dit le temps passé.\n\nPiste : peindre la croûte avant l'objet.",
+  docs:[{t:'Cristallisation du sel — article.pdf',k:'fichier'},{t:'Salins d\'Aigues-Mortes',k:'lien'}],
+  works:[{t:'Coquillages',c:'linear-gradient(135deg,#c9b38a,#6d5b3e)',n:3}],people:[{t:'Marie (saunière)'}],
+  fil:[
+   {d:'14 nov.',t:'09:12',k:'dicté · vérifié',x:'Des coquillages pris dans le sel, la croûte comme une peau.',lab:['Idée']},
+   {d:'14 nov.',t:'',h:true,x:'Idée plantée · 🌰 graine'},
+   {d:'17 nov.',t:'16:40',k:'écrit',x:'Revu #Coquillages : la croûte en bas à gauche est la meilleure partie.',w:true,lab:['Recherche']},
+   {d:'21 nov.',t:'11:05',k:'écrit',x:'Le blanc du sel n\'est jamais blanc : gris, rose, ocre.',suite:true,lab:['Matériaux']},
+   {d:'21 nov.',t:'',h:true,x:'Coquillages → 🌱 pousse'},
+   {d:'22 nov.',t:'',h:true,x:'Texte retravaillé · versions'}
+  ]},
+ {id:2,title:'La croûte de sel',stage:'graine',by:'Pem',parent:1,text:'',docs:[],works:[],people:[],
+  fil:[{d:'22 nov.',t:'18:30',k:'photo',x:'Croûte sur la jetée, photo.',lab:[]}]},
+ {id:3,title:'Lumière rasante',stage:'graine',by:'Léa',parent:null,text:'',docs:[],works:[],people:[],
+  fil:[{d:'20 nov.',t:'08:02',k:'dicté · non vérifié',x:'La lumière rasante du matin sur le mur de l\'atelier.',lab:['Idée']}]},
+ {id:4,title:'Série des marées',stage:'mure',by:'Pem',parent:null,text:'Six toiles, une par marée de la semaine.',docs:[{t:'Horaires des marées.pdf',k:'fichier'}],
+  works:[{t:'Marée I',c:'linear-gradient(135deg,#4a6a7a,#1b2b33)',n:2},{t:'Marée II',c:'linear-gradient(135deg,#5b7b6a,#22332b)',n:1}],people:[],
+  fil:[{d:'2 oct.',t:'10:00',k:'écrit',x:'Une toile par marée.',lab:['Idée']},{d:'9 oct.',t:'',h:true,x:'→ 🌱 pousse'},{d:'12 nov.',t:'',h:true,x:'→ 🌳 mûre'}]},
+ {id:5,title:'Pigments de terre locale',stage:'graine',by:'Pem',parent:4,text:'',docs:[],works:[],people:[],
+  fil:[{d:'5 nov.',t:'14:20',k:'écrit',x:'Ramasser la terre rouge du chemin.',lab:['Matériaux']}]}
+];
+let SEQ=0;[[4,1],[5,2],[3,3],[1,4],[2,5]].forEach(([id,q])=>ideas.find(i=>i.id===id).seq=q);SEQ=10;
+const LINKS=[[1,3,'21 nov.']];
+const linked=id=>LINKS.filter(l=>l[0]===id||l[1]===id).map(l=>({i:ideas.find(x=>x.id===(l[0]===id?l[1]:l[0])),d:l[2]}));
+const byId=id=>ideas.find(i=>i.id===id);
+const kids=id=>ideas.filter(i=>i.parent===id);
+const days=i=>new Set(i.fil.filter(f=>!f.h).map(f=>f.d)).size;
+const moments=i=>i.fil.filter(f=>!f.h).length;
+function offer(i){
+  if(i.stage==='graine'&&days(i)>=2) return {txt:'Des moments sur '+days(i)+' jours.',btn:'Passer en pousse ?',to:'pousse'};
+  if(i.stage==='pousse'&&i.text&&(i.works.length||i.docs.length)) return {txt:'Un texte, '+i.works.length+' œuvre(s), '+i.docs.length+' document(s).',btn:'Mûre ?',to:'mure'};
+  if(i.stage==='mure') return {txt:'Prête à devenir quelque chose.',btn:'Devenir une œuvre',alt:'Devenir un projet'};
+  return null;
+}
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600)}
+function setStage(i,s){if(i.stage===s)return;i.stage=s;i.seq=++SEQ;i.fil.push({d:TODAY,t:'',h:true,x:i.title+' → '+SEED[s]+' '+SEEDNAME[s]});toast('Étape : '+SEEDNAME[s]+' — noté aussi sur la page d\'aujourd\'hui du Journal');render()}
+function addMoment(i,x,how){i.seq=++SEQ;i.fil.push({d:TODAY,t:'maint.',k:how,x,lab:[]});toast('Écrit dans « '+i.title+' » et sur la page d\'aujourd\'hui');render()}
+function plant(title,body,parent,fromJournal){
+  const i={id:++uid,title,stage:'graine',by:'Pem',parent,text:'',docs:[],works:[],people:[],fil:[{d:TODAY,t:'maint.',k:fromJournal?'depuis le Journal':'écrit dans Idées',x:body||title,lab:['Idée']},{d:TODAY,t:'',h:true,x:'Idée plantée · 🌰 graine'}]};
+  i.seq=++SEQ;ideas.push(i);toast('🌰 « '+title+' » plantée — le moment reste sur sa page du Journal');return i;
+}
+function cardHTML(f,showIdea){
+  if(f.h) return `<div class="card hist">${esc(f.d)} · ${esc(f.x)}</div>`;
+  const txt=esc(f.x).replace(/#Coquillages/g,'<span class="chip"><span class="thumb" style="width:14px;height:14px;background:linear-gradient(135deg,#c9b38a,#6d5b3e)"></span>Coquillages</span>');
+  return `<div class="card${f.suite?' suite':''}"><div class="meta"><span class="d">${esc(f.d)}</span>${f.t?'<span>'+esc(f.t)+'</span>':''}<span>· ${esc(f.k)}</span>${f.suite?'<span>· suite</span>':''}<a class="muted" href="#" onclick="toast(\'Ouvre ce jour dans le Journal\');return false" style="margin-left:auto">au Journal ↗</a></div><div class="txt">${txt}</div>${(f.lab&&f.lab.length)||showIdea?'<div class="row">'+(f.lab||[]).map(l=>'<span class="chip">'+esc(l)+'</span>').join('')+(showIdea||'')+'</div>':''}</div>`;
+}
+
+/* ---------- desk ---------- */
+let dSel=1,dTab='fil',dDeep=false;
+function treeHTML(){
+  let h='<h4>Arbre des idées · par dernier moment</h4>';
+  const last=i=>Math.max(i.seq,...kids(i.id).map(last));
+  const walk=(i,depth)=>{h+=`<button class="tnode${i.id===dSel?' sel':''}" style="padding-left:${6+depth*16}px" data-id="${i.id}">${depth?'└ ':''}${SEED[i.stage]} ${esc(i.title)}<span class="n">${moments(i)}</span></button>`;kids(i.id).sort((x,y)=>last(y)-last(x)).forEach(k=>walk(k,depth+1))};
+  ideas.filter(i=>!i.parent).sort((x,y)=>last(y)-last(x)).forEach(i=>walk(i,0));
+  return h;
+}
+function deepFil(i){let all=i.fil.map(f=>({...f,src:null}));for(const k of kids(i.id)) all=all.concat(deepFil(k).map(f=>({...f,src:f.src||k.title})));return all}
+function renderDesk(){
+  const i=byId(dSel);
+  $('#dTree').innerHTML=treeHTML();
+  $('#dTree').querySelectorAll('.tnode').forEach(b=>b.onclick=()=>{dSel=+b.dataset.id;render()});
+  const p=i.parent?byId(i.parent):null;
+  $('#dCrumb').textContent=(p?'branche de '+p.title+' · ':'tronc · ')+SEED[i.stage]+' '+SEEDNAME[i.stage]+' · plantée par '+i.by;
+  $('#dTitle').textContent=i.title;
+  $('#dTabFil').setAttribute('aria-pressed',dTab==='fil');$('#dTabTxt').setAttribute('aria-pressed',dTab==='txt');
+  $('#dComp').style.display=dTab==='fil'?'flex':'none';
+  if(dTab==='fil'){
+    const list=(dDeep?deepFil(i):i.fil).slice().reverse();
+    $('#dFil').innerHTML='<div class="muted" style="font-size:12px;margin-bottom:8px">Du plus récent au plus ancien · chaque moment vit aussi sur son jour</div>'+list.map(f=>cardHTML(f,f.src?'<span class="chip idea">🌰 '+esc(f.src)+'</span>':'')).join('');
+    $('#dFil').scrollTop=0;
+  } else {
+    $('#dFil').innerHTML=`<textarea class="textarea" id="dTxt" placeholder="Le texte de l'idée — celui qu'on retravaille.">${esc(i.text)}</textarea><div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button class="btn main" id="dSave">Enregistrer</button><button class="btn" onclick="toast('Les versions précédentes s\\'ouvrent ici')">Versions (${i.fil.filter(f=>f.h&&/Texte/.test(f.x)).length})</button><span class="muted" style="font-size:12px">Chaque enregistrement garde l'ancien texte et apparaît sur le jour.</span></div>`;
+    $('#dSave').onclick=()=>{i.text=$('#dTxt').value;i.fil.push({d:TODAY,t:'',h:true,x:'Texte retravaillé · versions'});toast('Texte enregistré — « Texte retravaillé » sur la page d\'aujourd\'hui');render()};
+  }
+  const o=offer(i);
+  $('#dRail').innerHTML=`<h3>Étape</h3><div class="seedbox"><div class="ladder">${['graine','pousse','mure'].map(s=>`<button data-s="${s}" aria-pressed="${i.stage===s}">${SEED[s]}<br>${SEEDNAME[s]}</button>`).join('')}</div>
+   <div class="signals">${moments(i)} moments · ${days(i)} jour(s) · ${i.works.length} œuvre(s) · ${i.docs.length} doc. · ${kids(i.id).length} branche(s)<br>dernier : ${esc(i.fil[i.fil.length-1].d)}</div><div class="muted" style="font-size:11.5px;margin-top:4px">${i.by==='Pem'?'Ton idée : tu changes l\'étape.':'Idée de '+esc(i.by)+' : '+esc(i.by)+' change l\'étape (toi aussi pour l\'instant — à décider).'}</div>
+   ${o?`<div class="offer">${esc(o.txt)}</div><div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn main sm" id="dOffer">${esc(o.btn)}</button>${o.alt?'<button class="btn sm" id="dAlt">'+esc(o.alt)+'</button>':''}</div>`:''}</div>
+   <h3>Documents</h3>${i.docs.length?i.docs.map(d=>`<div class="ritem">📄<div>${esc(d.t)}<small>${esc(d.k)} · Coffre</small></div></div>`).join(''):'<div class="muted">Aucun.</div>'}<button class="btn sm" style="margin-top:6px" onclick="toast('Joindre depuis le Coffre')">+ Joindre</button>
+   <h3>Œuvres</h3>${i.works.length?i.works.map(w=>`<div class="ritem"><span class="thumb" style="background:${w.c}"></span><div>${esc(w.t)}<small>nommée dans ${w.n} moment(s)</small></div></div>`).join(''):'<div class="muted">Aucune — écrire #titre dans un moment.</div>'}
+   <h3>Personnes</h3>${i.people.length?i.people.map(w=>`<div class="ritem">👤<div>${esc(w.t)}</div></div>`).join(''):'<div class="muted">Aucune — @nom dans un moment.</div>'}
+   <h3>Branches</h3>${kids(i.id).map(k=>`<div class="ritem" style="cursor:pointer" data-k="${k.id}">${SEED[k.stage]}<div>${esc(k.title)}<small>${moments(k)} moment(s)</small></div></div>`).join('')||'<div class="muted">Aucune.</div>'}
+   <button class="btn sm" style="margin-top:6px" id="dSub">+ Branche</button>
+   <h3>Idées liées</h3>${linked(i.id).map(l=>`<div class="ritem" style="cursor:pointer" data-k="${l.i.id}">${SEED[l.i.stage]}<div>${esc(l.i.title)}<small>par un moment du ${esc(l.d)}</small></div></div>`).join('')||'<div class="muted">Aucune — écrire #idée dans un moment.</div>'}
+   <button class="btn sm" style="margin-top:6px" id="dMove">Greffer sur…</button>`;
+  $('#dRail').querySelectorAll('.ladder button').forEach(b=>b.onclick=()=>setStage(i,b.dataset.s));
+  $('#dRail').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{dSel=+b.dataset.k;render()});
+  if(o){$('#dOffer').onclick=()=>o.to?setStage(i,o.to):toast('Ouvre « nouvelle œuvre » avec cette idée — fin : devenue œuvre');if(o.alt)$('#dAlt').onclick=()=>toast('Ouvre le Pipeline avec cette idée — fin : devenue projet')}
+  $('#dSub').onclick=()=>{const t=prompt('Nouvelle branche de « '+i.title+' » — titre','Le blanc du sel');if(t){const n=plant(t,'',i.id,false);dSel=n.id;render()}};
+  $('#dMove').onclick=()=>{const desc=new Set();const w=x=>kids(x).forEach(k=>{desc.add(k.id);w(k.id)});w(i.id);
+    const t=prompt('Greffer sur quelle idée ? (titre exact, vide = un tronc à part)\n'+ideas.filter(x=>x.id!==i.id).map(x=>x.title).join(' · '));if(t===null)return;
+    if(!t.trim()){i.parent=null;toast('Devenue un tronc à part');render();return}
+    const tg=ideas.find(x=>x.title.toLowerCase()===t.trim().toLowerCase());if(!tg){toast('Aucune idée de ce titre');return}
+    if(tg.id===i.id||desc.has(tg.id)){toast('Refusé : une idée ne peut pas être greffée sur sa propre branche');return}
+    i.parent=tg.id;toast('Greffée sur « '+tg.title+' » — ses moments ne bougent pas');render()};
+}
+$('#dTabFil').onclick=()=>{dTab='fil';render()};$('#dTabTxt').onclick=()=>{dTab='txt';render()};
+$('#dDeep').onchange=e=>{dDeep=e.target.checked;render()};
+$('#dSend').onclick=()=>{const v=$('#dInput').value.trim();if(!v)return;$('#dInput').value='';addMoment(byId(dSel),v,'écrit')};
+$('#dInput').onkeydown=e=>{if(e.key==='Enter')$('#dSend').click()};
+$('#dPlant').onclick=()=>{const t=prompt('Planter une idée — titre','Lumière du soir');if(t){const n=plant(t,'',null,false);dSel=n.id;render()}};
+
+/* ---------- phone ---------- */
+let pView='journal',pSel=null,pSeg='fil',pSheet=null,pFilter='all';
+const journal=[
+ {id:'j1',t:'08:40',k:'écrit',x:'Acheter de la toile de lin.',idea:null},
+ {id:'j2',t:'10:42',k:'dicté · vérifié',x:'Des fissures dans la peinture séchée, comme une carte.',idea:null}
+];
+function pRender(){
+  const S=$('#pScroll');let h='';
+  const nav=`<div class="pseg" style="border:0;padding-top:2px">${[['journal','Journal'],['ideas','Idées']].map(([v,l])=>`<button data-v="${v}" aria-pressed="${pView===v||(v==='ideas'&&pView==='idea')}">${l}</button>`).join('')}</div>`;
+  if(pView==='journal'){
+    h+=`<div class="phead"><span class="t" style="padding-left:8px">Aujourd'hui · dim. 23 nov.</span></div>${nav}<div class="pbody">`;
+    h+=journal.map(c=>`<div class="card"><div class="meta"><span>${c.t}</span><span>· ${c.k}</span><button class="btn sm" style="margin-left:auto;min-height:32px;min-width:44px" data-menu="${c.id}">⋯</button></div><div class="txt">${esc(c.x)}</div>${c.idea?`<div class="row"><button class="chip idea" data-open="${c.idea}">${SEED[byId(c.idea).stage]} ${esc(byId(c.idea).title)}</button></div>`:''}${pSheet&&pSheet.menu===c.id?`<div class="menu"><button>Ajouter une suite</button><button class="hi" data-plant="${c.id}">🌰 En faire une idée</button><button>Placer sur un autre jour</button><button>Étiquettes</button><button>Relier à…</button></div>`:''}</div>`).join('');
+    h+=`<p class="muted" style="font-size:12px">Essayer : ⋯ → « En faire une idée ». Ou 🎤 : la feuille d'enregistrement a « dans : le Journal ▾ ».</p></div>`;
+  } else if(pView==='ideas'){
+    h+=`<div class="phead"><span class="t" style="padding-left:8px">Idées</span><button class="ico" aria-label="Chercher">🔍</button></div>${nav}<div class="pbody">`;
+    h+=`<div class="pseg" style="border:0;padding:0 0 8px">${[['all','toutes'],['graine','🌰'],['pousse','🌱'],['mure','🌳']].map(([v,l])=>`<button data-f="${v}" aria-pressed="${pFilter===v}">${l}</button>`).join('')}</div><div class="pgroup">Par dernier moment</div>`;
+    h+=ideas.filter(i=>pFilter==='all'||i.stage===pFilter).sort((x,y)=>y.seq-x.seq).map(i=>`<button class="prow" data-open="${i.id}"><span class="s">${SEED[i.stage]}</span><span style="flex:1;min-width:0">${esc(i.title)}<small>${i.parent?'branche de '+esc(byId(i.parent).title)+' · ':''}${moments(i)} moment(s) · ${days(i)} j · ${esc(i.fil[i.fil.length-1].d)}${kids(i.id).length?' · '+kids(i.id).length+' branche(s)':''}</small></span></button>`).join('');
+    h+='</div>';
+  } else {
+    const i=byId(pSel);
+    h+=`<div class="phead"><button class="ico" id="pBack" aria-label="Retour">‹</button><span class="t">${esc(i.title)}</span><button class="ico" id="pSeed" aria-label="Étape" style="font-size:24px">${SEED[i.stage]}</button></div>
+    <div class="muted" style="font-size:12px;padding:0 16px 4px">${i.parent?'branche de '+esc(byId(i.parent).title)+' · ':''}${SEEDNAME[i.stage]} · ${moments(i)} moments · ${days(i)} jour(s)</div>
+    <div class="pseg">${[['fil','Fil'],['txt','Texte'],['docs','Docs'],['works','Œuvres'],['subs','Branches']].map(([v,l])=>`<button data-seg="${v}" aria-pressed="${pSeg===v}">${l}</button>`).join('')}</div><div class="pbody">`;
+    const o=offer(i);
+    if(o&&pSeg==='fil') h+=`<div class="card" style="border-color:var(--ac2)"><div class="meta">${esc(o.txt)}</div><div class="row"><button class="btn main" style="min-height:44px" id="pOffer">${esc(o.btn)}</button></div></div>`;
+    if(pSeg==='fil') h+=i.fil.slice().reverse().map(f=>cardHTML(f)).join('')+(linked(i.id).length?'<div class="pgroup">Idées liées</div>'+linked(i.id).map(l=>`<button class="prow" data-open="${l.i.id}"><span class="s">${SEED[l.i.stage]}</span><span>${esc(l.i.title)}<small>liée par un moment du ${esc(l.d)}</small></span></button>`).join(''):'');
+    if(pSeg==='txt') h+=`<textarea class="textarea" style="min-height:300px" id="pTxt">${esc(i.text)}</textarea><button class="btn main" style="min-height:44px;margin-top:8px;width:100%" id="pSave">Enregistrer</button>`;
+    if(pSeg==='docs') h+=(i.docs.map(d=>`<div class="ritem">📄<div>${esc(d.t)}<small>${esc(d.k)}</small></div></div>`).join('')||'<p class="muted">Aucun document.</p>')+`<button class="btn" style="min-height:44px;margin-top:8px">+ Joindre (photo, fichier, lien)</button>`;
+    if(pSeg==='works') h+=i.works.map(w=>`<div class="ritem"><span class="thumb" style="width:36px;height:36px;background:${w.c}"></span><div>${esc(w.t)}<small>nommée dans ${w.n} moment(s)</small></div></div>`).join('')||'<p class="muted">Aucune — écrire #titre dans un moment.</p>';
+    if(pSeg==='subs') h+=kids(i.id).map(k=>`<button class="prow" data-open="${k.id}"><span class="s">${SEED[k.stage]}</span><span>${esc(k.title)}<small>${moments(k)} moment(s)</small></span></button>`).join('')+`<button class="btn" style="min-height:44px" id="pSub">+ Branche</button>`;
+    h+='</div>';
+  }
+  S.innerHTML=h;
+  S.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{pView=b.dataset.v;pSheet=null;pRender()});
+  S.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{pSel=+b.dataset.open;pView='idea';pSeg='fil';pSheet=null;pRender()});
+  S.querySelectorAll('[data-menu]').forEach(b=>b.onclick=()=>{pSheet=pSheet&&pSheet.menu===b.dataset.menu?null:{menu:b.dataset.menu};pRender()});
+  S.querySelectorAll('[data-plant]').forEach(b=>b.onclick=()=>{pSheet={plant:b.dataset.plant};pRender()});
+  S.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{pFilter=b.dataset.f;pRender()});
+  S.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{pSeg=b.dataset.seg;pRender()});
+  const g=id=>S.querySelector(id);
+  if(g('#pBack')) g('#pBack').onclick=()=>{pView='ideas';pRender()};
+  if(g('#pSeed')) g('#pSeed').onclick=()=>{pSheet={seed:true};pRender()};
+  if(g('#pOffer')){const i=byId(pSel),o=offer(i);g('#pOffer').onclick=()=>o.to?setStage(i,o.to):toast('Devenir une œuvre / un projet')}
+  if(g('#pSave')) g('#pSave').onclick=()=>{const i=byId(pSel);i.text=g('#pTxt').value;i.fil.push({d:TODAY,t:'',h:true,x:'Texte retravaillé · versions'});toast('Texte enregistré');render()};
+  if(g('#pSub')) g('#pSub').onclick=()=>{pSheet={plant:null,parent:pSel};pRender()};
+
+  /* bottom: record bar (aimed) or plant button */
+  const B=$('#pBottom');
+  if(pView==='ideas') {B.innerHTML='<button class="fab" id="pFab">+ Planter</button>';$('#pFab').onclick=()=>{pSheet={plant:null,parent:null};pRender()}}
+  else {const aim=pView==='idea'?byId(pSel):null;
+    B.innerHTML=`<div class="recbar">${aim?`<div class="aim">🎤 écrit dans « ${esc(aim.title)} » + aujourd'hui</div>`:''}<button aria-label="Écrire" id="pW">✍️</button><button aria-label="Photo" id="pP">📷</button><button class="mic" aria-label="Dicter" id="pM">🎤</button><button aria-label="Œuvre">🖼️</button></div>`;
+    $('#pM').onclick=()=>{pSheet={rec:true,aim:aim?aim.id:null};pRender()};
+    $('#pW').onclick=$('#pM').onclick;$('#pP').onclick=()=>toast('Photo — même cible que la dictée');}
+
+  /* sheets */
+  const SH=$('#pSheet');SH.innerHTML='';
+  if(pSheet&&pSheet.plant!==undefined){
+    const c=journal.find(x=>x.id===pSheet.plant);const def=c?c.x.replace(/[.,].*$/,'').slice(0,48):'';
+    SH.innerHTML=`<div class="sheet"><h3>🌰 Planter une idée</h3>${c?'<div class="muted" style="font-size:12.5px">Le moment de '+c.t+' reste sur sa page ; il devient la première page de l\'idée.</div>':'<div class="muted" style="font-size:12.5px">Un moment est écrit aussi sur la page d\'aujourd\'hui.</div>'}
+    <label>Titre</label><input class="input" id="sT" value="${esc(def)}">${c?'':'<label>Premières lignes (ou 🎤)</label><input class="input" id="sB">'}
+    <label>Dans</label><select class="input" id="sP"><option value="">— (premier niveau)</option>${ideas.map(i=>`<option value="${i.id}"${pSheet.parent===i.id?' selected':''}>${SEED[i.stage]} ${esc(i.title)}</option>`).join('')}</select>
+    <div class="acts"><button class="btn" id="sX">Annuler</button><button class="btn main" id="sOk">Planter</button></div></div>`;
+    $('#sX').onclick=()=>{pSheet=null;pRender()};
+    $('#sOk').onclick=()=>{const t=$('#sT').value.trim()||'Sans titre';const p=$('#sP').value?+$('#sP').value:null;
+      const n=plant(t,c?c.x:($('#sB')?$('#sB').value.trim():''),p,!!c);
+      if(c){c.idea=n.id;n.fil[0].t=c.t}else{journal.push({id:'j'+n.id,t:'maint.',k:'écrit dans Idées',x:n.fil[0].x,idea:n.id})}
+      pSheet=null;render()};
+  }
+  if(pSheet&&pSheet.seed){const i=byId(pSel);
+    SH.innerHTML=`<div class="sheet"><h3>Étape de « ${esc(i.title)} »</h3><div class="ladder">${['graine','pousse','mure'].map(s=>`<button data-s="${s}" aria-pressed="${i.stage===s}">${SEED[s]}<br>${SEEDNAME[s]}</button>`).join('')}</div><div class="signals">${moments(i)} moments · ${days(i)} jour(s) · ${i.works.length} œuvre(s) · ${i.docs.length} doc. · ${kids(i.id).length} branche(s)</div><div class="muted" style="font-size:12px;margin-top:6px">${i.by==='Pem'?'Ton idée : tu changes l\'étape. L\'app propose seulement.':'Idée de '+esc(i.by)+' : '+esc(i.by)+' change l\'étape (toi aussi, pour l\'instant — à décider). Tout le monde peut écrire dedans.'}</div><div class="acts"><button class="btn" id="sX">Fermer</button></div></div>`;
+    SH.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{pSheet=null;setStage(i,b.dataset.s)});$('#sX').onclick=()=>{pSheet=null;pRender()};
+  }
+  if(pSheet&&pSheet.rec){const aim=pSheet.aim;
+    SH.innerHTML=`<div class="sheet"><h3>🎤 Enregistrement… <span class="muted" style="font-weight:400;font-size:12px">garde l'écran ouvert</span></h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">aujourd'hui ▾</span><select class="input" id="rT" style="width:auto;min-height:32px;padding:2px 8px"><option value="">dans : le Journal</option><option value="new">dans : une nouvelle idée</option>${ideas.map(i=>`<option value="${i.id}"${aim===i.id?' selected':''}>dans : ${SEED[i.stage]} ${esc(i.title)}</option>`).join('')}</select></div>
+    <div style="min-height:64px;border:1px dashed var(--bd2);border-radius:10px;padding:10px;color:var(--tx2);margin:10px 0" contenteditable id="rL">le sel garde la forme même quand le coquillage casse</div>
+    <div class="acts"><button class="btn" id="sX">Annuler</button><button class="btn main" id="sOk">■ Arrêter et garder</button></div></div>`;
+    $('#sX').onclick=()=>{pSheet=null;pRender()};
+    $('#sOk').onclick=()=>{const v=$('#rT').value,x=$('#rL').textContent.trim();pSheet=null;
+      if(v==='new'){const n=plant(x.slice(0,40),x,null,false);journal.push({id:'j'+n.id,t:'maint.',k:'dicté · non vérifié',x,idea:n.id})}
+      else if(v){const i=byId(+v);addMoment(i,x,'dicté · non vérifié');journal.push({id:'j'+(++uid),t:'maint.',k:'dicté · non vérifié',x,idea:i.id})}
+      else{journal.push({id:'j'+(++uid),t:'maint.',k:'dicté · non vérifié',x,idea:null});toast('Sur la page d\'aujourd\'hui')}
+      render()};
+  }
+}
+function render(){renderDesk();pRender()}
+$('#thDark').onclick=()=>{document.documentElement.removeAttribute('data-theme');$('#thDark').setAttribute('aria-pressed','true');$('#thLight').setAttribute('aria-pressed','false')};
+$('#thLight').onclick=()=>{document.documentElement.setAttribute('data-theme','light');$('#thLight').setAttribute('aria-pressed','true');$('#thDark').setAttribute('aria-pressed','false')};
+render();
+</script>
+</body>
+</html>
