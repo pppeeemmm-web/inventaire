@@ -1,6 +1,6 @@
 # Tests that write run on the throwaway copy, not live
 
-Status: `local draft` (design only, no code). Pem 2026-11-23 « Move to test copy ». Evidence = live DB read-only (Supabase MCP), repo read; nothing applied, Docker copy not touched.
+Status: §2A + §3 steps 1, 2, 5, 6, 7 built 2026-11-23 (`npm run test:e2e:stress`; auto-login on the copy only for the server that command starts). Open: §2B (B1 / B2 — B2 would also stop the LAN phone's real-account auto-login on live: Pem decides), §3 step 4 (`e2e:writes:check`, with the first `@writes` spec), step 8 (seeded snapshot). Was `local draft` (design only, no code). Pem 2026-11-23 « Move to test copy ». Evidence = live DB read-only (Supabase MCP), repo read; nothing applied, Docker copy not touched.
 
 ## 1. What the live DB shows (read only)
 

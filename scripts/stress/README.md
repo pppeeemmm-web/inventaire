@@ -34,6 +34,13 @@ Stop: `& .\scripts\stress\up.ps1 -Down` (closes both windows, stops the database
    (team: `team.stress@example.test` / `stress-team-2026`). These fake accounts exist only in the copy.
 
 ## Tests
+- **Browser specs on the copy — one command** (from the main checkout): `npm run test:e2e:stress [-- tests/x.spec.ts]`.
+  Brings `stress-live` to this checkout (uncommitted changes included), starts the database / image stub / app
+  (`next dev`, no build, signed in as the fake team account) when they are not up, reseeds only when stale
+  (no seed mark, `seed.mjs` changed, data missing), runs the field specs, stops what it started. Writes a one-screen
+  result (`E2E_RESULT_FILE`, default `scripts/stress/dump/e2e-result.md`): commit + draft hash, pass / fail per spec,
+  live `oeuvre_versions` / `work_order` counts before and after (read only). A spec that saves for real is tagged
+  `@writes` in its `describe` title: skipped on live, run only here (`docs/design/2026-11-23/TestsOnDockerCopy.md`).
 - `node scripts/stress/run-chains.mjs [sale|races|…]` — the order / payment / shipment chains.
 - `node scripts/stress/races-plus.mjs 3` — two clicks at once (double sale, double payment), 3 rounds.
 - `node scripts/stress/security.mjs [rest|actions|admin]`, `integrity.mjs`, `ui.mjs`.

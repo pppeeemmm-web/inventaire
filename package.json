@@ -21,6 +21,7 @@
     "archive": "node scripts/archive-export.mjs",
     "test:e2e": "playwright test",
     "test:e2e:field": "node scripts/run-atelier-e2e.mjs",
+    "test:e2e:stress": "node scripts/stress/e2e.mjs",
     "perf:budget": "node scripts/perf-budget.mjs"
   },
   "dependencies": {

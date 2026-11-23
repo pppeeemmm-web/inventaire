@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { localEnv } from './seed.mjs';
+import { localEnv, USERS } from './seed.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..', '..');
@@ -35,7 +35,13 @@ const env = {
   INVENTORY_BROADCAST_SECRET: secret(),
   NODE_TLS_REJECT_UNAUTHORIZED: '0', // self-signed local R2 stub only
   NEXT_TELEMETRY_DISABLED: '1',
+  // Marker header x-stress-copy (next.config.ts) — scripts/run-atelier-e2e.mjs --target stress refuses a server without it.
+  STRESS_COPY: '1',
 };
+// Only for the e2e command (scripts/stress/e2e.mjs sets STRESS_E2E_LOGIN=1): next dev signs in as the fake team
+// (non-admin) account, like the « Dev profile » login on live (TestsOnDockerCopy.md A.1). Never by default — the other
+// stress scripts sign in through /login as admin / team / outsider, and an auto-login would sign them in as team.
+if (process.env.STRESS_E2E_LOGIN === '1') Object.assign(env, { DEV_AUTO_LOGIN_EMAIL: USERS.team.email, DEV_AUTO_LOGIN_PASSWORD: USERS.team.password });
 const dump = JSON.stringify(env);
 if (/mcrzsxrcoexnlwmaunte|cloudflarestorage|thepemworkshop/.test(dump)) throw new Error('Refusing: production value in stress env');
 fs.writeFileSync(path.join(here, 'dump', 'stress.env'), Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');

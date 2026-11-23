@@ -105,6 +105,9 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           { key: 'x-build-sha', value: sha },
+          // The throwaway copy's dev server says so (scripts/stress/run-stress-dev.mjs): the e2e runner checks it
+          // before any test, so a spec never runs against a server on the live database.
+          ...(process.env.STRESS_COPY === '1' ? [{ key: 'x-stress-copy', value: '1' }] : []),
           // Hardening (2026-11-13): no framing by other sites, no MIME sniffing, short referrer.
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

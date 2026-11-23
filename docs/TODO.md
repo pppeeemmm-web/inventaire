@@ -10,8 +10,8 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2; `merge_contacts` is live, so it no longer waits), the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
-- Next build (waits for the Docker copy): tests that write run on the Docker copy, not live — plan [TestsOnDockerCopy](./design/2026-11-23/TestsOnDockerCopy.md) (Pem's answers in §5): one command for the copy + a one-screen result file.
-- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (the Docker copy already has Places phase B and today's `merge_contacts`) → if time remains, the reverse pricing design draft (§3, no build).
+- Pem's order « 1 3 2 »: (1) browser tests on the copy — `npm run test:e2e:stress` (see DONE) → (3) Journal Step B: real `#` / `@` links, the photo's own data, re-suggest corrected entries (SQL, Pem's OK) → (2) the automated stress round on the copy, run with `npm run test:e2e:stress` → if time remains before the pause (Max runs to 17 Dec 2026), the reverse pricing design draft (§3, no build).
+- Tests on the copy, open: the live dev server's auto-login (plan §2B: B2 would also stop the LAN phone's real-account login — Pem decides); `e2e:writes:check` in `ship.ps1` / CI with the first `@writes` spec; 4 of 27 field specs fail on the copy (hub « day sections stream in », « Écrire » sheet; `session-new`, `session-journal`) — spec drift or app, to sort in the stress round → [TestsOnDockerCopy](./design/2026-11-23/TestsOnDockerCopy.md).
 
 ## 1. Finish first — small, before anything new
 

@@ -8,8 +8,11 @@
 # (the previous ones are taken back first, never a reset); starts the local database; opens two windows —
 # the fake image storage and the app (next dev on :3077, the stress keys only). Nothing reaches the real site:
 # the worktree has no .env.local and run-stress-dev.mjs refuses any production value.
-param([switch]$Down, [switch]$Seed)
+# -Prepare: steps 1–3 only (Docker, worktree, database), no windows — used by scripts/stress/e2e.mjs (npm run test:e2e:stress).
+param([switch]$Down, [switch]$Seed, [switch]$Prepare)
 $ErrorActionPreference = 'Stop'
+# git output (the draft patch below) is UTF-8: read it as such, or « » — and accents are mangled and the patch does not apply.
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 $root = (git rev-parse --show-toplevel).Trim()
 $wt = Join-Path (Split-Path $root -Parent) 'app-worktrees\stress-live'
@@ -91,6 +94,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'supabase start failed' }
   if ($Seed) { node scripts/stress/seed.mjs; if ($LASTEXITCODE -ne 0) { throw 'seed failed' } }
 } finally { Pop-Location }
+
+if ($Prepare) { return }
 
 # 4. Fake image storage + the app, each in its own window
 # The storage stub makes its self-signed certificate with openssl once: Git for Windows ships one (not on PowerShell's PATH).
