@@ -38,6 +38,7 @@ import { CorrectedOriginal } from '@/components/atelier/journal/CorrectedOrigina
 import { InspirationText } from '@/components/atelier/journal/InspirationText'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import type { DictKey } from '@/lib/i18n/dictionary'
+import { AuthorBadges } from '@/components/shared/AuthorBadge'
 
 const VoiceNoteSheet = dynamic(
   () => import('@/components/shared/VoiceNoteSheet').then((m) => m.VoiceNoteSheet),
@@ -507,8 +508,11 @@ export function TodayFolds({ day, showChanges }: { day: string; showChanges: boo
             ready.changes.length ? (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
                 {ready.changes.map((c) => (
-                  <li key={c.oeuvre_id} style={{ fontSize: 13, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                    <WorkPreviewChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title ?? null} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
+                  <li key={c.oeuvre_id} style={{ fontSize: 13, lineHeight: 1.45, overflowWrap: 'anywhere', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <AuthorBadges authors={c.by} />
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <WorkPreviewChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title ?? null} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
+                    </span>
                   </li>
                 ))}
               </ul>

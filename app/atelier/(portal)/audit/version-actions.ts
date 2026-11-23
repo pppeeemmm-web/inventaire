@@ -6,6 +6,7 @@ import { unionHistorique } from '@/lib/historique-merge'
 import { provenanceTimestamp } from '@/lib/oeuvre-provenance'
 import { deletedContactColumns } from '@/lib/deleted-contact-refs'
 import { logError } from '@/lib/error-reporter'
+import { authorIdsOf, authorOfRow, type AuthorContactRow, type ChangeAuthor } from '@/lib/journal/authors'
 
 export interface OeuvreVersion {
   id:          number
@@ -14,6 +15,11 @@ export interface OeuvreVersion {
   changed_by:  string | null
   changed_at:  string
   source:      string | null
+  /** oeuvre_version_author.sql: how `changed_by` was learned; NULL on rows older than it. */
+  changed_via?: string | null
+  approved_by?: string | null
+  /** Who made the change at `changed_at` (badge); null = not recorded. */
+  by?:         ChangeAuthor | null
 }
 
 /** `kept`: snapshot columns left at the work's current value — the contact / address they named was deleted. */
@@ -41,7 +47,14 @@ export async function fetchOeuvreVersions(oeuvreId: number, limit = 50): Promise
     console.error('[versions] fetch', error.message)
     return []
   }
-  return (data ?? []) as OeuvreVersion[]
+  const rows = (data ?? []) as OeuvreVersion[]
+  const ids = authorIdsOf(rows)
+  const contacts = new Map<string, AuthorContactRow>()
+  if (ids.length) {
+    const { data: cs } = await gate.supabase.from('Contact').select('*').in('auth_user_id', ids)
+    for (const c of (cs ?? []) as AuthorContactRow[]) if (c.auth_user_id) contacts.set(c.auth_user_id, c)
+  }
+  return rows.map((r) => ({ ...r, by: authorOfRow(r, contacts) }))
 }
 
 /**

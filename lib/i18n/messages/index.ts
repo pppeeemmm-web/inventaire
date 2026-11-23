@@ -40,6 +40,7 @@ import { workLinksMessages } from './work-links.messages'
 import { workCardMessages } from './work-card.messages'
 import { workRecordMessages } from './work-record.messages'
 import { journalStreamMessages } from './journal-stream.messages'
+import { changeAuthorMessages } from './change-author.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
@@ -120,6 +121,7 @@ export const featureMessages = {
   ...workCardMessages,
   ...workRecordMessages,
   ...journalStreamMessages,
+  ...changeAuthorMessages,
   ...pipelineUiMessages,
   ...conceptDocsMessages,
   ...notesTriageMessages,

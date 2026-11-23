@@ -8,16 +8,17 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- First: the Journal stream is the default (`?stream=0` keeps the old day screens); the desk waits ~1.5 s for its page shell before the first read — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2, waits on `merge_contacts`), the desk hotkey, `npm run gen:types` → [JournalDesign](./design/2026-11-22/JournalDesign.md).
+- Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2; `merge_contacts` is live, so it no longer waits), the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
-- Next session, in order: (1) work-change badges: build → [WorkChangeBadges](./design/2026-11-23/WorkChangeBadges.md) §5 (design + mockup reviewed, Pem's answers in §7; SQL draft `oeuvre_version_author.sql` not live — Docker copy first, then Pem's OK); tests that write run on the Docker copy → `TestsOnDockerCopy.md` on branch `claude/eloquent-tesla-8a10c1` (uncommitted); (2) Journal on the desk (§1 Checks line) — design first.
-- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the reverse pricing design draft (§3, no build).
+- Work-change badges: committed locally, proof a–h passed on the Docker copy; `oeuvre_version_author.sql` goes live with Pem's OK, push the same minute, then `npm run gen:types` → [WorkChangeBadges](./design/2026-11-23/WorkChangeBadges.md).
+- Being designed: Journal on the desk — paste or drop an image onto the day, record with the laptop microphone, pick up photos from the Syncthing folder (session « Journal on the desk — design first », its own worktree; no code).
+- Waiting to land: tests that write run on the Docker copy, not live → `TestsOnDockerCopy.md` (branch `claude/eloquent-tesla-8a10c1`, uncommitted).
+- Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (the Docker copy already has Places phase B and today's `merge_contacts`) → if time remains, the reverse pricing design draft (§3, no build).
 
 ## 1. Finish first — small, before anything new
 
 Data safety (SQL, Pem's OK given)
 - [ ] An admin's save queued offline on the phone, or a card draft restored, that names a contact deleted meanwhile fails with the raw database message (a team member's becomes a proposal, which approve refuses in words).
-- [ ] Contact merge rewrites owner, holder and buyer inside old work versions but not the holder's address (`localisation_address_id`).
 - [ ] Journal corrections, rare cases: a second machine transcription of the same voice note (other engine) shows in Notes over Pem's correction; a correction of a private entry written by a team member stays unreadable to that author; search by meaning still matches the uncorrected words (the semantic index holds the original text).
 - [ ] Order cancel, very unlikely: if a reserved work refuses to be released at the very moment another sale or gift opens a line on the same work, putting the cancelled order back can leave two open lines on that work.
 - [ ] A theme or group list changed in the same split second as a card save that also changes that list is replaced by the card's list (the lists are written apart from the work row, outside the save's guard).
@@ -37,7 +38,6 @@ Small fixes
 
 Checks
 - [ ] One automated stress round: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
-- [ ] Journal on the desk: paste or drop an image onto the day (inspiration, with its text and links), record a voice note with the laptop microphone, and pick up images from the Syncthing folder (PC agent) — design first.
 - [ ] AI desk « Lancer »: confirm on Pem's PC that a job starts; what still fails is fixed or removed.
 
 ## 2. Waiting on you, Pem

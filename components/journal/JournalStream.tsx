@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { AuthorBadges } from '@/components/shared/AuthorBadge'
 import { toast } from '@/lib/ui/toast'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { imageUrl, thumbUrl } from '@/lib/data'
@@ -754,6 +755,7 @@ function DayCards({
           <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'grid', gap: 4, fontSize: 13 }}>
             {(allChanges ? x.changes : x.changes.slice(0, 8)).map((c) => (
               <li key={c.oeuvre_id} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <AuthorBadges authors={c.by} />
                 <WorkRef id={c.oeuvre_id} href={workHref(c.oeuvre_id)} style={{ color: 'var(--ac)' }} />
                 <span style={{ color: 'var(--tx3)' }}>{c.fields.map((f) => versionFieldLabel(f, t as never)).join(', ')}</span>
               </li>

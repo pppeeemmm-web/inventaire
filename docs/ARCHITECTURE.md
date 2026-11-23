@@ -37,7 +37,7 @@ Production stage (not a status): `Catalogué` + `NeedsPhotograph`. Cascade Catal
 
 | Order | Trigger | Fires on | Does |
 |---|---|---|---|
-| 1 | `oeuvre_version_snap` → `snapshot_oeuvre` | every UPDATE | OLD row → `oeuvre_versions` (snapshot keys = real column names), `changed_by = auth.uid()` |
+| 1 | `oeuvre_version_snap` → `snapshot_oeuvre` | every UPDATE | OLD row → `oeuvre_versions` (snapshot keys = real column names) + who ([`oeuvre_version_author.sql`](../supabase/sql/oeuvre_version_author.sql), work-change badges 2026-11-23): signed-in admin stamping someone else's `edited_by` → `changed_by` = that proposer, `approved_by` = admin, `changed_via` `approval`; else `auth.uid()` → `session`; no uid but `edited_at` moved in this update with `edited_by` → `stamp` (service-key actions a person starts stamp who clicked: `restoreOeuvreVersion`, `setWorkPublic`); service role / no JWT → `machine`; else `unknown`. No row when only `edited_at` / `edited_by` moved. Older rows: `changed_via` NULL. Readers: Journal change lines (`day-read.ts`, `AuthorBadges`), drawer history (`fetchOeuvreVersions`) |
 | 2 | `trg_enforce_anonymity_level` | INSERT/UPDATE | Unless `admin_override_anonymity`: status 1/2 → `anonymity_level` 0; status 3 → 2 |
 | 2a | `trg_oeuvre_a_status_follows_stage` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph`, `fate` | Status 1 / 2 with no fate → 2 if catalogued and photo validated, else 1 (WORK_RULES rule 5, 2026-11-17) |
 | 2b | `trg_oeuvre_archive_guard` | INSERT; `statusId`, `Catalogué`, `NeedsPhotograph` | §2 Archive: status 3 needs `Catalogué`; 3 → 2 needs the photo done. Errors `archive_requires_catalogue`, `archive_exit_requires_photo` (2026-11-17) |

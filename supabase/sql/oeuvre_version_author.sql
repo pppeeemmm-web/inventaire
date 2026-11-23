@@ -15,8 +15,9 @@
 --      changed_via = 'approval'   (approvePendingChange replays saveWork with edited_by = the proposer)
 --   2. auth.uid() is set                                     → changed_by = auth.uid(),      changed_via = 'session'
 --   3. no uid, stamped                                       → changed_by = new.edited_by,   changed_via = 'stamp'
---      (restoreOeuvreVersion; and, after the app change, every service-key action a person starts:
---       portfolio publish, broadcast confirm / queue, selection — Pem 2026-11-23 « who clicked as well »)
+--      (restoreOeuvreVersion and portfolio setWorkPublic — the only service-key Oeuvres UPDATEs a person starts,
+--       build scout 2026-11-23; broadcast routes and selection write Oeuvres through the session or not at all —
+--       Pem 2026-11-23 « who clicked as well »)
 --   4. no uid, JWT role service_role or no JWT               → changed_by = NULL,            changed_via = 'machine'
 --   5. anything else                                         → changed_by = NULL,            changed_via = 'unknown'
 -- Rows written before this change keep changed_via NULL = « not recorded » (no backfill: the past is not guessed).

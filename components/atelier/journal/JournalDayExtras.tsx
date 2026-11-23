@@ -30,6 +30,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
+import { AuthorBadges } from '@/components/shared/AuthorBadge'
 import {
   createJournalEntry,
   decideJournalLink,
@@ -841,8 +842,11 @@ export function JournalDayExtras({
           ) : null}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.changes.map((c) => (
-              <li key={c.oeuvre_id} className="t-mono-sm" style={{ fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
-                <WorkChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
+              <li key={c.oeuvre_id} className="t-mono-sm" style={{ fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <AuthorBadges authors={c.by} />
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <WorkChip id={c.oeuvre_id} href={workHref(c.oeuvre_id)} title={c.title} sub={c.fields.map((f) => versionFieldLabel(f, t)).join(', ')} />
+                </span>
               </li>
             ))}
           </ul>

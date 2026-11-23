@@ -10,6 +10,7 @@ import {
 } from '@/app/atelier/(portal)/audit/version-actions'
 import { OEUVRE_VERSION_FIELDS as SHOW_FIELDS, versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import { gateErrorKey } from '@/lib/work-save-error'
+import { AuthorBadge, authorTitle } from '@/components/shared/AuthorBadge'
 
 function diffSnapshots(prev: Record<string, unknown> | null, cur: Record<string, unknown>) {
   if (!prev) return SHOW_FIELDS.filter((k) => cur[k] != null).map((k) => [k, null, cur[k]] as const)
@@ -29,6 +30,8 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [open, setOpen] = useState(false)
   const [rows, setRows] = useState<OeuvreVersion[]>([])
+  // The work now: the « after » of the newest row's change (each row is the work BEFORE the change at its time).
+  const [current, setCurrent] = useState<Record<string, unknown> | null>(null)
   const [busy, setBusy] = useState(false)
   const [openId, setOpenId] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
@@ -42,8 +45,12 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
   useEffect(() => {
     if (!open || !isAdmin) return
     setBusy(true)
-    fetchOeuvreVersions(oeuvreId).then((data) => {
+    void Promise.all([
+      fetchOeuvreVersions(oeuvreId),
+      Promise.resolve(createClient().from('Oeuvres').select('*').eq('OeuvreID', oeuvreId).maybeSingle()).then((r) => r.data ?? null),
+    ]).then(([data, now]) => {
       setRows(data)
+      setCurrent(now as Record<string, unknown> | null)
       setBusy(false)
     })
   }, [open, oeuvreId, isAdmin])
@@ -67,8 +74,12 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
       }
       onRestored?.()
       // Reload list — restore creates a new snapshot
-      const fresh = await fetchOeuvreVersions(oeuvreId)
+      const [fresh, now] = await Promise.all([
+        fetchOeuvreVersions(oeuvreId),
+        Promise.resolve(createClient().from('Oeuvres').select('*').eq('OeuvreID', oeuvreId).maybeSingle()).then((r) => r.data ?? null),
+      ])
       setRows(fresh)
+      setCurrent(now as Record<string, unknown> | null)
     })
   }
 
@@ -90,9 +101,10 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
             <div style={{ opacity: 0.5, fontSize: 11 }}>{t('history_empty')}</div>
           )}
           {!busy && rows.map((v, i) => {
-            const prev = rows[i + 1]?.snapshot ?? null
+            // This row's own change (the one its time and author name): its snapshot → the next newer state.
+            const next = (i > 0 ? rows[i - 1].snapshot : current) ?? null
             const isOpen = openId === v.id
-            const changes = diffSnapshots(prev as Record<string, unknown> | null, v.snapshot)
+            const changes = next ? diffSnapshots(v.snapshot, next as Record<string, unknown>) : []
             return (
               <div key={v.id} style={{ borderBottom: '1px solid var(--bd2)', padding: '8px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -102,12 +114,13 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
                     style={{ minWidth: 24 }}
                     onClick={() => setOpenId(isOpen ? null : v.id)}
                   >{isOpen ? '▾' : '▸'}</button>
+                  {v.by ? <AuthorBadge author={v.by} /> : null}
                   <div style={{ flex: 1, fontSize: 11 }}>
                     <div style={{ color: 'var(--tx)' }}>
                       {new Date(v.changed_at).toLocaleString('fr-FR')}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--tx3)' }}>
-                      {v.source || '—'} · {changes.length} {t('history_changes_count')}
+                      {v.by ? authorTitle(v.by, t) : t('ca_not_recorded')} · {changes.length} {t('history_changes_count')}
                     </div>
                   </div>
                   <button
@@ -122,8 +135,8 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
                     <thead>
                       <tr>
                         <th style={{ width: 140 }}>{t('history_field')}</th>
-                        <th>{t('history_before')}</th>
-                        <th>{t('history_after')}</th>
+                        <th>{t('ca_before')}</th>
+                        <th>{t('ca_after')}</th>
                       </tr>
                     </thead>
                     <tbody>

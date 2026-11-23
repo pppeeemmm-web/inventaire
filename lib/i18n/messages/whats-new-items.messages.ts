@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.100 (2026-11-23) — work-change badges (admin: the Journal's change lines are admin-only).
+  wn_work_change_badges_t: { fr: 'Qui a modifié une œuvre', en: 'Who changed a work' },
+  wn_work_change_badges_d: {
+    fr: 'Dans le Journal (bureau et téléphone) et dans l’historique d’une œuvre, chaque modification porte les initiales de qui l’a faite, dans sa couleur (vous en doré). ⚙ = automatique (tâche planifiée, script, import) ; un ✓ dans le coin = une proposition que vous avez validée. Les modifications plus anciennes restent sans badge (« non enregistré »). Un enregistrement qui ne change rien n’ajoute plus de version.',
+    en: 'In the Journal (desk and phone) and in a work’s history, each change carries the initials of who made it, in their colour (yours in gold). ⚙ = automatic (scheduled task, script, import); a ✓ in the corner = a proposal you approved. Older changes have no badge (« not recorded »). A save that changes nothing no longer adds a version.',
+  },
   // 3.1.99 (2026-11-23) — phone menu: theme switch and the links of the old phone home.
   wn_phone_menu_theme_t: { fr: 'Mode nuit sur le téléphone', en: 'Night mode on the phone' },
   wn_phone_menu_theme_d: {

@@ -4,6 +4,7 @@
 // TipTap HTML fields are sanitized server-side before persistence (see lib/portfolio-html-sanitize.ts).
 // Uses service_role to bypass RLS on the document table.
 
+import { provenanceTimestamp } from '@/lib/oeuvre-provenance'
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -296,19 +297,32 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
 
     const sb = createServiceClient()
     // Only a work still in the studio can become "Disponible" (owner 2026-11-03): a sold, given,
-    // consigned, archived, destroyed or lost work keeps its status.
+    // consigned, archived, destroyed or lost work keeps its status. The database keeps it En production until
+    // it is catalogued with its photo validated (rule 5, docs/WORK_RULES.md, `oeuvre_status_follows_stage`):
+    // checked first, so a refusal writes nothing (not even the stamp below) and an already public work is left alone.
+    const { data: cur, error: readErr } = await sb.from('Oeuvres')
+      .select('*') // the typed select parser rejects the accented `Catalogué` column name
+      .eq('OeuvreID', oeuvreId)
+      .maybeSingle()
+    if (readErr) throw readErr
+    if (!cur || cur.deleted_at || cur.fate || ![1, 2].includes(cur.statusId as number)) {
+      return { error: 'Statut incompatible : seule une œuvre en production ou disponible peut être rendue publique ici.' }
+    }
+    if (!cur.Catalogué || cur.NeedsPhotograph) return { error: 'Pas encore prête : cataloguez l’œuvre et validez sa photo pour la rendre disponible.' }
+    if (cur.statusId === 2) return { ok: true }
     const { data: updated, error } = await sb.from('Oeuvres')
-      .update({ statusId: 2 })
+      // Who clicked (work-change badges 2026-11-23): the service key has no auth.uid(), the version trigger reads this stamp.
+      .update({ statusId: 2, edited_by: user.id, edited_at: provenanceTimestamp() })
       .eq('OeuvreID', oeuvreId)
       .is('deleted_at', null)
       .is('fate', null)
-      .in('statusId', [1, 2])
+      .eq('statusId', 1)
+      .eq('Catalogué', true)
+      .not('NeedsPhotograph', 'is', true)
       .select('OeuvreID, statusId')
     if (error) throw error
-    if (!updated?.length) return { error: 'Statut incompatible : seule une œuvre en production ou disponible peut être rendue publique ici.' }
-    // The database keeps it En production until it is catalogued with its photo validated (rule 5,
-    // docs/WORK_RULES.md): say so instead of reporting a success.
-    if (updated[0].statusId !== 2) return { error: 'Pas encore prête : cataloguez l’œuvre et validez sa photo pour la rendre disponible.' }
+    // Changed between the read and the write: say so instead of reporting a success.
+    if (!updated?.length || updated[0].statusId !== 2) return { error: 'Statut incompatible : seule une œuvre en production ou disponible peut être rendue publique ici.' }
     return { ok: true }
   } catch (e: any) {
     console.error('[setWorkPublic]', e)

@@ -2,12 +2,17 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Work-change badges (Pem « Yes, fresh session », answers in WorkChangeBadges §7)
+
+- Who changed a work: initials in the person's colour (Pem gold), ⚙ machine, « ? » unknown, ✓ for an approved proposal, on Journal change lines (desk stream, phone stream, phone « Aujourd'hui » fold, old day page) and per row in the work's history (« non enregistré » for older rows). One line per work per day, its authors first change first. Rule in the trigger (`oeuvre_version_author.sql`, proof a–h + member-spoof case on the Docker copy); portfolio « rendre public » (service key) stamps who clicked and now checks readiness first, so a refusal writes nothing. The history drawer now shows each row's own change (it showed the previous row's, one off) — columns « Avant (restaurable) / Après ». Flow-reviewer: broadcast routes and selection never wrote `Oeuvres` with the service key (trace corrected). Committed locally; SQL not live yet. What's new 3.1.100 (admin).
+
 ## 2026-11-23 — Phone ☰ menu: theme switch and the old phone home's links (Pem « GO, add all four »)
 
 - The ☀ / 🌙 switch sits beside FR / EN in the menu's account row (44 px); « Tout le reste » has « Suggestions 💡 » (Kaizen), « Œuvres en ligne » and « Site public » (Public) — lost when the Journal became the phone home. What's new 3.1.99.
 
 ## 2026-11-23 — Places phase B live: addresses become places (Pem « GO, option B », « GO, lockstep now »)
 
+- Closed with it: « contact merge rewrites owner, holder and buyer inside old work versions but not the holder's address » — `localisation_address_id` is retired; `merge_contacts` moves the `contact_place` links, and a restored old snapshot maps its address through `place_address_map`.
 - Landed on top of saveContact and pushed with its SQL in one step: `places_phase_b_switch.sql` (migration `places_phase_b_switch`) then `save_contact_fn.sql` v2 (migration `save_contact_v2_places`), push `1756de5` — `e45f620`. Live after: 1,176 works on a place, 0 with an address but no place, 40 links, 46 places, 0 flagged, version rows unchanged (11,713), `system_log` PLACES_PHASE_B; types regenerated. Handoff → [archive](./archive/HANDOFF_2026-11-23.md).
 
 ## 2026-11-23 — Push-blocking checks for the building principles (master plan §5 item 4)

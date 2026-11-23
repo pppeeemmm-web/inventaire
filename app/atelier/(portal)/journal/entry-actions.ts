@@ -12,6 +12,7 @@ import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-p
 import { latestCorrections } from '@/lib/journal-corrections'
 import { readJournalDays } from '@/lib/journal/day-read'
 import { isPlaceholderText } from '@/lib/journal/nothing-heard'
+import type { ChangeAuthor } from '@/lib/journal/authors'
 
 export type JournalEntryKind = 'spark' | 'trigger' | 'reflection' | 'note'
 const KINDS: readonly JournalEntryKind[] = ['spark', 'trigger', 'reflection', 'note']
@@ -68,7 +69,8 @@ export type VoiceNoteLinks = {
   condition_report_id: number | null
 }
 
-export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[] }
+/** `by`: who changed the work that day, first change first (empty = not recorded, before oeuvre_version_author.sql). */
+export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[]; by?: ChangeAuthor[] }
 /**
  * An idea's own change that day (Idées 2026-11-23, `concept_change`): planted, stage moved, text reworked, renamed,
  * grafted. One line per idea and kind of change per day (`count` saves of the text that day, the last stage).

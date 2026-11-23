@@ -13,6 +13,7 @@ import type { Tables } from '@/lib/types/supabase.generated'
 import { INSPIRATION_SQL_LIVE, type InspirationPhoto } from '@/lib/inspiration-photo'
 import { latestCorrectionRows, latestCorrections } from '@/lib/journal-corrections'
 import { isPlaceholderText } from '@/lib/journal/nothing-heard'
+import { addAuthor, authorIdsOf, authorOfRow, type AuthorContactRow, type AuthorRow, type ChangeAuthor } from '@/lib/journal/authors'
 import type {
   JournalDayChange,
   JournalDayCreation,
@@ -81,12 +82,12 @@ export async function readJournalDays(
     isAdmin && withFolds
       ? supabase
           .from('oeuvre_versions')
-          .select('oeuvre_id, changed_at')
+          .select('oeuvre_id, changed_at, changed_by')
           .gte('changed_at', win.from)
           .lt('changed_at', win.to)
           .order('changed_at', { ascending: true })
           .limit(2000)
-      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string }>, error: null }),
+      : Promise.resolve({ data: [] as Array<{ oeuvre_id: number; changed_at: string; changed_by: string | null }>, error: null }),
     withFolds
       ? supabase
           .from('kaizen_item')
@@ -196,6 +197,7 @@ export async function readJournalDays(
         ...inspirationRows.map((p) => p.author_id),
         ...remarkRows.map((n) => n.author_id),
         ...((ideaChangesRes.data ?? []) as IdeaChangeRow[]).map((r) => r.changed_by),
+        ...versions.map((v) => v.changed_by),
       ].filter((x): x is string => !!x),
     ),
   ]
@@ -238,7 +240,8 @@ export async function readJournalDays(
     changedIds.length
       ? supabase
           .from('oeuvre_versions')
-          .select('oeuvre_id, changed_at, snapshot')
+          // `*`: also `changed_via` / `approved_by` (oeuvre_version_author.sql) once live; before, the read still works.
+          .select('*')
           .in('oeuvre_id', changedIds)
           .gte('changed_at', win.from)
           .order('changed_at', { ascending: true })
@@ -306,14 +309,28 @@ export async function readJournalDays(
 
   // Field changes: each version row is the work BEFORE a save; the state after is the next version row
   // of that work, or the current row. Grouped by the Paris day of the save.
+  // Who made each change (badges, design 2026-11-23 WorkChangeBadges): one line per work per day, its authors
+  // in order of their first change that day.
+  type VersionRow = AuthorRow & { oeuvre_id: number; changed_at: string; snapshot: Record<string, unknown> }
+  const laterRows = (laterRes.data ?? []) as unknown as VersionRow[]
+  const authorContacts = new Map<string, AuthorContactRow>()
+  for (const c of (contactsRes.data ?? []) as AuthorContactRow[]) if (c.auth_user_id) authorContacts.set(c.auth_user_id, c)
+  {
+    const missing = authorIdsOf(laterRows).filter((id) => !authorContacts.has(id))
+    if (missing.length) {
+      const { data } = await supabase.from('Contact').select('*').in('auth_user_id', missing)
+      for (const c of (data ?? []) as AuthorContactRow[]) if (c.auth_user_id) authorContacts.set(c.auth_user_id, c)
+    }
+  }
   if (changedIds.length) {
-    const byWork = new Map<number, Array<{ changed_at: string; snapshot: Record<string, unknown> }>>()
-    for (const v of (laterRes.data ?? []) as Array<{ oeuvre_id: number; changed_at: string; snapshot: Record<string, unknown> }>) {
+    const byWork = new Map<number, VersionRow[]>()
+    for (const v of laterRows) {
       const list = byWork.get(v.oeuvre_id) ?? []
       list.push(v)
       byWork.set(v.oeuvre_id, list)
     }
     const perDay = new Map<string, Map<number, Set<string>>>()
+    const authorsPerDay = new Map<string, Map<number, ChangeAuthor[]>>()
     for (const oid of changedIds) {
       const list = byWork.get(oid) ?? []
       list.forEach((v, i) => {
@@ -327,10 +344,20 @@ export async function readJournalDays(
         fields.forEach((f) => s.add(f))
         m.set(oid, s)
         perDay.set(day, m)
+        const am = authorsPerDay.get(day) ?? new Map<number, ChangeAuthor[]>()
+        const by = am.get(oid) ?? []
+        addAuthor(by, authorOfRow(v, authorContacts))
+        am.set(oid, by)
+        authorsPerDay.set(day, am)
       })
     }
     for (const [day, m] of perDay) {
-      const changes: JournalDayChange[] = [...m].map(([oid, s]) => ({ oeuvre_id: oid, title: titles.get(oid) ?? null, fields: [...s] }))
+      const changes: JournalDayChange[] = [...m].map(([oid, s]) => ({
+        oeuvre_id: oid,
+        title: titles.get(oid) ?? null,
+        fields: [...s],
+        by: authorsPerDay.get(day)?.get(oid) ?? [],
+      }))
       dayOf(day).changes = changes
     }
   }
