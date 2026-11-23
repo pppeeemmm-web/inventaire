@@ -1,0 +1,34 @@
+{
+  "writes": {
+    "app/atelier/(portal)/fiscal/_components/Fiscal.tsx": 3,
+    "app/atelier/(portal)/production/_components/Production.tsx": 2,
+    "app/atelier/(portal)/stock-take/_components/StockTake.tsx": 1,
+    "app/atelier/(portal)/themes/_components/Themes.tsx": 12,
+    "components/atelier/SupplierHub.tsx": 4,
+    "components/atelier/supplies/SuppliesRestock.tsx": 1,
+    "components/atelier/SystemTab.tsx": 4,
+    "components/public/EnquiryClient.tsx": 1
+  },
+  "atelierRevalidate": {
+    "app/atelier/(portal)/audit/pending-actions.ts": 2,
+    "app/atelier/(portal)/audit/version-actions.ts": 1,
+    "app/atelier/(portal)/broadcast/actions.ts": 1,
+    "app/atelier/(portal)/concepts/actions.ts": 6,
+    "app/atelier/(portal)/constellation/actions.ts": 2,
+    "app/atelier/(portal)/contacts/actions.ts": 5,
+    "app/atelier/(portal)/kaizen/actions.ts": 6,
+    "app/atelier/(portal)/notes/actions.ts": 4,
+    "app/atelier/capture/actions.ts": 1,
+    "app/atelier/capture/card-actions.ts": 1,
+    "app/atelier/field/actions.ts": 1,
+    "app/atelier/sale/new/actions.ts": 1,
+    "app/atelier/selection/actions.ts": 8,
+    "app/atelier/session/actions.ts": 9,
+    "app/atelier/share-triage/actions.ts": 2,
+    "app/atelier/triage/actions.ts": 1,
+    "app/atelier/works/actions.ts": 11,
+    "app/atelier/works/condition-actions.ts": 5,
+    "app/atelier/works/production-actions.ts": 1,
+    "app/atelier/works/production-board-actions.ts": 1
+  }
+}

@@ -9,6 +9,7 @@
     "lint": "next lint",
     "i18n:check": "node scripts/i18n-check.mjs",
     "atelier:chrome:check": "node scripts/atelier-chrome-check.mjs",
+    "principles:check": "node scripts/check-no-browser-writes.mjs",
     "docs:routes:check": "node scripts/docs-routes-check.mjs",
     "checks:live": "node scripts/checks/live-checks.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
