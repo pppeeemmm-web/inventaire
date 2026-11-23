@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lieux — maquette</title>
+<style>
+:root{
+  --bg:#f4f2ee; --panel:#fff; --ink:#1d1c1a; --mute:#6f6b64; --faint:#a7a29a; --line:#e3dfd8; --line2:#d3cec5;
+  --acc:#2f5d50; --acc-ink:#fff; --soft:#eef3f1; --warn:#9a3b1f; --warn-bg:#fbeee8; --watch:#9a6a12; --watch-bg:#fbf3e0; --chip:#f0ede8; --plan:#faf8f4;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#161614; --panel:#201f1d; --ink:#ebe8e2; --mute:#a39e95; --faint:#6f6b64; --line:#33312d; --line2:#45423d;
+  --acc:#7fb8a6; --acc-ink:#0f1a17; --soft:#1f2b27; --warn:#f0a07f; --warn-bg:#3a2219; --watch:#e3c06d; --watch-bg:#352c17; --chip:#2b2a27; --plan:#1a1a18; }}
+:root[data-theme="dark"]{ --bg:#161614; --panel:#201f1d; --ink:#ebe8e2; --mute:#a39e95; --faint:#6f6b64; --line:#33312d; --line2:#45423d;
+  --acc:#7fb8a6; --acc-ink:#0f1a17; --soft:#1f2b27; --warn:#f0a07f; --warn-bg:#3a2219; --watch:#e3c06d; --watch-bg:#352c17; --chip:#2b2a27; --plan:#1a1a18; }
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input{font:inherit;color:inherit} button{cursor:pointer}
+.top{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top h1{font-size:15px;margin:0} .top .note{color:var(--mute);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 10px} .seg button.on{background:var(--ink);color:var(--bg)}
+.stage{display:flex;gap:20px;padding:16px;align-items:flex-start;flex-wrap:wrap}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.btn{border:1px solid var(--line2);background:transparent;border-radius:6px;padding:5px 10px}
+.btn.main{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn.quiet{border-color:transparent;color:var(--mute);padding:5px 6px}
+.search{width:100%;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);color:var(--ink)}
+.chip{display:inline-block;border:1px solid var(--line2);border-radius:20px;padding:1px 8px;font-size:11px;color:var(--mute);background:transparent}
+.warn{color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600}
+.watch{color:var(--watch);background:var(--watch-bg);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600}
+.mute{color:var(--mute)} .faint{color:var(--faint)} .small{font-size:12px}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.th{border-radius:4px;flex:none;background:var(--c,#b9a98c);position:relative;overflow:hidden}
+.th::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.25) 60%,transparent 70%)}
+.photo{border-radius:8px;background:repeating-linear-gradient(45deg,var(--chip) 0 10px,var(--bg) 10px 20px);display:flex;align-items:flex-end;padding:6px;color:var(--faint);font-size:11px;flex:none}
+
+/* the one path bar */
+.pathbar{display:flex;align-items:center;flex-wrap:wrap;gap:2px;font-size:12px}
+.pathbar button{border:0;background:transparent;padding:2px 4px;border-radius:4px;color:var(--mute)}
+.pathbar button:hover{background:var(--bg);color:var(--ink)}
+.pathbar .sep{color:var(--faint)}
+.pathbar .last{font:700 17px/1.1 ui-monospace,Consolas,monospace;color:var(--ink);border:1.5px solid var(--ink);padding:2px 6px}
+.pathbar.big .last{font-size:22px}
+
+/* ---------- desk ---------- */
+.desk{flex:1 1 900px;min-width:0;max-width:1240px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;grid-template-columns:220px minmax(0,1fr) 300px;height:780px}
+.col{min-width:0;overflow:auto;border-right:1px solid var(--line)} .col:last-child{border-right:0}
+.head{position:sticky;top:0;background:var(--panel);padding:8px 10px;border-bottom:1px solid var(--line);z-index:2}
+.tree button{display:flex;align-items:baseline;gap:6px;width:100%;text-align:left;border:0;background:transparent;padding:3px 8px;border-left:2px solid transparent}
+.tree button:hover{background:var(--bg)} .tree button.sel{background:var(--soft);border-left-color:var(--acc)}
+.tree .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree .cd{font-size:10px;color:var(--faint);font-family:ui-monospace,Consolas,monospace}
+.tree .ct{font-size:11px;color:var(--faint);min-width:14px;text-align:right}
+.tree .dot{width:6px;height:6px;border-radius:50%;flex:none;align-self:center}
+.treefoot{padding:8px 10px;color:var(--faint);font-size:11px;border-top:1px solid var(--line)}
+.ph{padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.ph .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.sec{padding:10px 16px;border-bottom:1px solid var(--line)}
+.sec h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px;font-weight:600;display:flex;gap:8px;align-items:center}
+.sec h3 .r{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
+.tabsd{display:flex;gap:2px;margin-top:8px}
+.tabsd button{border:0;border-bottom:2px solid transparent;background:transparent;padding:4px 10px;color:var(--mute)}
+.tabsd button.on{border-bottom-color:var(--acc);color:var(--ink);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.card{border:1px solid var(--line);border-radius:6px;padding:4px;background:transparent;text-align:left}
+.card:hover{border-color:var(--line2)} .card.sel{border-color:var(--acc);background:var(--soft)}
+.card .th{width:100%;height:60px} .card .n{font-size:11px;color:var(--mute);margin-top:3px}
+.card .t{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .off{font-size:10px;color:var(--watch)}
+.res{display:flex;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);width:100%;border-left:0;border-right:0;border-top:0;background:transparent;text-align:left}
+.res:hover{background:var(--bg)} .res .th{width:54px;height:44px} .res .mid{flex:1;min-width:0}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:3px 8px;font-size:12px} .kv>span:nth-child(odd){color:var(--mute)}
+.note{border-left:3px solid var(--line2);padding:4px 8px;margin:6px 0;font-size:12px}
+.note.w{border-left-color:var(--warn)} .note.a{border-left-color:var(--watch)}
+.photos{display:flex;gap:6px;overflow:auto}
+.nb{display:flex;align-items:center;gap:6px;font-size:12px}
+.nb .th{width:34px;height:28px}
+.label{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--line2);border-radius:6px;padding:8px;max-width:320px}
+.qr{width:56px;height:56px;flex:none;background:conic-gradient(from 90deg at 30% 30%,var(--ink) 25%,transparent 0) 0 0/14px 14px,repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 7px);border:3px solid var(--panel);outline:1px solid var(--ink)}
+.empty{color:var(--faint);padding:14px 16px}
+/* plan */
+svg.plan{width:100%;height:auto;background:var(--plan);border:1px solid var(--line);border-radius:6px;display:block}
+svg.plan .room{fill:none;stroke:var(--ink);stroke-width:1.2}
+svg.plan .sp{fill:var(--panel);stroke:var(--line2);stroke-width:.6;cursor:pointer}
+svg.plan .sp:hover{stroke:var(--acc)}
+svg.plan .sp.lit{fill:var(--soft);stroke:var(--acc);stroke-width:1.4}
+svg.plan .sp.high{fill:var(--warn-bg);stroke:var(--warn);stroke-dasharray:2 1.5}
+svg.plan .sp.watchr{fill:var(--watch-bg);stroke:var(--watch);stroke-dasharray:2 1.5}
+svg.plan text{font:3.2px system-ui,sans-serif;fill:var(--ink);pointer-events:none}
+svg.plan text.c{font:700 3px ui-monospace,Consolas,monospace;fill:var(--mute)}
+svg.plan .door{stroke:var(--panel);stroke-width:1.6}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:7px 14px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:90vw}
+.toast.on{opacity:1}
+.picker{position:fixed;inset:0;background:rgba(0,0,0,.3);display:none;align-items:center;justify-content:center;z-index:40}
+.picker.on{display:flex}
+.picker .box{background:var(--panel);border-radius:10px;width:min(380px,94vw);max-height:80vh;overflow:auto;border:1px solid var(--line2)}
+.picker .opt{display:flex;gap:8px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;padding:10px 12px;min-height:44px}
+.picker .opt:hover{background:var(--bg)}
+
+/* ---------- phone ---------- */
+.phonewrap{flex:0 0 auto}
+.phone{width:375px;height:667px;background:var(--panel);border:1px solid var(--line2);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.pbar{height:20px;font-size:11px;color:var(--mute);display:flex;justify-content:space-between;padding:3px 18px 0}
+.ptop{display:flex;align-items:center;gap:8px;padding:6px 12px 8px;border-bottom:1px solid var(--line)}
+.ptop .back{border:0;background:transparent;font-size:20px;min-width:44px;min-height:44px;margin:-8px 0 -8px -10px}
+.ptop h2{font-size:16px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbody{flex:1;overflow:auto;overflow-x:hidden}
+.pfoot{padding:8px 12px max(10px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.pfoot .btn{width:100%;min-height:44px;font-size:15px}
+.tabs{display:flex;border-top:1px solid var(--line)}
+.tabs button{flex:1;border:0;background:transparent;min-height:50px;font-size:11px;color:var(--mute)}
+.tabs button.on{color:var(--acc);font-weight:600}
+.pp{padding:10px 12px;border-bottom:1px solid var(--line)}
+.pp h4{margin:0 0 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.phone .pathbar button{min-height:32px}
+.tile{display:flex;align-items:center;gap:12px;width:calc(100% - 24px);margin:10px 12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:transparent;text-align:left;min-height:64px}
+.tile .ic{font-size:22px;width:30px;text-align:center} .tile small{display:block;color:var(--mute)}
+.pres{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);width:100%;border-left:0;border-right:0;border-top:0;background:transparent;text-align:left;min-height:64px;align-items:center}
+.pres .th{width:56px;height:56px} .pres .mid{flex:1;min-width:0}
+.pres .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cam{margin:12px;height:200px;border-radius:12px;background:#111;position:relative;display:flex;align-items:center;justify-content:center;color:#ddd;font-size:12px}
+.cam::before{content:"";position:absolute;width:140px;height:140px;border:2px solid #7fb8a6;border-radius:10px}
+.scanlist{padding:0 12px} .scanlist button{min-height:44px;margin:4px 4px 0 0}
+.log{padding:6px 12px} .log div{padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.refused{color:var(--warn)}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pgrid button{border:0;background:transparent;padding:0;text-align:left;font-size:11px;color:var(--mute)}
+.pgrid .th{width:100%;aspect-ratio:1}
+@media (max-width:700px){ .stage{padding:8px} .desk{grid-template-columns:1fr;height:auto} .col{border-right:0;border-bottom:1px solid var(--line);max-height:480px} .phone{width:100%;max-width:375px} }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Lieux et rangements — maquette v2</h1>
+  <span class="note">Données inventées. v2 : une barre de chemin, plan, photos, conservation, suggestions de rangement, téléphone = mêmes infos.</span>
+  <span style="flex:1"></span>
+  <div class="seg" id="theme"><button data-t="">Auto</button><button data-t="light">Clair</button><button data-t="dark">Sombre</button></div>
+</div>
+
+<div class="stage">
+  <div style="flex:1 1 900px;min-width:0;max-width:1240px">
+    <p class="lbl">Bureau — Lieux</p>
+    <div class="desk" id="desk">
+      <div class="col">
+        <div class="head"><input class="search" id="dq" placeholder="Code, nom, ou taille : 5x7"></div>
+        <div class="tree" id="tree"></div>
+        <div class="treefoot">Un lieu n'est jamais supprimé : « Archiver ».<br><span style="color:var(--warn)">●</span> à risque · <span style="color:var(--watch)">●</span> à surveiller</div>
+      </div>
+      <div class="col" id="center"></div>
+      <div class="col" id="right"></div>
+    </div>
+  </div>
+
+  <div class="phonewrap">
+    <p class="lbl">iPhone SE — 375 px</p>
+    <div class="phone" id="phone">
+      <div class="pbar"><span>9:41</span><span>PEM Hub</span></div>
+      <div class="ptop"><button class="back" id="pback" aria-label="Retour">‹</button><h2 id="ptitle">Accueil</h2></div>
+      <div class="pbody" id="pbody"></div>
+      <div class="pfoot" id="pfoot"></div>
+      <div class="tabs" id="ptabs"><button data-s="home" class="on">Accueil</button><button data-s="search">Rechercher</button><button data-s="scan">Scanner</button></div>
+    </div>
+  </div>
+</div>
+<div class="picker" id="picker"><div class="box" id="pickbox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- invented data ---------- */
+/* r = rectangle in the parent's plan (0..100 × 0..60) */
+const P = [
+  {id:'prin', code:'PR', name:'Principal', kind:'adresse', parent:null, sub:'13001 Marseille', people:[['Pem','habite ici · « Principal »']],
+   cons:'Maison ancienne. Pièces de vie chauffées l’hiver, 18–21 °C.', photos:3, plan:true},
+  {id:'atel', code:'AT', name:'Atelier', kind:'atelier', parent:'prin', r:[4,4,58,52], sub:'pièce de la maison · complément : rez-de-chaussée sur cour', people:[['Pem','travaille ici · « Atelier »']],
+   cons:'Lumière du nord par la verrière, pas de soleil direct. Été jusqu’à 29 °C sous la verrière. Poussière de pastel : boîtes fermées.', photos:4, plan:true},
+  {id:'mez', code:'M', name:'Mezzanine', kind:'zone', parent:'atel', r:[4,4,44,22], cons:'Sèche, sombre. Bon pour les papiers.', photos:2, plan:true},
+  {id:'m2', code:'M-2', name:'Meuble à plans 2', kind:'meuble', parent:'mez', r:[6,6,40,14], cons:'Tiroirs plats, papier neutre au fond.', photos:1, plan:true},
+  {id:'m24', code:'M-2-4', name:'Tiroir 4', kind:'boîte', parent:'m2', r:[4,4,44,24], fragile:true, keeps:{p:'2019–2021',a:1230,b:1260,max:30}, photos:1},
+  {id:'m25', code:'M-2-5', name:'Tiroir 5', kind:'boîte', parent:'m2', r:[52,4,44,24], keeps:{p:'2015–2018',a:1080,b:1200,max:30}, photos:1},
+  {id:'za', code:'A', name:'Zone A — sous la verrière', kind:'zone', parent:'atel', r:[52,4,44,30], risk:'watch', cons:'Chaude l’été. Pas de pastels non fixés ici.', photos:2, plan:true},
+  {id:'a3', code:'A-3', name:'Rack 3', kind:'meuble', parent:'za', r:[8,8,60,40], photos:1, plan:true},
+  {id:'a312', code:'A-3-12', name:'Carton 12', kind:'boîte', parent:'a3', r:[6,6,40,40], keeps:{p:'2022–2024',a:1300,b:1350}, photos:1},
+  {id:'a313', code:'A-3-13', name:'Carton 13', kind:'boîte', parent:'a3', r:[54,6,40,40], photos:1},
+  {id:'ce', code:'AT-R1', name:'Coin chauffe-eau', kind:'zone', parent:'atel', r:[4,34,26,18], risk:'high', cons:'Fuite en 2024 (réparée). Ne rien ranger au sol.', photos:2},
+  {id:'gren', code:'G', name:'Grenier', kind:'pièce', parent:'prin', r:[66,4,30,52], risk:'watch', cons:'Sous la toiture : 8 °C l’hiver, 35 °C l’été. Rouleaux seulement, protégés.', photos:3, plan:true},
+  {id:'gr1', code:'G-R1', name:'Rouleau 1', kind:'boîte', parent:'gren', r:[10,10,80,20], photos:1},
+  {id:'lum', code:'', name:'Galerie Lumen', kind:'salle / galerie', parent:null, sub:'69002 Lyon', people:[['Inès DUVAL','travaille ici'],['Galerie Lumen','œuvres gardées ici']], cons:'Réserve climatisée (dit la galerie).', photos:1},
+];
+/* access steps from the parent (place.access); codes kept apart, admin-only */
+const ACCESS = {
+  prin:[['porte-code','Porte de l’immeuble, rue — porte à code','4827B'],['ascenseur','Ascenseur au 3e (ou escalier B, 62 marches)'],['grille','Grille du palier — pousser, elle n’est pas fermée'],['porte-cle','Porte de l’appartement — clé bleue, trousseau atelier'],['couloir','Couloir : deuxième porte à gauche']],
+  atel:[['piece','Porte vitrée au fond du salon — l’Atelier (9 m²)']],
+  mez:[['escalier','Échelle de meunier à droite de la porte']],
+  m2:[['meuble','Le meuble à plans contre le mur du fond, le 2e']],
+  m24:[['boite','4e tiroir en partant du haut']],
+  gren:[['escalier','Trappe du couloir, échelle pliante (crochet derrière la porte)']],
+};
+const route = id => pathOf(id).flatMap(p=>(ACCESS[p.id]||[]).map(s=>({p,s})));
+const NOTES = { // dated remarks on places (note_line target_kind place)
+  atel:[['2026-08-12','a','31 °C sous la verrière à 16 h. Stores baissés.']],
+  ce:[['2024-03-02','w','ALERTE · avant : fuite du chauffe-eau, 2 cartons mouillés au sol — déplacés, rapports d’état ouverts sur #1077, #1080. → après (2024-04-15, fermée) : joint changé, sol sec, photo.'],['2026-11-02','w','ALERTE ouverte · avant : auréole au plafond au-dessus du coin. Après : —']],
+  gren:[['2025-12-20','a','Condensation sur la lucarne.']],
+};
+const hue = n => `hsl(${(n*47)%360} 30% 62%)`;
+let W = [
+  [1234,'Petit nu bleu',13,18,'m24',2020],[1241,'Étude de mer',12.5,17.5,'m24',2021],[1102,'Carnet ouvert',13,18,'a312',2017],
+  [1250,'Fenêtre, matin',20,25,'m24',2021],[1251,'Fenêtre, soir',20,25,'m24',2021],[1310,'Ronces',30,40,'a312',2022],
+  [1311,'Ronces II',30,40,'a312',2022],[1077,'Le port',50,65,'a313',2014],[1080,'Calanque',46,55,'a313',2014],
+  [990,'Grand rouleau',150,300,'gr1',2012],[1402,'Sans titre (vert)',18,13,null,2025],[1403,'Sans titre (ocre)',24,30,null,2025],
+  [1238,'Petit nu rouge',13,18,null,2020],
+  [1404,'Tête',40,30,'lum',2023],[1405,'Tête II',40,30,'lum',2023],[1406,'Torse',55,46,'lum',2024],
+].map(([n,t,h,w,pl,y])=>({n,t,h,w,pl,y}));
+
+const byId = id => P.find(p=>p.id===id);
+const kids = id => P.filter(p=>p.parent===id);
+const pathOf = id => { const out=[]; let p=byId(id); while(p){out.unshift(p); p=byId(p.parent);} return out; };
+const inTree = (wid,rid) => { let p=byId(wid); while(p){ if(p.id===rid) return true; p=byId(p.parent);} return false; };
+const worksIn = id => W.filter(w=>w.pl && inTree(w.pl,id));
+const codeOf = id => { const p=byId(id); return p ? (p.code||p.name) : ''; };
+const riskOn = id => id ? pathOf(id).filter(p=>p.risk) : [];
+const fragile = id => id && pathOf(id).some(p=>p.fragile);
+function offRule(w){ const p=byId(w.pl); if(!p||!p.keeps) return ''; const k=p.keeps;
+  if(k.a && (w.n<k.a||w.n>k.b)) return `hors règle : n° ${k.a}–${k.b}`; if(k.max && Math.max(w.h,w.w)>k.max) return `hors règle : ≤ ${k.max} cm`; return ''; }
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* one path bar, used everywhere */
+function pathBar(id, big){
+  if(!id) return '<span class="chip">sans emplacement</span>';
+  const ps=pathOf(id);
+  return `<div class="pathbar ${big?'big':''}">${ps.map((p,i)=>i<ps.length-1
+    ? `<button data-p="${p.id}">${p.code&&p.parent?p.code:p.name}</button><span class="sep">›</span>`
+    : `<button data-p="${p.id}" class="${p.code?'last':''}" style="${p.code?'':'font-weight:600;color:var(--ink)'}">${p.code||p.name}</button>`).join('')}</div>`;
+}
+function badges(id){
+  return (fragile(id)?'<span class="warn">FRAGILE — papier de riz</span> ':'') +
+    riskOn(id).map(p=>`<span class="${p.risk==='high'?'warn':'watch'}">${p.risk==='high'?'lieu à risque':'à surveiller'} : ${p.name}</span>`).join(' ');
+}
+
+/* floor plan: draws the children of `pid`; lights `lit` (or its ancestor among them) */
+function planSvg(pid, lit){
+  const ch=kids(pid).filter(c=>c.r); if(!ch.length) return '';
+  const litAnc = lit ? pathOf(lit).find(p=>p.parent===pid) : null;
+  return `<svg class="plan" viewBox="0 0 100 60"><rect class="room" x="1" y="1" width="98" height="58"/><line class="door" x1="40" y1="59" x2="52" y2="59"/>
+   ${ch.map(c=>{const [x,y,w,h]=c.r; const cls=['sp', c.risk==='high'?'high':c.risk==='watch'?'watchr':'', litAnc&&litAnc.id===c.id?'lit':''].join(' ');
+     return `<g data-p="${c.id}"><rect class="${cls}" x="${x}" y="${y}" width="${w}" height="${h}" rx="1"/><text x="${x+1.5}" y="${y+4.5}">${esc(c.name)}</text><text class="c" x="${x+1.5}" y="${y+h-1.5}">${c.code} · ${worksIn(c.id).length}</text></g>`;}).join('')}</svg>`;
+}
+/* the plan that shows where `id` is: the deepest ancestor having a plan, one level up */
+function planFor(id){ const ps=pathOf(id); for(let i=ps.length-2;i>=0;i--){ if(ps[i].plan) return {pid:ps[i].id, svg:planSvg(ps[i].id,id)}; } return null; }
+function neighbours(w){ if(!w.pl) return []; const ws=W.filter(x=>x.pl===w.pl).sort((a,b)=>a.n-b.n); const i=ws.indexOf(w); return [ws[i-1],ws[i+1]]; }
+function notesHtml(id){ return (NOTES[id]||[]).map(([d,k,t])=>`<div class="note ${k}"><span class="mute">${d}</span> · ${esc(t)}</div>`).join(''); }
+function photosHtml(n,h){ return `<div class="photos">${Array.from({length:n},(_,i)=>`<div class="photo" style="width:${h*1.3}px;height:${h}px">photo ${i+1}</div>`).join('')}</div>`; }
+
+/* storage hint: propose boxes for a work */
+function propose(w){
+  const boxes=P.filter(p=>p.kind==='boîte' && !inTree(p.id,'lum'));
+  const score=b=>{ const k=b.keeps||{}; let s=0; if(k.max && Math.max(w.h,w.w)<=k.max) s+=3; if(k.max && Math.max(w.h,w.w)>k.max) s-=4; if(k.a && w.n>=k.a && w.n<=k.b) s+=2; if(riskOn(b.id).some(r=>r.risk==='high')) s-=5; return s; };
+  return boxes.map(b=>({b,s:score(b)})).sort((x,y)=>y.s-x.s);
+}
+
+/* ---------- desk ---------- */
+let sel='m24', selWork=1234, mode='place', dq='', tab='contenu';
+function treeRows(id,depth){
+  return kids(id).map(p=>{ const n=worksIn(p.id).length;
+    const dot=p.risk?`<span class="dot" style="background:var(--${p.risk==='high'?'warn':'watch'})"></span>`:'';
+    return `<button data-p="${p.id}" class="${sel===p.id&&mode==='place'?'sel':''}" style="padding-left:${8+depth*12}px">${dot}<span class="nm">${p.name}</span><span class="cd">${p.code}</span><span class="ct">${n||''}</span></button>`+treeRows(p.id,depth+1);
+  }).join('');
+}
+function renderTree(){
+  document.getElementById('tree').innerHTML = treeRows(null,0) +
+    `<button data-p="__none" class="${sel==='__none'&&mode==='place'?'sel':''}"><span class="nm">Sans emplacement</span><span class="ct">${W.filter(w=>!w.pl).length}</span></button>`;
+}
+function workCard(w){ const o=offRule(w);
+  return `<button class="card ${selWork===w.n?'sel':''}" data-w="${w.n}"><div class="th" style="--c:${hue(w.n)}"></div><div class="n">#${w.n} · ${w.h}×${w.w}</div><div class="t">${w.t}</div>${o?`<div class="off">${o}</div>`:''}</button>`; }
+function sizeMatch(q){
+  const m=q.replace(',', '.').match(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)/i); if(!m) return null; const a=+m[1], b=+m[2];
+  const near=(w,x,y,t)=>(Math.abs(w.h-x)<=t&&Math.abs(w.w-y)<=t)||(Math.abs(w.h-y)<=t&&Math.abs(w.w-x)<=t);
+  return {a,b,list:W.filter(w=>near(w,a*2.54,b*2.54,1.27))};
+}
+function renderCenter(){
+  const c=document.getElementById('center');
+  if(mode==='search'){
+    const r=sizeMatch(dq); const list=r?r.list:W.filter(w=>(`#${w.n} ${w.t} ${codeOf(w.pl)}`).toLowerCase().includes(dq.toLowerCase()));
+    c.innerHTML=`<div class="ph"><div class="mute small">Recherche</div><b style="font-size:17px">« ${esc(dq)} »</b>
+      <div class="mute small">${r?`${r.a} × ${r.b} pouces = ${(r.a*2.54).toFixed(1)} × ${(r.b*2.54).toFixed(1)} cm (± ½ pouce) · live : 356 œuvres sans taille, comptées à part · `:''}${list.length} résultat(s)</div></div>`+
+      (list.map(w=>`<button class="res" data-w="${w.n}"><div class="th" style="--c:${hue(w.n)}"></div><div class="mid"><div>#${w.n} — ${w.t} <span class="mute small">${w.h}×${w.w} cm · ${w.y}</span></div>${pathBar(w.pl)}</div></button>`).join('')||'<div class="empty">Rien.</div>');
+    return;
+  }
+  if(sel==='__none'){ const ws=W.filter(w=>!w.pl);
+    c.innerHTML=`<div class="ph"><b style="font-size:17px">Sans emplacement</b> <span class="chip">${ws.length}</span><div class="mute small">Live : 1 171 au départ si rien n’est repris — la migration en place la plupart grâce à l’ancien texte « Atelier — … ».</div></div><div class="sec"><div class="grid">${ws.map(workCard).join('')}</div></div>`; return; }
+  const p=byId(sel), ws=worksIn(sel), direct=W.filter(w=>w.pl===sel).sort((a,b)=>a.n-b.n), ch=kids(sel);
+  const fp=planFor(sel), own=p.plan?planSvg(sel,null):'';
+  c.innerHTML=`<div class="ph">${pathBar(sel,true)}
+     <div class="row"><b style="font-size:16px">${p.name}</b><span class="mute small">${p.kind} · ${ws.length} œuvre(s)${p.sub?' · '+p.sub:''}</span></div>
+     <div class="row">${badges(sel)}${p.keeps?`<span class="chip">pour : ${p.keeps.p} · n° ${p.keeps.a}–${p.keeps.b}${p.keeps.max?' · ≤ '+p.keeps.max+' cm':''}</span>`:''}</div>
+     <div class="row"><button class="btn main" data-act="range">Ranger ici…</button>${p.code?'<button class="btn" data-toast="Étiquette de boîte en PDF">Étiquette</button><button class="btn" data-toast="Feuille de contenu en PDF (vignettes, numéros triés)">Feuille de contenu</button>':''}
+       <button class="btn quiet" data-toast="Nouveau lieu dans « ${p.name} » — code proposé ${p.code}-${ch.length+1}">+ Lieu dedans</button><button class="btn quiet" data-toast="${ws.length?`Refusé : ${ws.length} œuvre(s) encore dedans`:'Archivé — rappelable'}">Archiver</button></div>
+     <div class="tabsd">${['contenu','plan','acces','conservation','photos'].map(t=>`<button data-tab="${t}" class="${tab===t?'on':''}">${{contenu:'Contenu',plan:'Plan',acces:'Accès',conservation:'Conservation',photos:'Photos ('+(p.photos||0)+')'}[t]}</button>`).join('')}</div></div>`;
+  let body='';
+  if(tab==='contenu'){
+    if(p.people) body+=`<div class="sec"><h3>Personnes reliées</h3>${p.people.map(([n,r])=>`<div class="nb" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:3px 0"><span>${n}</span><span class="mute">${r}</span></div>`).join('')}</div>`;
+    if(ch.length) body+=`<div class="sec"><h3>Dedans</h3>${ch.map(x=>`<button class="res" data-p="${x.id}" style="padding:5px 0"><div class="mid">${x.name} ${x.risk?`<span class="${x.risk==='high'?'warn':'watch'}">${x.risk==='high'?'risque':'surveiller'}</span>`:''}${x.fragile?' <span class="warn">FRAGILE</span>':''}</div><span class="mute small">${worksIn(x.id).length} œuvres</span> <span class="mono small faint">${x.code}</span></button>`).join('')}</div>`;
+    body+=`<div class="sec"><h3>${ch.length?'Rangées directement ici':'Œuvres'} <span class="r mute">triées par numéro</span></h3>${direct.length?`<div class="grid">${direct.map(workCard).join('')}</div>`:'<div class="mute">Aucune.</div>'}</div>`;
+    if(p.code&&p.kind==='boîte') body+=`<div class="sec"><h3>Étiquette</h3><div class="label"><div class="qr"></div><div><div class="mono" style="font-size:24px;font-weight:700">${p.code}</div><div>${p.name}</div>${p.fragile?'<span class="warn">FRAGILE</span>':''}<div class="mute small">thepemworkshop.com/atelier/p/${p.code}</div></div></div></div>`;
+  } else if(tab==='plan'){
+    body+=`<div class="sec"><h3>${own?'Plan de '+p.name:'Où dans '+(fp?byId(fp.pid).name:'—')}<span class="r"><button class="btn quiet" data-toast="Ouvre l’éditeur de plan des Expositions sur ce lieu">Dessiner / modifier</button></span></h3>${own||fp?.svg||'<div class="mute">Pas de plan au-dessus.</div>'}
+      <div class="mute small" style="margin-top:6px">Cliquer une zone pour y entrer. Rouge : à risque · ocre : à surveiller. Même éditeur que les plans d’exposition.</div></div>`;
+  } else if(tab==='acces'){
+    const own=ACCESS[sel]||[], full=route(sel);
+    body+=`<div class="sec"><h3>Pour arriver ici depuis « ${p.parent?byId(p.parent).name:'la rue'} » <span class="r"><button class="btn quiet" data-toast="Ajouter une étape : phrase, type (porte à code, clé, grille, escalier, ascenseur, couloir), photo, nom de la clé">+ Étape</button></span></h3>
+      ${own.length?own.map(([k,t,c],i)=>`<div class="nb" style="padding:4px 0;border-bottom:1px dashed var(--line)"><b>${i+1}</b><div class="photo" style="width:44px;height:34px"></div><span style="flex:1">${esc(t)}</span>${c?'<span class="chip">code — écrit sur la fiche, qui le connaît est noté</span>':''}</div>`).join(''):'<div class="mute">Aucune étape propre à ce lieu.</div>'}</div>
+      <div class="sec"><h3>Trajet complet depuis la rue <span class="r mute">${full.length} étapes</span></h3>${full.map(({p:x,s:[k,t,c]},i)=>`<div class="small" style="padding:2px 0"><b>${i+1}.</b> ${esc(t)}${c?' — <i>code sur la fiche</i>':''} <span class="faint">(${x.name})</span></div>`).join('')}</div>`;
+  } else if(tab==='conservation'){
+    const sub=[p,...P.filter(x=>x.id!==p.id&&inTree(x.id,sel)&&x.cons)];
+    body+=`<div class="sec"><h3>État de conservation <span class="r"><button class="btn quiet" data-toast="Remarque datée sur le lieu (avec photo) — aussi sur la page du jour du Journal">+ Remarque</button></span></h3>
+      ${sub.map(x=>`<div style="margin-bottom:10px"><b>${x.name}</b> ${x.risk?`<span class="${x.risk==='high'?'warn':'watch'}">${x.risk==='high'?'lieu à risque':'à surveiller'}</span>`:''}<div class="small">${esc(x.cons||'—')}</div>${notesHtml(x.id)}</div>`).join('')}
+      <div class="mute small">Œuvres dans des lieux à risque : <b>${W.filter(w=>riskOn(w.pl).length&&inTree(w.pl,sel)).length}</b> · dernier contrôle : 2025-03-10</div></div>`;
+  } else {
+    body+=`<div class="sec"><h3>Photos du lieu <span class="r"><button class="btn quiet" data-toast="Ajout au Coffre, rattaché à ce lieu">+ Photo</button></span></h3>${photosHtml(p.photos||0,90)}<div class="mute small" style="margin-top:6px">La première est la photo de couverture (étiquette, recherche, téléphone).</div></div>`;
+  }
+  c.insertAdjacentHTML('beforeend',body);
+}
+function workDetail(w, phone){
+  const nb=neighbours(w), fp=w.pl?planFor(w.pl):null, o=offRule(w), place=w.pl?byId(w.pl):null;
+  const sec=(t,h)=>phone?`<div class="pp"><h4>${t}</h4>${h}</div>`:`<div class="sec"><h3>${t}</h3>${h}</div>`;
+  return sec('Où', `${pathBar(w.pl,true)}<div style="margin-top:6px">${badges(w.pl)}${o?` <span class="watch">${o}</span>`:''}</div>
+      ${place?`<div style="display:flex;gap:8px;margin-top:8px">${photosHtml(1,phone?70:60)}<div class="small mute">${esc((pathOf(w.pl).reverse().find(x=>x.cons)||{}).cons||'')}</div></div>`:''}
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${phone?'':`<button class="btn main" data-act="move">Changer d'emplacement</button>`}${place?`<button class="btn" data-fetch="${w.n}">Fiche pour aller la chercher</button>`:''}</div>`) +
+    (place?sec('Dans la boîte, par numéro', `<div style="display:flex;justify-content:space-between;gap:8px">${nb.map((x,i)=>x?`<button class="nb btn quiet" data-w="${x.n}"><div class="th" style="--c:${hue(x.n)}"></div>${i?'':'← '}#${x.n}${i?' →':''}</button>`:`<span class="faint small">${i?'dernière':'première'}</span>`).join(`<b class="mono">#${w.n}</b>`)}</div>`):'') +
+    (fp?sec('Sur le plan', fp.svg):'') +
+    sec('Fiche', `<div class="kv"><span>Taille</span><span>${w.h} × ${w.w} cm (${(w.h/2.54).toFixed(1)} × ${(w.w/2.54).toFixed(1)} po)</span><span>Année</span><span>${w.y}</span><span>Détenteur</span><span>${w.pl&&inTree(w.pl,'lum')?'Galerie Lumen':'Pem'}</span><span>Adresse</span><span>${w.pl?pathOf(w.pl)[0].name:'—'}</span></div>`) +
+    sec('Historique', `<div class="small mute">2026-11-23 · rangée dans ${w.pl?codeOf(w.pl):'—'} (était : Atelier, sans emplacement)<br>2026-02-01 · migration : « Atelier — Marseille » → Atelier</div>`);
+}
+function renderRight(){
+  const r=document.getElementById('right'), w=W.find(x=>x.n===selWork);
+  r.innerHTML = w ? `<div class="head"><b>#${w.n}</b> — ${w.t}</div><div class="sec"><div class="th" style="--c:${hue(w.n)};height:130px;width:100%"></div></div>${workDetail(w,false)}`
+                  : '<div class="head"><b>Œuvre</b></div><div class="empty">Cliquer une vignette.</div>';
+}
+function renderDesk(){ renderTree(); renderCenter(); renderRight(); }
+
+/* picker with storage hints */
+function openPicker(w, onPick){
+  const list=propose(w), best=list[0];
+  document.getElementById('pickbox').innerHTML=`<div class="pp"><b>Ranger #${w.n} — ${w.t}</b><div class="mute small">${w.y} · ${w.h}×${w.w} cm · suggestions, jamais imposées</div></div>`+
+    list.map(({b,s},i)=>`<button class="opt" data-pick="${b.id}"><span class="mono" style="font-weight:700;min-width:58px">${b.code}</span><span style="flex:1">${b.name}<br><span class="mute small">${b.keeps?`pour ${b.keeps.p} · n° ${b.keeps.a}–${b.keeps.b}`:'sans règle'}</span></span>${i===0&&s>0?'<span class="chip" style="border-color:var(--acc);color:var(--acc)">proposé</span>':''}${riskOn(b.id).some(r=>r.risk==='high')?'<span class="warn">risque</span>':''}</button>`).join('')+
+    `<div class="pp"><button class="btn" data-pick="">Annuler</button></div>`;
+  const pk=document.getElementById('picker'); pk.classList.add('on');
+  pk.onclick=e=>{ const t=e.target.closest('[data-pick]'); if(!t && e.target!==pk) return; pk.classList.remove('on'); if(t&&t.dataset.pick) onPick(byId(t.dataset.pick)); };
+}
+function move(w,p){
+  const was=w.pl?codeOf(w.pl):'sans emplacement'; w.pl=p.id;
+  const risk=riskOn(p.id).some(r=>r.risk==='high')?' — lieu à risque !':''; const o=offRule(w);
+  return `#${w.n} → ${p.code} (était : ${was})${o?' · '+o:''}${risk}`;
+}
+
+document.getElementById('desk').addEventListener('click',e=>{
+  const t=e.target.closest('[data-p],[data-w],[data-toast],[data-act],[data-tab]'); if(!t) return;
+  if(t.dataset.toast){ toast(t.dataset.toast); return; }
+  if(t.dataset.tab){ tab=t.dataset.tab; renderCenter(); return; }
+  if(t.dataset.act==='range'){ const w=W.find(x=>!x.pl); if(!w){toast('Plus rien sans emplacement');return;} toast(move(w,byId(sel))); refresh(); return; }
+  if(t.dataset.act==='move'){ const w=W.find(x=>x.n===selWork); openPicker(w,p=>{toast(move(w,p)); refresh();}); return; }
+  if(t.dataset.p){ sel=t.dataset.p; mode='place'; document.getElementById('dq').value=''; renderDesk(); return; }
+  if(t.dataset.w){ selWork=+t.dataset.w; if(mode==='place'&&sel!=='__none'){const w=W.find(x=>x.n===selWork);} renderCenter(); renderRight(); }
+});
+document.getElementById('dq').addEventListener('input',e=>{ dq=e.target.value.trim(); mode=dq?'search':'place'; renderDesk(); });
+
+/* ---------- phone ---------- */
+let ps='home', pstack=[], pq='', pbox=null, pwork=null, pplace=null, session=null;
+function go(s){ pstack.push([ps,pwork,pplace,pbox]); ps=s; renderPhone(); }
+function presRow(w){ return `<button class="pres" data-pw="${w.n}"><div class="th" style="--c:${hue(w.n)}"></div><div class="mid"><div class="t">#${w.n} — ${w.t}</div><div class="mute small">${w.h}×${w.w} cm · ${w.y}</div><div style="margin-top:3px">${w.pl?`<span class="mono" style="font-weight:700;font-size:17px;border:1.5px solid var(--ink);padding:0 5px">${codeOf(w.pl)}</span> <span class="mute small">${pathOf(w.pl).slice(0,-1).map(x=>x.code&&x.parent?x.code:x.name).join(' › ')}</span>`:'<span class="chip">sans emplacement</span>'}</div></div></button>`; }
+function renderPhone(){
+  const b=document.getElementById('pbody'), f=document.getElementById('pfoot'), h=document.getElementById('ptitle');
+  document.querySelectorAll('#ptabs button').forEach(x=>x.classList.toggle('on', x.dataset.s===(['box','work','session','place'].includes(ps)?'scan':ps)));
+  document.getElementById('pback').style.visibility = pstack.length?'visible':'hidden';
+  f.innerHTML=''; f.style.display='none';
+  if(ps==='home'){ h.textContent='Accueil';
+    b.innerHTML=`<button class="tile" data-go="search"><span class="ic">⌕</span><span><b>Trouver une œuvre</b><small>numéro, titre, code ou taille « 5x7 » (pouces)</small></span></button>
+     <button class="tile" data-go="scan"><span class="ic">▣</span><span><b>Scanner</b><small>une boîte ou l'étiquette d'une œuvre</small></span></button>
+     <button class="tile" data-pp="prin"><span class="ic">⌂</span><span><b>Lieux</b><small>plan, conservation, photos</small></span></button>
+     <div class="pp mute small" style="border:0">Sans emplacement : <b>${W.filter(w=>!w.pl).length}</b></div>`;
+  } else if(ps==='search'){ h.textContent='Rechercher';
+    const r=pq?sizeMatch(pq):null; const list=!pq?[]:r?r.list:W.filter(w=>(`#${w.n} ${w.t} ${codeOf(w.pl)}`).toLowerCase().includes(pq.toLowerCase()));
+    b.innerHTML=`<div style="padding:10px 12px"><input class="search" id="pq" value="${esc(pq)}" placeholder="5x7, #1234, M-2-4…" style="min-height:44px;font-size:16px">
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="chip" data-pq="5x7">5x7</button><button class="chip" data-pq="M-2-4">M-2-4</button><button class="chip" data-pq="Ronces">Ronces</button></div>
+      ${r?`<div class="mute small" style="margin-top:6px">${r.a} × ${r.b} po = ${(r.a*2.54).toFixed(1)} × ${(r.b*2.54).toFixed(1)} cm · ${list.length} œuvre(s)</div>`:''}</div>${list.map(presRow).join('')}`;
+    const i=document.getElementById('pq'); i.oninput=()=>{pq=i.value;renderPhone();const j=document.getElementById('pq');j.focus();j.setSelectionRange(j.value.length,j.value.length);};
+  } else if(ps==='scan'){ h.textContent='Scanner';
+    b.innerHTML=`<div class="cam">viseur caméra — maquette</div><div class="mute small" style="padding:0 12px">Simuler un scan :</div>
+      <div class="scanlist">${P.filter(p=>p.kind==='boîte').map(p=>`<button class="btn" data-scanbox="${p.id}">boîte ${p.code}</button>`).join('')}<button class="btn" data-pw="1402">œuvre #1402</button><button class="btn" data-pw="1234">œuvre #1234</button></div>`;
+  } else if(ps==='place'||ps==='box'){
+    const id=ps==='box'?pbox:pplace, p=byId(id), ws=W.filter(w=>w.pl===id).sort((a,c)=>a.n-c.n), ch=kids(id);
+    h.textContent=(p.code?p.code+' · ':'')+p.name;
+    b.innerHTML=`<div class="pp">${pathBar(id,true)}<div style="margin-top:6px">${badges(id)} ${p.keeps?`<span class="chip">pour ${p.keeps.p} · n° ${p.keeps.a}–${p.keeps.b}</span>`:''}</div>
+       <div style="margin-top:8px">${photosHtml(p.photos||0,80)}</div></div>
+      ${p.plan?`<div class="pp"><h4>Plan</h4>${planSvg(id,null)}</div>`:(planFor(id)?`<div class="pp"><h4>Sur le plan</h4>${planFor(id).svg}</div>`:'')}
+      ${p.cons||NOTES[id]?`<div class="pp"><h4>Conservation</h4><div class="small">${esc(p.cons||'')}</div>${notesHtml(id)}</div>`:''}
+      ${ch.length?`<div class="pp"><h4>Dedans</h4>${ch.map(x=>`<button class="res" data-pp="${x.id}" style="padding:8px 0;min-height:44px"><div class="mid">${x.name} ${x.risk?`<span class="${x.risk==='high'?'warn':'watch'}">${x.risk==='high'?'risque':'surveiller'}</span>`:''}</div><span class="mute small">${worksIn(x.id).length}</span> <span class="mono small faint">${x.code}</span></button>`).join('')}</div>`:''}
+      ${ws.length?`<div class="pp"><h4>${ws.length} œuvre(s), par numéro</h4><div class="pgrid">${ws.map(w=>`<button data-pw="${w.n}"><div class="th" style="--c:${hue(w.n)}"></div>#${w.n}${offRule(w)?' <span style="color:var(--watch)">●</span>':''}</button>`).join('')}</div></div>`:''}`;
+    if(p.kind==='boîte'){ f.style.display='block'; f.innerHTML='<button class="btn main" id="startSession">Ranger ici</button>'; pbox=id; }
+  } else if(ps==='session'){ const p=byId(pbox); h.textContent='Ranger dans '+p.code;
+    b.innerHTML=`<div class="cam" style="height:160px">scannez les œuvres une à une</div>
+      <div class="scanlist">${W.filter(w=>w.pl!==pbox).slice(0,9).map(w=>`<button class="btn" data-sesswork="${w.n}">#${w.n}</button>`).join('')}</div>
+      <div class="log">${session.length?session.map(l=>`<div class="${/risque|hors/.test(l)?'refused':''}">${l}</div>`).join(''):'<div class="mute">Chaque scan = une œuvre rangée, avec un bip.</div>'}</div>`;
+    f.style.display='block'; f.innerHTML=`<button class="btn main" id="endSession">Terminer (${session.length})</button>`;
+  } else if(ps==='work'){ const w=W.find(x=>x.n===pwork); h.textContent='#'+w.n+' — '+w.t;
+    b.innerHTML=`<div class="pp"><div class="th" style="--c:${hue(w.n)};height:150px;width:100%"></div></div>${workDetail(w,true)}`;
+    f.style.display='block'; f.innerHTML='<button class="btn main" id="pmove">Changer d\'emplacement</button>';
+  }
+}
+document.getElementById('phone').addEventListener('click',e=>{
+  const t=e.target.closest('button,[data-p]'); if(!t) return;
+  if(t.id==='pback'){ const s=pstack.pop()||['home']; [ps,pwork,pplace,pbox]=s; renderPhone(); return; }
+  if(t.dataset.s){ pstack=[]; ps=t.dataset.s; renderPhone(); return; }
+  if(t.dataset.go){ go(t.dataset.go); return; }
+  if(t.dataset.pq){ pq=t.dataset.pq; renderPhone(); return; }
+  if(t.dataset.pw){ pstack.push([ps,pwork,pplace,pbox]); pwork=+t.dataset.pw; ps='work'; renderPhone(); return; }
+  const pid=t.dataset.pp||t.dataset.p||t.dataset.scanbox;
+  if(pid){ pstack.push([ps,pwork,pplace,pbox]); const p=byId(pid); if(p.kind==='boîte'){pbox=pid; ps='box'; if(t.dataset.scanbox) toast('Boîte '+p.code+' reconnue');} else {pplace=pid; ps='place';} renderPhone(); return; }
+  if(t.id==='startSession'){ session=[]; go('session'); return; }
+  if(t.dataset.sesswork){ const w=W.find(x=>x.n===+t.dataset.sesswork); session.unshift(move(w,byId(pbox))); renderPhone(); renderDesk(); return; }
+  if(t.id==='endSession'){ toast(`${session.length} œuvre(s) rangée(s) dans ${codeOf(pbox)}`); ps='box'; renderPhone(); return; }
+  if(t.id==='pmove'){ const w=W.find(x=>x.n===pwork); openPicker(w,p=>{toast(move(w,p)); refresh();}); return; }
+});
+function refresh(){ renderDesk(); renderPhone(); }
+
+/* fetch sheet: for someone who has never been there */
+let withCodes=true;
+const AUTH=[['Clara','2 — code','connaît le code depuis 2026-03-04'],['Marc (équipe)','4 — équipe','clé verte'],['Inès DUVAL','1 — accompagnée','jusqu’au 2026-12-31']];
+function fetchSheet(n){
+  const w=W.find(x=>x.n===n), ps=pathOf(w.pl), rt=route(w.pl);
+  const plans=ps.filter(p=>p.plan).map(p=>`<div style="margin:8px 0"><b>${p.name}</b> → <b>${ps[ps.indexOf(p)+1].name}</b>${planSvg(p.id,w.pl)}</div>`).join('');
+  document.getElementById('pickbox').innerHTML=`<div class="pp"><b>Fiche PDF — aller chercher #${w.n}</b><div class="mute small">Un fichier A4 à envoyer — pas d’accès au hub</div>
+     <div class="small mute" style="margin-top:6px">Pour qui — personnes autorisées ici d’abord :</div>
+     ${AUTH.map(([n,l,x],i)=>`<label class="small" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="radio" name="who" value="${n}" ${i===0?'checked':''}> <b>${n}</b> <span class="chip">niveau ${l}</span> <span class="mute">${x}</span></label>`).join('')}
+     <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" id="codes" ${withCodes?'checked':''}> codes des portes sur la fiche</label>
+     <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:4px">À rapporter le <input type="date" id="due" value="2026-11-23" class="search" style="width:auto;padding:2px 6px"> <span class="mute">en retard dès le lendemain</span></label>
+     ${withCodes?'<div class="mute small">Sera noté : la personne connaît le code à partir d’aujourd’hui.</div>':''}</div>
+   <div class="pp"><div style="display:flex;gap:10px;align-items:center"><div class="th" style="--c:${hue(w.n)};width:70px;height:56px"></div><div><b>#${w.n} — ${w.t}</b><div class="small">${w.h} × ${w.w} cm · ${(w.h/2.54).toFixed(0)} × ${(w.w/2.54).toFixed(0)} po</div>${fragile(w.pl)?'<span class="warn">FRAGILE — papier de riz, gants</span>':''}</div></div>
+   <div class="mono" style="font-size:28px;font-weight:700;margin-top:8px">${codeOf(w.pl)}</div>
+   <ol class="small" style="padding-left:18px;margin:8px 0">${rt.map(({s:[k,t,c]})=>`<li style="margin:3px 0">${esc(t)}${c?(withCodes?` — <b class="mono">${c}</b>`:' — <i>code : demander à Pem</i>'):''}</li>`).join('')}</ol>
+   ${plans}<div style="margin-top:6px">${photosHtml(3,60)}</div>
+   <div class="small" style="margin-top:8px"><b>À rapporter le 23/11/2026.</b> Remettre dans <b class="mono">${codeOf(w.pl)}</b>, ou laisser sur la table de l’entrée.</div></div>
+   <div class="pp" style="display:flex;gap:6px"><button class="btn main" data-pick="send">Partager le PDF…</button><button class="btn" data-pick="">Fermer</button></div>`;
+  const pk=document.getElementById('picker'); pk.classList.add('on');
+  document.getElementById('codes').onchange=e=>{ withCodes=e.target.checked; fetchSheet(n); };
+  pk.onclick=e=>{ const t=e.target.closest('[data-pick]'); if(e.target===pk||t){ pk.classList.remove('on'); if(t&&t.dataset.pick==='send'){ const who=(document.querySelector('input[name=who]:checked')||{}).value||'?'; toast(`PDF partagé · moment « mission » ouvert : ${who} va chercher #${w.n}${withCodes?` · ${who} connaît le code depuis aujourd’hui`:''} · à rapporter le ${(document.getElementById('due')||{}).value||'?'} — fermé au scan de retour, dans le Fil s’il est en retard`); } } };
+}
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-fetch]'); if(t){ e.stopPropagation(); fetchSheet(+t.dataset.fetch); } }, true);
+
+/* ---------- misc ---------- */
+let tt; function toast(m){const el=document.getElementById('toast'); el.textContent=m; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),3400);}
+document.getElementById('theme').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return;
+  try{ if(b.dataset.t) document.documentElement.setAttribute('data-theme',b.dataset.t); else document.documentElement.removeAttribute('data-theme'); }catch(_){}
+  document.querySelectorAll('#theme button').forEach(x=>x.classList.toggle('on',x===b));});
+document.querySelector('#theme button').classList.add('on');
+refresh();
+</script>
+</body>
+</html>

@@ -68,6 +68,7 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 |---|---|---|
 | `tblImage` | `tblimage_cover_sync` | Keeps `Oeuvres.txtImageNameLink` = cover image |
 | `contact_addresses` | `trg_contact_address_link_single` (security definer) | Contact left with one address → its works (≠ Pem, not deleted) without address get it (2026-11-12) |
+| `place` | `trg_place_tree` (before) + `trg_place_tree_children` (after) | Places phase A, live 2026-11-23 ([`places_phase_a_shape.sql`](../supabase/sql/places_phase_a_shape.sql)): a place inside itself refused (`place_cycle`); `root_id` = the top of the tree, kept for every child when a place moves. Names never unique (`place_name_uq` dropped, Pem 2026-11-23: a name is not a place); codes unique among live places. `contact_place` and `place_address_map` exist, **empty, read by no screen yet** (design `docs/design/2026-11-23/Places.md` §7b) |
 | `condition_report` | §1 | Fate |
 | `work_action` | `trg_work_action_before_write` (security definer) | Task added / reopened on an archived / destroyed / lost work → set aside; ticked → pause cleared, `done_at` stamped; unticked → `done_at` cleared (rules 7, 12) |
 | `Contact` | `ensure_admin_flags_protected` | Only an admin may change `is_admin`, `is_team_member`, `IsTeamMember` |
