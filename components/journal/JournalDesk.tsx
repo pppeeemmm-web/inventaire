@@ -13,7 +13,7 @@ import { thumbUrl } from '@/lib/data'
 import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
 import { JournalScaleSwitch, JournalStream, type JournalSelection } from '@/components/journal/JournalStream'
-import { JournalStreamSwitchKeeper } from '@/components/journal/JournalPhone'
+import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import type { JournalStreamPage, JournalWorkMentions } from '@/lib/journal/stream'
 
@@ -179,7 +179,11 @@ export function JournalDesk() {
     void fetch('/api/journal/stream?days=5', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((p: JournalStreamPage) => {
-        if (alive) setPage(p)
+        if (!alive) return
+        setPage(p)
+        // A link to one day (⌘K, Chronologie, Notes, see-again: `/atelier/journal?day=…`) opens the stream there.
+        const d = new URLSearchParams(window.location.search).get('day')
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setJump(d)
       })
       .catch(() => {
         if (alive) setFailed(true)

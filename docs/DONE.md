@@ -8,6 +8,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 - One stream of days on phone and desk, behind `?stream=1` (cookie `journal_stream`): days in pages (`journal_scale`, `/api/journal/stream`), cards with one main action and « ⋯ », sticky days, work changes per day, pinch / Mois / Années; desk rail of works and composer; phone today opens on it — `a363c41`.
 - Offline capture queue: voice notes and inspiration photos wait in IndexedDB, sent when the network returns; `client_id` makes a resend write nothing twice. Seen on the Docker copy — `a363c41`.
 - Step B: labels, « Ajouter une suite », « Placer sur un autre jour » (`journal_step_b.sql`, live; `journal_move_entry`). Rules proven on the Docker copy as team / admin / anon — `a363c41`.
+- The stream is the default on desk and phone; `?stream=0` (kept a year in the `journal_stream` cookie) keeps the old day screens; a desk link to one day opens the stream there. Live speed on `d213e0d`, time to the first entry, warm: desk 2.5–2.7 s (old screen 4.1–4.7 s, baseline 2.7–4.3 s), phone 1.0 s in a 390 px frame (old 1.3–1.4 s, baseline ~1.0 s) — commit of this change.
 - A voice note is a Journal entry at once (live words or « transcription à venir »); the PC transcript arrives as a correction, or as a hidden proposal beside words a person already checked; suggestions read the text shown (`journal_suggest_from_shown_text.sql`, live) — `a363c41`.
 
 ## 2026-11-23 — Contact save keeps address ids (TODO §1, Pem « fix it yes »)

@@ -9,7 +9,8 @@ import { versionFieldLabel } from '@/lib/oeuvre-version-fields'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { JournalDesk } from '@/components/journal/JournalDesk'
-import { JOURNAL_STREAM_COOKIE } from '@/lib/journal/stream-switch'
+import { JOURNAL_STREAM_COOKIE, streamChosen } from '@/lib/journal/stream-switch'
+import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { toast } from '@/lib/ui/toast'
@@ -721,20 +722,23 @@ function requestedDayFromUrl(): string | null {
 }
 
 /**
- * The Journal tab. While the stream is tried (design 2026-11-22: `?stream=1` sets a cookie), a desk-wide
- * window shows the new stream (`JournalDesk`); otherwise, and always on the phone, the day page below.
+ * The Journal tab. A desk-wide window shows the stream (`JournalDesk`, the default since 2026-11-23); after
+ * `?stream=0` (kept in a cookie), and always on the phone, the day page below.
  */
 export function SessionJournalTab() {
   const narrow = useMediaQuery('(max-width: 767px)')
   const [stream] = useState(() => {
     if (typeof window === 'undefined') return false
-    const v = new URLSearchParams(window.location.search).get('stream')
-    if (v === '1') return true
-    if (v === '0') return false
-    return document.cookie.split('; ').includes(`${JOURNAL_STREAM_COOKIE}=1`)
+    const cookie = document.cookie.split('; ').find((c) => c.startsWith(`${JOURNAL_STREAM_COOKIE}=`))?.split('=')[1]
+    return streamChosen(new URLSearchParams(window.location.search).get('stream'), cookie)
   })
   if (stream && !narrow) return <JournalDesk />
-  return <SessionJournalDayTab />
+  return (
+    <>
+      <JournalStreamSwitchKeeper />
+      <SessionJournalDayTab />
+    </>
+  )
 }
 
 function SessionJournalDayTab() {

@@ -6,11 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.92 (2026-11-23) — the stream is the default.
+  wn_journal_stream_default_t: { fr: 'Le Journal s’ouvre sur le fil des jours', en: 'The Journal opens on the stream of days' },
+  wn_journal_stream_default_d: {
+    fr: 'Le fil des jours n’est plus à essayer : le Journal et la page Aujourd’hui s’ouvrent dessus, sur l’ordinateur comme sur le téléphone. Un lien vers un jour (recherche, Chronologie) ouvre le fil à ce jour. Pour garder l’ancien écran sur un appareil, ajoutez ?stream=0 à l’adresse une fois ; ?stream=1 revient au fil.',
+    en: 'The stream of days is no longer a try-out: the Journal and the Today page open on it, on the computer and on the phone. A link to a day (search, Chronology) opens the stream at that day. To keep the old screen on a device, add ?stream=0 to the address once; ?stream=1 goes back to the stream.',
+  },
   // 3.1.91 (2026-11-23) — the Journal as one stream of days (to try), captures kept offline, voice note = entry at once, labels / suite / move.
-  wn_journal_stream_t: { fr: 'Le Journal en un seul fil de jours (à essayer)', en: 'The Journal as one stream of days (to try)' },
+  wn_journal_stream_t: { fr: 'Le Journal en un seul fil de jours', en: 'The Journal as one stream of days' },
   wn_journal_stream_d: {
-    fr: 'Ajoutez ?stream=1 à l’adresse du Journal ou de la page Aujourd’hui : les jours se suivent en un seul fil, le plus récent en haut, chaque carte avec une seule action principale (le reste sous « ⋯ »). Pincez à deux doigts sur le téléphone, ou utilisez les boutons Mois / Années sur l’ordinateur, pour passer aux mois et aux années. Sur l’ordinateur, une colonne montre les œuvres du jour choisi. ?stream=0 revient à l’ancien écran.',
-    en: 'Add ?stream=1 to the Journal or Today page address: the days follow one another in a single stream, newest at the top, each card with one main action (the rest under « ⋯ »). Pinch with two fingers on the phone, or use the Months / Years buttons on the computer, to zoom out to months and years. On the computer, a column shows the works of the day chosen. ?stream=0 goes back to the old screen.',
+    fr: 'Dans le Journal et la page Aujourd’hui, les jours se suivent en un seul fil, le plus récent en haut, chaque carte avec une seule action principale (le reste sous « ⋯ »). Pincez à deux doigts sur le téléphone, ou utilisez les boutons Mois / Années sur l’ordinateur, pour passer aux mois et aux années. Sur l’ordinateur, une colonne montre les œuvres du jour choisi.',
+    en: 'In the Journal and the Today page, the days follow one another in a single stream, newest at the top, each card with one main action (the rest under « ⋯ »). Pinch with two fingers on the phone, or use the Months / Years buttons on the computer, to zoom out to months and years. On the computer, a column shows the works of the day chosen.',
   },
   wn_capture_offline_t: { fr: 'Notes vocales et photos gardées sans réseau', en: 'Voice notes and photos kept without network' },
   wn_capture_offline_d: {

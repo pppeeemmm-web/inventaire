@@ -2,29 +2,18 @@
 
 // The phone face of the Journal stream (design 2026-11-22): the app opens here, today first. Header:
 // ☰ · « Journal » · the scale (tap: Jours → Mois → Années; or pinch the list). The record bar comes from
-// TodayFrame (same doors as before). Shown while the switch is on: `/hub?stream=1` once on the phone
-// (a cookie keeps it), `/hub?stream=0` goes back to the day page.
+// TodayFrame (same doors as before). The default; `/hub?stream=0` (a cookie keeps it) goes back to the
+// day page, `/hub?stream=1` returns here.
 
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { PhoneMenuButton } from '@/components/shared/PhoneMenu'
 import { JournalStream } from '@/components/journal/JournalStream'
 import type { JournalStreamPage } from '@/lib/journal/stream'
-import { JOURNAL_STREAM_COOKIE } from '@/lib/journal/stream-switch'
 
 
-/** Keeps the switch: `?stream=1` / `?stream=0` sets the cookie, then the address is cleaned. */
-export function JournalStreamSwitchKeeper() {
-  useEffect(() => {
-    const url = new URL(window.location.href)
-    const v = url.searchParams.get('stream')
-    if (v !== '1' && v !== '0') return
-    document.cookie = `${JOURNAL_STREAM_COOKIE}=${v}; path=/; max-age=${v === '1' ? 31536000 : 0}; samesite=lax`
-    url.searchParams.delete('stream')
-    window.history.replaceState(window.history.state, '', url.toString())
-  }, [])
-  return null
-}
+export { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
+import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 
 export function JournalPhone({ initial }: { initial: JournalStreamPage }) {
   const { t } = useI18n()

@@ -12,7 +12,8 @@
 import { cookies } from 'next/headers'
 import { readJournalStreamPage } from '@/lib/journal/stream'
 import { JournalPhone } from '@/components/journal/JournalPhone'
-import { JOURNAL_STREAM_COOKIE } from '@/lib/journal/stream-switch'
+import { JOURNAL_STREAM_COOKIE, streamChosen } from '@/lib/journal/stream-switch'
+import { JournalStreamSwitchKeeper } from '@/components/journal/StreamSwitchKeeper'
 import { Suspense } from 'react'
 import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 import { getSeeAgain } from '@/app/atelier/see-again/actions'
@@ -81,9 +82,9 @@ function requestedDay(raw: string | string[] | undefined, today: string): string
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ day?: string | string[]; stream?: string | string[] }> }) {
   const today = todayCalendarDayInParis()
   const sp = await searchParams
-  // The Journal stream (design 2026-11-22), behind a switch while it is tried: `?stream=1` / a cookie.
+  // The Journal stream (design 2026-11-22) is the default; `?stream=0` (kept in a cookie) shows the old day page.
   const streamParam = Array.isArray(sp.stream) ? sp.stream[0] : sp.stream
-  const stream = streamParam === '1' || (streamParam !== '0' && (await cookies()).get(JOURNAL_STREAM_COOKIE)?.value === '1')
+  const stream = streamChosen(streamParam, (await cookies()).get(JOURNAL_STREAM_COOKIE)?.value)
   if (stream && !sp.day) {
     return (
       <TodayFrame day={today} today={today} stream>
@@ -109,6 +110,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   // `key={day}`: moving to another day shows fresh skeletons instead of the previous day's sections.
   return (
     <TodayFrame day={day} today={today}>
+      <JournalStreamSwitchKeeper />
       {/* Render time: the phone's cached copy (app/sw.ts) shows its age, then refreshes. */}
       <TodayCachedNote renderedAt={Date.now()} />
       <Suspense key={`s-${day}`} fallback={<TodaySkeleton rows={1} />}>
