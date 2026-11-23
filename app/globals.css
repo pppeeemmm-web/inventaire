@@ -541,6 +541,24 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   line-height: 1.25;
 }
 
+/* No scroll in the sidebar (Pem 2026-11-23 « no scroll, use tricks »): ~37 tabs + 6 group titles. The rows,
+   titles and gaps tighten with the window height so the whole menu fits; a tall screen keeps the airy size. */
+@media (max-height: 1120px) {
+  .pem-sidebar-tab--desktop { padding-block: 3px; }
+  .pem-atelier-sidebar-nav-inner { gap: 8px; }
+  .pem-atelier-sidebar:not(.pem-atelier-sidebar--narrow) .pem-atelier-sidebar-nav-scroll { padding-block: 8px; }
+}
+@media (max-height: 960px) {
+  .pem-sidebar-tab--desktop { padding-block: 1px; line-height: 1.2; }
+  .pem-atelier-sidebar-nav-inner { gap: 5px; }
+  .pem-atelier-sidebar-eyebrow { margin-bottom: 1px; }
+  .pem-atelier-sidebar:not(.pem-atelier-sidebar--narrow) .pem-atelier-sidebar-nav-scroll { padding-block: 6px; }
+}
+@media (max-height: 820px) {
+  .pem-sidebar-tab--desktop { padding-block: 0; line-height: 1.12; }
+  .pem-atelier-sidebar-nav-inner { gap: 3px; }
+}
+
 .pem-sidebar-tab--narrow {
   padding-block: 10px;
   padding-inline: 0;
