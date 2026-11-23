@@ -448,6 +448,10 @@ export function EntryCard({
       {linkOpen && noteId && links ? (
         <div style={{ marginTop: 8 }}>
           <VoiceNoteLinkPanel noteId={noteId} links={links} onChanged={() => void refresh()} />
+          {/* The panel folds back once the links are done (Pem 2026-11-23: it could not be closed). */}
+          <button type="button" className="btn ghost sm" data-testid={`js-link-close-${e.id}`} onClick={() => setLinkOpen(false)} style={{ minHeight: 44, marginTop: 6 }}>
+            {t('je_voice_link_close')}
+          </button>
         </div>
       ) : null}
       {e.suites?.length
@@ -495,6 +499,9 @@ function VoiceCard({ v, isAdmin, run, refresh, pending }: { v: JournalDayVoice; 
       {linkOpen ? (
         <div style={{ marginTop: 8 }}>
           <VoiceNoteLinkPanel noteId={v.id} links={links} onChanged={() => void refresh()} />
+          <button type="button" className="btn ghost sm" data-testid={`js-link-close-v${v.id}`} onClick={() => setLinkOpen(false)} style={{ minHeight: 44, marginTop: 6 }}>
+            {t('je_voice_link_close')}
+          </button>
         </div>
       ) : null}
     </article>

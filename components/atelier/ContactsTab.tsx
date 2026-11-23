@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+import { saveContact } from '@/app/atelier/(portal)/contacts/save-contact'
+import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import {
   checkOllamaListening,
   deleteContacts,
@@ -566,7 +569,6 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   async function handleBatchSave(data: { Role?: string; Actif?: boolean; Notes?: string; appendNotes?: boolean }): Promise<boolean> {
     setBusy(true)
-    const sb = createClient()
     const ids = Array.from(selected)
     
     try {
@@ -584,8 +586,14 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           }
         }
 
-        const { error } = await sb.from('Contact').update(update).eq('ContactID', id)
-        if (error) throw error
+        // Through the contact door; an append carries the notes it appended to, so notes changed meanwhile are not lost.
+        const res = await saveContact({
+          id,
+          fields: update,
+          read: data.Notes !== undefined && data.appendNotes ? { Notes: extra[id]?.Notes || null } : null,
+        })
+        const refusal = saveContactRefusalText(res, t)
+        if (refusal) throw new Error(refusal)
         updates[id] = update
       }
 

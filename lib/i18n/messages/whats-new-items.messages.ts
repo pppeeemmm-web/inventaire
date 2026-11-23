@@ -6,6 +6,20 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.97 (2026-11-23) — one door for a contact; Journal links and sorted lists.
+  wn_contact_save_door_t: {
+    fr: 'Une fiche contact modifiée à deux endroits n’est plus écrasée',
+    en: 'A contact changed in two places is no longer overwritten',
+  },
+  wn_contact_save_door_d: {
+    fr: 'Si la fiche a changé ailleurs pendant que vous l’éditiez, rien n’est enregistré : un message le dit et la fiche se recharge avec la version actuelle, pour refaire votre changement. Une ligne e-mail ou téléphone laissée vide est ignorée. Même chose pour un contact créé depuis une œuvre, un projet ou la modification groupée.',
+    en: 'If the contact changed elsewhere while you were editing it, nothing is saved: a message says so and the card reloads with the current version, so you can make your change again. An email or phone line left empty is ignored. The same holds for a contact created from a work, a project or the batch edit.',
+  },
+  wn_journal_links_sorted_t: { fr: 'Journal : liens cliquables, listes triées', en: 'Journal: clickable links, sorted lists' },
+  wn_journal_links_sorted_d: {
+    fr: 'Une adresse web écrite dans une entrée (https://…, www.…) s’ouvre dans un nouvel onglet. Dans « Relier », les idées et les projets sont rangés de A à Z, et le panneau se ferme avec « Fermer ».',
+    en: 'A web address written in an entry (https://…, www.…) opens in a new tab. In « Relier », ideas and projects are listed A to Z, and the panel closes with « Close ».',
+  },
   // 3.1.96 (2026-11-23) — 🎤 inside an idea.
   wn_idea_mic_t: { fr: 'Dicter dans une idée', en: 'Dictate into an idea' },
   wn_idea_mic_d: {

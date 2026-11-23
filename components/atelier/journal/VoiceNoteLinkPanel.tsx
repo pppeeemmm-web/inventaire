@@ -155,7 +155,7 @@ export function VoiceNoteLinkPanel({
             >
               <option value="">{t('je_voice_link_idea_ph')}</option>
               <option value={NEW}>{t('je_voice_link_idea_new')}</option>
-              {concepts.map((c) => (
+              {[...concepts].sort((a, b) => (a.titre ?? '').localeCompare(b.titre ?? '', 'fr', { sensitivity: 'base', numeric: true })).map((c) => (
                 <option key={c.id} value={c.id}>{c.titre}</option>
               ))}
             </select>
@@ -208,7 +208,7 @@ export function VoiceNoteLinkPanel({
               aria-label={t('notes_triage_process')}
             >
               <option value="">{t('notes_triage_process_ph')}</option>
-              {processes.map((p) => (
+              {[...processes].sort((a, b) => (a.nom ?? '').localeCompare(b.nom ?? '', 'fr', { sensitivity: 'base', numeric: true })).map((p) => (
                 <option key={p.id} value={p.id}>{p.nom}{p.type ? ` · ${p.type}` : ''}</option>
               ))}
             </select>

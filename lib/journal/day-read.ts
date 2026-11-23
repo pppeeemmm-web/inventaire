@@ -289,6 +289,7 @@ export async function readJournalDays(
   const conceptOptions = (conceptsRes.data ?? [])
     .filter((c) => (c.titre ?? '').trim())
     .map((c) => ({ id: c.id, title: (c.titre as string).trim() }))
+    .sort((a, b) => a.title.localeCompare(b.title, 'fr', { sensitivity: 'base', numeric: true })) // A → Z (Pem 2026-11-23)
 
   const out = new Map<string, JournalDayExtras>()
   const dayOf = (day: string) => {

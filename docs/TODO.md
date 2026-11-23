@@ -35,6 +35,7 @@ Small fixes
 Checks
 - [ ] One automated stress round: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
 - [ ] Push-blocking checks for the building principles: no table write from a browser file, no new whole-Atelier refresh — today's files listed as the debt, the list may only shrink → [BuildingPrinciples §1](./design/2026-11-21/BuildingPrinciples.md).
+- [ ] Journal on the desk: paste or drop an image onto the day (inspiration, with its text and links), record a voice note with the laptop microphone, and pick up images from the Syncthing folder (PC agent) — design first.
 - [ ] AI desk « Lancer »: confirm on Pem's PC that a job starts; what still fails is fixed or removed.
 
 ## 2. Waiting on you, Pem
@@ -96,7 +97,7 @@ Storage and Vault
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
-- [ ] `saveContact`: one server door for a contact and its addresses, emails, phones and links, in one transaction — before any People build.
+- [ ] `saveContact` v2: duplicates on create (« a card may already exist », « créer quand même »), team edits in Pem's Fil with « Revenir », phones stored E.164, archive instead of delete, a death recorded; the server writers still outside the door (quick add / import / order party, supplier inline, share-triage notes, team access, signature) → [People.md §3](./design/2026-11-22/People.md).
 - [ ] Eight kinds of record the museum standards expect (inscriptions, moves with « seen on », valuations, treatments, licences / reproductions, literature, objects coming in, details of each showing): place each on the map of homes, with the catalogue-gaps steps → [survey](./design/2026-11-21/Survey_MuseumStandards.md).
 - [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
 

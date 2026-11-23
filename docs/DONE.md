@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — saveContact v1: one door for a contact (Pem « start now », « GO v1 »); Journal links, sorting, folding
+
+- `saveContact` → SQL `save_contact` (`supabase/sql/save_contact_fn.sql`): the contact and its addresses / emails / phones / websites / socials in one transaction, from the server only. Checks who asks (team), refuses an admin-only field changed by the team, refuses a field or list changed elsewhere since the screen read it (and the screen reloads the fresh card), keeps child-row ids, refuses dropping an address still used, drops blank lines, says « rien à enregistrer » when nothing changed. Switched: contact editor, work card « nouveau contact », work drawer « créer » (no more « max + 1 » id), pipeline auto-create, Contacts batch edit — no browser file writes a contact table any more. Flow review: 6 bugs found and fixed before commit (JSON null « read », partial read, blank NOT NULL rows, Role renamed in « read », stale loop, « unchanged » shown as saved). Proven on the Docker copy: 17 database checks + editor save, two-tab refusal and reload, new contact, blank email line. SQL **not live** until Pem's OK — commit of this batch.
+- Journal: web addresses in an entry open in a new tab (a `#` before them is not a work number); « Relier » ideas and projects listed A → Z; the « Relier » panel of a voice note closes with « Fermer » — same commit.
+
 ## 2026-11-23 — Idées open pieces (Pem « Add the 🎤 inside an idea », « build the other items », « Yes, delete them », « land »)
 
 - 🎤 inside an idea: the Journal's recorder opens aimed at the idea; the note (or a typed one when the mic is blocked) lands on today and in the idea (`voice_note.concept_id` + a validated link from its entry; an idea deleted while the note waited offline is dropped). « Mois » / « Années » count idea lines; the old `?stream=0` day page draws them; the Overview's idea lines open that idea and show its stage. The old Idées screen (Concepts.tsx and six components) and its spec are removed; SITE_MAP points at IdeasHome / IdeaDesk. Seen on localhost: the 🎤 on an idea's desk; recording not tried (it would save to live); e2e not run — `b04754c`.

@@ -3,6 +3,9 @@
 import { imageUrl, thumbUrl, yearOf, PEM_CONTACT_ID } from '@/lib/data'
 import { deleteWork, purgeWorkPermanently, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
+
+import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
+import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
@@ -1556,27 +1559,24 @@ export function DrawerContent({
   async function handleCreateContact() {
     if (!newC.inst && !newC.prenom && !newC.nom) return
     setCreatingContact(true)
-    const sb = createClient()
-    const { data: maxRow } = await sb.from('Contact').select('ContactID').order('ContactID', { ascending: false }).limit(1)
-    const newId = ((maxRow?.[0] as { ContactID?: number } | undefined)?.ContactID ?? 0) + 1
-    const payload = {
-      ContactID: newId,
-      NomInstitution: newC.inst || null,
-      Prénom: newC.prenom || null,
-      Nom: newC.nom || null,
-      Role: newC.role || null,
-      Email: newC.email || null,
-      Téléphone1: newC.phone || null,
-      Ville: newC.ville || null,
-      Pays: newC.pays || null,
-      Notes: newC.notes || null,
-    }
-    const { error } = await sb.from('Contact').insert(payload)
+    // Through the contact door (saveContact): the database gives the id (« max + 1 » read here could collide), the
+    // email / phone / city get their rows and the old single columns are written from them.
+    const res = await saveContact({
+      id: null,
+      fields: { NomInstitution: newC.inst, Prénom: newC.prenom, Nom: newC.nom, Role: newC.role, Téléphone1: newC.phone, Notes: newC.notes },
+      lists: {
+        addresses: newC.ville || newC.pays ? [{ label: 'Principal', adresse: null, code_postal: null, ville: newC.ville || null, pays: newC.pays || null, position: 0 }] : [],
+        emails: newC.email.trim() ? [{ email: newC.email.trim(), label: 'Travail', is_primary: true }] : [],
+        phones: newC.phone.trim() ? [{ phone: newC.phone.trim(), label: 'Travail', is_primary: true }] : [],
+      },
+    })
     setCreatingContact(false)
-    if (error) {
-      toast.error(`${t('error_prefix')} ${error.message}`)
+    const refusal = saveContactRefusalText(res, t)
+    if (refusal) {
+      toast.error(refusal)
       return
     }
+    const newId = (res as { card: ContactCard }).card.contact.ContactID
     const newEntry = { ContactID: newId, NomInstitution: newC.inst || null, Prénom: newC.prenom || null, Nom: newC.nom || null, Role: newC.role || null, Ville: newC.ville || null, Pays: newC.pays || null }
     setLocalContacts((prev) => [...prev, newEntry])
     setContactId(String(newId))

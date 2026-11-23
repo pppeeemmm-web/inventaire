@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
+import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { toast } from '@/lib/ui/toast'
 import { useI18n } from '@/lib/i18n/context'
 import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
@@ -232,15 +235,15 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
       // AUTO-CREATE CONTACT IF NEW
       if (isNewContact && newContactName.trim()) {
-        const { data: nc, error: ncErr } = await sb.from('Contact').insert({
-          NomInstitution: newContactName,
-          Email: newContactEmail || null,
-          Type: newContactType,
-          created_at: new Date().toISOString(),
-        }).select('ContactID').single()
-
-        if (ncErr) throw new Error(t('pm_err_contact_create_prefix') + ncErr.message)
-        effectiveContactId = nc?.ContactID ?? null
+        // Through the contact door (saveContact): the email also gets its row, like the contact editor writes it.
+        const res = await saveContact({
+          id: null,
+          fields: { NomInstitution: newContactName, Type: newContactType || null },
+          lists: { emails: newContactEmail.trim() ? [{ email: newContactEmail.trim(), label: 'Travail', is_primary: true }] : [] },
+        })
+        const refusal = saveContactRefusalText(res, t)
+        if (refusal) throw new Error(refusal)
+        effectiveContactId = (res as { card: ContactCard }).card.contact.ContactID
       }
 
       if (!effectiveContactId && type !== 'autre') {

@@ -91,7 +91,8 @@
 // '3.1.94' (2026-11-23): the Journal day shows its ideas (planted, moved, reworked, grafted).
 // '3.1.95' (2026-11-23): phone new work — « Tous les champs » keeps what was typed.
 // '3.1.96' (2026-11-23): 🎤 inside an idea; idea changes in Mois / Années and on the old day page; Overview ideas open the idea.
-export const WHATS_NEW_RELEASE = '3.1.96'
+// '3.1.97' (2026-11-23): a contact saved from two places no longer overwrites; Journal links open, « Relier » lists sorted.
+export const WHATS_NEW_RELEASE = '3.1.97'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -117,6 +118,8 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'contact_save_door', day: '2026-11-23', spot: 'contacts' },
+  { id: 'journal_links_sorted', day: '2026-11-23', spot: 'journal' },
   { id: 'idea_mic', day: '2026-11-23', spot: 'concepts' },
   { id: 'work_record_all_fields', day: '2026-11-23', spot: 'inventory' },
   { id: 'journal_idea_lines', day: '2026-11-23', spot: 'journal' },

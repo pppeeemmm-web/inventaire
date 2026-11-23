@@ -468,9 +468,12 @@ export async function listNoteRouteTargets(): Promise<NoteRouteTargets | NotesAc
   ])
   if (c.error) return { error: c.error.message }
   if (p.error) return { error: p.error.message }
+  // The 500 most recently touched are fetched; they are shown A → Z (dropdowns are alphabetical, Pem 2026-11-23).
+  const az = (a: string | null | undefined, b: string | null | undefined) =>
+    (a ?? '').localeCompare(b ?? '', 'fr', { sensitivity: 'base', numeric: true })
   return {
-    concepts: (c.data ?? []) as NoteRouteTargets['concepts'],
-    processes: (p.data ?? []) as NoteRouteTargets['processes'],
+    concepts: ((c.data ?? []) as NoteRouteTargets['concepts']).sort((x, y) => az(x.titre, y.titre)),
+    processes: ((p.data ?? []) as NoteRouteTargets['processes']).sort((x, y) => az(x.nom, y.nom)),
   }
 }
 

@@ -15,7 +15,9 @@ import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult, WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages, revertWorkSnapshot } from '@/app/atelier/works/actions'
 import { WorkThumb } from './WorkThumb'
-import { createClient } from '@/lib/supabase/client'
+
+import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
+import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { toast } from '@/lib/ui/toast'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
@@ -1460,27 +1462,28 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   async function handleSave(): Promise<boolean> {
     if (!form.NomInstitution && !form.Nom) return false
     setBusy(true)
-    const sb = createClient()
-    const { Website, ...contactCols } = form
-    const { data, error } = await sb.from('Contact').insert(contactCols).select().single()
-    // Rows like the contact editor writes (2026-11-19): the website is a contact_websites row (not the Contact.Website
-    // column); email / phone also get their rows, so the contact's links row shows them.
-    if (!error && data) {
-      const cid = (data as { ContactID: number }).ContactID
-      const rows = await Promise.all([
-        Website.trim() ? sb.from('contact_websites').insert({ contact_id: cid, url: Website.trim(), label: 'Site' }) : null,
-        form.Email.trim() ? sb.from('contact_emails').insert({ contact_id: cid, email: form.Email.trim(), label: 'Travail', is_primary: true }) : null,
-        form.Téléphone1.trim() ? sb.from('contact_phones').insert({ contact_id: cid, phone: form.Téléphone1.trim(), label: 'Travail', is_primary: true }) : null,
-      ])
-      for (const r of rows) if (r?.error) console.error('[work-form] contact rows', r.error)
-    }
+    // Through the contact door (saveContact): the contact and its address / email / phone / website rows in one
+    // transaction; the old single columns (Email, Ville…) are written by the door from those rows.
+    const hasAddr = !!(form.Adresse.trim() || form.Ville.trim() || form.Pays.trim())
+    const res = await saveContact({
+      id: null,
+      fields: { NomInstitution: form.NomInstitution, Nom: form.Nom, Prénom: form.Prénom, Role: form.Role, Téléphone1: form.Téléphone1 },
+      lists: {
+        addresses: hasAddr ? [{ label: 'Principal', adresse: form.Adresse, code_postal: null, ville: form.Ville, pays: form.Pays, position: 0 }] : [],
+        emails: form.Email.trim() ? [{ email: form.Email.trim(), label: 'Travail', is_primary: true }] : [],
+        phones: form.Téléphone1.trim() ? [{ phone: form.Téléphone1.trim(), label: 'Travail', is_primary: true }] : [],
+        websites: form.Website.trim() ? [{ url: form.Website.trim(), label: 'Site' }] : [],
+      },
+    })
     setBusy(false)
-    if (!error && data) {
-      onCreated(data)
-      onClose()
-      return true
+    const refusal = saveContactRefusalText(res, t)
+    if (refusal) {
+      toast.error(refusal)
+      return false
     }
-    return false
+    onCreated((res as { card: ContactCard }).card.contact)
+    onClose()
+    return true
   }
 
   const performSave = async () => handleSave()

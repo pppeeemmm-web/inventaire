@@ -9,15 +9,33 @@ import { WorkRef } from '@/components/atelier/WorkRef'
 
 function inline(text: string, key: string): ReactNode[] {
   const out: ReactNode[] = []
+  // A web address (http(s)://, www., mailto:, tel:) opens in a new tab; a `#` typed before it is not a work mention
+  // (Pem 2026-11-23). Only these schemes become links: nothing else can run from a click.
   // `#1234` = a work mention (not inside a word, not `##`): a link with hover / hold preview.
-  const re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|(?<![\w#])#\d{1,5}\b)/g
+  const re = /(#?(?:https?:\/\/|www\.|mailto:|tel:)[^\s<>"]+|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|(?<![\w#])#\d{1,5}\b)/g
   let last = 0
   let m: RegExpExecArray | null
   let i = 0
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index))
-    const tok = m[0]
+    let tok = m[0]
     const k = `${key}-${i++}`
+    const url = /^#?(?:https?:\/\/|www\.|mailto:|tel:)/i.test(tok)
+    if (url) {
+      // Closing punctuation of the sentence is not part of the address.
+      const trail = /[.,;:!?)\]]+$/.exec(tok)?.[0] ?? ''
+      tok = tok.slice(0, tok.length - trail.length)
+      const shown = tok.replace(/^#/, '')
+      const href = /^www\./i.test(shown) ? `https://${shown}` : shown
+      out.push(
+        <a key={k} href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2, wordBreak: 'break-all' }}>
+          {shown}
+        </a>,
+      )
+      if (trail) out.push(trail)
+      last = m.index + m[0].length
+      continue
+    }
     if (tok.startsWith('#'))
       out.push(
         <WorkRef key={k} id={Number(tok.slice(1))} style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }} />,

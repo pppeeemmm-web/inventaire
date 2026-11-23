@@ -97,6 +97,34 @@ export const contactsUiMessages = defineMessages({
     fr: 'Les deux contacts ont des factures : la fusion est impossible (une facture émise ne change jamais de destinataire).',
     en: 'Both contacts have invoices: they can’t be merged (an issued invoice never changes hands).',
   },
+  contact_save_forbidden: {
+    fr: 'Rien n’a été enregistré : seule l’équipe peut modifier une fiche contact.',
+    en: 'Nothing was saved: only the team can change a contact.',
+  },
+  contact_save_admin_only_fmt: {
+    fr: 'Rien n’a été enregistré : « {field} » ne peut être changé que par un administrateur.',
+    en: 'Nothing was saved: “{field}” can only be changed by an admin.',
+  },
+  contact_save_stale: {
+    fr: 'Rien n’a été enregistré : cette fiche a été modifiée ailleurs entre-temps. Rouvrez-la pour voir la version actuelle, puis refaites votre changement.',
+    en: 'Nothing was saved: this contact was changed elsewhere meanwhile. Reopen it to see the current version, then make your change again.',
+  },
+  contact_save_not_found: {
+    fr: 'Rien n’a été enregistré : cette fiche n’existe plus (supprimée ou fusionnée).',
+    en: 'Nothing was saved: this contact no longer exists (deleted or merged).',
+  },
+  contact_save_bad_field_fmt: {
+    fr: 'Rien n’a été enregistré : le champ « {field} » ne passe pas par cette porte.',
+    en: 'Nothing was saved: the field “{field}” cannot be saved here.',
+  },
+  contact_save_unchanged: {
+    fr: 'Rien à enregistrer : la fiche était déjà ainsi.',
+    en: 'Nothing to save: the contact was already like this.',
+  },
+  contact_save_error_fmt: {
+    fr: 'Rien n’a été enregistré : {msg}',
+    en: 'Nothing was saved: {msg}',
+  },
   contact_editor_addr_in_use_fmt: {
     fr: 'Rien n’a été enregistré : l’adresse « {label} » est encore celle de {works} œuvre(s), {orders} commande(s) et {shipments} envoi(s). Donnez-leur une autre adresse d’abord, ou gardez celle-ci.',
     en: 'Nothing was saved: the address “{label}” is still used by {works} work(s), {orders} order(s) and {shipments} shipment(s). Give them another address first, or keep this one.',
