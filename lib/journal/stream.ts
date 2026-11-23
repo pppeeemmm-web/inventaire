@@ -109,13 +109,15 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
   const today = todayCalendarDayInParis()
   const upper = before ?? shiftDay(today, 1)
 
-  const [rows, sessions, hiddenDays, changeDays] = await Promise.all([
+  const [rows, sessions, hiddenDays, changeDays, ideaDays] = await Promise.all([
     scale(supabase, upper, n, 'day'),
     sessionWorksByDay(),
     // An admin also sees hidden entries (dimmed, to unhide them): their days are paged too (`journal_scale` counts visible cards only).
     isAdmin ? adminHiddenDays(supabase, upper, n) : Promise.resolve([] as string[]),
     // Days whose only trace is a work changed (Pem 2026-11-23: « show them »); versions are admin-only by RLS.
     isAdmin ? adminChangeDays(supabase, upper, n) : Promise.resolve([] as string[]),
+    // Days whose only trace is an idea moved, reworked or grafted (Idées 2026-11-23; team reads `concept_change`).
+    ideaChangeDays(supabase, upper, n),
   ])
   const byDay = new Map<string, JournalScaleRow>()
   if (rows) for (const r of rows) byDay.set(r.bucket, r)
@@ -125,7 +127,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     r.sessionWorks = works.filter((w) => w.id != null).length || works.length
     byDay.set(day, r)
   }
-  for (const day of [...hiddenDays, ...changeDays]) if (!byDay.has(day)) byDay.set(day, zero(day))
+  for (const day of [...hiddenDays, ...changeDays, ...ideaDays]) if (!byDay.has(day)) byDay.set(day, zero(day))
   if (!before && !byDay.has(today)) byDay.set(today, zero(today))
   let days = [...byDay.keys()].sort((a, b) => b.localeCompare(a)).slice(0, n)
   // The count read failed: fall back to the 30 days before `upper`. No loop: when they hold nothing
@@ -135,7 +137,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     const extras = await readJournalDays(supabase, { userId: user.id, isAdmin }, from, shiftDay(upper, -1), { folds: true })
     if ('error' in extras) return extras
     const found = [...extras]
-      .filter(([day, x]) => (!before && day === today) || x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || sessions.has(day))
+      .filter(([day, x]) => (!before && day === today) || x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || sessions.has(day))
       .map(([day]) => day)
       .sort((a, b) => b.localeCompare(a))
       .slice(0, n)
@@ -166,7 +168,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     .filter((d) => {
       if (d.day === today) return true
       const x = d.extras
-      return x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || d.sessionWorks.length
+      return x.entries.length || x.voices.length || x.inspirations.length || x.remarks.length || x.creation.length || x.changes.length || (x.ideaChanges ?? []).length || d.sessionWorks.length
     })
   return { isAdmin, today, days: shown, next: days.length < n ? null : from }
 }
@@ -222,6 +224,24 @@ async function adminHiddenDays(supabase: Supabase, upper: string, n: number): Pr
     .order('event_on', { ascending: false })
     .limit(n * 20)
   return [...new Set((data ?? []).map((r) => String(r.event_on)))].slice(0, n)
+}
+
+/** Paris days (before `upper`, newest first) on which an idea was planted, moved, reworked or grafted (team reads). */
+async function ideaChangeDays(supabase: Supabase, upper: string, n: number): Promise<string[]> {
+  const { data } = await supabase
+    .from('concept_change')
+    .select('changed_at')
+    .lt('changed_at', `${upper}T03:00:00Z`)
+    .order('changed_at', { ascending: false })
+    .limit(1000)
+  const days: string[] = []
+  for (const r of data ?? []) {
+    const day = calendarDayInParisFromIso(String(r.changed_at))
+    if (day >= upper || days.includes(day)) continue
+    days.push(day)
+    if (days.length >= n) break
+  }
+  return days
 }
 
 /** Paris days (before `upper`, newest first) on which a work was changed — admins only by RLS. */

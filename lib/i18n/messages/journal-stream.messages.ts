@@ -112,4 +112,13 @@ export const journalStreamMessages = defineMessages({
   js_kept_mine: { fr: 'Votre texte est gardé', en: 'Your text is kept' },
   js_see_proposal: { fr: 'Voir la proposition du PC', en: 'See the PC’s proposal' },
   js_bar_photo: { fr: 'Photo', en: 'Photo' },
+  // Idées day lines (2026-11-23, concept_change).
+  js_kind_idea: { fr: 'Idée', en: 'Idea' },
+  js_idea_planted: { fr: 'plantée 🌰', en: 'planted 🌰' },
+  js_idea_stage: { fr: '→ {seed}', en: '→ {seed}' },
+  js_idea_text: { fr: 'texte retravaillé', en: 'text reworked' },
+  js_idea_title: { fr: 'renommée', en: 'renamed' },
+  js_idea_parent: { fr: 'greffée sur une autre idée', en: 'grafted onto another idea' },
+  js_idea_trunk: { fr: 'devenue un tronc', en: 'became a trunk' },
+  js_idea_times: { fr: '×{n}', en: '×{n}' },
 })

@@ -163,7 +163,7 @@ export async function readIdeaDesk(id: string): Promise<IdeaDesk | { error: stri
       let to = from
       while (i + 1 < byDay.length && dayDiff(to, byDay[i + 1]) <= 3) to = byDay[++i]
       i++
-      const res = await readJournalDays(supabase, { userId: c.userId, isAdmin: c.isAdmin }, from, to, { folds: false })
+      const res = await readJournalDays(supabase, { userId: c.userId, isAdmin: c.isAdmin }, from, to, { folds: false, ideas: false })
       if ('error' in res) continue
       for (const extras of res.values()) for (const e of extras.entries) if (wanted.has(e.id)) moments.push(e)
     }

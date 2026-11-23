@@ -88,7 +88,7 @@ function useFormat() {
 }
 
 /** `changes`: works changed that day (admin, from the day's own cards — not part of the database counts). */
-function countsLine(c: JournalScaleRow, changes = 0): ReactNode {
+function countsLine(c: JournalScaleRow, changes = 0, ideas = 0): ReactNode {
   const parts: string[] = []
   const notes = c.entries + c.remarks + c.creation
   if (notes) parts.push(`✍ ${notes}`)
@@ -96,6 +96,7 @@ function countsLine(c: JournalScaleRow, changes = 0): ReactNode {
   if (c.photos) parts.push(`📷 ${c.photos}`)
   if (c.sessionWorks) parts.push(`🖼 ${c.sessionWorks}`)
   if (changes) parts.push(`✎ ${changes}`)
+  if (ideas) parts.push(`🌱 ${ideas}`)
   return (
     <>
       {parts.join(' · ')}
@@ -659,6 +660,39 @@ function DayCards({
       ),
     })
   }
+  // Ideas planted, moved, reworked or grafted that day (Idées 2026-11-23): a quiet line that opens the idea.
+  const SEED: Record<string, string> = { graine: '🌰', pousse: '🌱', mure: '🌳' }
+  for (const c of x.ideaChanges ?? []) {
+    const title = c.title ?? '—'
+    const what =
+      c.what === 'planted'
+        ? t('js_idea_planted')
+        : c.what === 'stage'
+          ? t('js_idea_stage').replace('{seed}', `${SEED[c.to ?? ''] ?? ''} ${c.to ? t(`ideas_maturity_${c.to}` as never) : ''}`.trim())
+          : c.what === 'text'
+            ? t('js_idea_text')
+            : c.what === 'title'
+              ? t('js_idea_title')
+              : t(c.to ? 'js_idea_parent' : 'js_idea_trunk')
+    items.push({
+      at: c.at,
+      key: c.key,
+      node: (
+        <a
+          href={`/atelier/concepts?concept=${c.conceptId}`}
+          data-testid={`js-idea-${c.key}`}
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: 44, padding: '6px 12px', border: '1px dashed var(--bd2)', borderRadius: 10, fontSize: 13, color: 'var(--tx3)', textDecoration: 'none' }}
+        >
+          <span>{time(c.at)}</span>
+          <span style={{ color: 'var(--ac)' }}>{t('js_kind_idea')}</span>
+          <span style={{ color: 'var(--tx)' }}>{title}</span>
+          <span>· {what}</span>
+          {c.count > 1 ? <span>· {t('js_idea_times').replace('{n}', String(c.count))}</span> : null}
+          {c.by ? <span>· {c.by}</span> : null}
+        </a>
+      ),
+    })
+  }
   items.sort((a, b) => a.at.localeCompare(b.at))
 
   // Works photographed in field sessions, and works changed (admin): one card each, after the notes.
@@ -989,7 +1023,7 @@ export function JournalStream({
       days.map((d) => {
         const works = dayWorks(d)
         const isToday = d.day === today
-        const empty = !d.extras.entries.length && !d.extras.voices.length && !d.extras.inspirations.length && !d.extras.remarks.length && !d.extras.creation.length && !d.sessionWorks.length && !d.extras.changes.length
+        const empty = !d.extras.entries.length && !d.extras.voices.length && !d.extras.inspirations.length && !d.extras.remarks.length && !d.extras.creation.length && !d.sessionWorks.length && !d.extras.changes.length && !(d.extras.ideaChanges ?? []).length
         return (
           <section key={d.day} id={`js-day-${d.day}`} data-testid={`js-day-${d.day}`} style={{ scrollMarginTop: 0 }}>
             <button type="button" aria-expanded={!folded.has(d.day)} aria-label={t('js_fold')} onClick={() => toggleFold(d.day)} style={dividerStyle(narrow)} data-testid={`js-divider-${d.day}`}>
@@ -1002,7 +1036,7 @@ export function JournalStream({
                 ))}
                 {works.length > thumbsCount ? <span style={{ fontSize: 11, color: 'var(--tx3)' }}>+{works.length - thumbsCount}</span> : null}
               </span>
-              <span style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{countsLine(d.counts, d.extras.changedWorks ?? d.extras.changes.length)}</span>
+              <span style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{countsLine(d.counts, d.extras.changedWorks ?? d.extras.changes.length, (d.extras.ideaChanges ?? []).length)}</span>
             </button>
             {isToday && !folded.has(d.day) ? (
               <div style={{ padding: narrow ? '0 12px' : 0 }}>

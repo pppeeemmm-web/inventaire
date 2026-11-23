@@ -18,6 +18,7 @@ import type {
   JournalDayCreation,
   JournalDayEntry,
   JournalDayExtras,
+  JournalDayIdeaChange,
   JournalDayRemark,
   JournalDayVoice,
   VoiceNoteLinks,
@@ -48,7 +49,7 @@ export async function readJournalDays(
   ctx: { userId: string; isAdmin: boolean },
   from: string,
   to: string,
-  opts: { folds?: boolean; entries?: boolean } = {},
+  opts: { folds?: boolean; entries?: boolean; ideas?: boolean } = {},
 ): Promise<Map<string, JournalDayExtras> | { error: string }> {
   if (!JOURNAL_DAY_RE.test(from) || !JOURNAL_DAY_RE.test(to) || from > to) return { error: 'day' }
   const withFolds = opts.folds !== false
@@ -59,10 +60,11 @@ export async function readJournalDays(
 
   type VoiceRow = Omit<JournalDayVoice, 'audioKey' | 'author' | 'mine' | 'hasEntry'> & { audio_r2_key: string | null; user_id: string }
   type InspirationRow = Omit<InspirationPhoto, 'conceptTitle' | 'author'> & { author_id: string }
+  type IdeaChangeRow = { id: number; concept_id: string; what: string; to_value: string | null; changed_at: string; changed_by: string | null }
   type RemarkRow = { id: number; created_at: string; body: string; image_key: string | null; oeuvre_id: number | null; concept_id: string | null; author_id: string | null }
 
   // Wave 1: the run's own rows.
-  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes, inspirationsRes, remarksRes] = await Promise.all([
+  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes, inspirationsRes, remarksRes, ideaChangesRes] = await Promise.all([
     withEntries
       ? supabase.from('journal_entry').select('*').gte('event_on', from).lte('event_on', to).order('created_at', { ascending: true }).limit(1000)
       : Promise.resolve({ data: [] as Array<Tables<'journal_entry'>>, error: null }),
@@ -121,6 +123,17 @@ export async function readJournalDays(
           .order('created_at', { ascending: true })
           .limit(400)
       : Promise.resolve({ data: [] as RemarkRow[], error: null }),
+    // Ideas planted, moved, reworked or grafted in the run (Idées 2026-11-23): the day shows them as lines.
+    // `ideas: false` skips it (an idea's own desk reads its moments through this function).
+    withEntries && opts.ideas !== false
+      ? supabase
+          .from('concept_change')
+          .select('id, concept_id, what, to_value, changed_at, changed_by')
+          .gte('changed_at', win.from)
+          .lt('changed_at', win.to)
+          .order('changed_at', { ascending: true })
+          .limit(400)
+      : Promise.resolve({ data: [] as IdeaChangeRow[], error: null }),
   ])
   if (entriesRes.error) {
     await logError('journal day entries failed', entriesRes.error, { source: 'journal.readJournalDays' })
@@ -136,11 +149,12 @@ export async function readJournalDays(
     ['kaizen_item', (creationRes.data ?? []).length, 400],
     ['inspiration_photo', (inspirationsRes.data ?? []).length, 300],
     ['note_line', (remarksRes.data ?? []).length, 400],
+    ['concept_change', (ideaChangesRes.data ?? []).length, 400],
   ]
   for (const [table, n, cap] of caps) {
     if (n >= cap) await logError('journal read hit its row cap', new Error(table), { source: 'journal.readJournalDays', metadata: { table, from, to, cap } })
   }
-  for (const [table, res] of [['voice_note', voicesRes], ['oeuvre_versions', versionsRes], ['kaizen_item', creationRes], ['inspiration_photo', inspirationsRes], ['note_line', remarksRes]] as const) {
+  for (const [table, res] of [['voice_note', voicesRes], ['oeuvre_versions', versionsRes], ['kaizen_item', creationRes], ['inspiration_photo', inspirationsRes], ['note_line', remarksRes], ['concept_change', ideaChangesRes]] as const) {
     if (res.error) await logError('journal read failed', res.error, { source: 'journal.readJournalDays', metadata: { table, from, to } })
   }
 
@@ -181,6 +195,7 @@ export async function readJournalDays(
         ...voiceRows.map((v) => v.user_id),
         ...inspirationRows.map((p) => p.author_id),
         ...remarkRows.map((n) => n.author_id),
+        ...((ideaChangesRes.data ?? []) as IdeaChangeRow[]).map((r) => r.changed_by),
       ].filter((x): x is string => !!x),
     ),
   ]
@@ -321,10 +336,39 @@ export async function readJournalDays(
 
   for (const [day, ids] of worksByDay) dayOf(day).changedWorks = ids.length
 
+  // Idea lines: one per idea and kind of change per day; the text saved five times that day is one line « ×5 ».
+  {
+    const ideaRows = (ideaChangesRes.data ?? []) as IdeaChangeRow[]
+    const ideaIds = [...new Set(ideaRows.map((r) => r.concept_id))]
+    const { data: ideaNames } = ideaIds.length ? await supabase.from('concept').select('id, titre').in('id', ideaIds) : { data: [] as Array<{ id: string; titre: string | null }> }
+    const ideaTitle = new Map((ideaNames ?? []).map((c) => [c.id as string, (c.titre as string | null) ?? null]))
+    const perDay = new Map<string, Map<string, JournalDayIdeaChange>>()
+    for (const r of ideaRows) {
+      const day = calendarDayInParisFromIso(r.changed_at)
+      if (!inRange(day)) continue
+      const k = `${r.concept_id}:${r.what}`
+      const m = perDay.get(day) ?? new Map<string, JournalDayIdeaChange>()
+      const prev = m.get(k)
+      m.set(k, {
+        key: `idea-${r.id}`,
+        at: r.changed_at,
+        conceptId: r.concept_id,
+        title: ideaTitle.get(r.concept_id) ?? null,
+        what: r.what as JournalDayIdeaChange['what'],
+        to: r.to_value,
+        count: (prev?.count ?? 0) + 1,
+        by: r.changed_by,
+      })
+      perDay.set(day, m)
+    }
+    for (const [day, m] of perDay) dayOf(day).ideaChanges = [...m.values()]
+  }
+
   const names: Record<string, string> = {}
   for (const c of (contactsRes.data ?? []) as { auth_user_id: string | null; Prénom: string | null; Nom: string | null }[]) {
     if (c.auth_user_id) names[c.auth_user_id] = [c.Prénom, c.Nom].filter(Boolean).join(' ').trim() || '—'
   }
+  for (const d of out.values()) for (const x of d.ideaChanges ?? []) x.by = x.by ? names[x.by] ?? null : null
 
   const audioKeys = new Map<string, string | null>()
   const voiceLinks = new Map<string, VoiceNoteLinks>()

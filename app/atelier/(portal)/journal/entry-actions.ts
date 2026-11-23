@@ -70,6 +70,20 @@ export type VoiceNoteLinks = {
 
 export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[] }
 /**
+ * An idea's own change that day (Idées 2026-11-23, `concept_change`): planted, stage moved, text reworked, renamed,
+ * grafted. One line per idea and kind of change per day (`count` saves of the text that day, the last stage).
+ */
+export type JournalDayIdeaChange = {
+  key: string
+  at: string
+  conceptId: string
+  title: string | null
+  what: 'planted' | 'stage' | 'title' | 'text' | 'parent'
+  to: string | null
+  count: number
+  by: string | null
+}
+/**
  * A voice note recorded that day (RLS: own notes, or all for admin). A voice note is a Journal entry
  * spoken instead of written (R1): once the PC transcript exists it shows as that entry (`hasEntry`);
  * until then it shows on its own in the day's entries. The links are what Notes triage used to set.
@@ -122,6 +136,8 @@ export type JournalDayExtras = {
   remarks: JournalDayRemark[]
   entries: JournalDayEntry[]
   changes: JournalDayChange[]
+  /** Ideas planted / moved / reworked that day (empty until read; absent on older callers). */
+  ideaChanges?: JournalDayIdeaChange[]
   /** Works changed that day, all of them (`changes` details at most 100 of them; admin only by RLS). */
   changedWorks?: number
   voices: JournalDayVoice[]
