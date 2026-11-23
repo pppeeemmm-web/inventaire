@@ -251,6 +251,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          created_by: string | null
           description: string | null
           discussion_closed_at: string | null
           energie: number | null
@@ -260,6 +261,7 @@ export type Database = {
           medium: string | null
           notes: string | null
           oeuvre_id: number | null
+          parent_id: string | null
           statut: string
           themes: string[] | null
           titre: string
@@ -269,6 +271,7 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           discussion_closed_at?: string | null
           energie?: number | null
@@ -278,6 +281,7 @@ export type Database = {
           medium?: string | null
           notes?: string | null
           oeuvre_id?: number | null
+          parent_id?: string | null
           statut?: string
           themes?: string[] | null
           titre?: string
@@ -287,6 +291,7 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           discussion_closed_at?: string | null
           energie?: number | null
@@ -296,6 +301,7 @@ export type Database = {
           medium?: string | null
           notes?: string | null
           oeuvre_id?: number | null
+          parent_id?: string | null
           statut?: string
           themes?: string[] | null
           titre?: string
@@ -309,6 +315,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "concept_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      concept_change: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          concept_id: string
+          from_value: string | null
+          id: number
+          to_value: string | null
+          what: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          concept_id: string
+          from_value?: string | null
+          id?: never
+          to_value?: string | null
+          what: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          concept_id?: string
+          from_value?: string | null
+          id?: never
+          to_value?: string | null
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concept_change_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -670,6 +721,72 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+        ]
+      }
+      contact_place: {
+        Row: {
+          contact_id: number
+          created_at: string
+          created_by: string | null
+          id: number
+          is_primary: boolean
+          key_name: string | null
+          knows_code_since: string | null
+          label: string | null
+          level: number | null
+          place_id: number
+          position: number | null
+          role: string
+          since: string | null
+          until: string | null
+        }
+        Insert: {
+          contact_id: number
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          is_primary?: boolean
+          key_name?: string | null
+          knows_code_since?: string | null
+          label?: string | null
+          level?: number | null
+          place_id: number
+          position?: number | null
+          role: string
+          since?: string | null
+          until?: string | null
+        }
+        Update: {
+          contact_id?: number
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          is_primary?: boolean
+          key_name?: string | null
+          knows_code_since?: string | null
+          label?: string | null
+          level?: number | null
+          place_id?: number
+          position?: number | null
+          role?: string
+          since?: string | null
+          until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_place_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "contact_place_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1601,6 +1718,85 @@ export type Database = {
           },
         ]
       }
+      journal_entry_day_change: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          entry_id: number
+          from_day: string
+          from_precision: string
+          id: number
+          to_day: string
+          to_precision: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          entry_id: number
+          from_day: string
+          from_precision: string
+          id?: never
+          to_day: string
+          to_precision: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          entry_id?: number
+          from_day?: string
+          from_precision?: string
+          id?: never
+          to_day?: string
+          to_precision?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_day_change_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entry_label: {
+        Row: {
+          created_at: string
+          created_by: string
+          entry_id: number
+          id: number
+          label: string
+          removed_at: string | null
+          removed_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          entry_id: number
+          id?: never
+          label: string
+          removed_at?: string | null
+          removed_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          entry_id?: number
+          id?: never
+          label?: string
+          removed_at?: string | null
+          removed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_label_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entry_link: {
         Row: {
           concept_id: string | null
@@ -1613,6 +1809,7 @@ export type Database = {
           rejected_at: string | null
           rejected_by: string | null
           relation: string
+          target_entry_id: number | null
           validated_at: string | null
         }
         Insert: {
@@ -1626,6 +1823,7 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           relation?: string
+          target_entry_id?: number | null
           validated_at?: string | null
         }
         Update: {
@@ -1639,6 +1837,7 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           relation?: string
+          target_entry_id?: number | null
           validated_at?: string | null
         }
         Relationships: [
@@ -1662,6 +1861,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "journal_entry_link_target_entry_id_fkey"
+            columns: ["target_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2343,36 +2549,141 @@ export type Database = {
       }
       place: {
         Row: {
+          access: Json | null
           address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          code: string | null
+          complement: string | null
+          conservation: string | null
           country: string | null
           created_at: string
+          description: string | null
+          fragile: boolean
           id: number
+          keeps: Json | null
+          kind: string
           latitude: number | null
           longitude: number | null
           name: string
+          parent_id: number | null
+          photo_key: string | null
+          plan: Json | null
+          plan_image_key: string | null
+          postcode: string | null
+          risk: string
+          root_id: number | null
+          shipping_notes: string | null
           town: string | null
         }
         Insert: {
+          access?: Json | null
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          code?: string | null
+          complement?: string | null
+          conservation?: string | null
           country?: string | null
           created_at?: string
+          description?: string | null
+          fragile?: boolean
           id?: never
+          keeps?: Json | null
+          kind?: string
           latitude?: number | null
           longitude?: number | null
           name: string
+          parent_id?: number | null
+          photo_key?: string | null
+          plan?: Json | null
+          plan_image_key?: string | null
+          postcode?: string | null
+          risk?: string
+          root_id?: number | null
+          shipping_notes?: string | null
           town?: string | null
         }
         Update: {
+          access?: Json | null
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          code?: string | null
+          complement?: string | null
+          conservation?: string | null
           country?: string | null
           created_at?: string
+          description?: string | null
+          fragile?: boolean
           id?: never
+          keeps?: Json | null
+          kind?: string
           latitude?: number | null
           longitude?: number | null
           name?: string
+          parent_id?: number | null
+          photo_key?: string | null
+          plan?: Json | null
+          plan_image_key?: string | null
+          postcode?: string | null
+          risk?: string
+          root_id?: number | null
+          shipping_notes?: string | null
           town?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "place_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_root_id_fkey"
+            columns: ["root_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_address_map: {
+        Row: {
+          address_id: number
+          link_id: number | null
+          mapped_at: string
+          place_id: number
+        }
+        Insert: {
+          address_id: number
+          link_id?: number | null
+          mapped_at?: string
+          place_id: number
+        }
+        Update: {
+          address_id?: number
+          link_id?: number | null
+          mapped_at?: string
+          place_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_address_map_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "contact_place"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_address_map_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       private_link: {
         Row: {
@@ -4644,8 +4955,39 @@ export type Database = {
         }
         Returns: undefined
       }
+      idea_list: {
+        Args: { p_limit?: number; p_offset?: number; p_stage?: string }
+        Returns: {
+          branches: number
+          created_at: string
+          created_by: string
+          days: number
+          documents: number
+          id: string
+          last_at: string
+          maturity: string
+          moments: number
+          oeuvre_id: number
+          parent_id: string
+          titre: string
+          works: number
+        }[]
+      }
+      idea_plant: {
+        Args: {
+          p_body?: string
+          p_from_entry?: number
+          p_parent?: string
+          p_title: string
+        }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
+      journal_move_entry: {
+        Args: { p_day: string; p_entry: number; p_precision?: string }
+        Returns: number
+      }
       journal_propose_links: {
         Args: {
           p_k?: number
@@ -4654,6 +4996,18 @@ export type Database = {
           p_min?: number
         }
         Returns: number
+      }
+      journal_scale: {
+        Args: { p_before?: string; p_grain?: string; p_limit?: number }
+        Returns: {
+          bucket: string
+          creation: number
+          entries: number
+          photos: number
+          proposals: number
+          remarks: number
+          voices: number
+        }[]
       }
       match_nodes: {
         Args: { match_count?: number; query_embedding: string }
