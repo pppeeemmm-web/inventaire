@@ -27,7 +27,7 @@ import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
 import { VatLine } from '@/app/atelier/(portal)/sales/_components/VatLine'
 
-export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null }
+export type OrderContact = { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Ville?: string | null; is_private?: boolean | null; is_team_member?: boolean | null }
 
 const KINDS: WorkOrderKind[] = ['sale', 'consignment', 'loan', 'gift', ...(ENTRUSTED_LIVE ? ['entrusted' as const] : [])]
 const KIND_LABEL: Record<WorkOrderKind, DictKey> = {
@@ -207,10 +207,11 @@ export function NewOrderForm({ narrow, contacts, onClose, onCreated, initial, in
     if (!term) return []
     // « Privé » contacts are not found by the team (Pem 2026-11-19); a prefilled party (initial) is still picked above.
     return pickableContacts(contacts, { isAdmin })
-      .filter((c) => c.ContactID !== PEM && contactSearchText(c).includes(term))
+      // A team account never buys: createWorkOrder refuses it for a sale (ord_err_party_team), so it is not offered.
+      .filter((c) => c.ContactID !== PEM && !(kind === 'sale' && c.is_team_member) && contactSearchText(c).includes(term))
       .sort(compareContactsByName(lang))
       .slice(0, 8)
-  }, [partyQ, contacts, isAdmin, lang])
+  }, [partyQ, contacts, isAdmin, lang, kind])
 
   async function submit(): Promise<boolean> {
     setErr(null)

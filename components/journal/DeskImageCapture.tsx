@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState, type DragEvent, type RefObject } from
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { addInspirationPhoto } from '@/app/atelier/capture/inspiration-actions'
+import { readPhotoMeta } from '@/lib/journal/photo-exif'
 import { enqueueCapture, isNetworkFailure } from '@/lib/mobile/capture-queue'
 
 const MAX_BYTES = 12 * 1024 * 1024
@@ -108,12 +109,13 @@ export function useDeskImageCapture({
     async (file: File, day: string) => {
       if (isHeic(file)) return void toast.error(t('jd_err_heic'))
       if (!OK_TYPES.has(file.type)) return void toast.error(t('jd_err_type'))
+      const meta = await readPhotoMeta(file, file.name || 'image') // from the original, before any resize
       const blob = await fitForDoor(file)
       if (!blob) return void toast.error(t('jd_err_too_large'))
       const id = await idFromBytes(file)
       const name = blob === file ? file.name || 'image' : 'image.jpg'
       toast.info(t('jd_sending').replace('{day}', label(day)))
-      const res = await putImageOnDay(blob, name, day, id)
+      const res = await putImageOnDay(blob, name, day, id, meta)
       if ('queued' in res) return void toast.info(t('jd_queued'))
       if ('error' in res) return void toast.error(doorErrorText(res.error, t))
       if (res.already) toast.info(t('jd_already').replace('{day}', label(res.day)))

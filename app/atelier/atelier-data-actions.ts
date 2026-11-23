@@ -224,7 +224,7 @@ export async function fetchAtelierShellPostPaint(
     presRes,
   ] = await Promise.all([
     // is_private: pickers hide « Privé » contacts from the team (pickableContacts); names still resolve from the full list.
-    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private').order('ContactID'),
+    supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private, is_team_member').order('ContactID'),
     supabase
       .from('contact_place_lines')
       .select(ADDRESS_LINE_COLS)

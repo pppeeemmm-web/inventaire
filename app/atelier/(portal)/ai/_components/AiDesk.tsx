@@ -19,12 +19,13 @@ const AGENT_HREF = 'pem-ai:run'
 
 /** On the PC (not a phone): open the pem-ai: link, which starts the agent for one pass. Chrome asks the first time. */
 function startAgentHere() {
-  // A hidden frame opens the link: changing the page's own address left it « loading » and could drop the save.
-  const f = document.createElement('iframe')
-  f.style.display = 'none'
-  f.src = AGENT_HREF
-  document.body.appendChild(f)
-  window.setTimeout(() => f.remove(), 5000)
+  // A real anchor click, as « Lancer sur ce PC » does (a plain <a href>): Chrome keeps it, a hidden frame could be dropped.
+  const a = document.createElement('a')
+  a.href = AGENT_HREF
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
 function Dot({ on }: { on: boolean }) {

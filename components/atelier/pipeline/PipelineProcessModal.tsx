@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 import { saveContact, type ContactCard } from '@/app/atelier/(portal)/contacts/save-contact'
 import { saveContactRefusalText } from '@/lib/contacts/save-contact-message'
+import { confirmIfSimilarContact } from '@/lib/contacts/similar-contact-warning'
 import { toast } from '@/lib/ui/toast'
 import { useI18n } from '@/lib/i18n/context'
 import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
@@ -235,6 +236,12 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
       // AUTO-CREATE CONTACT IF NEW
       if (isNewContact && newContactName.trim()) {
+        // Same email or name as a card already there: warn first (not a refusal); declined → nothing written.
+        const go = await confirmIfSimilarContact(
+          { nom: null, prenom: null, institution: newContactName.trim() || null, email: newContactEmail.trim() || null },
+          t,
+        )
+        if (!go) { setBusy(false); return false }
         // Through the contact door (saveContact): the email also gets its row, like the contact editor writes it.
         const res = await saveContact({
           id: null,
@@ -286,7 +293,14 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
             fd.append('price_final', prixFinal)
           }
           const res = await createWorkOrder(fd)
-          if ('error' in res) throw new Error(orderErrorText(res.error, t))
+          if ('error' in res) {
+            // No order: the process just inserted is taken back (nothing else is written for it yet).
+            const why = orderErrorText(res.error, t)
+            // A delete RLS refuses answers no error and no row: count what really went.
+            const { data: gone, error: delErr } = await fromSuiviProcess(sb).delete().eq('id', pid).select('id')
+            if (delErr || !gone?.length) throw new Error(t('pm_err_step_without_order').replace('{why}', why))
+            throw new Error(why)
+          }
           toast.success(t('ord_created_draft').replace('{ref}', res.ref ?? ''))
         }
       } else {
@@ -324,14 +338,17 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
   const [contactSearch, setContactSearch] = useState('')
   const filteredContacts = useMemo(() => {
     // « Privé » contacts are not offered to the team (Pem 2026-11-19); the current value stays.
-    const list = [...pickableContacts(contacts || [], { isAdmin, keepIds: [contactId] })].sort(compareContactsByName(lang))
+    // A team account never buys: createWorkOrder refuses it for a sale (ord_err_party_team), so it is not offered for « vente ».
+    const list = [...pickableContacts(contacts || [], { isAdmin, keepIds: [contactId] })]
+      .filter((c) => !(type === 'vente' && c.is_team_member))
+      .sort(compareContactsByName(lang))
     if (!contactSearch.trim()) return list.slice(0, 10)
     const q = contactSearch.toLowerCase()
     return list.filter(c => {
       const name = [c.NomInstitution, c.Prénom, c.Nom].filter(Boolean).join(' ').toLowerCase()
       return name.includes(q)
     }).slice(0, 10)
-  }, [contacts, contactSearch, lang, isAdmin, contactId])
+  }, [contacts, contactSearch, lang, isAdmin, contactId, type])
 
   const processSnapshot = useMemo(() => JSON.stringify({
     nom, type, debut, fin, deadlineTime, statut, localisation, url, scope, stakeholders,

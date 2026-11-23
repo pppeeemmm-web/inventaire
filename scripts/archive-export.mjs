@@ -184,7 +184,24 @@ async function main() {
   const movesBy = group(db.journal_entry_day_change, 'entry_id')
   const entries = db.journal_entry.filter((e) => !e.hidden_at).sort((a, b) => String(a.event_on).localeCompare(String(b.event_on)) || a.id - b.id)
   const byYear = group(entries.map((e) => ({ ...e, y: year(e.event_on) })), 'y')
-  for (const [y, list] of byYear) {
+  // Inspiration photos (not hidden): linked to the copy mirrored under images/<image_key> (mirrorBucket below).
+  // inspiration_photo_place (GPS) is never read.
+  const photoRows = (await all('inspiration_photo', 'day')).filter((p) => !p.hidden_at)
+  const photosByYear = new Map()
+  for (const p of photoRows) {
+    const day = String(p.day).slice(0, 10)
+    const m = p.meta && typeof p.meta === 'object' ? p.meta : {}
+    const cap = String(p.caption ?? '').replace(/[\r\n]+/g, ' ').trim()
+    const bits = [cap, m.taken_at ? `taken ${m.taken_at}` : null, m.model ? String(m.model) : null, p.oeuvre_id ? `#${p.oeuvre_id}` : null].filter(Boolean)
+    const line = `![${(cap || 'photo').replace(/[\[\]]/g, '')}](../images/${p.image_key})${bits.length ? ` — ${bits.join(' · ')}` : ''}`
+    const y = year(day)
+    photosByYear.set(y, [...(photosByYear.get(y) ?? []), { day, line }])
+  }
+  const journalYears = new Map()
+  for (const [y, list] of byYear) journalYears.set(y, list)
+  for (const y of photosByYear.keys()) if (!journalYears.has(y)) journalYears.set(y, [])
+  for (const [y, list] of [...journalYears].sort((a, b) => a[0] - b[0])) {
+    const photoText = (photosByYear.get(y) ?? []).map((p) => `### ${p.day} — photo\n\n${p.line}\n`).join('\n')
     const text = list.map((e) => {
       const links = (linksBy.get(e.id) ?? [])
         .map((l) => (l.oeuvre_id ? `#${l.oeuvre_id}` : l.contact_id ? (contactName.get(l.contact_id) ? `@${contactName.get(l.contact_id)}` : null) : l.target_entry_id ? `${l.relation === 'suite' ? 'suite of' : 'cites'} entry ${l.target_entry_id}` : conceptName.get(l.concept_id)))
@@ -194,7 +211,7 @@ async function main() {
       const meta = [e.kind, e.provenance, e.verification === 'unverified' ? 'unverified' : null, e.engine ? `machine transcript: ${e.engine}` : null, e.visibility === 'private' ? 'private' : null, e.corrects_id ? `corrects entry ${e.corrects_id}` : null, ...moved].filter(Boolean).join(' · ')
       return `## ${e.event_on} — entry ${e.id}\n_${meta}_${labels.length ? `\nLabels: ${labels.join(', ')}` : ''}${links.length ? `\nLinked: ${links.join(', ')}` : ''}\n\n${e.body}${e.photo_id ? ' (photo)' : ''}\n`
     }).join('\n---\n\n')
-    await writeText(`journal/${y}.md`, `# Journal ${y}\n\n${text}`)
+    await writeText(`journal/${y}.md`, `# Journal ${y}\n\n${text}${photoText ? `${text ? '\n---\n\n' : ''}${photoText}` : ''}`)
   }
 
   // ── Offline browser page ────────────────────────────────────────────────────────────────────
@@ -265,7 +282,7 @@ q.oninput=show;show();
     '',
     'index.html      ouvrir dans un navigateur : toutes les œuvres, recherche, journal lié',
     'works.csv       une ligne par œuvre (Excel / LibreOffice)',
-    'journal/        le journal en texte, par année',
+    'journal/        le journal en texte, par année, et les photos d’inspiration',
     'images/         toutes les images (format AVIF) ; images/thumbs = vignettes',
     'vault/          documents (certificats, commandes…)',
     'data/json/      toutes les tables, complètes',

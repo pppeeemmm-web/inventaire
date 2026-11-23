@@ -2,6 +2,15 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Six small fixes (Pem « All of them », « Ok, exifr »)
+
+- A: the desk order form and the Pipeline no longer offer a team account as a sale buyer (same rule as `createWorkOrder` / the phone sale; the shared contact list now reads `is_team_member`).
+- B: Pipeline « créer » warns on a similar card (same email / name) before creating a contact, like the other create screens.
+- C: a Pipeline « vente » whose order is refused no longer leaves a step without its order: the step just written is taken back; if that fails, the message says so.
+- D: Bureau IA « Faire maintenant » opens `pem-ai:` with a real link click (the hidden frame could be dropped by Chrome).
+- E: a JPEG pasted or dropped on a desk Journal day keeps its photo data (time taken, phone, lens, place → admin-only), read in the browser with `exifr` 7.1.3 (loaded only on paste / drop).
+- F: the archive export writes the Journal's inspiration photos into `journal/YYYY.md`, linking the copy already mirrored under `images/` (hidden photos and the place left out).
+
 ## 2026-11-23 — Journal Step B part 2 (Pem « Yes, plan it », answers « Correct / Correct / Keep it », « Yes, apply and push »)
 
 - `@` links a person (`journal_entry_link.contact_id`): one shared `#` / `@` picker (`components/journal/LinkPicker.tsx`, `searchLinkTargets`) in the desk composer, the phone writing sheet and a photo's text; « + Personne » through `saveContact` (similar-card warning first). Person chips on Journal cards; the contact drawer's « Dans le Journal » lists the notes that name them. A person named in the Journal cannot be deleted (« fusionnez »); `merge_contacts` moves the links.

@@ -8,7 +8,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
-- Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey; a photo pasted or dropped on the desk keeps no photo data (only PC-tray photos send it: the browser reads no EXIF yet) → [JournalDesign](./design/2026-11-22/JournalDesign.md).
+- Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Overview « coup d'œil » (Pem GO): built in its own session from its design (`OverviewGlance.md`, still in that session's worktree); the lead lands it after Pem compares it with the mockup.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
 - Pem's order « 1 3 2 » is done (see DONE); next if time remains before the pause (Max runs to 17 Dec 2026): the reverse pricing design draft (§3, no build).
@@ -27,12 +27,8 @@ Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.no
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
-- [ ] Pipeline « créer » (auto-create of a contact from a project) has no « same email / same name » warning, unlike the five other create screens.
-- [ ] The desk order form and the Pipeline still list team accounts as a sale buyer (the server refuses them at submit); a Pipeline « vente » refused by `createWorkOrder` leaves its process row without an order.
-- [ ] Bureau IA « Faire maintenant » opens the `pem-ai:` link from a hidden frame, which Chrome may drop; « Lancer sur ce PC » (a plain link) works.
 - [ ] Desk Journal: an image dropped offline on a day older than the 5 newest is not reread when it is sent, and waits under today with no sign of its day.
 - [ ] Phone Aujourd'hui and the old day page show the clock time, not « ajouté le … », for a photo added later to a past day.
-- [ ] The archive export does not carry the Journal's inspiration photos.
 - [ ] After a contact merge the desk keeps the merged contact's duplicate address links until a reload (pickers show a place twice; a save there answers « stale »).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
