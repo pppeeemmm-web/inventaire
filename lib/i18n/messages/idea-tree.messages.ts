@@ -62,7 +62,7 @@ export const ideaTreeMessages = defineMessages({
   it_stage_yours: { fr: 'Ton idée : tu changes l’étape. L’app propose seulement.', en: 'Your idea: you move the stage. The app only suggests.' },
   it_stage_other: { fr: 'Idée de {name} : {name} change l’étape. Tout le monde peut écrire dedans.', en: 'Idea of {name}: {name} moves the stage. Anyone can write into it.' },
   it_stage_other_admin: { fr: 'Idée de {name} : {name} change l’étape (toi aussi, pour l’instant).', en: 'Idea of {name}: {name} moves the stage (you too, for now).' },
-  it_stage_moved: { fr: 'Étape : {stage} — noté aussi sur la page d’aujourd’hui', en: 'Stage: {stage} — also noted on today’s page' },
+  it_stage_moved: { fr: 'Étape : {stage}', en: 'Stage: {stage}' },
   it_offer_pousse: { fr: 'Des moments sur plusieurs jours — passer en pousse ?', en: 'Moments on several days — move to sprout?' },
   it_offer_mure: { fr: 'Un texte, des œuvres ou des documents — mûre ?', en: 'A text, works or documents — ripe?' },
   it_ripe_hint: { fr: 'Mûre : prête à devenir une œuvre ou un projet (Pipeline).', en: 'Ripe: ready to become a work or a project (Pipeline).' },

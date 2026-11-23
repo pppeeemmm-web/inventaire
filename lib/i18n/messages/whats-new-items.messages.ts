@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.93 (2026-11-23) — Idées as a tree fed by the Journal.
+  wn_ideas_tree_t: { fr: 'Les Idées deviennent un arbre', en: 'Ideas become a tree' },
+  wn_ideas_tree_d: {
+    fr: 'L’onglet Idées montre chaque idée comme une graine qui pousse : graine, pousse, mûre — seule la personne qui l’a plantée change l’étape. Une idée peut pousser sur une autre (ses branches). En ouvrant une idée : son Fil (les moments du Journal qui la nourrissent, le plus récent en haut), son Texte (avec ses versions), ses documents, œuvres, branches et idées liées. Écrire dans une idée écrit un moment sur la page d’aujourd’hui.',
+    en: 'The Ideas tab shows each idea as a seed that grows: seed, sprout, ripe — only the person who planted it moves the stage. An idea can grow on another (its branches). Opening an idea: its Thread (the Journal moments that feed it, newest at the top), its Text (with its versions), its documents, works, branches and linked ideas. Writing into an idea writes a moment on today’s page.',
+  },
+  wn_idea_from_moment_t: { fr: 'Planter une idée depuis le Journal', en: 'Plant an idea from the Journal' },
+  wn_idea_from_moment_d: {
+    fr: 'Sur une note du Journal, « ⋯ » puis « 🌰 En faire une idée » : la note reste sur son jour et devient le premier moment de la nouvelle idée. Une note vocale envoyée vers une idée, un partage ajouté à une idée et « En faire une idée » sur un rappel passent aussi par là.',
+    en: 'On a Journal note, « ⋯ » then « 🌰 Make it an idea »: the note stays on its day and becomes the new idea’s first moment. A voice note sent to an idea, a share added to an idea and « Make it an idea » on a reminder go the same way.',
+  },
   // 3.1.92 (2026-11-23) — the stream is the default.
   wn_journal_stream_default_t: { fr: 'Le Journal s’ouvre sur le fil des jours', en: 'The Journal opens on the stream of days' },
   wn_journal_stream_default_d: {

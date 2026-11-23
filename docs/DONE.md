@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-23 — Idées as a tree fed by the Journal (Pem « Yes, apply it », « Yes, land it »)
+
+- Idées become a tree: trunk and branches, stage graine / pousse / mûre moved by the idea's author (or an admin), one idea's desk (Fil of Journal moments newest first, Texte with versions in `concept_change`, documents, works, branches, linked ideas), phone list by last moment, `GET /api/ideas`. « 🌰 En faire une idée » and the label Idée plant from a Journal card; reminders, Notes routing and share triage go through `idea_plant` (`ideas_tree.sql`, live). Built and checked on live data (desk + 390 px, nothing written) in the Idées session — `bce018b`.
+
 ## 2026-11-23 — The Journal as one stream of days (TODO « First: the Journal design », Pem « Approve », « start the build », « Offline queue », « Start Step B SQL » / « Yes, apply it »)
 
 - Design approved: [JournalDesign](./design/2026-11-22/JournalDesign.md) + mockup — `5eb9be3`.
