@@ -5,6 +5,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 ## 2026-11-23 — Idées as a tree fed by the Journal (Pem « Yes, apply it », « Yes, land it »)
 
 - Idées become a tree: trunk and branches, stage graine / pousse / mûre moved by the idea's author (or an admin), one idea's desk (Fil of Journal moments newest first, Texte with versions in `concept_change`, documents, works, branches, linked ideas), phone list by last moment, `GET /api/ideas`. « 🌰 En faire une idée » and the label Idée plant from a Journal card; reminders, Notes routing and share triage go through `idea_plant` (`ideas_tree.sql`, live). Built and checked on live data (desk + 390 px, nothing written) in the Idées session — `bce018b`.
+- The Journal day shows its ideas: planted, stage moved, text reworked, renamed, grafted — one quiet line per idea and kind per day (« ×n », who did it) that opens the idea; days holding only an idea change are paged too, the divider counts 🌱 n (`concept_change` in `readJournalDays`). Not seen on a real day yet: live `concept_change` had 0 rows — `1f0ed03`.
 
 ## 2026-11-23 — The Journal as one stream of days (TODO « First: the Journal design », Pem « Approve », « start the build », « Offline queue », « Start Step B SQL » / « Yes, apply it »)
 

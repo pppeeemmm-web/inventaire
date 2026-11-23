@@ -6,6 +6,12 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.94 (2026-11-23) — the Journal day shows its ideas.
+  wn_journal_idea_lines_t: { fr: 'Les idées du jour dans le Journal', en: 'The day’s ideas in the Journal' },
+  wn_journal_idea_lines_d: {
+    fr: 'Une idée plantée, passée en pousse ou mûre, au texte retravaillé, renommée ou greffée sur une autre s’affiche dans le fil du Journal, sur son jour, en une ligne discrète avec qui l’a fait ; la ligne ouvre l’idée. Plusieurs enregistrements du même texte dans la journée font une seule ligne « ×n ».',
+    en: 'An idea planted, moved to sprout or ripe, its text reworked, renamed or grafted onto another shows in the Journal stream on its day, as a quiet line with who did it; the line opens the idea. Several saves of the same text in a day make one line « ×n ».',
+  },
   // 3.1.93 (2026-11-23) — Idées as a tree fed by the Journal.
   wn_ideas_tree_t: { fr: 'Les Idées deviennent un arbre', en: 'Ideas become a tree' },
   wn_ideas_tree_d: {

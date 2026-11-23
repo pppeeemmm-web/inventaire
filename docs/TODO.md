@@ -9,7 +9,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - First: the Journal stream is the default (`?stream=0` keeps the old day screens); the desk waits ~1.5 s for its page shell before the first read — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2, waits on `merge_contacts`), the desk hotkey, `npm run gen:types` → [JournalDesign](./design/2026-11-22/JournalDesign.md).
-- Idées open pieces: Journal day lines for a stage move (`concept_change`), the Overview idea tile opens the idea itself (`?concept=`), 🎤 inside an idea, delete the unmounted `Concepts.tsx` tree (Pem's OK) → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
+- Idées open pieces: the Mois / Années lines and the old `?stream=0` day screens do not count or draw idea changes, the Overview idea tile opens the idea itself (`?concept=`), 🎤 inside an idea, delete the unmounted `Concepts.tsx` tree (Pem's OK) → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (apply `merge_contacts_fn.sql` to the Docker copy first) → if time remains, the design drafts for reverse pricing and contacts as relationships (§3, no builds).
 
 ## 1. Finish first — small, before anything new
