@@ -13,6 +13,7 @@ import { thumbUrl } from '@/lib/data'
 import { formatPriceFull } from '@/lib/format-price'
 import { contactPersonProseName } from '@/lib/contacts/contact-display'
 import { contactLinks, LINK_GLYPH } from '@/lib/contacts/contact-links'
+import { byPrecision } from '@/lib/contacts/date-precision'
 import { ContactJournalSection } from '@/components/atelier/ContactJournalSection'
 import {
   readPersonOrders,
@@ -293,14 +294,8 @@ export function PersonPage({ contact, emails, phones, addresses, websites, socia
   const links = contactLinks(websites, socials)
   const day = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
   const dated = contact as ContactRow & { born_on?: string | null; born_precision?: string | null; died_on?: string | null; died_precision?: string | null }
-  const byPrecision = (d: string, precision: string | null | undefined) => {
-    const date = new Date(`${d.slice(0, 10)}T12:00:00`)
-    if (precision === 'year') return String(date.getFullYear())
-    if (precision === 'month') return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
-    return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
-  }
-  const bornText = dated.born_on ? t('pp_born_fmt').replace('{d}', byPrecision(dated.born_on, dated.born_precision)) : ''
-  const diedText = dated.died_on ? t('pp_died_fmt').replace('{d}', byPrecision(dated.died_on, dated.died_precision)) : ''
+  const bornText = dated.born_on ? t('pp_born_fmt').replace('{d}', byPrecision(dated.born_on, dated.born_precision, locale)) : ''
+  const diedText = dated.died_on ? t('pp_died_fmt').replace('{d}', byPrecision(dated.died_on, dated.died_precision, locale)) : ''
   const diedYear = dated.died_on ? t('pp_died_fmt').replace('{d}', String(new Date(`${dated.died_on.slice(0, 10)}T12:00:00`).getFullYear())) : ''
   const key = (prefix: string, v: string, list: string[]) => (list.includes(v) ? t(`${prefix}${v}` as DictKey) : v)
 

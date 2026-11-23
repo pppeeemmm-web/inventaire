@@ -14,6 +14,7 @@ import {
   type TimelineCursor,
   type TimelineItem,
 } from '@/app/atelier/(portal)/contacts/person-timeline'
+import { byPrecision } from '@/lib/contacts/date-precision'
 import { TIMELINE_KINDS, type TimelineKind } from '@/lib/contacts/person-timeline-kinds'
 
 const KIND_COLOUR: Record<TimelineKind, string> = {
@@ -25,6 +26,8 @@ const KIND_COLOUR: Record<TimelineKind, string> = {
   kit: 'var(--yellow)',
   paper: 'var(--dust)',
   enquiry: 'var(--cyan)',
+  custody: 'var(--sage)',
+  life: 'var(--mt)',
 }
 
 const ORDER_KINDS = ['sale', 'consignment', 'loan', 'gift', 'entrusted']
@@ -92,7 +95,7 @@ export function PersonTimeline({ contactId, narrow, reloadKey = 0 }: { contactId
   const dayLabel = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(locale, { weekday: narrow ? undefined : 'short', day: 'numeric', month: 'long', year: 'numeric' })
   const keyed = (prefix: string, v: string, list: string[]) => (list.includes(v) ? t(`${prefix}${v}` as DictKey) : v)
 
-  const describe = (it: TimelineItem): { main: string; side: string } => {
+  const describe = (it: TimelineItem): { main: string; side: string; node?: React.ReactNode } => {
     switch (it.kind) {
       case 'moment':
         return { main: [t(`pp_tl_moment_${it.title}` as DictKey), it.detail].filter(Boolean).join(' · '), side: it.status ?? '' }
@@ -111,6 +114,16 @@ export function PersonTimeline({ contactId, narrow, reloadKey = 0 }: { contactId
         }
       case 'paper':
         return { main: it.title, side: it.detail ?? '' }
+      case 'custody': {
+        const [role, dir] = it.title.split('_')
+        const work = it.detail ?? ''
+        const link = <strong>{work}</strong>
+        const [before, after] = t(`pp_tl_custody_${role}_${dir}` as DictKey).split('{work}')
+        const sideText = it.status ? t(dir === 'in' ? 'pp_tl_custody_from' : 'pp_tl_custody_to').replace('{name}', it.status) : ''
+        return { main: it.title, side: sideText, node: <>{before}{link}{after}</> }
+      }
+      case 'life':
+        return { main: `${t(it.title === 'died' ? 'pp_tl_life_died' : 'pp_tl_life_born')} · ${byPrecision(it.at, it.status, locale)}`, side: '' }
       case 'enquiry':
         return { main: [it.title, it.detail].filter(Boolean).join(' · ') || t('pp_tl_kind_enquiry'), side: it.status ?? '' }
     }
@@ -167,14 +180,14 @@ export function PersonTimeline({ contactId, narrow, reloadKey = 0 }: { contactId
           const d = dayOf(it.at)
           const divider = d !== lastDay
           lastDay = d
-          const { main, side } = describe(it)
+          const { main, side, node } = describe(it)
           const body = (
             <>
               <span aria-hidden style={{ width: 3, alignSelf: 'stretch', background: KIND_COLOUR[it.kind], borderRadius: 1, flexShrink: 0 }} />
               <span className="t-mono-sm" style={{ width: narrow ? 64 : 84, flexShrink: 0, color: 'var(--tx3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 {t(`pp_tl_kind_${it.kind}` as DictKey)}
               </span>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: narrow ? 'normal' : 'nowrap', overflowWrap: 'anywhere' }}>{main || '—'}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: narrow ? 'normal' : 'nowrap', overflowWrap: 'anywhere' }}>{node ?? (main || '—')}</span>
               {side ? <span style={{ color: 'var(--tx3)', flexShrink: 0, fontSize: 11 }}>{side}</span> : null}
               {it.amount != null ? <span className="t-mono-sm" style={{ flexShrink: 0 }}>{formatPriceFull(it.amount, lang)}</span> : null}
             </>
@@ -195,7 +208,7 @@ export function PersonTimeline({ contactId, narrow, reloadKey = 0 }: { contactId
             <div key={`${it.kind}:${it.id}`}>
               {divider ? (
                 <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx2)', padding: '10px 0 4px', borderBottom: '1px solid var(--bd2)' }}>
-                  {dayLabel(d)}
+                  {it.kind === 'life' && it.status && it.status !== 'day' ? byPrecision(it.at, it.status, locale) : dayLabel(d)}
                 </div>
               ) : null}
               {it.href ? (

@@ -5586,7 +5586,23 @@ export type Database = {
         Args: { p_keep: number; p_lose: number }
         Returns: undefined
       }
+      _moment_visible: {
+        Args: { p_moment: number; p_private: boolean }
+        Returns: boolean
+      }
       _oeuvre_node: { Args: { p_oeuvre: number }; Returns: string }
+      _person_custody_allowed: { Args: { p_contact: number }; Returns: boolean }
+      _person_custody_rows: {
+        Args: { p_contact: number }
+        Returns: {
+          at: string
+          direction: string
+          oeuvre_id: number
+          other_contact: number
+          role: string
+          version_id: number
+        }[]
+      }
       archive_contact: {
         Args: { p_archive: boolean; p_contact: number }
         Returns: Json
@@ -5716,6 +5732,24 @@ export type Database = {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string
       }
+      person_custody: {
+        Args: {
+          p_before_at?: string
+          p_before_id?: number
+          p_before_role?: string
+          p_contact: number
+          p_limit?: number
+        }
+        Returns: {
+          at: string
+          direction: string
+          oeuvre_id: number
+          other_contact: number
+          role: string
+          version_id: number
+        }[]
+      }
+      person_custody_count: { Args: { p_contact: number }; Returns: number }
       person_links: {
         Args: { p_contact: number }
         Returns: {
