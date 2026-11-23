@@ -10,7 +10,6 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: re-suggest entries corrected before the build (one-time SQL, own OK), `@` person links (Step B part 2; `merge_contacts` is live, so it no longer waits), the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
-- Work-change badges: committed locally, proof a–h passed on the Docker copy; `oeuvre_version_author.sql` goes live with Pem's OK, push the same minute, then `npm run gen:types` → [WorkChangeBadges](./design/2026-11-23/WorkChangeBadges.md).
 - Being designed: Journal on the desk — paste or drop an image onto the day, record with the laptop microphone, pick up photos from the Syncthing folder (session « Journal on the desk — design first », its own worktree; no code).
 - Waiting to land: tests that write run on the Docker copy, not live → `TestsOnDockerCopy.md` (branch `claude/eloquent-tesla-8a10c1`, uncommitted).
 - Until the pause (Max runs to 17 Dec 2026), in this order: one automated stress round (the Docker copy already has Places phase B and today's `merge_contacts`) → if time remains, the reverse pricing design draft (§3, no build).

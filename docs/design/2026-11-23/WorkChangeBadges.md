@@ -1,6 +1,6 @@
 # Work-change badges — who changed a work (design, 2026-11-23)
 
-Status: **local draft**, design only. No code, no SQL applied. TODO « Now » item 2.
+Status: **built and live** 2026-11-23 (`df9da99`, migration `oeuvre_version_author`). TODO « Now » item 2.
 Mockup: [`WorkChangeBadges_Mockup.html`](./WorkChangeBadges_Mockup.html). SQL draft: [`supabase/sql/oeuvre_version_author.sql`](../../../supabase/sql/oeuvre_version_author.sql) (NOT applied).
 
 ## 0. Which kind of thing, which home, what changes (BuildingPrinciples §2)

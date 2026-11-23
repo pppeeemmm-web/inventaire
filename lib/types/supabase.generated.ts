@@ -2219,24 +2219,30 @@ export type Database = {
       }
       oeuvre_versions: {
         Row: {
+          approved_by: string | null
           changed_at: string
           changed_by: string | null
+          changed_via: string | null
           id: number
           oeuvre_id: number
           snapshot: Json
           source: string | null
         }
         Insert: {
+          approved_by?: string | null
           changed_at?: string
           changed_by?: string | null
+          changed_via?: string | null
           id?: number
           oeuvre_id: number
           snapshot: Json
           source?: string | null
         }
         Update: {
+          approved_by?: string | null
           changed_at?: string
           changed_by?: string | null
+          changed_via?: string | null
           id?: number
           oeuvre_id?: number
           snapshot?: Json
