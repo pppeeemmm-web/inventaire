@@ -35,6 +35,8 @@ Small fixes
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
 - [ ] A theme or group made, deleted or copied anywhere (Thèmes, batch edit, export, catalogue save, an exhibition) reaches the other screens (Inventory filters, drawer pickers, per-work chips and counts) only after a reload → one shared refresh after any change (a first try that only covered Thèmes is parked on branch `wt-themes-push`).
+- [ ] « Retrouvée » on a work: toggle on the phone add form; changeable in the drawer (admin), clears the automatic start; « retrouvée » shows even with no dates.
+- [ ] Journal: each added work is a moment « Œuvre ajoutée » (written by the database at creation, linked to the work), labelled nouvelle / retrouvée from the work; one-off for the works added before (Spain, studio).
 
 Checks
 - [ ] One automated stress round: run-chains, races-plus, money-guards, integrity, security only — no browser, no screenshots, failures only, reported without fixing in the same session (a side session on a cheaper model) → [`scripts/stress/README.md`](../scripts/stress/README.md)
