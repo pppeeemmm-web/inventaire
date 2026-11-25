@@ -37,6 +37,7 @@ Small fixes
 - [ ] A theme or group made, deleted or copied anywhere (Thèmes, batch edit, export, catalogue save, an exhibition) reaches the other screens (Inventory filters, drawer pickers, per-work chips and counts) only after a reload → one shared refresh after any change (a first try that only covered Thèmes is parked on branch `wt-themes-push`).
 - [ ] « Retrouvée » on a work: toggle on the phone add form; changeable in the drawer (admin), clears the automatic start; « retrouvée » shows even with no dates.
 - [ ] Journal: each added work is a moment « Œuvre ajoutée » (written by the database at creation, linked to the work), labelled nouvelle / retrouvée from the work; one-off for the works added before (Spain, studio).
+- [ ] Phone Journal: a line written (✍️) or a voice note (🎤) is saved but stays invisible until a full reload (an image save reloads, so it shows them) — the stream keeps its first days and ignores the page's fresh copy (`JournalStream.tsx` `useState(initial.days)`), and the voice sheet in `TodayFrame` has no « saved » follow-up → merge the fresh copy like `reloadTop`, give the voice sheet `onSaved`.
 - [ ] Phone inspiration photo (📷 Photo · doc → Inspiration): the button stays « Enregistrer » while the photo uploads, and the « enregistrée » message is lost in the full reload that follows → « Envoi… » while sending, then go to the day without a reload so the message stays.
 
 Checks
