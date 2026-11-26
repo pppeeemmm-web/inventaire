@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
-import { setProductionDate } from '@/app/atelier/works/production-actions'
+import { setProductionDate, setProductionOrigin } from '@/app/atelier/works/production-actions'
 import { stepDateInput, stepDateLabel, type DatePrecision } from '@/lib/work-periods'
 
 type PDate = { on: string | null; precision: DatePrecision }
@@ -40,6 +40,7 @@ export function WorkProductionSpan({
   origin,
   inProduction,
   editable = false,
+  onSaved,
 }: {
   oeuvreId: number
   startedOn: string | null | undefined
@@ -49,6 +50,8 @@ export function WorkProductionSpan({
   origin: 'new' | 'found' | null | undefined
   inProduction: boolean
   editable?: boolean
+  /** The new / found door's saved fields, for the open work's list (no page refresh). */
+  onSaved?: (saved: { production_origin: 'new' | 'found' | null; production_started_on: string | null; production_started_precision: 'year' | 'month' | 'day' | null }) => void
 }) {
   const { t, lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
@@ -57,6 +60,8 @@ export function WorkProductionSpan({
   const [startDraft, setStartDraft] = useState(() => asField(toPartial(startedOn, startedPrecision)))
   const [endDraft, setEndDraft] = useState(() => asField(toPartial(completedOn, completedPrecision)))
   const [busy, setBusy] = useState(false)
+  const [org, setOrg] = useState(origin ?? null)
+  useEffect(() => setOrg(origin ?? null), [oeuvreId, origin])
 
   useEffect(() => {
     const s = toPartial(startedOn, startedPrecision)
@@ -87,7 +92,23 @@ export function WorkProductionSpan({
   } else if (inProduction) {
     text = t('wf_production_unknown_open')
   }
-  if (!text && !editable) return null
+  if (!text && !editable && org !== 'found') return null
+
+  async function saveOrigin(next: 'new' | 'found') {
+    setBusy(true)
+    try {
+      const res = await setProductionOrigin(oeuvreId, next)
+      if ('error' in res) return void toast.error(`${t('error_prefix')} ${res.error}`)
+      setOrg(res.saved.production_origin)
+      const s = toPartial(res.saved.production_started_on, res.saved.production_started_precision)
+      setStart(s)
+      setStartDraft(asField(s))
+      onSaved?.(res.saved)
+      toast.success(t('wf_origin_saved'))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function save(which: 'start' | 'end') {
     setBusy(true)
@@ -158,15 +179,32 @@ export function WorkProductionSpan({
 
   return (
     <div data-testid="work-production-span" style={{ marginTop: 4 }}>
-      {text ? (
+      {text || org === 'found' ? (
         <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)' }}>
           <span style={{ color: 'var(--tx3)' }}>{t('wf_production_label')} · </span>
           {text}
-          {origin === 'found' ? <span style={{ color: 'var(--tx3)' }}> · {t('wf_production_origin_found')}</span> : null}
+          {org === 'found' ? <span style={{ color: 'var(--tx3)' }}>{text ? ' · ' : ''}{t('wf_production_origin_found')}</span> : null}
         </div>
       ) : null}
       {editable ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+          <div role="group" aria-label={t('session_origin_label')} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, maxWidth: 520 }}>
+            {(['new', 'found'] as const).map((o) => (
+              <button
+                key={o}
+                type="button"
+                className="btn ghost sm"
+                aria-pressed={org === o}
+                disabled={busy}
+                data-testid={`work-production-origin-${o}`}
+                onClick={() => (org === o ? undefined : void saveOrigin(o))}
+                style={{ minHeight: 44, whiteSpace: 'normal', background: org === o ? 'var(--ac)' : undefined, color: org === o ? 'var(--bg0)' : undefined }}
+              >
+                {t(o === 'new' ? 'wf_origin_new' : 'wf_origin_found')}
+              </button>
+            ))}
+          </div>
+          <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_origin_saved_on_tap')}</span>
           {field('start')}
           {field('end')}
           <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_production_start_hint')}</span>

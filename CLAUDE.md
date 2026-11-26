@@ -18,6 +18,7 @@ Repo guide. Conflict → ask owner before edit. Area rules live next to their co
 - Batch rhythm: one local commit per item (`-NoPush`), docs (TODO → DONE, What's new + release bump) once at batch end, one push per batch.
 - Parallel batch: side sessions edit in their worktree and **leave the work uncommitted**; never edit `docs/TODO.md`, `docs/DONE.md`, `lib/whats-new.ts`, `whats-new*.messages.ts`. The main checkout lands each with `& .\scripts\land.ps1 <name> -m '…'`, writes those docs, ships once. Remove a worktree only after landing: unlink its `node_modules` junction, then `git worktree remove`; never `--force` with uncommitted changes.
 - Changing a running side session's brief (owner 2026-11-19; a queued message never cancels running work): stop its turn first (`stop_session`), then send the new brief headed « Replaces the brief of <time> ». A side session opens its reply by naming the brief it is working on.
+- Work Pem does not watch (cloud session, Pem away) (owner 2026-11-26): branch → draft pull request (CI runs the same checks) → Vercel preview link → Pem tries it on the phone → Pem merges. The preview uses the live database: what is saved there is real; the PR says what the change writes or can lose. Claude never merges; SQL is never applied by a merge. `ship.ps1` to `main` stays for desk work Pem watches.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`. State unclear → `pwsh scripts/release-truth.ps1`.
 
 ## Architect, delegation, data flow (owner GO 2026-11-18)

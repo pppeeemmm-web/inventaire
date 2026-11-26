@@ -145,7 +145,7 @@ export function TodayFrame({ day, today, children, stream = false }: { day: stri
       {stream ? null : <CaptureQueueFlusher onSent={() => router.refresh()} />}
       <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" writeDay={day} stream={stream} />
 
-      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
+      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} onSaved={() => { if (navigator.onLine !== false) router.refresh() }} oeuvreOptions={[]} /> : null}
     </div>
   )
 }

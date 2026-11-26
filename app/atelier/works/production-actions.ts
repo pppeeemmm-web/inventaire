@@ -38,3 +38,43 @@ export async function setProductionDate(oeuvreId: number, which: 'start' | 'end'
   revalidatePath('/atelier')
   return { ok: true, on: parsed.on_date, precision: parsed.date_precision }
 }
+
+type OriginSaved = {
+  production_origin: 'new' | 'found' | null
+  production_started_on: string | null
+  production_started_precision: 'year' | 'month' | 'day' | null
+}
+
+// « Nouvelle / Ancienne — retrouvée » on an existing work (TODO: « Retrouvée » on a work). Admin only, like the
+// dates. « Retrouvée » means the start is unknown, so the start that came with « Nouvelle » (set automatically at
+// creation) is cleared; a start on a work that was not « Nouvelle » stays. Returns what was saved.
+export async function setProductionOrigin(
+  oeuvreId: number,
+  origin: 'new' | 'found',
+): Promise<{ ok: true; saved: OriginSaved } | { error: string }> {
+  if (!Number.isInteger(oeuvreId) || oeuvreId <= 0) return { error: 'oeuvre_id' }
+  if (origin !== 'new' && origin !== 'found') return { error: 'origin' }
+
+  const supabase = await createClient()
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (!isAdmin) return { error: 'admin_only' }
+
+  const cols = 'production_origin, production_started_on, production_started_precision'
+  const { data: cur, error: readErr } = await supabase.from('Oeuvres').select(cols).eq('OeuvreID', oeuvreId).is('deleted_at', null).maybeSingle()
+  if (readErr) return { error: readErr.message }
+  if (!cur) return { error: 'not_found' }
+
+  const patch: Partial<OriginSaved> = { production_origin: origin }
+  if (origin === 'found' && cur.production_origin === 'new') {
+    patch.production_started_on = null
+    patch.production_started_precision = null
+  }
+  const { data, error } = await supabase.from('Oeuvres').update(patch).eq('OeuvreID', oeuvreId).is('deleted_at', null).select(cols)
+  if (error) {
+    await logError('Production origin update failed', error, { source: 'production.setProductionOrigin', metadata: { oeuvreId, origin } })
+    return { error: error.message }
+  }
+  // Nothing updated (row gone, or refused by RLS): never « ok ».
+  if (!data?.length) return { error: 'not_found' }
+  return { ok: true, saved: data[0] as OriginSaved }
+}

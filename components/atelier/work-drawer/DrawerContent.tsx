@@ -1916,6 +1916,7 @@ export function DrawerContent({
             completedPrecision={o.production_completed_precision}
             origin={o.production_origin}
             inProduction={!o.Catalogué}
+            onSaved={(saved) => onWorkSaved?.(o.OeuvreID, saved)}
           />
           <WorkCreationHistory oeuvreId={o.OeuvreID} when={when} />
         </Part>

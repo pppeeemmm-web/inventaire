@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.108 (2026-11-26) — phone Journal shows a line / voice note at once; « Ancienne — retrouvée ».
+  wn_journal_phone_at_once_t: { fr: 'Journal : tout de suite', en: 'Journal: right away' },
+  wn_journal_phone_at_once_d: {
+    fr: 'Sur le téléphone, une ligne écrite ou une note vocale apparaît dans le Journal dès qu’elle est enregistrée — plus besoin d’ajouter une image pour la voir. En ajoutant une photo d’inspiration, le bouton dit « Envoi… » puis le résultat.',
+    en: 'On the phone, a written line or a voice note shows in the Journal as soon as it is saved — no need to add an image to see it. When adding an inspiration photo, the button says « Sending… » then the result.',
+  },
+  wn_work_found_t: { fr: 'Œuvre retrouvée', en: 'Found work' },
+  wn_work_found_d: {
+    fr: 'Nouvelle œuvre sur le téléphone : « Nouvelle » ou « Ancienne — retrouvée », comme sur l’ordinateur. Une œuvre retrouvée n’est plus comptée comme commencée aujourd’hui. Pem peut corriger ce choix dans la fiche de l’œuvre.',
+    en: 'New work on the phone: « New » or « Older — found », as on the desk. A found work no longer counts as started today. Pem can correct the choice in the work card.',
+  },
   // 3.1.103 (2026-11-23) — desk Journal capture (admin).
   // 3.1.107 (2026-11-23) — custody and life dates in the person timeline; four-tab contact editor.
   wn_person_custody_tabs_t: { fr: 'Garde et onglets', en: 'Custody and tabs' },

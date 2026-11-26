@@ -140,7 +140,8 @@ export type JournalDayMoment = {
   kind: string
   summary: string | null
   people: Array<{ id: number; name: string }>
-  works: Array<{ id: number; title: string | null; thumb: string | null }>
+  /** `origin` = the work's « nouvelle / retrouvée » (read from the work, shown on « Œuvres ajoutées »). */
+  works: Array<{ id: number; title: string | null; thumb: string | null; origin?: 'new' | 'found' | null }>
 }
 
 export type JournalDayExtras = {
