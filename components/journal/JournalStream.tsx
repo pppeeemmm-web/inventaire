@@ -898,6 +898,14 @@ const lineStyle = (narrow: boolean): CSSProperties => ({
   minHeight: 44,
 })
 
+/** Fresh copies of days replace the shown ones; days not shown yet are added; newest first. */
+function mergeDays(cur: JournalStreamDay[], fresh: JournalStreamDay[]): JournalStreamDay[] {
+  const byDay = new Map(fresh.map((d) => [d.day, d]))
+  const merged = cur.map((d) => byDay.get(d.day) ?? d)
+  for (const d of fresh) if (!cur.some((c) => c.day === d.day)) merged.push(d)
+  return merged.sort((a, b) => b.day.localeCompare(a.day))
+}
+
 export function JournalStream({
   initial,
   narrow,
@@ -936,6 +944,13 @@ export function JournalStream({
   const { t, dayLong, month } = useFormat()
   const [days, setDays] = useState<JournalStreamDay[]>(initial.days)
   const [next, setNext] = useState<string | null>(initial.next)
+  // The page's fresh copy (a write or a voice note saved on the phone re-reads the page): merged in, never ignored.
+  const shownInitial = useRef(initial)
+  useEffect(() => {
+    if (shownInitial.current === initial) return
+    shownInitial.current = initial
+    setDays((cur) => mergeDays(cur, initial.days))
+  }, [initial])
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [folded, setFolded] = useState<Set<string>>(() => new Set())
@@ -1004,12 +1019,7 @@ export function JournalStream({
       const res = await fetch('/api/journal/stream?days=5', { cache: 'no-store' })
       if (!res.ok) return
       const page = (await res.json()) as JournalStreamPage
-      setDays((cur) => {
-        const fresh = new Map(page.days.map((d) => [d.day, d]))
-        const merged = cur.map((d) => fresh.get(d.day) ?? d)
-        for (const d of page.days) if (!cur.some((c) => c.day === d.day)) merged.push(d)
-        return merged.sort((a, b) => b.day.localeCompare(a.day))
-      })
+      setDays((cur) => mergeDays(cur, page.days))
       // eslint-disable-next-line pem-i18n/no-silent-catch -- the captures were sent; the next scroll shows them
     } catch {
       /* shown on the next read */
