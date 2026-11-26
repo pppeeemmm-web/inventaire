@@ -111,7 +111,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
   const today = todayCalendarDayInParis()
   const upper = before ?? shiftDay(today, 1)
 
-  const [rows, sessions, hiddenDays, changeDays, ideaDays] = await Promise.all([
+  const [rows, sessions, hiddenDays, changeDays, ideaDays, momentDays] = await Promise.all([
     scale(supabase, upper, n, 'day'),
     sessionWorksByDay(),
     // An admin also sees hidden entries (dimmed, to unhide them): their days are paged too (`journal_scale` counts visible cards only).
@@ -120,6 +120,8 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     isAdmin ? adminChangeDays(supabase, upper, n) : Promise.resolve([] as string[]),
     // Days whose only trace is an idea moved, reworked or grafted (Idées 2026-11-23; team reads `concept_change`).
     ideaChangeDays(supabase, upper, n),
+    // Days whose only trace is a moment (a call, a visit, works added): `journal_scale` does not count moments.
+    momentOnlyDays(supabase, upper, n),
   ])
   const byDay = new Map<string, JournalScaleRow>()
   if (rows) for (const r of rows) byDay.set(r.bucket, r)
@@ -129,7 +131,7 @@ export async function readJournalStreamPage(before: string | null, count = 5): P
     r.sessionWorks = works.filter((w) => w.id != null).length || works.length
     byDay.set(day, r)
   }
-  for (const day of [...hiddenDays, ...changeDays, ...ideaDays]) if (!byDay.has(day)) byDay.set(day, zero(day))
+  for (const day of [...hiddenDays, ...changeDays, ...ideaDays, ...momentDays]) if (!byDay.has(day)) byDay.set(day, zero(day))
   if (!before && !byDay.has(today)) byDay.set(today, zero(today))
   let days = [...byDay.keys()].sort((a, b) => b.localeCompare(a)).slice(0, n)
   // The count read failed: fall back to the 30 days before `upper`. No loop: when they hold nothing
@@ -266,6 +268,29 @@ async function ideaChangeDays(supabase: Supabase, upper: string, n: number): Pro
   for (const r of data ?? []) {
     const day = calendarDayInParisFromIso(String(r.changed_at))
     if (day >= upper || days.includes(day)) continue
+    days.push(day)
+    if (days.length >= n) break
+  }
+  return days
+}
+
+/** Days (before `upper`, newest first) holding a moment (day precision, not replaced); RLS hides private ones. */
+async function momentOnlyDays(supabase: Supabase, upper: string, n: number): Promise<string[]> {
+  // `moment` is not in the generated types yet (same cast as day-read.ts).
+  const loose = supabase as unknown as { from: (t: string) => any }
+  const { data, error } = await loose
+    .from('moment')
+    .select('happened_on')
+    .eq('precision', 'day')
+    .is('replaced_by', null)
+    .lt('happened_on', upper)
+    .order('happened_on', { ascending: false })
+    .limit(400)
+  if (error) return []
+  const days: string[] = []
+  for (const r of (data ?? []) as Array<{ happened_on: string }>) {
+    const day = String(r.happened_on).slice(0, 10)
+    if (days.includes(day)) continue
     days.push(day)
     if (days.length >= n) break
   }

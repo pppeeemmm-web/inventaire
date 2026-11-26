@@ -589,6 +589,7 @@ export async function readJournalDays(
     if (momRes.error) {
       await logError('journal read failed', momRes.error, { source: 'journal.readJournalDays', metadata: { table: 'moment', from, to } })
     } else {
+      if ((momRes.data ?? []).length >= 400) await logError('journal read hit its row cap', new Error('moment'), { source: 'journal.readJournalDays', metadata: { table: 'moment', from, to, cap: 400 } })
       const moms = (momRes.data ?? []) as Array<{ id: number; happened_on: string; kind: string; summary: string | null }>
       const ids = moms.map((m) => m.id)
       if (ids.length) {
@@ -602,7 +603,7 @@ export async function readJournalDays(
         const wIds = [...new Set(mw.map((r) => Number(r.oeuvre_id)))]
         const [cRes, wRes] = await Promise.all([
           cIds.length ? supabase.from('Contact').select('*').in('ContactID', cIds) : Promise.resolve({ data: [] }),
-          wIds.length ? supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink').in('OeuvreID', wIds) : Promise.resolve({ data: [] }),
+          wIds.length ? supabase.from('Oeuvres').select('OeuvreID, Titre, txtImageNameLink, production_origin, deleted_at').in('OeuvreID', wIds) : Promise.resolve({ data: [] }),
         ])
         const cNames = new Map<number, string>()
         const privateIds = new Set<number>()
@@ -610,9 +611,13 @@ export async function readJournalDays(
           if (!isAdmin && c.is_private === true) { privateIds.add(Number(c.ContactID)); continue } // private card: same as invisible
           cNames.set(Number(c.ContactID), contactListLabel(c as Parameters<typeof contactListLabel>[0], { fallback: `#${c.ContactID}` }))
         }
-        const wMap = new Map<number, { title: string | null; thumb: string | null }>()
-        for (const w of (wRes.data ?? []) as Array<{ OeuvreID: number; Titre: string | null; txtImageNameLink: string | null }>) {
-          wMap.set(w.OeuvreID, { title: w.Titre ?? null, thumb: w.txtImageNameLink ?? null })
+        const wMap = new Map<number, { title: string | null; thumb: string | null; origin: 'new' | 'found' | null }>()
+        const binned = new Set<number>()
+        type WorkRow = { OeuvreID: number; Titre: string | null; txtImageNameLink: string | null; production_origin: string | null; deleted_at: string | null }
+        for (const w of (wRes.data ?? []) as WorkRow[]) {
+          if (w.deleted_at) binned.add(w.OeuvreID)
+          const origin = w.production_origin === 'new' || w.production_origin === 'found' ? w.production_origin : null
+          wMap.set(w.OeuvreID, { title: w.Titre ?? null, thumb: w.txtImageNameLink ?? null, origin })
         }
         for (const m of moms) {
           if (!inRange(m.happened_on)) continue
@@ -623,8 +628,12 @@ export async function readJournalDays(
             kind: m.kind,
             summary: m.summary,
             people: mp.filter((r) => r.moment_id === m.id && cNames.has(Number(r.contact_id))).map((r) => ({ id: Number(r.contact_id), name: cNames.get(Number(r.contact_id)) as string })),
-            works: mw.filter((r) => r.moment_id === m.id && wMap.has(Number(r.oeuvre_id))).map((r) => ({ id: Number(r.oeuvre_id), ...(wMap.get(Number(r.oeuvre_id)) as { title: string | null; thumb: string | null }) })),
+            works: mw
+              // « Œuvre ajoutée » (WorksAddedMoments.md): a binned work leaves the day with its moment.
+              .filter((r) => r.moment_id === m.id && wMap.has(Number(r.oeuvre_id)) && !(m.kind === 'work_added' && binned.has(Number(r.oeuvre_id))))
+              .map((r) => ({ id: Number(r.oeuvre_id), ...(wMap.get(Number(r.oeuvre_id)) as { title: string | null; thumb: string | null; origin: 'new' | 'found' | null }) })),
           }
+          if (m.kind === 'work_added' && !item.works.length) continue
           dayOf(m.happened_on).moments?.push(item)
         }
       }

@@ -75,6 +75,9 @@ export const journalEntryMessages = defineMessages({
   je_voice_link_idea_new: { fr: '+ Nouvelle idée', en: '+ New idea' },
   je_changes_empty: { fr: 'Aucune fiche modifiée ce jour.', en: 'No works changed this day.' },
   jd_moments: { fr: 'Moments', en: 'Moments' },
+  jd_works_added: { fr: 'Œuvres ajoutées', en: 'Works added' },
+  jd_work_added_new: { fr: 'nouvelle', en: 'new' },
+  jd_work_added_found: { fr: 'retrouvée', en: 'found' },
   je_creation_heading: { fr: 'Création (Kaizen)', en: 'Création (Kaizen)' },
   je_creation_empty: { fr: 'Rien ajouté en Création ce jour.', en: 'Nothing added in Création this day.' },
   // Création moved to Idées (R1, Pem 2026-11-18): old Création entries of a day open the Idées.
