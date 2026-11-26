@@ -136,6 +136,7 @@ export const journalEntryMessages = defineMessages({
   insp_idea: { fr: 'Idée (facultatif)', en: 'Idea (optional)' },
   insp_idea_none: { fr: 'Aucune', en: 'None' },
   insp_save: { fr: 'Ajouter au Journal', en: 'Add to the Journal' },
+  insp_sending: { fr: 'Envoi…', en: 'Sending…' },
   insp_saved: { fr: 'Photo ajoutée au Journal', en: 'Photo added to the Journal' },
   insp_text_failed: { fr: 'Photo enregistrée, mais pas son texte : {why}', en: 'Photo saved, but not its text: {why}' },
   insp_waiting: {

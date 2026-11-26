@@ -23,6 +23,12 @@ export function CaptureInspirationClient() {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [busy, startBusy] = useTransition()
+  // Shown on the button for a moment before the page moves on (a toast alone is lost in the page load).
+  const [done, setDone] = useState<string | null>(null)
+  const leave = (msg: string, href: string, ms = 1200) => {
+    setDone(msg)
+    window.setTimeout(() => { window.location.href = href }, ms)
+  }
   const [file, setFile] = useState<File | null>(null)
   const [clientId, setClientId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
@@ -78,7 +84,7 @@ export function CaptureInspirationClient() {
         // as before; only a capture that waited carries its day).
         await enqueueCapture({ id: clientId, kind: 'photo', fields: { ...fields, taken_at: new Date().toISOString() }, blob: small, blobName: small instanceof File ? small.name : 'photo.jpg', createdAt: file.lastModified || Date.now() })
         toast.success(t('cq_kept'))
-        window.location.href = '/hub'
+        leave(t('cq_kept'), '/hub')
       }
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         await keepOnPhone()
@@ -103,10 +109,13 @@ export function CaptureInspirationClient() {
         toast.error(doorErrorText(res.error, t))
         return
       }
-      if (res.already) toast.info(t('jd_already').replace('{day}', new Date(`${res.day}T12:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })))
-      else if (res.textError) toast.error(t('insp_text_failed').replace('{why}', doorErrorText(res.textError, t)))
+      const already = t('jd_already').replace('{day}', new Date(`${res.day}T12:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' }))
+      const textFailed = res.textError ? t('insp_text_failed').replace('{why}', doorErrorText(res.textError, t)) : null
+      if (res.already) toast.info(already)
+      else if (textFailed) toast.error(textFailed)
       else toast.success(t('insp_saved'))
-      window.location.href = `/atelier/journal?day=${res.day}`
+      // A text that failed stays readable on the button a little longer.
+      leave(res.already ? already : textFailed ?? t('insp_saved'), `/atelier/journal?day=${res.day}`, textFailed ? 4000 : 1200)
     })
   }
 
@@ -161,11 +170,11 @@ export function CaptureInspirationClient() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         <label className={preview ? 'btn ghost' : 'btn'} style={pickBtn} data-testid="capture-inspiration-take">
           <span>{t('insp_take')}</span>
-          <input type="file" accept="image/*" capture="environment" onChange={onFile} style={hiddenInput} aria-label={t('insp_take')} />
+          <input type="file" accept="image/*" capture="environment" onChange={onFile} disabled={!!done} style={hiddenInput} aria-label={t('insp_take')} />
         </label>
         <label className="btn ghost" style={pickBtn}>
           <span>{t('insp_pick')}</span>
-          <input type="file" accept="image/*" onChange={onFile} style={hiddenInput} aria-label={t('insp_pick')} />
+          <input type="file" accept="image/*" onChange={onFile} disabled={!!done} style={hiddenInput} aria-label={t('insp_pick')} />
         </label>
       </div>
 
@@ -199,15 +208,15 @@ export function CaptureInspirationClient() {
       <button
         type="button"
         className="btn primary"
-        style={{ minHeight: 48, width: '100%', position: 'sticky', bottom: 'max(12px, env(safe-area-inset-bottom))' }}
-        disabled={busy || !file || !INSPIRATION_SQL_LIVE}
+        style={{ minHeight: 48, width: '100%', whiteSpace: 'normal', position: 'sticky', bottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        disabled={busy || !!done || !file || !INSPIRATION_SQL_LIVE}
         data-testid="capture-inspiration-save"
         onClick={save}
       >
-        {t('insp_save')}
+        {done ?? (busy ? t('insp_sending') : t('insp_save'))}
       </button>
 
-      <Link href="/hub" className="btn ghost" style={{ minHeight: 44, marginTop: 12, display: 'block', textAlign: 'center' }}>
+      <Link href="/hub" className="btn ghost" aria-disabled={!!done} style={{ minHeight: 44, marginTop: 12, display: 'block', textAlign: 'center', pointerEvents: done ? 'none' : undefined }}>
         {t('field_stub_cta_hub')}
       </Link>
     </main>
