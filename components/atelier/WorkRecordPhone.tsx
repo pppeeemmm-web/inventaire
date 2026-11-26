@@ -35,6 +35,7 @@ const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 type RecordDraft = {
   titre: string; techniqueId: string; supportId: string; formatId: string; h: string; w: string; d: string
   placeId: string; note: string; sourceId: string; periodId: string; paintedOn: RecordWorkHit | null; savedAt: number
+  origin?: '' | 'new' | 'found'
 }
 const clearRecordDraft = () => {
   try {
@@ -69,6 +70,7 @@ function todayIso(): string {
 export type WorkRecordHandoff = {
   titre: string; techniqueId: string; supportId: string; formatId: string
   h: string; w: string; d: string
+  origin: '' | 'new' | 'found'
   files: File[]
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports: { SupportID: number; Support: string | null }[]
@@ -194,6 +196,8 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   const [supp, setSupp] = useState(supports.map((r) => ({ id: r.SupportID, label: r.Support ?? '' })))
   const [fmts, setFmts] = useState(formats.map((r) => ({ id: r.FormatID, label: r.Format ?? '' })))
   const [titre, setTitre] = useState(shareInboxPrefill?.titre ?? '')
+  // « Nouvelle / Ancienne — retrouvée » (same choice as the desk form); none = the server's rule.
+  const [origin, setOrigin] = useState<'' | 'new' | 'found'>('')
   const [techniqueId, setTechniqueId] = useState('')
   const [supportId, setSupportId] = useState('')
   const [formatId, setFormatId] = useState('')
@@ -273,7 +277,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     if (Date.now() - (dr.savedAt ?? 0) > DRAFT_MAX_AGE_MS) return clearRecordDraft()
     setTitre(dr.titre ?? ''); setTechniqueId(dr.techniqueId ?? ''); setSupportId(dr.supportId ?? ''); setFormatId(dr.formatId ?? '')
     setH(dr.h ?? ''); setW(dr.w ?? ''); setD(dr.d ?? ''); setNote(dr.note ?? '')
-    setSourceId(dr.sourceId ?? ''); setPeriodId(dr.periodId ?? ''); setPaintedOn(dr.paintedOn ?? null)
+    setSourceId(dr.sourceId ?? ''); setPeriodId(dr.periodId ?? ''); setPaintedOn(dr.paintedOn ?? null); setOrigin(dr.origin ?? '')
     if (dr.placeId) {
       touchedPlace.current = true
       setPlaceId(dr.placeId)
@@ -288,7 +292,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
         onClick: () => {
           clearRecordDraft()
           setTitre(''); setTechniqueId(''); setSupportId(''); setFormatId(''); setH(''); setW(''); setD(''); setNote('')
-          setSourceId(''); setPeriodId(''); setPaintedOn(null)
+          setSourceId(''); setPeriodId(''); setPaintedOn(null); setOrigin('')
         },
       },
     })
@@ -296,7 +300,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }, [])
 
   const keepDraft = () => {
-    const dr: RecordDraft = { titre, techniqueId, supportId, formatId, h, w, d, placeId, note, sourceId, periodId, paintedOn, savedAt: Date.now() }
+    const dr: RecordDraft = { titre, techniqueId, supportId, formatId, h, w, d, placeId, note, sourceId, periodId, paintedOn, origin, savedAt: Date.now() }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(dr))
     // eslint-disable-next-line pem-i18n/no-silent-catch -- browser storage blocked or full: the draft is optional
@@ -308,7 +312,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }
 
   const dirty =
-    files.length > 0 || !!titre.trim() || !!techniqueId || !!supportId || !!formatId || !!h || !!w || !!d || !!note.trim() || !!work || !!paintedOn || !!sourceId || !!periodId
+    files.length > 0 || !!titre.trim() || !!techniqueId || !!supportId || !!formatId || !!h || !!w || !!d || !!note.trim() || !!work || !!paintedOn || !!sourceId || !!periodId || !!origin
 
   async function addLookup(table: 'Technique' | 'Support' | 'Format', name: string) {
     const label = name.charAt(0).toUpperCase() + name.slice(1)
@@ -408,7 +412,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     set('tva_rate', '0')
     set('broadcast_ready', '0')
     set('broadcast_caption_seed', '')
-    set('production_origin', '')
+    set('production_origin', origin)
     startTransition(async () => {
       const res = await action(fd)
       if ('error' in res) return void toast.error(workSaveErrorToastMessage(res.error, t))
@@ -545,7 +549,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
               // Place, source, period and « peint sur » have no field in the full form: say so, never drop them silently.
               if (placeId || newPlace || sourceId || periodId || paintedOn) toast.info(t('wr_all_fields_not_carried'))
               onAllFields({
-                titre, techniqueId, supportId, formatId, h, w, d, files,
+                titre, techniqueId, supportId, formatId, h, w, d, origin, files,
                 techniques: tech.map((r) => ({ TechniqueID: r.id, Technique: r.label })),
                 supports: supp.map((r) => ({ SupportID: r.id, Support: r.label })),
                 formats: fmts.map((r) => ({ FormatID: r.id, Format: r.label })),
@@ -566,6 +570,18 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
             {pictureBox}
             <span style={lbl}>{t('wr_field_title')}</span>
             <input aria-label={t('wr_field_title')} placeholder={t('wr_untitled')} value={titre} onChange={(e) => setTitre(e.target.value)} style={field} data-testid="work-record-title" />
+            <div role="group" aria-label={t('session_origin_label')}>
+              <span style={lbl}>{t('session_origin_label')}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
+                {(['new', 'found'] as const).map((o) => (
+                  <button key={o} type="button" className="btn ghost sm" aria-pressed={origin === o} data-testid={`work-record-origin-${o}`}
+                    onClick={() => setOrigin((v) => (v === o ? '' : o))}
+                    style={{ minHeight: 44, whiteSpace: 'normal', background: origin === o ? 'var(--ac)' : undefined, color: origin === o ? 'var(--bg0)' : undefined }}>
+                    {t(o === 'new' ? 'session_origin_new' : 'session_origin_found')}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
               <div style={{ minWidth: 0 }}>
                 <span style={lbl}>{t('wr_field_technique')}</span>

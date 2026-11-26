@@ -637,6 +637,7 @@ export function WorkForm({
           if (dr.h) setHauteur(dr.h)
           if (dr.w) setLargeur(dr.w)
           if (dr.d) setProfondeur(dr.d)
+          if (dr.origin) setProductionOrigin(dr.origin)
           if (dr.files.length) setNewImageFiles((cur) => [...cur, ...dr.files])
           setLocalTechniques(dr.techniques); setLocalSupports(dr.supports); setLocalFormats(dr.formats)
           setLeftDrawer(true)
