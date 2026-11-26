@@ -208,7 +208,8 @@ export function CaptureInspirationClient() {
       <button
         type="button"
         className="btn primary"
-        style={{ minHeight: 48, width: '100%', whiteSpace: 'normal', position: 'sticky', bottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        // Not sticky: with the keyboard open, iOS lifts « the bottom » over the caption and work fields.
+        style={{ minHeight: 48, width: '100%', whiteSpace: 'normal', marginTop: 8 }}
         disabled={busy || !!done || !file || !INSPIRATION_SQL_LIVE}
         data-testid="capture-inspiration-save"
         onClick={save}

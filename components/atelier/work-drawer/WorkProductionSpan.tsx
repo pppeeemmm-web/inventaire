@@ -195,15 +195,16 @@ export function WorkProductionSpan({
                 type="button"
                 className="btn ghost sm"
                 aria-pressed={org === o}
-                disabled={busy || org === o}
+                disabled={busy}
                 data-testid={`work-production-origin-${o}`}
-                onClick={() => void saveOrigin(o)}
+                onClick={() => (org === o ? undefined : void saveOrigin(o))}
                 style={{ minHeight: 44, whiteSpace: 'normal', background: org === o ? 'var(--ac)' : undefined, color: org === o ? 'var(--bg0)' : undefined }}
               >
                 {t(o === 'new' ? 'wf_origin_new' : 'wf_origin_found')}
               </button>
             ))}
           </div>
+          <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_origin_saved_on_tap')}</span>
           {field('start')}
           {field('end')}
           <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_production_start_hint')}</span>

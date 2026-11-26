@@ -109,6 +109,7 @@ export const workFormMessages = defineMessages({
   wf_origin_new: { fr: 'Nouvelle', en: 'New' },
   wf_origin_found: { fr: 'Ancienne — retrouvée', en: 'Older — found' },
   wf_origin_saved: { fr: 'Origine enregistrée', en: 'Origin saved' },
+  wf_origin_saved_on_tap: { fr: 'Enregistré dès le choix — pas besoin d’Enregistrer.', en: 'Saved as soon as chosen — no need to Save.' },
   wf_field_all_fields: {
     fr: 'Tous les champs ▾',
     en: 'All fields ▾',
