@@ -4,6 +4,9 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Pipeline: 6 entries entered with Pem's OK (« Yes ») and reminder request — DRAC AIC 2027, Récits de Paysages 2027, Paréidolie 2027 — galerie, CoG 2027, Arts at CERN 2027, Salon de Montrouge 2028 (16 steps, 6 reminders).
+- Pem: no SIRET; 2027 project = Bachelard's reverie into and from image making; galleries known by name only; no drawing series in mind.
+- Correction: « cog » = Center of Gravity (CoG) Arts & Science residency, not COAL; Montrouge 2027 was applied for in April 2026 (interview June, not retained) — the call is not open now.
 - Pem asked to be reminded of the CERN residency, « the cog » (COAL? to confirm) and Montrouge → `CALENDAR.md`; reminder set for 1 Dec (Montrouge).
 - Roles set: data system strategist, art business developer / agent, R&D advisor (Pem) → `ROLE.md`, PR #6 #7.
 - Hard Rule: nothing reaches outside without Pem's written authorisation for that exact action (Pem) → `CLAUDE.md`.

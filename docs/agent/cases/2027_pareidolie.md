@@ -26,10 +26,10 @@ Sources: Paréidolie 2025 call (contemporaneitesdelart.fr), Marseille tourism (1
 Framing / mounting · photography · transport Marseille (local) · insurance (values from the catalogue) · printing ·
 the gallery's commission and costs split (see `docs/COMMERCIAL_GUIDELINES.md`) · days spent in Marseille.
 
-## Proposed Pipeline entries (for Pem's OK — not entered)
-- « Paréidolie 2027 — galerie » · stage prospection · next step: shortlist + drawing selection for Pem · due 2026-12-20.
-- One entry per shortlisted gallery once Pem approves the shortlist.
+## Pipeline (entered 27/11 with Pem's OK)
+« Paréidolie 2027 — galerie » (shortlist + drawings 20 Dec · approaches 15 Jan, each send on Pem's written OK · gallery deposit c. 26 Feb; reminder 15 Dec). One entry per gallery once Pem approves the shortlist.
 
-## Open questions for Pem
-1. Any gallery you already know or have spoken to?
-2. Series or periods of drawings you want to lead with (or leave it to the catalogue first)?
+## Pem's answers (27/11)
+1. Galleries known **by name only** → first approaches are cold: the dossier must carry them (strong images, one clear series, the Bachelard line).
+2. **No series in mind** → Claude proposes a coherent drawing series from the catalogue (data first), Pem chooses.
+3. The thread for the statement: « Expansion de la rêverie (Bachelard) dans et depuis la fabrique d'images. Rêver le monde et vivre le monde rêvé. »
