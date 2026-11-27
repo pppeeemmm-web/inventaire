@@ -20,6 +20,7 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
 - **Pem's artistic line (27/11):** « Expansion de la rêverie (Bachelard) dans et depuis la fabrique d'images. Rêver le monde et vivre le monde rêvé. » — the thread for statements and dossiers.
 - **Active cases:** [`cases/2027_drac.md`](./cases/2027_drac.md) · [`cases/2027_pareidolie.md`](./cases/2027_pareidolie.md) · [`cases/2027_therapeia.md`](./cases/2027_therapeia.md) (dossier drafts ready for Pem; email leaves only on written OK).
 - **Series that speak (data 27/11):** ἀβαρής « abarés » 205 drawings, strephó 124, Oikeios 63, Purinos 6; selections « Montrouge » 36, « CoG 26 » 8. Gap: 2025 drawings — 4 of 98 have dimensions.
+- **Series meanings (Greek New Testament words with Strong's numbers) and which application each serves:** [`SERIES.md`](./SERIES.md). Meanings are in each theme's notes in the Hub.
 - **Lead lists (sources + date inside):** [`leads/2026-11-27_art-worlds-sud.csv`](./leads/2026-11-27_art-worlds-sud.csv)
   (54 curated, 49 verified) · [`leads/2026-11-27_pac-members.csv`](./leads/2026-11-27_pac-members.csv) (70 PAC venues,
   19 in « Saison du dessin 2026 »). Import into Contacts: waits for Pem's GO.

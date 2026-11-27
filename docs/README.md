@@ -14,7 +14,7 @@
 | [`POLICY_NOTES.md`](./POLICY_NOTES.md) | Running list of small policy points to settle (delivery, returns, insurance, fate, COA, files) — each says where it will be written and who confirms | 2026-11-18 |
 | [`COMMERCIAL_GUIDELINES.md`](./COMMERCIAL_GUIDELINES.md) | Prices, discounts, collectors' circle, commissions, editions, galleries — first draft, `[[…]]` = Pem's choices | 2026-11-18 (draft) |
 | [`ENVIRONMENTAL_POLICY.md`](./ENVIRONMENTAL_POLICY.md) | Materials, packing, sending, digital, yearly measures — first draft, `[[…]]` = Pem's facts | 2026-11-18 (draft) |
-| [`agent/STATE.md`](./agent/STATE.md) | **Continuity for Claude's roles** — read first, updated last each session; with `agent/ROLE.md` (roles + rule on reaching outside), `agent/LOG.md` (decisions, sends), `agent/cases/`, `agent/leads/` | 2026-11-27 |
+| [`agent/STATE.md`](./agent/STATE.md) | **Continuity for Claude's roles** — read first, updated last each session; with `agent/ROLE.md` (roles + rule on reaching outside), `agent/LOG.md` (decisions, sends), `agent/SERIES.md` (series meanings → applications), `agent/cases/`, `agent/leads/` | 2026-11-27 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-15 |
 | [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) | **Read first after the pause** (17 Dec 2026): progress per aim, what was in flight, what comes first — first version of the progress dashboard | 2026-11-19 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |

@@ -17,7 +17,8 @@ Sources: Paréidolie 2025 call (contemporaneitesdelart.fr), Marseille tourism (1
    Paréidolie and Drawing Now), then the 19 PAC venues in « Saison du dessin 2026 » (`../leads/2026-11-27_pac-members.csv`).
    For each: why Pem fits their programme, who to address, the right moment.
 2. **Drawing selection** (December): 10–15 works on paper from the catalogue — coherent series, available, photographed,
-   dimensions known; a one-page statement on the drawing practice; images at the size galleries expect.
+   dimensions known; a one-page statement on the drawing practice; images at the size galleries expect. Start from
+   ἀβαρής (262) and στρέφω (184), each with its Greek word and meaning — [`../SERIES.md`](../SERIES.md).
 3. **Approach** (January): one draft message per gallery for Pem's review → sent only on Pem's written OK, each send
    logged as a moment; follow-up dates set.
 4. **Parallel path:** « Saison du dessin 2027 » in a PAC venue (Aug → Dec 2027), less selective than the fair.

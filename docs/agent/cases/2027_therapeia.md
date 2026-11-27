@@ -25,6 +25,9 @@ attachments** (`../ROLE.md`).
   124), **Oikeios** (one's own, 63), **Purinos** (6). Weightlessness is Bachelard's *L'Air et les songes*; the island
   brings water and stone (*L'Eau et les rêves*, *La Terre et les rêveries du repos*).
 - An existing « Montrouge » selection (36 drawings) and « CoG 26 » (8) can seed the portfolio.
+- **Series meanings and title (27/11) → [`../SERIES.md`](../SERIES.md):** proposed title **ὄναρ / ὕπαρ** (Homer: dream
+  in sleep / waking vision = « rêver le monde et vivre le monde rêvé »), beside « Paxos, l'île rêvée » — Pem chooses.
+  Water is the element the series do not have yet; δένδρον for the olive trees and cypresses.
 
 ## Drafts for Pem (rewrite freely — Pem's voice first)
 
