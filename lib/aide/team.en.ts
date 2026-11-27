@@ -71,7 +71,7 @@ Today is the home screen: the day. It shows what was done, the works of the day,
 
 - ‹ › moves to the day before or after.
 - 📅 opens the list of days (the Journal).
-- The bottom bar captures in one tap: **Write** · **Voice** · **Work** · **Photo · doc**.
+- The bottom bar captures in one tap: **Write** · **Voice** · **Work** · **Photo**. A tap does the most common action; a hold (½ s) stacks the other choices above the button: slide your thumb onto one and release (« hold: n choices » under the button).
 
 ## On the phone: the ☰ menu
 
@@ -134,10 +134,10 @@ Every screen opens on both. The phone is for quick capture; the computer for lis
 
 ### On the phone
 
-- **The bottom bar**: **Write** (a Journal entry), **Voice** (a voice note), **Work**, **Photo · doc**.
-- **Work**, on Today, offers three choices: **New work** ("A new number: photo, title, technique, size"), **Resume a work** ("Same number: a photo and a « Reprise » line"), **Session photos** ("Lightroom → Share to PEM"). On the other screens, for a team member, Work opens the Journal: go through Today to record a work.
+- **The bottom bar**: **Write** (a Journal entry), **Voice** (a voice note; on Today and the Fil, hold → **Import a recording** from Voice Memos), **Work**, **Photo**. Tap = the most common action, hold = the other choices stacked above the button.
+- **Work**, on Today: a tap opens **New work** ("A new number: photo, title, technique, size"); a hold offers **Resume a work** ("Same number: a photo and a « Reprise » line") and **Session photos** ("Lightroom → Share to PEM"). On the other screens, for a team member, Work opens the Journal: go through Today to record a work.
 - **Session photos**, for a team member: the photos stay in the session and show on the work when Pem applies them.
-- **Photo · doc** offers: **Document** ("Scan one or more pages; the text is read later on the PC"), **Business card** ("New contact from a card"), **QR label** ("Scan a work's label"). Admins also have **Inspiration**.
+- **Photo**: a tap opens **Document** ("Scan one or more pages; the text is read later on the PC"); a hold offers **Business card** ("New contact from a card") and **QR label** ("Scan a work's label"). For admins, a tap opens **Inspiration** and Document moves into the choices.
 - **The ☰ menu**: search, the tiles, "Help for this screen", "Everything else", "Actions", your account and the language.
 - **"Actions"**: Sale / payment ("Complete a sale", see Orders), Contact, Document, Issue, Pipeline, Triage.
 
@@ -246,7 +246,7 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 **When:** you label a work, or want to find a labelled work.
 
 1. Card → Expanded → **Physical label** → **Print** (or "Copy link").
-2. To read a label: bottom bar → **Photo · doc** → **QR label**, or the phone's camera.
+2. To read a label: bottom bar → hold **Photo** → **QR label**, or the phone's camera.
 
 **Next:** the label opens the work's card in the Atelier (you need to be signed in).
 
@@ -600,7 +600,7 @@ Contacts (Business → Contacts) gathers collectors, galleries, craftspeople, su
 
 **When:** someone hands you a card, at a fair or in the street.
 
-1. Bottom bar → **Photo · doc** → **Business card**.
+1. Bottom bar → hold **Photo** → **Business card**.
 2. Photograph the card.
 3. Tap the text box twice, "Scan Text" (Live Text), point at the card, then **Analyse**: the contact fills in at once, with no AI and no studio network.
 4. If you like: **Improve with AI** (stops after 30 s; the contact stays as it is if the AI does not answer).

@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test'
 
 /**
  * Ring B.2 — narrow Atelier bottom field bar: the shared `PhoneInputBar` (R2), Écrire · Vocal · Œuvre · Document
- * (hidden when a drawer is open). New work left the bar (Pem 2026-11-14): « Œuvre » is capture or the Journal.
+ * (hidden when a drawer is open). For the team « Œuvre » is a link to the Journal (never the new-work form); for admins
+ * it is the tap / hold button (tap = new work, PhoneBarTapHold.md, Pem 2026-11-27).
  * Requires authenticated session — same as other ATELIER_E2E tests.
  */
 test.describe('Atelier mobile action bar', () => {

@@ -127,7 +127,7 @@ export function TodayFrame({ day, today, children, stream = false }: { day: stri
   const isToday = day >= today
 
   return (
-    <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: stream ? 'clip' : 'hidden', paddingBottom: stream ? 'max(104px, calc(100px + env(safe-area-inset-bottom)))' : 'max(80px, calc(76px + env(safe-area-inset-bottom)))' }}>
+    <div data-testid="hub-today-root" style={{ minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: stream ? 'clip' : 'hidden', paddingBottom: stream ? 'max(104px, calc(100px + env(safe-area-inset-bottom)), calc(var(--pem-phone-bar-h) + 32px))' : 'max(80px, calc(76px + env(safe-area-inset-bottom)), calc(var(--pem-phone-bar-h) + 8px))' }}>
       {/* One header row: ☰ · date · ‹ › · 📅 (the signed-in badge is off on the phone: the account is in the menu). */}
       {stream ? null : <header data-testid="hub-today-header" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '12px 8px 4px 8px' }}>
         <PhoneMenuButton />

@@ -1,6 +1,11 @@
 # Phone bar: tap = do, hold = choose — design for Pem
 
-Status: **proposal + mockup (`PhoneBarTapHold.mockup.html`), nothing built.** Pem 2026-11-27: « photo has 5 input
+Status: **built (phone only, `PhoneInputBar` → `HoldButton`) on Pem's « Ok to Build the menu change »; to try on
+Pem's iPhone.** As built: Écrire tap only (its hold choices have no door yet); Vocal tap = record, hold = 🎧 import;
+Photo tap = inspiration (admin, else Document), hold = document / card / QR; Œuvre tap = new work, hold = reprise /
+session (only where Œuvre opened the three choices; elsewhere it stays the plain link). « Ancienne — retrouvée » is not
+a separate choice: the new-work form asks it. A hidden « Tous les choix » button opens the old sheet (screen reader).
+Was: proposal + mockup (`PhoneBarTapHold.mockup.html`). Pem 2026-11-27: « photo has 5 input
 options and write had 1 — how about long press opens radial choice … or redistribute / rename the menu items even
 from sticky bar level, taking into account the thumb. The goal is always to have less card opening to enter another
 card / input with the same level of stability. »

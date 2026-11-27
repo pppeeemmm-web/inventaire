@@ -104,7 +104,7 @@ function TabPanelFallback() {
 
 type Tab = SegmentedAtelierTab
 
-/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: on the phone, new work stays in the menu (not on `PhoneInputBar`), hidden here when `hideNewWork`. */
+/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: on the phone this row hides new work (`hideNewWork`); for admins the input bar's Œuvre does it (tap = new work, hold = reprise / session — PhoneBarTapHold.md). */
 function AtelierHeaderChrome({
   variant,
   lang,

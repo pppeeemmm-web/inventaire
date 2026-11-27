@@ -154,7 +154,7 @@ Une séance de terrain garde les photos d'une séance de travail et les rattache
 
 ## Capturer une séance au téléphone
 
-1. Barre du bas → **Œuvre** → **Photos de la séance**.
+1. Barre du bas → maintenir **Œuvre** → **Photos de la séance**.
 2. « Ajouter peinture », puis les photos : « Prendre une photo » ou « Choisir dans la galerie », puis « Envoyer ».
 3. Choisissez **Nouvelle œuvre** (un titre est obligatoire) ou **Œuvre existante** (son numéro), puis « Enregistrer l'association ».
 4. **Appliquer à l'œuvre**.

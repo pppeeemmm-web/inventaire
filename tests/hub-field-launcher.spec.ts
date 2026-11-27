@@ -102,16 +102,18 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await expect(page.getByTestId('ring-b-voice-sheet')).not.toBeVisible()
   })
 
-  test('Photo · doc › Document opens capture with doc mode', async ({ page }) => {
+  // Tap = do, hold = choose (PhoneBarTapHold.md): « Tous les choix » opens the full sheet without a hold.
+  test('Photo › Tous les choix › Document opens capture with doc mode', async ({ page }) => {
     await openHub(page)
-    await page.getByTestId('phone-bar-doc').click()
+    // Visually hidden (screen reader) button: dispatch the click, Playwright can't hit-test a clipped element.
+    await page.getByTestId('phone-bar-doc-more').dispatchEvent('click')
     await page.getByRole('link', { name: /Document/ }).first().click()
     await expect(page).toHaveURL(/\/atelier\/capture\?.*mode=doc/, { timeout: 45_000 })
   })
 
-  test('Œuvre starts with the choice; Reprise opens the recording screen on Reprise', async ({ page }) => {
+  test('Œuvre › Tous les choix; Reprise opens the recording screen on Reprise', async ({ page }) => {
     await openHub(page)
-    await page.getByTestId('phone-bar-work').click()
+    await page.getByTestId('phone-bar-work-more').dispatchEvent('click')
     await expect(page.getByTestId('phone-work-sheet')).toBeVisible()
     for (const id of ['new', 'reprise', 'session']) await expect(page.getByTestId(`phone-work-${id}`)).toBeVisible()
     await page.getByTestId('phone-work-reprise').click()

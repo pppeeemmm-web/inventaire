@@ -93,7 +93,7 @@ export function FilClient() {
       data-testid="hub-fil-root"
       style={{
         minHeight: '100dvh', background: 'var(--bg0)', color: 'var(--tx)', overflowX: 'hidden',
-        paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)))',
+        paddingBottom: 'max(80px, calc(76px + env(safe-area-inset-bottom)), calc(var(--pem-phone-bar-h) + 8px))',
       }}
     >
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
