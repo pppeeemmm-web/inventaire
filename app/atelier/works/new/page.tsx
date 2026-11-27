@@ -34,16 +34,19 @@ export default async function NewWorkPage({
     supabase.from('Technique').select('TechniqueID, Technique').order('Technique', { ascending: true }),
     supabase.from('Support').select('SupportID, Support').order('Support', { ascending: true }),
     supabase.from('Format').select('FormatID, Format').order('Format', { ascending: true }),
-    supabase.from('theme').select('id, name').order('name', { ascending: true }),
+    // Works per theme, counted by the database (phone: used themes first, the rest behind « + n autres »).
+    supabase.from('theme').select('id, name, oeuvre_theme(count)').order('name', { ascending: true }),
     isAdmin ? contactsQ : contactsQ.not('is_private', 'is', true),
     supabase.from('contact_place_lines').select(ADDRESS_LINE_COLS),
     supabase.from('working_group').select('*').order('name', { ascending: true }),
   ])
 
-  const catalogThemes = (themes ?? []).map((r) => ({
-    id: (r as { id: number }).id,
-    name: (r as { name: string }).name,
-  }))
+  // If the count is refused, the plain list (no counts: every theme shown) — never an empty theme list.
+  const themeRows = themes ?? (await supabase.from('theme').select('id, name').order('name', { ascending: true })).data
+  const catalogThemes = (themeRows ?? []).map((r) => {
+    const row = r as { id: number; name: string; oeuvre_theme?: { count: number }[] }
+    return { id: row.id, name: row.name, works: row.oeuvre_theme?.[0]?.count ?? undefined }
+  })
 
   let shareInboxPrefill: ShareInboxWorkPrefill | null = null
   if (shareInboxId) {

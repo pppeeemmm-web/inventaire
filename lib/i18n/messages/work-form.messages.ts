@@ -123,4 +123,10 @@ export const workFormMessages = defineMessages({
     fr: 'Statut, propriété, prix, constats, groupes, séances…',
     en: 'Status, ownership, price, condition, groups, sessions…',
   },
+  wf_short_form: { fr: '← Formulaire court', en: '← Short form' },
+  wf_short_form_kept: {
+    fr: 'Thèmes, commentaires et historique restent dans « Tous les champs » : ils ne s’enregistrent que depuis là.',
+    en: 'Themes, comments and history stay in « All fields »: they are only saved from there.',
+  },
+  wf_themes_more: { fr: '+ {n} autres', en: '+ {n} more' },
 })

@@ -6,6 +6,17 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.109 (2026-11-27) — phone menu: Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » goes back.
+  wn_phone_menu_pipeline_t: { fr: 'Menu du téléphone : Pipeline et Ventes', en: 'Phone menu: Pipeline and Sales' },
+  wn_phone_menu_pipeline_d: {
+    fr: 'Dans « Aller à », une tuile Pipeline (dossiers en cours) remplace Logistique, qui passe dans « Tout le reste ». La tuile Commandes s’appelle Ventes. « Tout le reste » est ouvert : chaque page est à un geste.',
+    en: 'In « Go to », a Pipeline tile (open dossiers) replaces Logistics, which moves into « Everything else ». The Orders tile is now called Sales. « Everything else » is open: every page is one tap away.',
+  },
+  wn_phone_all_fields_back_t: { fr: '« Tous les champs » : retour possible', en: '« All fields »: you can go back' },
+  wn_phone_all_fields_back_d: {
+    fr: 'Sur le téléphone, une nouvelle œuvre passée en « Tous les champs » revient au formulaire court avec « ← Formulaire court », en gardant titre, technique, support, format, dimensions, origine et photos. Le formulaire complet défile d’un seul bloc, n’a plus qu’un « Retour » en bas, et montre d’abord les thèmes qui ont des œuvres (les autres sous « + n autres »).',
+    en: 'On the phone, a new work moved to « All fields » goes back to the short form with « ← Short form », keeping title, technique, support, format, size, origin and photos. The full form scrolls as one block, has a single « Back » at the bottom, and shows the themes that have works first (the rest under « + n more »).',
+  },
   // 3.1.108 (2026-11-26) — phone Journal shows a line / voice note at once; « Ancienne — retrouvée ».
   wn_journal_phone_at_once_t: { fr: 'Journal : tout de suite', en: 'Journal: right away' },
   wn_journal_phone_at_once_d: {

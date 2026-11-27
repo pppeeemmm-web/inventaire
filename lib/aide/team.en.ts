@@ -78,9 +78,9 @@ Today is the home screen: the day. It shows what was done, the works of the day,
 ☰ opens the menu over the page, on every screen.
 
 - **At the top, search**: type #1234 or part of a title, and the work's card opens.
-- **The tiles**, with their counts: Today, Works, Production, Ideas, Orders, Logistics, Events, Journal. Admins also see the Feed.
+- **The tiles**, with their counts: Today, Works, Production, Ideas, Sales, Pipeline, Events, Journal. Admins also see the Feed.
 - **"? Help for this screen"**: the chapter of this guide about the screen open under the menu.
-- **"Everything else"** (folded): all the other screens.
+- **"Everything else"** (open): all the other screens, Logistics included.
 - **"Actions"** (folded): Sale, Contact (business card), Document, Issue, Pipeline, Triage.
 - **At the bottom**: your account, the language (FR / EN), sign out.
 
@@ -188,7 +188,7 @@ Every work has a number (#2407) and a card. The card opens the same way everywhe
 
 1. In the bottom bar, tap **Work**, then **New work**.
 2. **Add the picture**: pick the image from the phone's photo library (several at once if needed).
-3. Fill in what you know: title, technique, support, format, dimensions (cm), place ("Nearest place" suggests a saved place within 2 km), period, source, note. "All fields" opens the rest.
+3. Fill in what you know: title, technique, support, format, dimensions (cm), place ("Nearest place" suggests a saved place within 2 km), period, source, note. "All fields" opens the rest; "← Short form" goes back to it, keeping what was typed.
 4. **Create the work**.
 
 **Next:**

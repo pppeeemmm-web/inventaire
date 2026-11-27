@@ -3,7 +3,8 @@
 // The phone menu (docs/design/2026-11-18/PhoneNav.notes.md, option A — Pem's answers 2026-11-18):
 // one sheet, the same on every phone screen, over the page. Top: « #numéro ou titre » → the work card.
 // Then 9 tiles with their counts (grey at 0; counts stream in after the sheet opens). Then « Tout le
-// reste » and « Actions » (the old Bureau), both folded. The account sits at the bottom.
+// reste » (open: every other page one tap away, Pem 2026-11-27) and « Actions » (the old Bureau, folded).
+// The account sits at the bottom.
 // Its own chunk (PhoneMenu.tsx loads it): nothing here weighs on the first screen of /hub.
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -34,7 +35,7 @@ type Tile = { key: string; icon: string; label: DictKey; href: string; sub: (d: 
 /** « Tout le reste »: today's menu groups minus the tiles (Pem 2026-11-18, answer 3). */
 const REST: Array<{ label: DictKey; items: Array<{ label: DictKey; href: string; admin?: boolean }> }> = [
   { label: 'tab_kaizen', items: [{ label: 'tab_audit', href: '/atelier/audit', admin: true }, { label: 'ai_tab', href: '/atelier/ai', admin: true }, { label: 'kaizen_group_ops', href: '/atelier/kaizen-ops' }, { label: 'hub_suggestions', href: '/atelier/system' }, { label: 'aide_tab', href: '/atelier/aide' }] },
-  { label: 'nav_group_studio', items: [{ label: 'overview', href: '/atelier/overview' }, { label: 'pipeline', href: '/atelier/pipeline' }, { label: 'tab_stock', href: '/atelier/stock' }] },
+  { label: 'nav_group_studio', items: [{ label: 'overview', href: '/atelier/overview' }, { label: 'pn_tile_logistics', href: '/atelier/logistics' }, { label: 'tab_stock', href: '/atelier/stock' }] },
   {
     label: 'nav_group_catalogue',
     items: [
@@ -177,14 +178,9 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
       ? [{ key: 'fil', icon: '🧵', label: 'pn_tile_fil' as DictKey, href: '/hub/fil', sub: (_d: PhoneMenuData | null, f: number | null) => ({ text: f == null ? '' : t('pn_sub_to_sort').replace('{n}', String(f)), n: f }) }]
       : []),
     { key: 'orders', icon: '📦', label: 'pn_tile_orders', href: '/atelier/sales', sub: (d) => ({ text: d ? t('pn_sub_under_way').replace('{n}', String(d.orders)) : '', n: n(d?.orders) }) },
-    // « n en route » = on the road (status shipped) · « m en cours » = every unfinished box, as the desktop badge (stress test 2026-11-18).
-    {
-      key: 'logistics', icon: '🚚', label: 'pn_tile_logistics', href: '/atelier/logistics',
-      sub: (d) => ({
-        text: !d ? '' : [d.inTransit > 0 ? t('pn_sub_shipments').replace('{n}', String(d.inTransit)) : '', d.logistics > d.inTransit || d.inTransit === 0 ? t('pn_sub_under_way').replace('{n}', String(d.logistics)) : ''].filter(Boolean).join(' · '),
-        n: n(d?.logistics),
-      }),
-    },
+    // Pipeline (Pem 2026-11-27: « access to pipeline and sales from phone »): open dossiers, the desktop sidebar's count.
+    // Logistique moved to « Tout le reste ».
+    { key: 'pipeline', icon: '📋', label: 'pipeline', href: '/atelier/pipeline', sub: (d) => ({ text: d ? t('pn_sub_under_way').replace('{n}', String(d.pipeline)) : '', n: n(d?.pipeline) }) },
     { key: 'events', icon: '🏛️', label: 'pn_tile_events', href: '/atelier/exhibitions', sub: (d) => ({ text: d ? t('pn_sub_events').replace('{n}', String(d.events)) : '', n: n(d?.events) }) },
     { key: 'journal', icon: '📅', label: 'pn_tile_journal', href: '/atelier/journal', sub: () => ({ text: t('pn_sub_days'), n: null }) },
   ]
@@ -348,7 +344,7 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
           })()}
         </div>
 
-        <details className="pem-fold" data-testid="phone-menu-rest" style={{ borderTop: '1px solid var(--bd)' }}>
+        <details className="pem-fold" data-testid="phone-menu-rest" open style={{ borderTop: '1px solid var(--bd)' }}>
           <summary style={summary}>
             {t('pn_rest')}
             {restMarked ? <span data-testid="phone-menu-dot-rest" aria-label={t('wn_spot_dot')} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ac)', flex: 'none' }} /> : null}

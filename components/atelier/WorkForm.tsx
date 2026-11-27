@@ -53,7 +53,7 @@ import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
-import { WorkRecordPhone } from '@/components/atelier/WorkRecordPhone'
+import { WorkRecordPhone, type WorkRecordCarryBack } from '@/components/atelier/WorkRecordPhone'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { useConfirmStep } from '@/hooks/useConfirmStep'
@@ -66,7 +66,8 @@ interface Props {
   techniques:      { TechniqueID: number; Technique: string | null }[]
   supports:        { SupportID:   number; Support:   string | null }[]
   formats:         { FormatID:    number; Format:    string | null }[]
-  themes:          { id:          number; name:      string        }[]
+  /** `works` (number of works in the theme, from the database) lets the phone show the used themes first. */
+  themes:          { id:          number; name:      string; works?: number }[]
   contacts:        any[]
   initialImages?:  WorkImage[]
   addresses?:      ContactAddress[]
@@ -99,8 +100,12 @@ export function WorkForm({
   // themes, history, production, ownership and finance hidden (still mounted: their inputs stay
   // in the form and save as before) until "Tous les champs".
   const [allFields, setAllFields] = useState(false)
-  /** New work on the phone: true once « Tous les champs » left the recording drawer (never goes back). */
+  /** New work on the phone: true once « Tous les champs » left the recording drawer; « ← Formulaire court » goes back. */
   const [leftDrawer, setLeftDrawer] = useState(false)
+  /** What « ← Formulaire court » hands back to the recording drawer. */
+  const [carryBack, setCarryBack] = useState<WorkRecordCarryBack | null>(null)
+  /** Phone: themes with no work stay behind « + n autres » until asked for. */
+  const [moreThemes, setMoreThemes] = useState(false)
   const fieldMode = narrow && !allFields
   const PRODUCTION_STAGES = useMemo(
     () => [
@@ -629,23 +634,36 @@ export function WorkForm({
         pemContactId={pemContact?.ContactID ?? null}
         onAllFields={(dr) => {
           // Carry the drawer's draft into this form; from here the toggle only folds / unfolds. An empty drawer
-          // field never wipes a value this form already holds (e.g. its own restored draft — flow review).
-          if (dr.titre) setTitre(dr.titre)
-          if (dr.techniqueId) setTechniqueId(dr.techniqueId)
-          if (dr.supportId) setSupportId(dr.supportId)
-          if (dr.formatId) setFormatId(dr.formatId)
-          if (dr.h) setHauteur(dr.h)
-          if (dr.w) setLargeur(dr.w)
-          if (dr.d) setProfondeur(dr.d)
-          if (dr.origin) setProductionOrigin(dr.origin)
+          // field never wipes a value this form already holds (e.g. its own restored draft — flow review) —
+          // except after « ← Formulaire court »: the drawer started from this form, so a field emptied there is emptied here.
+          const back = carryBack != null
+          if (dr.titre || back) setTitre(dr.titre)
+          if (dr.techniqueId || back) setTechniqueId(dr.techniqueId)
+          if (dr.supportId || back) setSupportId(dr.supportId)
+          if (dr.formatId || back) setFormatId(dr.formatId)
+          if (dr.h || back) setHauteur(dr.h)
+          if (dr.w || back) setLargeur(dr.w)
+          if (dr.d || back) setProfondeur(dr.d)
+          if (dr.origin || back) setProductionOrigin(dr.origin)
           if (dr.files.length) setNewImageFiles((cur) => [...cur, ...dr.files])
           setLocalTechniques(dr.techniques); setLocalSupports(dr.supports); setLocalFormats(dr.formats)
           setLeftDrawer(true)
           setAllFields(true)
         }}
         initialMode={recordMode}
+        carryBack={carryBack}
       />
     )
+  }
+
+  // « ← Formulaire court » (Pem 2026-11-27): back to the recording drawer with what it knows how to save.
+  // Themes, comments, history and the other full-form fields stay here (this form stays mounted) — say so.
+  function backToShortForm() {
+    if (selThemes.size || commentaires.trim() || historique.trim()) toast.info(t('wf_short_form_kept'))
+    setCarryBack({ titre, techniqueId, supportId, formatId, h: hauteur, w: largeur, d: profondeur, origin: productionOrigin, files: newImageFiles })
+    setNewImageFiles([]) // they travel back with the drawer; « Tous les champs » brings them again
+    setAllFields(false)
+    setLeftDrawer(false)
   }
 
   // Validating the photo of a studio work makes it Disponible and public (WORK_RULES §5, decided
@@ -667,7 +685,12 @@ export function WorkForm({
       {/* Header */}
       <div style={{ flexShrink: 0, padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="row gap-md">
-          <button type="button" className="btn ghost sm" onClick={() => router.back()}>← {t('back')}</button>
+          {/* Phone: « Retour » lives in the bottom bar; a new work gets « ← Formulaire court » here instead. */}
+          {!narrow ? (
+            <button type="button" className="btn ghost sm" onClick={() => router.back()}>← {t('back')}</button>
+          ) : !oeuvre ? (
+            <button type="button" className="btn ghost sm" data-testid="work-form-short-form" style={{ minHeight: 44 }} onClick={backToShortForm}>{t('wf_short_form')}</button>
+          ) : null}
           <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>
             {oeuvre ? `${t('wf_modify_label')} #${oeuvre.OeuvreID}` : t('newWork')}
           </div>
@@ -689,11 +712,12 @@ export function WorkForm({
         )}
       </div>
 
-      <form id="work-form" ref={formRef} onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: narrow ? 'column' : 'row', overflow: 'hidden' }}>
+      {/* Phone: one scroll for the whole form (two stacked scroll areas squeezed « 1. Identité » to a strip). */}
+      <form id="work-form" ref={formRef} onSubmit={handleSubmit} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: narrow ? 'column' : 'row', overflow: narrow ? 'auto' : 'hidden' }}>
         <input type="hidden" name="oeuvre_id" value={oeuvre?.OeuvreID ?? ''} />
 
         {/* Left sidebar: images, themes, notes */}
-        <div style={{ width: narrow ? '100%' : 340, borderRight: narrow ? 'none' : '1px solid var(--bd)', borderBottom: narrow ? '1px solid var(--bd)' : 'none', background: 'var(--bg1)', padding: narrow ? 16 : 24, overflow: 'auto' }}>
+        <div style={{ width: narrow ? '100%' : 340, flexShrink: narrow ? 0 : undefined, borderRight: narrow ? 'none' : '1px solid var(--bd)', borderBottom: narrow ? '1px solid var(--bd)' : 'none', background: 'var(--bg1)', padding: narrow ? 16 : 24, overflow: narrow ? 'visible' : 'auto' }}>
           <ImageManager
             oeuvreId={oeuvre?.OeuvreID ?? 0}
             initialImages={initialImages}
@@ -710,13 +734,21 @@ export function WorkForm({
           <div style={{ marginTop: 32, display: fieldMode ? 'none' : undefined }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {allThemes.map(th => (
+              {(narrow && !moreThemes ? allThemes.filter((th) => th.works == null || th.works > 0 || selThemes.has(th.id)) : allThemes).map(th => (
                 <button key={th.id} type="button"
                   onClick={() => setSelThemes(p => { const s = new Set(p); if (s.has(th.id)) s.delete(th.id); else s.add(th.id); return s })}
                   style={{ padding: '4px 10px', fontSize: 11, borderRadius: 2, border: '1px solid var(--bd)', background: selThemes.has(th.id) ? 'var(--ac)' : 'var(--bg2)', color: selThemes.has(th.id) ? 'var(--bg0)' : 'var(--tx3)' }}>
                   {th.name}
                 </button>
               ))}
+              {(() => {
+                const hidden = narrow && !moreThemes ? allThemes.filter((th) => th.works === 0 && !selThemes.has(th.id)).length : 0
+                return hidden > 0 ? (
+                  <button type="button" className="btn ghost sm" data-testid="work-form-more-themes" style={{ minHeight: 44 }} onClick={() => setMoreThemes(true)}>
+                    {t('wf_themes_more').replace('{n}', String(hidden))}
+                  </button>
+                ) : null
+              })()}
             </div>
           </div>
 
@@ -737,7 +769,7 @@ export function WorkForm({
         </div>
 
         {/* Main form */}
-        <div style={{ flex: 1, padding: narrow ? '18px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left))' : '40px 60px', overflow: 'auto' }}>
+        <div style={{ flex: narrow ? 'none' : 1, padding: narrow ? '18px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left))' : '40px 60px', overflow: narrow ? 'visible' : 'auto' }}>
           <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: narrow ? 32 : 56 }}>
 
             {/* 1. Identity */}

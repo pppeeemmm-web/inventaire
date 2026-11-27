@@ -78,9 +78,9 @@ Aujourd'hui est l'écran d'accueil : la journée. On y voit ce qui a été fait,
 ☰ ouvre le menu par-dessus la page, sur tous les écrans.
 
 - **En haut, la recherche** : tapez #1234 ou un morceau de titre, la fiche de l'œuvre s'ouvre.
-- **Les tuiles**, avec leurs compteurs : Aujourd'hui, Œuvres, Production, Idées, Commandes, Logistique, Événements, Journal. Les administrateurs voient aussi le Fil.
+- **Les tuiles**, avec leurs compteurs : Aujourd'hui, Œuvres, Production, Idées, Ventes, Pipeline, Événements, Journal. Les administrateurs voient aussi le Fil.
 - **« ? Aide pour cet écran »** : le chapitre de ce guide qui parle de l'écran ouvert sous le menu.
-- **« Tout le reste »** (replié) : tous les autres écrans.
+- **« Tout le reste »** (ouvert) : tous les autres écrans, dont Logistique.
 - **« Actions »** (replié) : Vente, Contact (carte de visite), Document, Problème, Pipeline, Triage.
 - **En bas** : votre compte, la langue (FR / EN), la déconnexion.
 
@@ -188,7 +188,7 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 
 1. Dans la barre du bas, touchez **Œuvre**, puis **Nouvelle œuvre**.
 2. **Ajouter la photo** : choisissez l'image dans la photothèque du téléphone (plusieurs à la fois si besoin).
-3. Remplissez ce que vous savez : titre, technique, support, format, dimensions (cm), lieu (« Lieu le plus proche » propose un lieu enregistré à moins de 2 km), période, source, note. « Tous les champs » ouvre le reste.
+3. Remplissez ce que vous savez : titre, technique, support, format, dimensions (cm), lieu (« Lieu le plus proche » propose un lieu enregistré à moins de 2 km), période, source, note. « Tous les champs » ouvre le reste ; « ← Formulaire court » y revient en gardant ce qui est saisi.
 4. **Créer l'œuvre**.
 
 **Ensuite :**
