@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Film « ὄναρ / ὕπαρ »: script + storyboard, Tell and Short (Pem); « do not post anything » → `video/2026-11-27_onar-upar.md`. Pem's Instagram: 120 followers, photos removed.
 - Series meanings added to each application file (Therapeia, Paréidolie, DRAC, CoG, CERN) → `SERIES.md` (Pem « Add it to each relevant application process »).
 - Live Hub, on Pem's request: theme « Nouveau: Dumanos » = δύναμις G1411 (Pem confirmed); its 33 works moved to « 1411. δύναμις (dunamis) », the empty theme deleted (Pem « Delete the empty theme »); Greek meanings written in the notes of 8 themes (3 with existing meanings left as they were).
 - Live Hub, on Pem's request: Journal #56 (Homer ὄναρ / ὕπαρ) linked to the new idea « Rêverie — Bachelard »; Journal #57 (Greek New Testament summary, AI-written, « à vérifier ») and idea « Testament grec — séries au lexique de Strong » (pousse), both authored as Terena Gill (Pem).
