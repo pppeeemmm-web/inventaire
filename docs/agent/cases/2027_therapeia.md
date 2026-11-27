@@ -25,6 +25,12 @@ attachments** (`../ROLE.md`).
   124), **Oikeios** (one's own, 63), **Purinos** (6). Weightlessness is Bachelard's *L'Air et les songes*; the island
   brings water and stone (*L'Eau et les rêves*, *La Terre et les rêveries du repos*).
 - An existing « Montrouge » selection (36 drawings) and « CoG 26 » (8) can seed the portfolio.
+- **Series meanings and title (27/11) → [`../SERIES.md`](../SERIES.md):** proposed title **ὄναρ / ὕπαρ** (Homer: dream
+  in sleep / waking vision = « rêver le monde et vivre le monde rêvé »), beside « Paxos, l'île rêvée » — Pem chooses.
+  Water is the element the series do not have yet; δένδρον for the olive trees and cypresses.
+- **Film (27/11):** script + storyboard, Reel (≈ 22 s) and short video (≈ 72 s), no studio, no face →
+  [`../video/2026-11-27_onar-upar.md`](../video/2026-11-27_onar-upar.md). Pem's Instagram: 120 followers, no photos —
+  the film can be the first post. **Nothing posted** without Pem's written OK.
 
 ## Drafts for Pem (rewrite freely — Pem's voice first)
 
@@ -63,12 +69,13 @@ Attachments: portfolio PDF (12–15 works, ≤ 10 MB), motivation + project (1 P
   insurance (European card), carrying the drawings back (portfolio case / shipping). Lodging and meals covered.
   Amounts: estimates only until quotes — asking a carrier for a quote is reaching outside (Pem's OK).
 
-## Proposed Pipeline update (for Pem's OK — not entered)
-Steps with dates: Dossier draft to Pem 2026-12-15 · Email sent (on written OK) · Instagram contact after sending ·
-Entretien · Résultat; reminder 2026-12-15 « Therapeia : valider projet, portfolio, période ». Contact #975 named.
+## Pipeline (entered 27/11 with Pem's OK « OK Therapeia »)
+« Therapeia »: Film : tournage + montage 10/12 · Dossier 15/12 · Soumission 15/01 (email only on Pem's written OK of
+text + attachments, then Instagram contact) · Entretien · Résultat; reminder 15/12 « Therapeia : valider projet,
+portfolio, période ». Contact #975 named « Astrid — Therapeia Art Residency ».
 
 ## Open questions for Pem
 1. Period and length of stay (2–6 weeks, which season of 2027)?
 2. Lead series: ἀβαρής as proposed, or another?
 3. The « why now » line of the motivation, in your words (a voice note is enough).
-4. OK to name contact #975 « Astrid — Therapeia Art Residency » and add the dated steps?
+4. Contact #975 and dated steps: done 27/11 (Pipeline above).

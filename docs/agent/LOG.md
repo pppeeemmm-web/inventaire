@@ -4,6 +4,12 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Pipeline « Therapeia » dated (film 10/12, dossier 15/12, submission 15/01), reminder 15/12, contact #975 named « Astrid — Therapeia Art Residency » (Pem « OK Therapeia »).
+- Nightly check red (rule 8 on #2410–#2412) → rule 8 skips found works (nightly + Audit panel); trigger `found_work_end_kept.sql` tested on a throwaway Postgres (5/5) and applied on live (Pem « GO 1+2 », then « Apply + merge PR »). PR #9.
+- Film « ὄναρ / ὕπαρ »: script + storyboard, a Reel and a short video (Pem); « do not post anything » → `video/2026-11-27_onar-upar.md`. Pem's Instagram: 120 followers, photos removed.
+- Series meanings added to each application file (Therapeia, Paréidolie, DRAC, CoG, CERN) → `SERIES.md` (Pem « Add it to each relevant application process »).
+- Live Hub, on Pem's request: theme « Nouveau: Dumanos » = δύναμις G1411 (Pem confirmed); its 33 works moved to « 1411. δύναμις (dunamis) », the empty theme deleted (Pem « Delete the empty theme »); Greek meanings written in the notes of 8 themes (3 with existing meanings left as they were).
+- Live Hub, on Pem's request: Journal #56 (Homer ὄναρ / ὕπαρ) linked to the new idea « Rêverie — Bachelard »; Journal #57 (Greek New Testament summary, AI-written, « à vérifier ») and idea « Testament grec — séries au lexique de Strong » (pousse), both authored as Terena Gill (Pem).
 - Therapeia: case opened, drafts (project « Paxos, l'île rêvée », motivation, email) for Pem; nothing sent. CoG = Denmark and/or Germany (Pem).
 - Pipeline: 6 entries entered with Pem's OK (« Yes ») and reminder request — DRAC AIC 2027, Récits de Paysages 2027, Paréidolie 2027 — galerie, CoG 2027, Arts at CERN 2027, Salon de Montrouge 2028 (16 steps, 6 reminders).
 - Pem: no SIRET; 2027 project = Bachelard's reverie into and from image making; galleries known by name only; no drawing series in mind.

@@ -17,6 +17,8 @@
 -- Known and accepted (not breaks, the day is unknown — WORK_RULES §2):
 --   7  95 tasks ticked before 2026-11-17 keep no date: only tasks created since are checked.
 --   8  1 076 Prêt works with no end date: only an end date on a work NOT Prêt is a break.
+--   8  a found work (production_origin 'found') keeps its known year as its end whatever its stage
+--      (FoundWorkFlow.md, Pem 2026-11-27): not a break.
 
 -- ── Rule 2: Catalogué needs at least one photo ──────────────────────────────────────────────
 select '2' as rule, o."OeuvreID" as oeuvre_id, o."Titre" as titre, 'catalogué, aucune photo' as detail
@@ -93,6 +95,7 @@ select '8' as rule, o."OeuvreID", o."Titre",
   from public."Oeuvres" o
  where o.deleted_at is null and o.production_completed_on is not null
    and not (coalesce(o."Catalogué", false) and not coalesce(o."NeedsPhotograph", false))
+   and coalesce(o.production_origin, '') <> 'found'
  order by 2;
 
 -- ── Rule 9: owner / custodian / address follow the stage (WORK_CUSTODY_MODEL.md, 13 = Pem) ──
