@@ -524,13 +524,16 @@ async function createWorkFromSessionFields(
   const dateStr = formatSessionHistoryDate(sessionAt)
   // History records where the work came from; the session note goes to Comments only
   // (Pem 2026-11-14: the note was written to both).
-  const historique = `[${dateStr}] Session terrain`
+  const parisYear = Number(calendarDayInParisFromIso(new Date().toISOString()).slice(0, 4))
+  const origin = creationOrigin(fields.production_origin, null, parisYear)
+  // An old work entered in a session also says so (FoundWorkFlow.md): the same words as the work forms.
+  const historique = origin === 'found'
+    ? `[${dateStr}] Session terrain\n[${dateStr}] Retrouvée — œuvre oubliée, jamais cataloguée`
+    : `[${dateStr}] Session terrain`
   const notesTrim = (fields.notes ?? '').trim()
 
   const actorId = provenanceUserId(actorUserId, null)
   const editedAt = provenanceTimestamp()
-  const parisYear = Number(calendarDayInParisFromIso(new Date().toISOString()).slice(0, 4))
-  const origin = creationOrigin(fields.production_origin, null, parisYear)
   const inserted = await insertOeuvreRow(
     supabase,
     oid,

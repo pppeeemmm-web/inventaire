@@ -19,6 +19,7 @@ import { addWorkImage, createLookup, listWorkDrawerImages, reorderWorkImages } f
 import { searchWorksForRecord, type RecordWorkHit } from '@/app/atelier/works/record-actions'
 import { saveCreationStep, savePlace, saveSource, setWorkPeriod, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { addWorkLink } from '@/app/atelier/works/work-link-actions'
+import { setProductionOrigin } from '@/app/atelier/works/production-actions'
 import { attachShareInboxToWork, type ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
@@ -36,6 +37,7 @@ type RecordDraft = {
   titre: string; techniqueId: string; supportId: string; formatId: string; h: string; w: string; d: string
   placeId: string; note: string; sourceId: string; periodId: string; paintedOn: RecordWorkHit | null; savedAt: number
   origin?: '' | 'new' | 'found'
+  foundYear?: string; foundFinished?: boolean | null
 }
 const clearRecordDraft = () => {
   try {
@@ -71,6 +73,9 @@ export type WorkRecordHandoff = {
   titre: string; techniqueId: string; supportId: string; formatId: string
   h: string; w: string; d: string
   origin: '' | 'new' | 'found'
+  /** « Ancienne — retrouvée » answers (FoundWorkFlow.md): year typed (may be empty), « Terminée ? ». */
+  foundYear: string
+  foundFinished: boolean | null
   files: File[]
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports: { SupportID: number; Support: string | null }[]
@@ -78,7 +83,7 @@ export type WorkRecordHandoff = {
 }
 
 /** What « ← Formulaire court » brings back from the full form (Pem 2026-11-27: « can't go back to simple form »). */
-export type WorkRecordCarryBack = Pick<WorkRecordHandoff, 'titre' | 'techniqueId' | 'supportId' | 'formatId' | 'h' | 'w' | 'd' | 'origin' | 'files'>
+export type WorkRecordCarryBack = Pick<WorkRecordHandoff, 'titre' | 'techniqueId' | 'supportId' | 'formatId' | 'h' | 'w' | 'd' | 'origin' | 'foundYear' | 'foundFinished' | 'files'>
 
 export type WorkRecordPhoneProps = {
   techniques: { TechniqueID: number; Technique: string | null }[]
@@ -203,6 +208,8 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   const [titre, setTitre] = useState(carryBack?.titre ?? shareInboxPrefill?.titre ?? '')
   // « Nouvelle / Ancienne — retrouvée » (same choice as the desk form); none = the server's rule.
   const [origin, setOrigin] = useState<'' | 'new' | 'found'>(carryBack?.origin ?? '')
+  const [foundYear, setFoundYear] = useState(carryBack?.foundYear ?? '')
+  const [foundFinished, setFoundFinished] = useState<boolean | null>(carryBack?.foundFinished ?? null)
   const [techniqueId, setTechniqueId] = useState(carryBack?.techniqueId ?? '')
   const [supportId, setSupportId] = useState(carryBack?.supportId ?? '')
   const [formatId, setFormatId] = useState(carryBack?.formatId ?? '')
@@ -283,6 +290,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
     setTitre(dr.titre ?? ''); setTechniqueId(dr.techniqueId ?? ''); setSupportId(dr.supportId ?? ''); setFormatId(dr.formatId ?? '')
     setH(dr.h ?? ''); setW(dr.w ?? ''); setD(dr.d ?? ''); setNote(dr.note ?? '')
     setSourceId(dr.sourceId ?? ''); setPeriodId(dr.periodId ?? ''); setPaintedOn(dr.paintedOn ?? null); setOrigin(dr.origin ?? '')
+    setFoundYear(dr.foundYear ?? ''); setFoundFinished(dr.foundFinished ?? null)
     if (dr.placeId) {
       touchedPlace.current = true
       setPlaceId(dr.placeId)
@@ -297,7 +305,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
         onClick: () => {
           clearRecordDraft()
           setTitre(''); setTechniqueId(''); setSupportId(''); setFormatId(''); setH(''); setW(''); setD(''); setNote('')
-          setSourceId(''); setPeriodId(''); setPaintedOn(null); setOrigin('')
+          setSourceId(''); setPeriodId(''); setPaintedOn(null); setOrigin(''); setFoundYear(''); setFoundFinished(null)
         },
       },
     })
@@ -305,7 +313,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }, [])
 
   const keepDraft = () => {
-    const dr: RecordDraft = { titre, techniqueId, supportId, formatId, h, w, d, placeId, note, sourceId, periodId, paintedOn, origin, savedAt: Date.now() }
+    const dr: RecordDraft = { titre, techniqueId, supportId, formatId, h, w, d, placeId, note, sourceId, periodId, paintedOn, origin, foundYear, foundFinished, savedAt: Date.now() }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(dr))
     // eslint-disable-next-line pem-i18n/no-silent-catch -- browser storage blocked or full: the draft is optional
@@ -317,7 +325,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }
 
   const dirty =
-    files.length > 0 || !!titre.trim() || !!techniqueId || !!supportId || !!formatId || !!h || !!w || !!d || !!note.trim() || !!work || !!paintedOn || !!sourceId || !!periodId || !!origin
+    files.length > 0 || !!titre.trim() || !!techniqueId || !!supportId || !!formatId || !!h || !!w || !!d || !!note.trim() || !!work || !!paintedOn || !!sourceId || !!periodId || !!origin || !!foundYear || foundFinished != null
 
   async function addLookup(table: 'Technique' | 'Support' | 'Format', name: string) {
     const label = name.charAt(0).toUpperCase() + name.slice(1)
@@ -386,12 +394,16 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
   }
 
   function submitNew() {
+    // « Ancienne — retrouvée » (FoundWorkFlow.md): « Terminée ? » is required; the year, when typed, is 4 digits.
+    const year = origin === 'found' ? foundYear.trim() : ''
+    if (origin === 'found' && foundFinished == null) return void toast.error(t('wf_found_need_answer'))
+    if (year && (!/^\d{4}$/.test(year) || Number(year) < 1900 || Number(year) > new Date().getFullYear())) return void toast.error(t('wf_found_year_bad'))
     const pem = String(pemContactId ?? PEM_CONTACT_ID)
     const fd = new FormData()
     const set = (k: string, v: string) => fd.set(k, v)
     set('oeuvre_id', '')
     set('titre', titre.trim())
-    set('annee', '')
+    set('annee', year)
     set('technique', techniqueId)
     set('support', supportId)
     set('format', formatId)
@@ -424,10 +436,19 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
       if (res.pending || typeof res.newId !== 'number') {
         // Team member: the new work waits for Pem's approval in Audit; pictures and extras need its number.
         toast.success(files.length || sharedCount || placeId || sourceId || periodId || paintedOn ? t('wf_save_pending_images_skipped_toast') : t('wf_save_pending_toast'))
+        // The « Terminée ? Oui » answer goes through an admin door: Pem sets it on the card when approving.
+        if (origin === 'found' && foundFinished) toast.info(t('wf_found_answer_later'))
         return finish(null, false)
       }
       const oid = res.newId
       const pics = files.length || sharedCount ? await addPictures(oid, false) : 'ok'
+      // « Terminée ? Oui » once the photos are in: end that year, catalogued when it has a photo (the year itself
+      // went in with the work, its Historique line too).
+      if (origin === 'found' && foundFinished) {
+        const done = await setProductionOrigin(oid, 'found', { finished: true, year: year ? Number(year) : null })
+        if ('error' in done) toast.error(`${t('error_prefix')} ${done.error}`)
+        else if (done.needsPhoto) toast.info(t('wf_found_needs_photo'))
+      }
       const extras: Promise<{ ok: true } | { error: string }>[] = []
       if (placeId) extras.push(saveCreationStep({ oeuvre_id: oid, on_date: null, date_precision: null, kind: 'worked', place_id: Number(placeId), note: null }))
       if (sourceId) extras.push(setWorkSources(oid, [Number(sourceId)]))
@@ -554,7 +575,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
               // Place, source, period and « peint sur » have no field in the full form: say so, never drop them silently.
               if (placeId || newPlace || sourceId || periodId || paintedOn) toast.info(t('wr_all_fields_not_carried'))
               onAllFields({
-                titre, techniqueId, supportId, formatId, h, w, d, origin, files,
+                titre, techniqueId, supportId, formatId, h, w, d, origin, foundYear, foundFinished, files,
                 techniques: tech.map((r) => ({ TechniqueID: r.id, Technique: r.label })),
                 supports: supp.map((r) => ({ SupportID: r.id, Support: r.label })),
                 formats: fmts.map((r) => ({ FormatID: r.id, Format: r.label })),
@@ -586,6 +607,27 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
                   </button>
                 ))}
               </div>
+              {origin === 'found' ? (
+                <div data-testid="work-record-found" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8, marginTop: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={lbl}>{t('wf_found_year')}</span>
+                    <input aria-label={t('wf_found_year')} inputMode="numeric" maxLength={4} placeholder="1999" value={foundYear}
+                      onChange={(e) => setFoundYear(e.target.value.replace(/\D/g, ''))} style={field} data-testid="work-record-found-year" />
+                  </div>
+                  <div role="group" aria-label={t('wf_found_finished')} style={{ minWidth: 0 }}>
+                    <span style={lbl}>{t('wf_found_finished')}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 4 }}>
+                      {([true, false] as const).map((v) => (
+                        <button key={String(v)} type="button" className="btn ghost sm" aria-pressed={foundFinished === v}
+                          data-testid={`work-record-found-${v ? 'yes' : 'no'}`} onClick={() => setFoundFinished(v)}
+                          style={{ minHeight: 44, background: foundFinished === v ? 'var(--ac)' : undefined, color: foundFinished === v ? 'var(--bg0)' : undefined }}>
+                          {t(v ? 'wf_found_yes' : 'wf_found_no')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
               <div style={{ minWidth: 0 }}>

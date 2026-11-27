@@ -476,14 +476,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       imageSha256 = prepared.sourceSha256
     }
 
-    // Provenance seeding
-    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
-    const originEntry = `[${dateStr}] Atelier`
-    const historiqueAppend = formData.get('historique_append') as string | null
-    const initialHistorique = historiqueAppend
-      ? `${originEntry}\n${historiqueAppend}`
-      : originEntry
-
     // Origin (owner 2026-11-23): a work created without being marked old is new, production starts
     // today (studio day, Paris). Stated 'new' / 'found' wins. A typed year earlier than the current
     // Paris year means an old work: nothing recorded.
@@ -491,6 +483,17 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const typedYear = annéeFinal && /^\d{4}/.test(annéeFinal) ? Number(annéeFinal.slice(0, 4)) : null
     const parisYear = Number(calendarDayInParisFromIso(new Date().toISOString()).slice(0, 4))
     const productionOrigin = creationOrigin(originRaw, typedYear, parisYear)
+
+    // Provenance seeding. An old work entered now opens with the found line (FoundWorkFlow.md, Pem 2026-11-27) —
+    // the same words the database writes when an existing work becomes « retrouvée » (oeuvre_history).
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+    const originEntry = productionOrigin === 'found'
+      ? `[${dateStr}] Retrouvée — œuvre oubliée, jamais cataloguée${typedYear ? ` (${typedYear})` : ''}`
+      : `[${dateStr}] Atelier`
+    const historiqueAppend = formData.get('historique_append') as string | null
+    const initialHistorique = historiqueAppend
+      ? `${originEntry}\n${historiqueAppend}`
+      : originEntry
 
     // INSERT
     const insertRes = await insertOeuvreRow(supabase, oid, {

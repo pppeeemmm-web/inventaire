@@ -54,6 +54,7 @@ import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkRecordPhone, type WorkRecordCarryBack } from '@/components/atelier/WorkRecordPhone'
+import { setProductionOrigin as saveFoundAnswers } from '@/app/atelier/works/production-actions'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { useConfirmStep } from '@/hooks/useConfirmStep'
@@ -167,6 +168,8 @@ export function WorkForm({
   const [annee,       setAnnee]       = useState(oeuvre?.Année ?? '')
   // New work only (TODO 4, like the session's choice): 'new' starts production today, 'found' = start unknown.
   const [productionOrigin, setProductionOrigin] = useState<'new' | 'found' | ''>('')
+  /** « Terminée ? » (FoundWorkFlow.md): required when « Ancienne — retrouvée » is chosen on a new work. */
+  const [foundFinished, setFoundFinished] = useState<boolean | null>(null)
   const [techniqueId, setTechniqueId] = useState(String(oeuvre?.Technique ?? ''))
   const [supportId,   setSupportId]   = useState(String(oeuvre?.Support ?? ''))
   const [formatId,    setFormatId]    = useState(String(oeuvre?.Format ?? ''))
@@ -465,6 +468,11 @@ export function WorkForm({
 
   async function handleSubmit(e: any) {
     if (e?.preventDefault) e.preventDefault()
+    if (!oeuvre && productionOrigin === 'found' && foundFinished == null) return void toast.error(t('wf_found_need_answer'))
+    if (!oeuvre && productionOrigin === 'found' && /^\d{4}/.test(annee.trim())) {
+      const y = Number(annee.trim().slice(0, 4))
+      if (y < 1900 || y > new Date().getFullYear()) return void toast.error(t('wf_found_year_bad'))
+    }
     const fd = new FormData(formRef.current!)
 
     fd.set('catalogued', (prodStage !== 'atelier') ? '1' : '0')
@@ -516,6 +524,8 @@ export function WorkForm({
           } else {
             toast.success(t('wf_save_pending_toast'))
           }
+          // The « Terminée ? Oui » answer goes through an admin door: Pem sets it on the card when approving.
+          if (productionOrigin === 'found' && foundFinished) toast.info(t('wf_found_answer_later'))
           router.push(narrow ? '/hub' : '/atelier')
           router.refresh()
           return
@@ -545,6 +555,13 @@ export function WorkForm({
               toast.error(`${t('error_prefix')} ${String(err)}`)
               break
             }
+          }
+          // « Terminée ? Oui » once the photos are in (FoundWorkFlow.md): end that year, catalogued when it has a photo.
+          if (productionOrigin === 'found' && foundFinished) {
+            const year = /^\d{4}/.test(annee.trim()) ? Number(annee.trim().slice(0, 4)) : null
+            const done = await saveFoundAnswers(res.newId, 'found', { finished: true, year })
+            if ('error' in done) toast.error(`${t('error_prefix')} ${done.error}`)
+            else if (done.needsPhoto) toast.info(t('wf_found_needs_photo'))
           }
           router.push(narrow ? '/hub' : `/atelier?work=${res.newId}`)
           router.refresh()
@@ -600,6 +617,8 @@ export function WorkForm({
           try {
             await enqueueOfflineWorkSaveFromFormData(fd)
             toast.info(t('offline_save_queued'))
+            // The queue replays the save only: « Terminée ? Oui » is set on the card once online.
+            if (!oeuvre && productionOrigin === 'found' && foundFinished) toast.info(t('wf_found_answer_later'))
           } catch {
             toast.error(t('offline_sync_failed'))
           }
@@ -645,6 +664,9 @@ export function WorkForm({
           if (dr.w || back) setLargeur(dr.w)
           if (dr.d || back) setProfondeur(dr.d)
           if (dr.origin || back) setProductionOrigin(dr.origin)
+          if (dr.foundFinished != null || back) setFoundFinished(dr.foundFinished)
+          // The year only when the drawer changed it (a full date typed here, e.g. 1999/10/31, is never cut to 1999).
+          if (back ? dr.origin === 'found' && dr.foundYear !== (carryBack?.foundYear ?? '') : !!dr.foundYear) setAnnee(dr.foundYear)
           if (dr.files.length) setNewImageFiles((cur) => [...cur, ...dr.files])
           setLocalTechniques(dr.techniques); setLocalSupports(dr.supports); setLocalFormats(dr.formats)
           setLeftDrawer(true)
@@ -660,7 +682,7 @@ export function WorkForm({
   // Themes, comments, history and the other full-form fields stay here (this form stays mounted) — say so.
   function backToShortForm() {
     if (selThemes.size || commentaires.trim() || historique.trim()) toast.info(t('wf_short_form_kept'))
-    setCarryBack({ titre, techniqueId, supportId, formatId, h: hauteur, w: largeur, d: profondeur, origin: productionOrigin, files: newImageFiles })
+    setCarryBack({ titre, techniqueId, supportId, formatId, h: hauteur, w: largeur, d: profondeur, origin: productionOrigin, foundYear: productionOrigin === 'found' && /^\d{4}/.test(annee.trim()) ? annee.trim().slice(0, 4) : '', foundFinished, files: newImageFiles })
     setNewImageFiles([]) // they travel back with the drawer; « Tous les champs » brings them again
     setAllFields(false)
     setLeftDrawer(false)
@@ -852,6 +874,22 @@ export function WorkForm({
                     ))}
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('wf_origin_hint')}</span>
+                  {productionOrigin === 'found' ? (
+                    <div role="group" aria-label={t('wf_found_finished')} data-testid="wf-found-finished" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                      <span>{t('wf_found_finished')}</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, maxWidth: 520 }}>
+                        {([true, false] as const).map((v) => (
+                          <button key={String(v)} type="button" className="btn ghost sm" aria-pressed={foundFinished === v}
+                            data-testid={`wf-found-finished-${v ? 'yes' : 'no'}`}
+                            onClick={() => setFoundFinished(v)}
+                            style={{ minHeight: 44, background: foundFinished === v ? 'var(--ac)' : undefined, color: foundFinished === v ? 'var(--bg0)' : undefined }}>
+                            {t(v ? 'wf_found_yes' : 'wf_found_no')}
+                          </button>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('wf_found_year_above')}</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </section>
