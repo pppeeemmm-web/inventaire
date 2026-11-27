@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Nightly check red (rule 8 on #2410–#2412) → rule 8 skips found works (nightly + Audit panel); trigger proposal `found_work_end_kept.sql` tested, NOT applied — live needs Pem's own OK (Pem « GO 1+2 »). PR #9.
 - Film « ὄναρ / ὕπαρ »: script + storyboard, a Reel and a short video (Pem); « do not post anything » → `video/2026-11-27_onar-upar.md`. Pem's Instagram: 120 followers, photos removed.
 - Series meanings added to each application file (Therapeia, Paréidolie, DRAC, CoG, CERN) → `SERIES.md` (Pem « Add it to each relevant application process »).
 - Live Hub, on Pem's request: theme « Nouveau: Dumanos » = δύναμις G1411 (Pem confirmed); its 33 works moved to « 1411. δύναμις (dunamis) », the empty theme deleted (Pem « Delete the empty theme »); Greek meanings written in the notes of 8 themes (3 with existing meanings left as they were).
