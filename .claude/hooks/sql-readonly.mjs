@@ -42,7 +42,7 @@ export function readOnly(sql) {
     .replace(/'(?:[^']|'')*'|"(?:[^"]|"")*"|\$([A-Za-z_]*)\$[\s\S]*?\$\1\$|--[^\n]*|\/\*[\s\S]*?\*\//g, (m) =>
       m[0] === '"' ? ' ident ' : m[0] === "'" || m[0] === '$' ? " '' " : ' ')
     .trim()
-  if (/['"]|\$\$|\/\*/.test(s.replace(/ '' /g, ''))) return false // an unclosed quote or comment: not provable
+  if (/['"]|\$\$|\/\*/.test(s.replace(/''/g, ''))) return false // an unclosed quote or comment: not provable
   s = s.replace(/;\s*$/, '')
   if (!s || s.includes(';')) return false // one statement only
   if (!/^(select|with|explain|values|table|show)\b/i.test(s)) return false
