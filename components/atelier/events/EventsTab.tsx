@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import type { Oeuvre } from '@/lib/types/database'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
@@ -241,6 +242,7 @@ export function EventsTab({ oeuvres, contacts, themes, tM, statusLabelMap, selec
         const name = [event.nom, [place?.NomInstitution ?? null, year].filter(Boolean).join(' ')].join(' — ')
         const r = await api.createEventSelection(id, name, ids)
         if ('error' in r) return errText(r.error)
+        emitCatalogueListsChanged({ oeuvreIds: ids })
         // The works' details come with a fresh load of this event only.
         const fresh = await api.loadEvent(id)
         if ('ok' in fresh) setDetails((d) => ({ ...d, [id]: fresh.event }))
@@ -250,6 +252,7 @@ export function EventsTab({ oeuvres, contacts, themes, tM, statusLabelMap, selec
       async linkGroup(groupId) {
         const r = await api.linkEventSelection(id, groupId)
         if ('error' in r) return errText(r.error)
+        emitCatalogueListsChanged()
         const fresh = await api.loadEvent(id)
         if ('ok' in fresh) setDetails((d) => ({ ...d, [id]: fresh.event }))
         return null
@@ -258,6 +261,7 @@ export function EventsTab({ oeuvres, contacts, themes, tM, statusLabelMap, selec
         if (!event.selection) return errText('ev_err_sql_waiting')
         const r = await api.addWorksToSelection(event.selection.id, ids, event.selection.work_ids.length)
         if ('error' in r) return errText(r.error)
+        emitCatalogueListsChanged({ oeuvreIds: ids })
         const fresh = await api.loadEvent(id)
         if ('ok' in fresh) setDetails((d) => ({ ...d, [id]: fresh.event }))
         return null
@@ -266,6 +270,7 @@ export function EventsTab({ oeuvres, contacts, themes, tM, statusLabelMap, selec
         if (!event.selection) return null
         const r = await api.removeWorkFromSelection(event.selection.id, oeuvreId)
         if ('error' in r) return errText(r.error)
+        emitCatalogueListsChanged({ oeuvreIds: [oeuvreId] })
         patchDetail(id, (e) => (e.selection ? { ...e, selection: { ...e.selection, work_ids: e.selection.work_ids.filter((w) => w !== oeuvreId) } } : e))
         return null
       },

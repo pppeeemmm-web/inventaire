@@ -8,6 +8,7 @@
 // the selection (HTML in a sandboxed frame, PDF in the browser's viewer). CSV / XLSX are built here
 // from the rows already loaded.
 
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import { useState, useTransition, useEffect, useCallback, useMemo, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { interpolateMessage } from '@/lib/i18n/message-core'
@@ -335,6 +336,7 @@ export function ExportModal({
     setCreatingCatalogTheme(true)
     const res = await createTheme(name)
     if (res.theme) {
+      emitCatalogueListsChanged()
       setLocalCatalogThemes((prev) =>
         [...prev, res.theme!].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
       )
@@ -352,6 +354,7 @@ export function ExportModal({
     setCreatingWorkingGroup(true)
     const res = await createWorkingGroup(name)
     if (res.group) {
+      emitCatalogueListsChanged()
       setLocalCatalogGroups((prev) =>
         [...prev.filter((g) => g.id !== res.group!.id), res.group!].sort((a, b) =>
           a.name.localeCompare(b.name, 'fr'),

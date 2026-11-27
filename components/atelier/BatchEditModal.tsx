@@ -7,6 +7,7 @@
 // Non-admins only see what the server lets them change in bulk (period, place made, broadcast,
 // themes, groups — `batchEdit` returns `bulk_admin_only` for the rest).
 
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import { useMemo, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { interpolateMessage } from '@/lib/i18n/message-core'
@@ -124,6 +125,7 @@ export function BatchEditModal({
       if (res.theme) {
         const th = res.theme
         setLocalThemes(prev => prev.some(x => x.id === th.id) ? prev : [...prev, th])
+        emitCatalogueListsChanged()
         setThemeSel(prev => ({ add: new Set(prev.add).add(th.id), rm: prev.rm }))
         setThemeFilter('')
       } else if (res.error) setError(res.error)
@@ -132,6 +134,7 @@ export function BatchEditModal({
       if (res.group) {
         const g = res.group
         setLocalGroups(prev => prev.some(x => x.id === g.id) ? prev : [...prev, g])
+        emitCatalogueListsChanged()
         setGroupSel(prev => ({ add: new Set(prev.add).add(g.id), rm: prev.rm }))
         setGroupFilter('')
       } else if (res.error) setError(res.error)

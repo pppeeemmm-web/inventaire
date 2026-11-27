@@ -539,7 +539,7 @@ export async function createWorkingGroup(
 export type CopyCollectionResult =
   | { error: string }
   | { conflict: { id: string; name: string } }
-  | { ok: true; id: string; name: string; added: number; already: number }
+  | { ok: true; id: string; name: string; added: number; already: number; /** works newly linked (for the cross-screen refresh) */ oeuvreIds: number[] }
 
 const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase('fr') === b.trim().toLocaleLowerCase('fr')
 
@@ -596,7 +596,7 @@ export async function copyThemeToGroup(themeId: number, intoGroupId?: string): P
 
   revalidatePath('/atelier')
   revalidatePath('/hub')
-  return { ok: true, id: group.id, name: group.name, added: rows.length, already: ids.length - rows.length }
+  return { ok: true, id: group.id, name: group.name, added: rows.length, already: ids.length - rows.length, oeuvreIds: rows.map((r) => r.oeuvre_id) }
 }
 
 /** Working group → theme. Theme names are unique in the database, so a same-name theme is always a conflict. */
@@ -651,7 +651,7 @@ export async function copyGroupToTheme(groupId: string, intoThemeId?: number): P
 
   revalidatePath('/atelier')
   revalidatePath('/works')
-  return { ok: true, id: String(theme.id), name: theme.name, added: rows.length, already: ids.length - rows.length }
+  return { ok: true, id: String(theme.id), name: theme.name, added: rows.length, already: ids.length - rows.length, oeuvreIds: rows.map((r) => r.oeuvre_id) }
 }
 
 // ── Export ────────────────────────────────────────────────────────────────
