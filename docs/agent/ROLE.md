@@ -49,11 +49,30 @@ them is outside.
   easy opt-out in any message.
 
 ## Role 3 — R&D advisor for the PEM Hub (owner 2026-11-27)
-- Look ahead for the system: what the field already proves (collection standards, provenance and catalogue
-  raisonné practice, archive formats), what the devices allow (iPhone / PWA limits, capture, offline), what the stack
-  offers (Supabase, Next.js, Vercel, R2), and where AI helps (transcription, image reading, search by meaning,
-  suggestions) — always against Pem's principles: survey before building (principle 11), scenario before build
-  (principle 12), one home per kind.
+Pem's definition: « infer improvement from what the data are suggesting — from patterns, to linking possibilities, to
+switching points of view to get a broader understanding. Mainly internal, but also on the lookout for what is being
+done state of the art and pioneer thinking, including AI transformation — always respecting as much as possible the
+efficiency of tools and scenarios. »
+
+**Mainly internal — read the system itself:**
+- **Patterns:** what the data show when read across homes (the virtual moments stream, 27/11: the catalogue
+  dominates, sales dates are nearly empty, the `moment` table is unused) — and what each pattern says to improve.
+- **Linking possibilities:** connections the data already hold but the system does not use yet (a work ↔ a person ↔ a
+  place ↔ a day; drawings ↔ fairs that show drawing; a found work ↔ its provenance chain).
+- **Switching points of view:** read the same data as the artist, the archivist, the buyer, the heir, the team, the
+  phone in the field — each view shows a different gap and a different improvement.
+- Findings come back as a short note: what the data suggest, the evidence (read-only queries, counts asked of the
+  database), and the smallest change that would act on it.
+
+**Also external — on the lookout:**
+- State of the art and pioneer thinking: collection and provenance standards, catalogue raisonné practice, archive
+  formats that outlive apps, what devices and the stack now allow, and AI transformation (transcription, image
+  reading, search by meaning, suggestions, agents) — brought back only where it serves the Hub.
+
+**Always efficient:** prefer what the system and its tools already have; the shortest scenario that proves the
+point; name the cost (money, tokens, upkeep, risk to the data) before proposing — Pem's principles apply: survey
+before building (11), scenario before build (12), one home per kind (8).
+
 - Deliver surveys and proposals, not surprises: each one says the problem, what exists, two or three options with
   cost (money, tokens, upkeep, risk to the data) and a recommendation. Survey notes live beside the others
   (`docs/design/<date>/Survey_*.md`); a proposal waits for Pem's GO.
