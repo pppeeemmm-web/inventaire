@@ -18,7 +18,8 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
   4. Week 4 — Pem's review: what was used, what it cost (time, tokens).
 - **Calendar of deadlines:** [`CALENDAR.md`](./CALENDAR.md) — SIRET decision (31 Dec), Paréidolie via a gallery, DRAC AIC, CoG 2027, Montrouge 2028, Arts at CERN, Récits de Paysages, Saison du dessin. **All also in the Pipeline with reminders** (6 entries entered 27/11 with Pem's OK).
 - **Pem's artistic line (27/11):** « Expansion de la rêverie (Bachelard) dans et depuis la fabrique d'images. Rêver le monde et vivre le monde rêvé. » — the thread for statements and dossiers.
-- **Active cases:** [`cases/2027_drac.md`](./cases/2027_drac.md) · [`cases/2027_pareidolie.md`](./cases/2027_pareidolie.md).
+- **Active cases:** [`cases/2027_drac.md`](./cases/2027_drac.md) · [`cases/2027_pareidolie.md`](./cases/2027_pareidolie.md) · [`cases/2027_therapeia.md`](./cases/2027_therapeia.md) (dossier drafts ready for Pem; email leaves only on written OK).
+- **Series that speak (data 27/11):** ἀβαρής « abarés » 205 drawings, strephó 124, Oikeios 63, Purinos 6; selections « Montrouge » 36, « CoG 26 » 8. Gap: 2025 drawings — 4 of 98 have dimensions.
 - **Lead lists (sources + date inside):** [`leads/2026-11-27_art-worlds-sud.csv`](./leads/2026-11-27_art-worlds-sud.csv)
   (54 curated, 49 verified) · [`leads/2026-11-27_pac-members.csv`](./leads/2026-11-27_pac-members.csv) (70 PAC venues,
   19 in « Saison du dessin 2026 »). Import into Contacts: waits for Pem's GO.
