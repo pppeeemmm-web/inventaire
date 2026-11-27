@@ -6,6 +6,9 @@ import { toast } from '@/lib/ui/toast'
 import { setProductionDate, setProductionOrigin } from '@/app/atelier/works/production-actions'
 import { stepDateInput, stepDateLabel, type DatePrecision } from '@/lib/work-periods'
 
+/** What the origin door returns (app/atelier/works/production-actions.ts › setProductionOrigin). */
+type SavedOrigin = Extract<Awaited<ReturnType<typeof setProductionOrigin>>, { ok: true }>['saved']
+
 type PDate = { on: string | null; precision: DatePrecision }
 
 function toPartial(on: string | null | undefined, precision: string | null | undefined): PDate {
@@ -38,8 +41,10 @@ export function WorkProductionSpan({
   completedOn,
   completedPrecision,
   origin,
+  year,
   inProduction,
   editable = false,
+  canAnswerFound,
   onSaved,
 }: {
   oeuvreId: number
@@ -48,10 +53,15 @@ export function WorkProductionSpan({
   completedOn: string | null | undefined
   completedPrecision?: string | null
   origin: 'new' | 'found' | null | undefined
+  /** The work's « Année » (YYYY-MM-DD or YYYY…): prefills the found year. */
+  year?: string | null
   inProduction: boolean
   editable?: boolean
-  /** The new / found door's saved fields, for the open work's list (no page refresh). */
-  onSaved?: (saved: { production_origin: 'new' | 'found' | null; production_started_on: string | null; production_started_precision: 'year' | 'month' | 'day' | null }) => void
+  /** False while the card has unsaved edits: the found answers change the stage and the year, so save the card first. */
+  canAnswerFound?: () => boolean
+  /** The new / found door's saved fields, for the open work's list (no page refresh). `resync`: the card reloads
+   *  its fields from the saved row (the found answers changed fields the card holds: year, stage). */
+  onSaved?: (saved: SavedOrigin, opts?: { resync?: boolean }) => void
 }) {
   const { t, lang } = useI18n()
   const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
@@ -62,6 +72,10 @@ export function WorkProductionSpan({
   const [busy, setBusy] = useState(false)
   const [org, setOrg] = useState(origin ?? null)
   useEffect(() => setOrg(origin ?? null), [oeuvreId, origin])
+  // « Ancienne — retrouvée » on a work that was not (FoundWorkFlow.md): ask the year and « Terminée ? » first.
+  const [askFound, setAskFound] = useState(false)
+  const [foundYear, setFoundYear] = useState('')
+  useEffect(() => { setAskFound(false); setFoundYear(/^\d{4}/.test(year ?? '') ? String(year).slice(0, 4) : '') }, [oeuvreId, year])
 
   useEffect(() => {
     const s = toPartial(startedOn, startedPrecision)
@@ -94,17 +108,27 @@ export function WorkProductionSpan({
   }
   if (!text && !editable && org !== 'found') return null
 
-  async function saveOrigin(next: 'new' | 'found') {
+  async function saveOrigin(next: 'new' | 'found', finished?: boolean) {
+    const answers = next === 'found' && finished != null
+    if (answers) {
+      if (canAnswerFound && !canAnswerFound()) return void toast.error(t('wf_found_save_card_first'))
+      if (foundYear && !/^\d{4}$/.test(foundYear)) return void toast.error(t('wf_found_year_bad'))
+    }
     setBusy(true)
     try {
-      const res = await setProductionOrigin(oeuvreId, next)
+      const res = await setProductionOrigin(oeuvreId, next, answers ? { finished: !!finished, year: foundYear ? Number(foundYear) : null } : undefined)
       if ('error' in res) return void toast.error(`${t('error_prefix')} ${res.error}`)
       setOrg(res.saved.production_origin)
       const s = toPartial(res.saved.production_started_on, res.saved.production_started_precision)
       setStart(s)
       setStartDraft(asField(s))
-      onSaved?.(res.saved)
+      const e = toPartial(res.saved.production_completed_on, res.saved.production_completed_precision)
+      setEnd(e)
+      setEndDraft(asField(e))
+      setAskFound(false)
+      onSaved?.(res.saved, { resync: answers })
       toast.success(t('wf_origin_saved'))
+      if ('needsPhoto' in res && res.needsPhoto) toast.info(t('wf_found_needs_photo'))
     } finally {
       setBusy(false)
     }
@@ -197,13 +221,34 @@ export function WorkProductionSpan({
                 aria-pressed={org === o}
                 disabled={busy}
                 data-testid={`work-production-origin-${o}`}
-                onClick={() => (org === o ? undefined : void saveOrigin(o))}
+                onClick={() => (org === o ? undefined : o === 'found' ? setAskFound(true) : void saveOrigin(o))}
                 style={{ minHeight: 44, whiteSpace: 'normal', background: org === o ? 'var(--ac)' : undefined, color: org === o ? 'var(--bg0)' : undefined }}
               >
                 {t(o === 'new' ? 'wf_origin_new' : 'wf_origin_found')}
               </button>
             ))}
           </div>
+          {askFound && org !== 'found' ? (
+            <div data-testid="work-production-found" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, maxWidth: 520 }}>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, minWidth: 0 }}>
+                {t('wf_found_year')}
+                <input inputMode="numeric" maxLength={4} placeholder="1999" value={foundYear} disabled={busy}
+                  onChange={(ev) => setFoundYear(ev.target.value.replace(/\D/g, ''))}
+                  data-testid="work-production-found-year" style={{ minHeight: 44, fontSize: 16, padding: '6px 8px' }} />
+              </label>
+              <div role="group" aria-label={t('wf_found_finished')} className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, minWidth: 0 }}>
+                {t('wf_found_finished')}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 4 }}>
+                  {([true, false] as const).map((v) => (
+                    <button key={String(v)} type="button" className="btn ghost sm" disabled={busy}
+                      data-testid={`work-production-found-${v ? 'yes' : 'no'}`} onClick={() => void saveOrigin('found', v)} style={{ minHeight: 44 }}>
+                      {t(v ? 'wf_found_yes' : 'wf_found_no')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
           <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_origin_saved_on_tap')}</span>
           {field('start')}
           {field('end')}

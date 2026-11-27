@@ -260,6 +260,31 @@ export async function fetchAtelierShellPostPaint(
   }
 }
 
+/** Themes + work groups only (same reads as the post-paint shell), for the cross-screen refresh after a change. */
+export async function fetchThemesAndGroups(): Promise<
+  | {
+      ok: true
+      themes: TeamPortalClientProps['themes']
+      groups: { id: string; name: string; created_at: string }[]
+    }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient()
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { ok: false, error: 'forbidden' }
+  const [themeRes, grpRes] = await Promise.all([
+    supabase.from('theme').select('id, name').order('id'),
+    supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
+  ])
+  const err = themeRes.error ?? grpRes.error
+  if (err) return { ok: false, error: err.message }
+  return {
+    ok: true,
+    themes: (themeRes.data ?? []) as TeamPortalClientProps['themes'],
+    groups: (grpRes.data ?? []) as { id: string; name: string; created_at: string }[],
+  }
+}
+
 /** @deprecated Prefer `fetchAtelierShellPostPaint` when loading both slices. */
 export async function fetchAtelierContacts(
   client?: SupabaseClient<Database>,

@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import {
   removeOeuvreFromCatalogTheme,
@@ -429,6 +430,7 @@ export function useConstellationPointer({
               alert(res.error)
               return
             }
+            emitCatalogueListsChanged({ oeuvreIds: [nodeHit.id] })
             await reloadGraphData(false)
             router.refresh()
             const next = new Map(posRef.current)
@@ -445,6 +447,7 @@ export function useConstellationPointer({
               alert(res.error)
               return
             }
+            emitCatalogueListsChanged({ oeuvreIds: [nodeHit.id] })
             await reloadGraphData(false)
             router.refresh()
             const next = new Map(posRef.current)

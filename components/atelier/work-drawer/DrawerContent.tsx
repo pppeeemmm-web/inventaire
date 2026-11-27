@@ -1915,8 +1915,14 @@ export function DrawerContent({
             completedOn={o.production_completed_on}
             completedPrecision={o.production_completed_precision}
             origin={o.production_origin}
+            year={o.Année}
             inProduction={!o.Catalogué}
-            onSaved={(saved) => onWorkSaved?.(o.OeuvreID, saved)}
+            canAnswerFound={() => !isDirtyRef.current}
+            onSaved={(saved, opts) => {
+              // The found answers changed fields this card holds (year, stage): reload them from the saved row.
+              if (opts?.resync) resyncFromRowRef.current = o.OeuvreID
+              onWorkSaved?.(o.OeuvreID, saved)
+            }}
           />
           <WorkCreationHistory oeuvreId={o.OeuvreID} when={when} />
         </Part>

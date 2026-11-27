@@ -15,6 +15,7 @@ export type ReportContactRow = {
   Ville: string | null
   Pays: string | null
   Email: string | null
+  IndicatifPays1: string | null
   Téléphone1: string | null
   Actif: boolean | null
   is_team_member: boolean
@@ -41,6 +42,7 @@ export async function listReportContacts(): Promise<{ rows: ReportContactRow[] }
       Ville: c.Ville,
       Pays: c.Pays,
       Email: c.Email,
+      IndicatifPays1: c.IndicatifPays1,
       Téléphone1: c.Téléphone1,
       Actif: c.Actif,
       is_team_member: c.is_team_member,

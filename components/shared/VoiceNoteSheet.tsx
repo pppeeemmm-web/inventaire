@@ -17,6 +17,7 @@ import {
   type MicFailure,
 } from '@/lib/voice/mic-permission'
 import { toast } from '@/lib/ui/toast'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { enqueueCapture, isNetworkFailure, newCaptureId } from '@/lib/mobile/capture-queue'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
@@ -35,7 +36,7 @@ import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
  */
 
 type NextActionKey = 'today' | 'tomorrow' | 'week' | 'waiting' | 'none'
-type Phase = 'starting' | 'recording' | 'saving' | 'saved' | 'failed' | 'blocked' | 'text'
+type Phase = 'starting' | 'recording' | 'saving' | 'saved' | 'failed' | 'blocked' | 'text' | 'import'
 type StopReason = 'user' | 'hidden' | 'size' | 'closed'
 
 const DRAFT_KEY = 'pem.voice-note.draft.v1'
@@ -72,7 +73,21 @@ const emptyDetails = (oeuvreId: string): Details => ({
   nextAction: 'none',
 })
 
-type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date; transcript: string; clientId: string }
+type Pending = { blob: Blob; mime: string; durationMs: number; recordedAt: Date; transcript: string; clientId: string; imported?: boolean }
+
+/** An imported file's type as the note door takes it (Voice Memos .m4a comes as audio/x-m4a, audio/m4a or no type). */
+function importMime(f: File): string | null {
+  const ty = (f.type || '').toLowerCase().split(';')[0]!.trim()
+  if (ty === 'audio/mp4' || ty === 'audio/x-m4a' || ty === 'audio/m4a' || (!ty && /\.m4a$/i.test(f.name))) return 'audio/mp4'
+  if (ty === 'audio/webm' || ty === 'audio/ogg') return ty
+  return null
+}
+
+/** Local calendar day (YYYY-MM-DD) of a timestamp. */
+function dayOf(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 type SavedNote = { id: string; durationMs: number | null; recordedAt: Date }
 
 function nextActionLabelKey(k: NextActionKey): DictKey {
@@ -167,9 +182,13 @@ export type VoiceNoteSheetProps = {
   defaultOeuvreId?: number | null
   /** Recording into an idea (Idées 🎤, 2026-11-23): the note and its Journal entry are linked to it. */
   conceptId?: string | null
-  onSaved?: () => void
+  /** `day`: the Paris day the note landed on (an imported memo keeps its own day — the caller re-reads that day). */
+  onSaved?: (info?: { day?: string }) => void
   /** Live words off unless this device turned them on (desk Journal, design JournalDesk §5 A4). */
   liveWordsOffByDefault?: boolean
+  /** « Importer un enregistrement »: the sheet opens on this file (no recording), asks its day, then saves it like a
+   *  recording (RecorderPause.md, Pem 2026-11-27: « on the day » it was recorded). */
+  importFile?: File | null
 }
 
 export function VoiceNoteSheet({
@@ -180,6 +199,7 @@ export function VoiceNoteSheet({
   conceptId = null,
   onSaved,
   liveWordsOffByDefault = false,
+  importFile = null,
 }: VoiceNoteSheetProps) {
   const conceptRef = useRef<string | null>(conceptId)
   conceptRef.current = conceptId
@@ -188,7 +208,13 @@ export function VoiceNoteSheet({
   const speechLang = locale
   const defaultWork = defaultOeuvreId != null && defaultOeuvreId > 0 ? String(defaultOeuvreId) : ''
 
-  const [phase, setPhase] = useState<Phase>('starting')
+  const [phase, setPhase] = useState<Phase>(importFile ? 'import' : 'starting')
+  // Pause / resume (one note, one file): the clock and the note's length count only the recorded time.
+  const [paused, setPaused] = useState(false)
+  const pausedTotalRef = useRef(0)
+  const pauseStartRef = useRef<number | null>(null)
+  const [importDay, setImportDay] = useState(() => (importFile ? dayOf(importFile.lastModified || Date.now()) : ''))
+  const [importDurMs, setImportDurMs] = useState(0)
   const [micFailure, setMicFailure] = useState<MicFailure | null>(null)
   const [permHint, setPermHint] = useState(false)
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -303,7 +329,7 @@ export function VoiceNoteSheet({
         },
       })
       if (!session.ok) return
-      if (gen !== genRef.current || phaseRef.current !== 'recording') {
+      if (gen !== genRef.current || phaseRef.current !== 'recording' || pauseStartRef.current != null) {
         session.stop()
         return
       }
@@ -338,9 +364,11 @@ export function VoiceNoteSheet({
     const fields: Record<string, string> = {
       subject: '',
       transcript: p.transcript,
-      duration_ms: String(Math.round(p.durationMs)),
+      // 0 = unknown (an import whose length could not be read): sent as nothing, stored empty.
+      ...(p.durationMs > 0 ? { duration_ms: String(Math.round(p.durationMs)) } : {}),
       recorded_at: p.recordedAt.toISOString(),
       client_id: p.clientId,
+      ...(p.imported ? { imported: '1' } : {}),
       ...(d.oeuvreId.trim() ? { oeuvre_id: d.oeuvreId.trim() } : {}),
       ...(conceptRef.current ? { concept_id: conceptRef.current } : {}),
     }
@@ -356,7 +384,7 @@ export function VoiceNoteSheet({
       pendingRef.current = null
       setHasPending(false)
       toast.success(t('cq_kept'))
-      onSaved?.()
+      onSaved?.({ day: calendarDayInParisFromIso(p.recordedAt.toISOString()) })
       if (!background && gen === genRef.current) onClose()
     }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -392,7 +420,7 @@ export function VoiceNoteSheet({
     }
     pendingRef.current = null
     setHasPending(false)
-    onSaved?.()
+    onSaved?.({ day: calendarDayInParisFromIso(p.recordedAt.toISOString()) })
     if (background || gen !== genRef.current) {
       // The sheet is gone: the toast is the only confirmation. Open, the green panel says it.
       toast.success(t('vc_saved_fmt').replace('{d}', formatVoiceDuration(p.durationMs)))
@@ -411,7 +439,11 @@ export function VoiceNoteSheet({
       if (!session) return
       sessionRef.current = null
       const started = startedAtRef.current
-      const durationMs = started ? Date.now() - started.ms : 0
+      const pausedMs = pausedTotalRef.current + (pauseStartRef.current != null ? Date.now() - pauseStartRef.current : 0)
+      const durationMs = started ? Math.max(0, Date.now() - started.ms - pausedMs) : 0
+      pausedTotalRef.current = 0
+      pauseStartRef.current = null
+      setPaused(false)
       const heard = stopLiveWords()
       teardownMeters()
       setStopReason(reason)
@@ -464,6 +496,9 @@ export function VoiceNoteSheet({
     setConfirmLose(false)
     setElapsedMs(0)
     setBytes(0)
+    setPaused(false)
+    pausedTotalRef.current = 0
+    pauseStartRef.current = null
     setLevels(Array(LEVEL_BARS).fill(0))
     setStopReason('user')
     sizeStopRef.current = false
@@ -507,7 +542,10 @@ export function VoiceNoteSheet({
     phaseRef.current = 'recording'
     setPhase('recording')
     if (readLiveWordsPref(!liveWordsOffByDefault)) void startLiveWords(gen)
-    tickRef.current = window.setInterval(() => setElapsedMs(Date.now() - startMs), 250)
+    tickRef.current = window.setInterval(() => {
+      const now = Date.now()
+      setElapsedMs(now - startMs - pausedTotalRef.current - (pauseStartRef.current != null ? now - pauseStartRef.current : 0))
+    }, 250)
 
     try {
       const Ctx =
@@ -528,7 +566,7 @@ export function VoiceNoteSheet({
             sum += v * v
           }
           const rms = Math.sqrt(sum / buf.length)
-          const level = Math.min(1, rms * 4)
+          const level = pauseStartRef.current != null ? 0 : Math.min(1, rms * 4)
           setLevels((prev) => [...prev.slice(1), level])
         }, 100)
       }
@@ -543,6 +581,62 @@ export function VoiceNoteSheet({
       /* not granted / not supported */
     }
   }, [defaultWork, liveWordsOffByDefault, revokeAudioUrl, startLiveWords, stopDictation, stopLiveWords])
+
+  const pauseRecording = useCallback(() => {
+    const session = sessionRef.current
+    if (!session || pauseStartRef.current != null) return
+    if (!session.pause()) return void toast.error(t('vc_pause_failed'))
+    pauseStartRef.current = Date.now()
+    setPaused(true)
+    // Live words stop with the sound; what was heard is kept and continued on resume.
+    liveTextRef.current = stopLiveWords()
+    setLiveText(liveTextRef.current)
+  }, [stopLiveWords, t])
+
+  const resumeRecording = useCallback(() => {
+    const session = sessionRef.current
+    if (!session || pauseStartRef.current == null) return
+    if (!session.resume()) return void toast.error(t('vc_pause_failed'))
+    pausedTotalRef.current += Date.now() - pauseStartRef.current
+    pauseStartRef.current = null
+    setPaused(false)
+    if (readLiveWordsPref(!liveWordsOffByDefault)) {
+      setLiveFailed(false)
+      void startLiveWords(genRef.current)
+    }
+  }, [liveWordsOffByDefault, startLiveWords, t])
+
+  // Import: read the file's length, then « Importer » saves it like a recording, on the chosen day.
+  useEffect(() => {
+    if (!open || !importFile) return
+    const url = URL.createObjectURL(importFile)
+    const a = new Audio()
+    a.preload = 'metadata'
+    a.onloadedmetadata = () => {
+      if (Number.isFinite(a.duration)) setImportDurMs(Math.round(a.duration * 1000))
+      URL.revokeObjectURL(url)
+    }
+    a.onerror = () => URL.revokeObjectURL(url)
+    a.src = url
+  }, [open, importFile])
+
+  const saveImport = useCallback(async () => {
+    if (!importFile) return
+    const mime = importMime(importFile)
+    if (!mime) return void toast.error(t('vc_import_type'))
+    if (importFile.size > MAX_UPLOAD_BYTES) return void toast.error(t('vc_import_too_big'))
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(importDay)) return void toast.error(t('vc_import_date'))
+    // The file's own time of day when its day was kept; noon otherwise (never a day off at midnight).
+    const fileDay = dayOf(importFile.lastModified || 0)
+    const recordedAt = fileDay === importDay ? new Date(importFile.lastModified) : new Date(`${importDay}T12:00:00`)
+    // The file re-typed as the door takes it (a .m4a with no type would go as application/octet-stream and be refused).
+    const blob = new Blob([importFile], { type: mime })
+    pendingRef.current = { blob, mime, durationMs: importDurMs, recordedAt, transcript: '', clientId: newCaptureId(), imported: true }
+    setHasPending(true)
+    revokeAudioUrl()
+    setAudioUrl(URL.createObjectURL(importFile))
+    await upload(false)
+  }, [importDay, importDurMs, importFile, revokeAudioUrl, t, upload])
 
   const toggleLiveWords = useCallback(() => {
     const next = !liveWordsOn
@@ -579,6 +673,7 @@ export function VoiceNoteSheet({
     if (!open) return
     setDictationAvailability(getLiveDictationAvailability())
     setLiveWordsOn(readLiveWordsPref(!liveWordsOffByDefault))
+    if (importFile) return void setPhase('import')
     void startRecording()
     // startRecording reads defaultWork; reopening is what should restart, not prop churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -905,11 +1000,34 @@ export function VoiceNoteSheet({
               onDiscard={discardRecording}
               stopRef={primaryRef}
               live={
-                recording && dictationAvailability === 'ready'
+                recording && !paused && dictationAvailability === 'ready'
                   ? { on: liveWordsOn, failed: liveFailed, text: appendText(liveText, liveInterim), onToggle: toggleLiveWords }
                   : null
               }
+              paused={paused}
+              onPause={pauseRecording}
+              onResume={resumeRecording}
             />
+          ) : null}
+
+          {phase === 'import' && importFile ? (
+            <div data-testid="voice-import" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{t('vc_import_title')}</div>
+              <div className="t-mono-sm" style={{ fontSize: 12, color: 'var(--tx2)', overflowWrap: 'anywhere' }}>
+                {importFile.name} · {t('vc_import_size_fmt').replace('{kb}', String(Math.round(importFile.size / 1024)))}{importDurMs ? ` · ${formatVoiceDuration(importDurMs)}` : ''}
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
+                {t('vc_import_date')}
+                <input type="date" value={importDay} max={dayOf(Date.now())} onChange={(e) => setImportDay(e.target.value)}
+                  data-testid="voice-import-date" style={{ minHeight: 44, fontSize: 16, padding: '6px 8px' }} />
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button ref={primaryRef} type="button" className="btn primary" data-testid="voice-import-save" style={footBtn(1.4)} onClick={() => void saveImport()}>
+                  {t('vc_import_save')}
+                </button>
+                <button type="button" className="btn ghost" style={footBtn(1)} onClick={onClose}>{t('vc_cancel')}</button>
+              </div>
+            </div>
           ) : null}
 
           {phase === 'saving' ? (
@@ -1102,6 +1220,9 @@ function RecordingPanel({
   onDiscard,
   stopRef,
   live,
+  paused,
+  onPause,
+  onResume,
 }: {
   t: TFn
   recording: boolean
@@ -1117,6 +1238,10 @@ function RecordingPanel({
   stopRef: RefObject<HTMLButtonElement | null>
   /** Live words while recording; null when the browser can't. */
   live: { on: boolean; failed: boolean; text: string; onToggle: () => void } | null
+  /** Pause / resume the same note (the screen stays on, wake lock held). */
+  paused: boolean
+  onPause: () => void
+  onResume: () => void
 }) {
   const noData = recording && elapsedMs > 2000 && bytes === 0
   return (
@@ -1184,6 +1309,19 @@ function RecordingPanel({
         <span aria-hidden style={{ width: 30, height: 30, borderRadius: recording ? 5 : '50%', background: '#fff' }} />
       </button>
       <div style={{ fontSize: 15, fontWeight: 600 }}>{recording ? t('vc_stop_save') : ' '}</div>
+      {recording ? (
+        <button
+          type="button"
+          className="btn ghost"
+          data-testid="voice-pause-toggle"
+          aria-pressed={paused}
+          onClick={paused ? onResume : onPause}
+          style={{ minHeight: 48, minWidth: 160, fontSize: 15 }}
+        >
+          {paused ? `▶ ${t('vc_resume')}` : `⏸ ${t('vc_pause')}`}
+        </button>
+      ) : null}
+      {paused ? <div role="status" style={{ fontSize: 13, color: 'var(--tx2)' }}>{t('vc_paused')}</div> : null}
       <div className="t-mono-sm" style={{ fontSize: 12, color: noData ? 'var(--rust)' : 'var(--tx2)', minHeight: 16 }}>
         {noData ? t('vc_no_data') : recording ? t('vc_bytes_fmt').replace('{kb}', String(Math.round(bytes / 1024))) : ''}
       </div>

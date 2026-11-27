@@ -37,6 +37,7 @@ import {
 } from '@/lib/stock-material-list-export'
 import { pickableContacts } from '@/lib/contacts/contact-display'
 import { useIsAdmin } from '@/hooks/useIsAdmin'
+import { phoneMatches, phoneQueryDigits } from '@/lib/contacts/phone-search'
 
 const UNCATEGORIZED = '__stock_uc__'
 const SUPPLIERS_OPEN_KEY = 'pem-stock-suppliers-open'
@@ -112,7 +113,7 @@ function matchesSupplierSearch(c: StockContactLike, q: string): boolean {
   ]
     .join(' ')
     .toLowerCase()
-  return bits.includes(s)
+  return bits.includes(s) || phoneMatches(phoneQueryDigits(s), [[c.IndicatifPays1, c.Téléphone1]])
 }
 
 export function SupplierHub({ contacts }: Props) {

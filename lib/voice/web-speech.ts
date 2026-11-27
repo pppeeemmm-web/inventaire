@@ -177,6 +177,9 @@ export type RecorderSession = {
   /** The live mic stream (level meter); its tracks stop with `stop()`. */
   stream: MediaStream
   stop: () => Promise<{ blob: Blob; mime: string }>
+  /** Pause / resume the same recording (one file). False when this browser can't (then nothing changed). */
+  pause: () => boolean
+  resume: () => boolean
 }
 
 export type MicRecorderOptions = {
@@ -223,6 +226,26 @@ export async function startMicRecorder(opts: MicRecorderOptions = {}): Promise<R
   const recordedMime = () => (rec.mimeType || mime).split(';')[0] || mime
   return {
     stream,
+    pause: () => {
+      if (typeof rec.pause !== 'function' || rec.state !== 'recording') return false
+      try {
+        rec.pause()
+        return true
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- answered as « false »: the sheet keeps recording and says nothing changed
+      } catch {
+        return false
+      }
+    },
+    resume: () => {
+      if (typeof rec.resume !== 'function' || rec.state !== 'paused') return false
+      try {
+        rec.resume()
+        return true
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- answered as « false »: the sheet stays paused and says so
+      } catch {
+        return false
+      }
+    },
     stop: () =>
       new Promise<{ blob: Blob; mime: string }>((resolve, reject) => {
         rec.onerror = () => {

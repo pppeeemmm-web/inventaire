@@ -16,6 +16,7 @@ import { loadThemeNotes } from '../theme-notes-actions'
 import { ThemeNotesPanel } from './ThemeNotesPanel'
 import { ShareKitSheet } from '@/components/atelier/kits/ShareKitSheet'
 import { surfaceError } from '@/lib/error-reporter/client'
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import { copyGroupToTheme, copyThemeToGroup, type CopyCollectionResult } from '@/app/atelier/selection/actions'
 
 interface Theme  { id: number; name: string }
@@ -143,6 +144,7 @@ export function Themes({
         else next[themeId] = n
         return next
       })
+      emitCatalogueListsChanged({ oeuvreIds: [oeuvreId] })
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -175,6 +177,7 @@ export function Themes({
         else next[groupId] = n
         return next
       })
+      emitCatalogueListsChanged({ oeuvreIds: [oeuvreId] })
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -191,6 +194,7 @@ export function Themes({
     if (!error && data) { 
       setThemes(t_ => [...t_, data].sort((a,b) => a.name.localeCompare(b.name)))
       setNewTheme('')
+      emitCatalogueListsChanged()
       flash(t('batchSuccess')) 
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -206,6 +210,7 @@ export function Themes({
     if (!error) { 
       setThemes(t_ => t_.map(x => x.id === id ? { ...x, name } : x))
       setEditTheme(null)
+      emitCatalogueListsChanged()
       flash(t('batchSuccess')) 
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -223,6 +228,7 @@ export function Themes({
     const { error } = await sb.from('theme').update({ name: trimmed }).eq('id', id)
     if (!error) {
       setThemes((t_) => t_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
+      emitCatalogueListsChanged()
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -232,12 +238,14 @@ export function Themes({
 
   async function runDeleteTheme(id: number) {
     setBusy(true)
-    await sb.from('oeuvre_theme').delete().eq('theme_id', id)
+    // The works it held: their chips and filters follow (cross-screen refresh).
+    const { data: unlinkedTh } = await sb.from('oeuvre_theme').delete().eq('theme_id', id).select('oeuvre_id')
     const { error } = await sb.from('theme').delete().eq('id', id)
     if (!error) {
       setThemes((t_) => t_.filter((x) => x.id !== id))
       setEditTheme((cur) => (cur === id ? null : cur))
       setHoverTheme((cur) => (cur === id ? null : cur))
+      emitCatalogueListsChanged({ oeuvreIds: (unlinkedTh ?? []).map((r) => r.oeuvre_id as number) })
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -311,6 +319,7 @@ export function Themes({
       const cur = prev[res.id] ?? []
       return { ...prev, [res.id]: [...cur, ...src.filter((id) => !cur.includes(id))] }
     })
+    emitCatalogueListsChanged({ oeuvreIds: res.oeuvreIds })
   }
 
   async function copyGroupAsTheme(g: Group) {
@@ -324,6 +333,7 @@ export function Themes({
       const cur = prev[tid] ?? []
       return { ...prev, [tid]: [...cur, ...src.filter((id) => !cur.includes(id))] }
     })
+    emitCatalogueListsChanged({ oeuvreIds: res.oeuvreIds })
   }
 
   // ── GROUPS ──
@@ -335,6 +345,7 @@ export function Themes({
     if (!error && data) { 
       setGroups(g_ => [...g_, data].sort((a,b) => a.name.localeCompare(b.name)))
       setNewGroup('')
+      emitCatalogueListsChanged()
       flash(t('batchSuccess')) 
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -350,6 +361,7 @@ export function Themes({
     if (!error) { 
       setGroups(g_ => g_.map(x => x.id === id ? { ...x, name } : x))
       setEditGroup(null)
+      emitCatalogueListsChanged()
       flash(t('batchSuccess')) 
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -367,6 +379,7 @@ export function Themes({
     const { error } = await sb.from('working_group').update({ name: trimmed }).eq('id', id)
     if (!error) {
       setGroups((g_) => g_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
+      emitCatalogueListsChanged()
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
@@ -376,12 +389,13 @@ export function Themes({
 
   async function runDeleteGroup(id: string) {
     setBusy(true)
-    await sb.from('working_group_work').delete().eq('group_id', id)
+    const { data: unlinkedGr } = await sb.from('working_group_work').delete().eq('group_id', id).select('oeuvre_id')
     const { error } = await sb.from('working_group').delete().eq('id', id)
     if (!error) {
       setGroups((g_) => g_.filter((x) => x.id !== id))
       setEditGroup((cur) => (cur === id ? null : cur))
       setHoverGroup((cur) => (cur === id ? null : cur))
+      emitCatalogueListsChanged({ oeuvreIds: (unlinkedGr ?? []).map((r) => r.oeuvre_id as number) })
       flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))

@@ -71,7 +71,7 @@ Aujourd'hui est l'écran d'accueil : la journée. On y voit ce qui a été fait,
 
 - ‹ › passe au jour d'avant ou d'après.
 - 📅 ouvre la liste des jours (le Journal).
-- La barre du bas saisit en un geste : **Écrire** · **Vocal** · **Œuvre** · **Photo · doc**.
+- La barre du bas saisit en un geste : **Écrire** · **Vocal** · **Œuvre** · **Photo**. Toucher fait l'action la plus courante ; maintenir (½ s) empile les autres choix au-dessus du bouton : glissez le pouce sur l'un et relâchez (« maintenir : n choix » sous le bouton).
 
 ## Au téléphone : le menu ☰
 
@@ -134,10 +134,10 @@ Tous les écrans s'ouvrent sur les deux. Le téléphone sert à saisir vite ; l'
 
 ### Au téléphone
 
-- **La barre du bas** : **Écrire** (une entrée du Journal), **Vocal** (une note vocale), **Œuvre**, **Photo · doc**.
-- **Œuvre**, sur Aujourd'hui, propose trois choix : **Nouvelle œuvre** (« Un nouveau numéro : photo, titre, technique, format »), **Reprise d'une œuvre** (« Même numéro : une photo et une ligne « Reprise » »), **Photos de la séance** (« Lightroom → Partager vers PEM »). Sur les autres écrans, pour un membre de l'équipe, Œuvre ouvre le Journal : passez par Aujourd'hui pour enregistrer une œuvre.
+- **La barre du bas** : **Écrire** (une entrée du Journal), **Vocal** (une note vocale ; sur Aujourd'hui et le Fil, maintenir → **Importer un enregistrement** de Dictaphone), **Œuvre**, **Photo**. Toucher = l'action la plus courante, maintenir = les autres choix empilés au-dessus du bouton.
+- **Œuvre**, sur Aujourd'hui : toucher ouvre **Nouvelle œuvre** (« Un nouveau numéro : photo, titre, technique, format ») ; maintenir propose **Reprise d'une œuvre** (« Même numéro : une photo et une ligne « Reprise » ») et **Photos de la séance** (« Lightroom → Partager vers PEM »). Sur les autres écrans, pour un membre de l'équipe, Œuvre ouvre le Journal : passez par Aujourd'hui pour enregistrer une œuvre.
 - **Photos de la séance**, pour un membre de l'équipe : les photos restent dans la séance et apparaissent sur l'œuvre quand Pem les applique.
-- **Photo · doc** propose : **Document** (« Scan d'une ou plusieurs pages, texte lu plus tard sur le PC »), **Carte de visite** (« Nouveau contact depuis une carte »), **Étiquette QR** (« Scanner l'étiquette d'une œuvre »). Les administrateurs ont aussi **Inspiration**.
+- **Photo** : toucher ouvre **Document** (« Scan d'une ou plusieurs pages, texte lu plus tard sur le PC ») ; maintenir propose **Carte de visite** (« Nouveau contact depuis une carte ») et **Étiquette QR** (« Scanner l'étiquette d'une œuvre »). Pour les administrateurs, toucher ouvre **Inspiration** et Document passe dans les choix.
 - **Le menu ☰** : la recherche, les tuiles, « Aide pour cet écran », « Tout le reste », « Actions », votre compte et la langue.
 - **« Actions »** : Vente / paiement (« Encaisser une vente », voir Commandes), Contact, Document, Signalement, Pipeline, Triage.
 
@@ -246,7 +246,7 @@ Chaque œuvre a un numéro (#2407) et une fiche. La fiche s'ouvre partout de la 
 **Quand :** vous étiquetez une œuvre, ou vous voulez retrouver une œuvre étiquetée.
 
 1. Fiche → Développé → **Étiquette physique** → **Imprimer** (ou « Copier le lien »).
-2. Pour lire une étiquette : barre du bas → **Photo · doc** → **Étiquette QR**, ou l'appareil photo du téléphone.
+2. Pour lire une étiquette : barre du bas → maintenir **Photo** → **Étiquette QR**, ou l'appareil photo du téléphone.
 
 **Ensuite :** l'étiquette ouvre la fiche de l'œuvre dans l'Atelier (il faut être connecté).
 
@@ -600,7 +600,7 @@ Contacts (Business → Contacts) réunit les collectionneurs, galeries, artisans
 
 **Quand :** on vous tend une carte, sur un salon ou dans la rue.
 
-1. Barre du bas → **Photo · doc** → **Carte de visite**.
+1. Barre du bas → maintenir **Photo** → **Carte de visite**.
 2. Photographiez la carte.
 3. Touchez deux fois la case de texte, « Scanner le texte » (Live Text), visez la carte, puis **Analyser** : le contact se remplit tout de suite, sans IA ni réseau de l'atelier.
 4. Si vous voulez : **Améliorer avec l'IA** (s'arrête après 30 s ; le contact reste tel quel si l'IA ne répond pas).

@@ -154,7 +154,7 @@ A field session keeps the photos of a work session and attaches them to the work
 
 ## Capturing a session on the phone
 
-1. Bottom bar → **Work** → **Session photos**.
+1. Bottom bar → hold **Work** → **Session photos**.
 2. "Add painting", then the photos: "Take photo" or "Choose from library", then send them.
 3. Choose **New work** (a title is required) or **Existing work** (its number), then "Save link".
 4. **Apply to work**.

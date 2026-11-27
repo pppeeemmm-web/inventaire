@@ -6,6 +6,37 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.110 (2026-11-27) — phone bar tap / hold; found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
+  wn_phone_bar_tap_hold_t: { fr: 'Téléphone : toucher = faire, maintenir = choisir', en: 'Phone: tap = do, hold = choose' },
+  wn_phone_bar_tap_hold_d: {
+    fr: 'Dans la barre du bas, un toucher fait l’action la plus courante, sans carte intermédiaire : 📷 Photo → inspiration du jour (ou document), 🖼️ Œuvre → nouvelle œuvre, 🎙️ Vocal → l’enregistrement démarre. Maintenir ½ s empile les autres choix au-dessus du bouton (document, carte de visite, QR ; reprise, session terrain ; 🎧 import de Dictaphone) : glissez le pouce sur l’un et relâchez. « maintenir : n choix » sous chaque bouton le rappelle.',
+    en: 'In the bottom bar, a tap does the most common action, with no card in between: 📷 Photo → today’s inspiration (or document), 🖼️ Work → new work, 🎙️ Voice → recording starts. Holding ½ s stacks the other choices above the button (document, business card, QR; reprise, field session; 🎧 Voice Memos import): slide your thumb onto one and release. « hold: n choices » under each button is the reminder.',
+  },
+  wn_contacts_phone_form_t: { fr: 'Numéros de téléphone : une seule forme', en: 'Phone numbers: one form' },
+  wn_contacts_phone_form_d: {
+    fr: 'Un numéro saisi ou modifié sur une fiche est rangé avec son indicatif, groupé comme dans son pays (« +33 6 74 89 02 54 ») ; le pays vient du numéro, sinon de l’adresse de la fiche, sinon la France. La recherche des Contacts et des fournisseurs trouve un numéro tapé de n’importe quelle façon (« 06 74… », « +33 6… », « 674890 »).',
+    en: 'A number typed or changed on a card is stored with its country code, grouped as in its country (« +33 6 74 89 02 54 »); the country comes from the number, else the card’s address, else France. Contacts and supplier search find a number typed any way (« 06 74… », « +33 6… », « 674890 »).',
+  },
+  wn_voice_pause_import_t: { fr: 'Note vocale : pause, et import de Dictaphone', en: 'Voice note: pause, and Voice Memos import' },
+  wn_voice_pause_import_d: {
+    fr: 'Pendant une note vocale, « ⏸ Pause » puis « ▶ Reprendre » continuent la même note ; l’écran reste allumé, même en pause. « 🎧 Importer un enregistrement » (maintenir 🎙️ Vocal sur le téléphone, à côté de 🎤 dans le Journal du bureau) range un fichier de Dictaphone au jour où il a été enregistré, transcrit comme une note vocale.',
+    en: 'During a voice note, « ⏸ Pause » then « ▶ Resume » continue the same note; the screen stays on, even when paused. « 🎧 Import a recording » (hold 🎙️ Voice on the phone, beside 🎤 in the desk Journal) files a Voice Memos recording on the day it was recorded, transcribed like a voice note.',
+  },
+  wn_found_work_flow_t: { fr: 'Œuvre retrouvée : année et « Terminée ? »', en: 'Found work: year and « Finished? »' },
+  wn_found_work_flow_d: {
+    fr: 'En choisissant « Ancienne — retrouvée » (nouvelle œuvre sur le téléphone ou le bureau ; dans la fiche pour un administrateur), l’app demande l’année si elle est connue et « Terminée ? ». Oui : la production finit cette année-là et l’œuvre est cataloguée si elle a une photo (sinon un message le dit). L’historique commence par « Retrouvée — œuvre oubliée, jamais cataloguée (année) ».',
+    en: 'When « Older — found » is chosen (new work on the phone or desk; in the card for an admin), the app asks the year if known and « Finished? ». Yes: production ends that year and the work is catalogued if it has a photo (otherwise a message says so). The history starts with « Retrouvée — œuvre oubliée, jamais cataloguée (year) ».',
+  },
+  wn_contacts_phone_list_t: { fr: 'Contacts sur le téléphone', en: 'Contacts on the phone' },
+  wn_contacts_phone_list_d: {
+    fr: 'Sur le téléphone, la recherche des contacts prend toute la largeur et la liste devient une liste de noms (rôle, ville, œuvres) au lieu du tableau du bureau.',
+    en: 'On the phone, the contacts search takes the full width and the list becomes a list of names (role, city, works) instead of the desk table.',
+  },
+  wn_themes_refresh_everywhere_t: { fr: 'Thèmes et groupes : partout tout de suite', en: 'Themes and groups: everywhere at once' },
+  wn_themes_refresh_everywhere_d: {
+    fr: 'Un thème ou un groupe créé, renommé, supprimé ou copié dans Thèmes, une sélection d’exposition, ou une œuvre retirée dans la Constellation : les filtres de l’Inventaire, les choix de la fiche et les pastilles des œuvres suivent sans recharger la page.',
+    en: 'A theme or group made, renamed, deleted or copied in Themes, an exhibition selection, or a work removed in the Constellation: Inventory filters, the card pickers and the works’ chips follow without reloading the page.',
+  },
   // 3.1.109 (2026-11-27) — phone menu: Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » goes back.
   wn_phone_menu_pipeline_t: { fr: 'Menu du téléphone : Pipeline et Ventes', en: 'Phone menu: Pipeline and Sales' },
   wn_phone_menu_pipeline_d: {

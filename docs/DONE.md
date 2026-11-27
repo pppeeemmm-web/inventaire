@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-27 — Phone menu and « Tous les champs », found works keep their year (PRs #9, #10, merged `4c48873`, `34656a2`; tried by Pem on the preview)
+
+- `d02bda4` phone menu: Pipeline tile replaces Logistique (now in « Tout le reste », open by default), « Commandes » reads « Ventes ».
+- `d02bda4` Phone « Tous les champs » (the full new-work form on the phone) is unusable for Pem → « ← Formulaire court » goes back keeping what was typed; one scroll (two stacked scroll areas squeezed « 1. Identité »); one Retour; themes with works first. Seen by Pem on the preview.
+- `b5a5839` + `found_work_end_kept.sql` (live 27/11): a found work keeps its known year as its end when it becomes Prêt; nightly rule 8 and the Audit panel skip found works.
+- `5ccecc2` read-only SQL hook: a read ending with a text value no longer prompts.
+- Also: What's new 3.1.109; agent docs (series meanings, film « ὄναρ / ὕπαρ », selection group, Therapeia Pipeline).
+
 ## 2026-11-26 — Phone Journal fixes, « Ancienne — retrouvée » (Pem away; first batch through a pull request: #4, merged `fcc52e3`, live verified by `x-build-sha`)
 
 - `56a1ed2` a line or voice note saved on the phone shows in the Journal at once (the stream ignored the page's fresh copy; the voice sheet had no « saved » follow-up). Seen by Pem on the PR's Vercel preview.

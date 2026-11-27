@@ -48,7 +48,7 @@ import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
 import { getSidebarCounts, type SidebarCounts } from '@/app/atelier/sidebar-counts-actions'
 import { aiDeskBadgeCount } from '@/app/atelier/(portal)/ai/actions'
 import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
-import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
+import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds, fetchThemesAndGroups } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
 import {
   applyOeuvreJunctionLinks,
@@ -56,6 +56,7 @@ import {
   reconcileAtelierJunctionRefresh,
 } from '@/lib/atelier/atelier-junction-bootstrap'
 import { subscribeJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
+import { emitCatalogueListsChanged, subscribeCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import { subscribeWorksRestored } from '@/lib/atelier/works-restored-bus'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
@@ -103,7 +104,7 @@ function TabPanelFallback() {
 
 type Tab = SegmentedAtelierTab
 
-/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: on the phone, new work stays in the menu (not on `PhoneInputBar`), hidden here when `hideNewWork`. */
+/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: on the phone this row hides new work (`hideNewWork`); for admins the input bar's Œuvre does it (tap = new work, hold = reprise / session — PhoneBarTapHold.md). */
 function AtelierHeaderChrome({
   variant,
   lang,
@@ -556,6 +557,33 @@ export function TeamPortalClient({
       applyJunctionSaved(oeuvreId, themeIds, groupIds)
     })
   }, [applyJunctionSaved])
+
+  useEffect(
+    () =>
+      subscribeCatalogueListsChanged(({ oeuvreIds }) => {
+        void (async () => {
+          const lists = await fetchThemesAndGroups()
+          if (lists.ok) {
+            setThemes(lists.themes)
+            setGroups(
+              [...lists.groups.map((g) => ({ id: g.id, name: g.name }))].sort((a, b) =>
+                a.name.localeCompare(b.name, 'fr'),
+              ),
+            )
+          } else console.error('[catalogue lists refresh]', lists.error)
+          const ids = [...new Set((oeuvreIds ?? []).filter((n) => Number.isInteger(n) && n > 0))]
+          if (ids.length) {
+            const res = await fetchAtelierJunctionHydrationForOeuvreIds(ids)
+            if (!res.ok) return void console.error('[catalogue lists junction]', res.error)
+            const pub = Object.fromEntries(
+              ids.map((id) => [id, !!oeuvres.find((w) => w.OeuvreID === id)?.is_public]),
+            )
+            setJunction((prev) => reconcileAtelierJunctionRefresh(prev, res.data, ids, pub))
+          }
+        })()
+      }),
+    [oeuvres],
+  )
 
   const onJunctionSaved = applyJunctionSaved
 
@@ -1183,6 +1211,8 @@ export function TeamPortalClient({
     const res = await createWorkingGroupWithOeuvres(name, ids)
     if ('error' in res) return null
     setGroups((prev) => [{ id: res.groupId, name: name.trim() || name }, ...prev])
+    // Sorted list and the works' chips follow through the shared refresh.
+    emitCatalogueListsChanged({ oeuvreIds: ids })
     router.refresh()
     return res.groupId
   }, [router])

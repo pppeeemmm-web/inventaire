@@ -2,6 +2,7 @@
 
 // Attach selection to catalog theme or working group (no export file — dock “Theme · group”).
 
+import { emitCatalogueListsChanged } from '@/lib/atelier/catalogue-lists-bus'
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
@@ -57,6 +58,7 @@ export function CatalogPersistModal({
     setCreatingCatalogTheme(true)
     const res = await createTheme(name)
     if (res.theme) {
+      emitCatalogueListsChanged()
       setLocalCatalogThemes((prev) =>
         [...prev, res.theme!].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
       )
@@ -74,6 +76,7 @@ export function CatalogPersistModal({
     setCreatingWorkingGroup(true)
     const res = await createWorkingGroup(name)
     if (res.group) {
+      emitCatalogueListsChanged()
       setLocalCatalogGroups((prev) =>
         [...prev.filter((g) => g.id !== res.group!.id), res.group!].sort((a, b) =>
           a.name.localeCompare(b.name, 'fr'),

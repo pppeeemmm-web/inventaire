@@ -129,4 +129,18 @@ export const workFormMessages = defineMessages({
     en: 'Themes, comments and history stay in « All fields »: they are only saved from there.',
   },
   wf_themes_more: { fr: '+ {n} autres', en: '+ {n} more' },
+  // Found-work flow (FoundWorkFlow.md, Pem 2026-11-27): « Ancienne — retrouvée » asks the year and « Terminée ? ».
+  wf_found_year: { fr: 'Année (si connue)', en: 'Year (if known)' },
+  wf_found_finished: { fr: 'Terminée ?', en: 'Finished?' },
+  wf_found_yes: { fr: 'Oui', en: 'Yes' },
+  wf_found_no: { fr: 'Non', en: 'No' },
+  wf_found_need_answer: { fr: 'Répondez à « Terminée ? » avant d’enregistrer.', en: 'Answer « Finished? » before saving.' },
+  wf_found_year_bad: { fr: 'Année : quatre chiffres, de 1900 à cette année, par exemple 1999.', en: 'Year: four digits, from 1900 to this year, e.g. 1999.' },
+  wf_found_needs_photo: { fr: 'Ajoutez une photo pour la cataloguer.', en: 'Add a photo to catalogue it.' },
+  wf_found_save_card_first: { fr: 'Enregistrez d’abord la fiche, puis répondez.', en: 'Save the card first, then answer.' },
+  wf_found_answer_later: {
+    fr: '« Terminée ? Oui » se reporte sur la fiche de l’œuvre (bouton « Ancienne — retrouvée ») une fois enregistrée et validée.',
+    en: '« Finished? Yes » is set on the work’s card (« Older — found » button) once it is saved and approved.',
+  },
+  wf_found_year_above: { fr: 'L’année se saisit dans « Année » ci-dessus.', en: 'The year goes in « Year » above.' },
 })
