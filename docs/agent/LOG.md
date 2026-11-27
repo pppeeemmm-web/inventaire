@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Pipeline « Therapeia » dated (film 10/12, dossier 15/12, submission 15/01), reminder 15/12, contact #975 named « Astrid — Therapeia Art Residency » (Pem « OK Therapeia »).
 - Nightly check red (rule 8 on #2410–#2412) → rule 8 skips found works (nightly + Audit panel); trigger `found_work_end_kept.sql` tested on a throwaway Postgres (5/5) and applied on live (Pem « GO 1+2 », then « Apply + merge PR »). PR #9.
 - Film « ὄναρ / ὕπαρ »: script + storyboard, a Reel and a short video (Pem); « do not post anything » → `video/2026-11-27_onar-upar.md`. Pem's Instagram: 120 followers, photos removed.
 - Series meanings added to each application file (Therapeia, Paréidolie, DRAC, CoG, CERN) → `SERIES.md` (Pem « Add it to each relevant application process »).

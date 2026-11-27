@@ -51,8 +51,7 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
 ## Next actions (in order)
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
 0b. **Pem (Therapeia, open since 27/11):** title ὄναρ / ὕπαρ or « Paxos, l'île rêvée » · Reel length (22 s planned) ·
-   shoot the six shots of `video/2026-11-27_onar-upar.md` · OK to date the Therapeia Pipeline steps, add the reminder and
-   the film step, and name contact #975 (proposed 27/11, not entered) · verify Journal #57 · merge PR #9.
+   shoot the six shots of `video/2026-11-27_onar-upar.md` · (Pipeline dated + reminder 15/12 + contact #975: done 27/11) · verify Journal #57 · merge PR #9.
 1. Claude: propose a drawing series from the catalogue for Paréidolie (Pem has none in mind) + gallery shortlist by 20 Dec.
 2. Claude: week-1 data-quality report; Documents d'Artistes PACA requirements + dossier draft.
 3. Claude: shortlist of galleries for Paréidolie 2027 + drawing selection (case file).
