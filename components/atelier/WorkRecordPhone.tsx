@@ -77,6 +77,9 @@ export type WorkRecordHandoff = {
   formats: { FormatID: number; Format: string | null }[]
 }
 
+/** What « ← Formulaire court » brings back from the full form (Pem 2026-11-27: « can't go back to simple form »). */
+export type WorkRecordCarryBack = Pick<WorkRecordHandoff, 'titre' | 'techniqueId' | 'supportId' | 'formatId' | 'h' | 'w' | 'd' | 'origin' | 'files'>
+
 export type WorkRecordPhoneProps = {
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports: { SupportID: number; Support: string | null }[]
@@ -88,6 +91,8 @@ export type WorkRecordPhoneProps = {
   onAllFields: (draft: WorkRecordHandoff) => void
   /** First mode shown (`/atelier/works/new?record=reprise` → « Reprise »). */
   initialMode?: Mode
+  /** Back from « Tous les champs »: the fields start from what was typed there (no kept « Brouillon » then). */
+  carryBack?: WorkRecordCarryBack | null
 }
 
 /** Select ending with « + Nouveau … » (inline add kept on the phone, Pem v3). */
@@ -181,29 +186,29 @@ function WorkPicker({ value, onPick, label, testId }: { value: RecordWorkHit | n
   )
 }
 
-export function WorkRecordPhone({ techniques, supports, formats, action, shareInboxPrefill = null, pemContactId, onAllFields, initialMode = 'new' }: WorkRecordPhoneProps) {
+export function WorkRecordPhone({ techniques, supports, formats, action, shareInboxPrefill = null, pemContactId, onAllFields, initialMode = 'new', carryBack = null }: WorkRecordPhoneProps) {
   const { t, lang } = useI18n()
   const router = useRouter()
   const ps = usePeriodSource()
   const [pending, startTransition] = useTransition()
 
-  const [mode, setMode] = useState<Mode>(initialMode)
-  const [files, setFiles] = useState<File[]>([])
+  const [mode, setMode] = useState<Mode>(carryBack ? 'new' : initialMode)
+  const [files, setFiles] = useState<File[]>(carryBack?.files ?? [])
   const fileRef = useRef<HTMLInputElement | null>(null)
   const sharedCount = shareInboxPrefill?.imageFiles?.length ?? 0
 
   const [tech, setTech] = useState(techniques.map((r) => ({ id: r.TechniqueID, label: r.Technique ?? '' })))
   const [supp, setSupp] = useState(supports.map((r) => ({ id: r.SupportID, label: r.Support ?? '' })))
   const [fmts, setFmts] = useState(formats.map((r) => ({ id: r.FormatID, label: r.Format ?? '' })))
-  const [titre, setTitre] = useState(shareInboxPrefill?.titre ?? '')
+  const [titre, setTitre] = useState(carryBack?.titre ?? shareInboxPrefill?.titre ?? '')
   // « Nouvelle / Ancienne — retrouvée » (same choice as the desk form); none = the server's rule.
-  const [origin, setOrigin] = useState<'' | 'new' | 'found'>('')
-  const [techniqueId, setTechniqueId] = useState('')
-  const [supportId, setSupportId] = useState('')
-  const [formatId, setFormatId] = useState('')
-  const [h, setH] = useState('')
-  const [w, setW] = useState('')
-  const [d, setD] = useState('')
+  const [origin, setOrigin] = useState<'' | 'new' | 'found'>(carryBack?.origin ?? '')
+  const [techniqueId, setTechniqueId] = useState(carryBack?.techniqueId ?? '')
+  const [supportId, setSupportId] = useState(carryBack?.supportId ?? '')
+  const [formatId, setFormatId] = useState(carryBack?.formatId ?? '')
+  const [h, setH] = useState(carryBack?.h ?? '')
+  const [w, setW] = useState(carryBack?.w ?? '')
+  const [d, setD] = useState(carryBack?.d ?? '')
 
   const [placeId, setPlaceId] = useState('')
   const [placeAuto, setPlaceAuto] = useState(false)
@@ -264,7 +269,7 @@ export function WorkRecordPhone({ techniques, supports, formats, action, shareIn
 
   // Pick up a kept « Brouillon » once, for a new work that does not come from the share sheet.
   useEffect(() => {
-    if (initialMode !== 'new' || shareInboxPrefill) return
+    if (initialMode !== 'new' || shareInboxPrefill || carryBack) return
     let dr: RecordDraft | null = null
     try {
       const raw = localStorage.getItem(DRAFT_KEY)

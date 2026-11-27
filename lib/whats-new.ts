@@ -98,7 +98,8 @@
 // '3.1.102' (2026-11-23): phone sale — the buyer step is a search with « + Nouveau contact ».
 // '3.1.103' (2026-11-23): desk Journal — paste / drop an image on a day, 🎤 with the PC microphone, « Sur ce PC » tray (admin).
 // '3.1.107' (2026-11-23): person page — custody and life dates in the timeline; the contact editor in four tabs.
-export const WHATS_NEW_RELEASE = '3.1.108'
+// '3.1.109' (2026-11-27): phone menu — Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » ↔ « ← Formulaire court ».
+export const WHATS_NEW_RELEASE = '3.1.109'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -124,6 +125,8 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'phone_menu_pipeline', day: '2026-11-27', spot: 'pipeline' },
+  { id: 'phone_all_fields_back', day: '2026-11-27', spot: 'inventory' },
   { id: 'journal_phone_at_once', day: '2026-11-26', spot: 'journal' },
   { id: 'work_found', day: '2026-11-26', spot: 'inventory' },
   { id: 'person_custody_tabs', day: '2026-11-23', spot: 'contacts' },

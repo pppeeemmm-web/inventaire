@@ -79,7 +79,7 @@ test.describe('Hub « Aujourd’hui » (R2)', () => {
     await page.getByTestId('phone-menu-open').click()
     await expect(page.getByTestId('phone-menu-sheet')).toBeVisible({ timeout: 45_000 })
     await expect(page).toHaveURL(/\/hub/)
-    for (const id of ['today', 'works', 'production', 'ideas', 'orders', 'logistics', 'events', 'journal']) {
+    for (const id of ['today', 'works', 'production', 'ideas', 'orders', 'pipeline', 'events', 'journal']) {
       const box = await page.getByTestId(`phone-menu-tile-${id}`).boundingBox()
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
     }

@@ -4,6 +4,10 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Work group « Sélection 2027 — Therapeia + Paréidolie (proposition) » created on live (15 works, attached to Pipeline « Therapeia ») at Pem's request.
+- PR #9 merged (`4c48873`) on Pem's « Merge ».
+- Pem: no selling or promotion ever tried → no sales, campaigns or CRM: empty by design, not a data gap; the data strategist keeps a complete overview of the system → `ROLE.md`, `STATE.md`. Pem noticed the term « collection » is not used → `STATE.md` (to discuss).
+- One selection for Therapeia + Paréidolie proposed (15 drawings) → `selections/2027_therapeia-pareidolie.md` (Pem « Try one selection »); nothing entered.
 - Pipeline « Therapeia » dated (film 10/12, dossier 15/12, submission 15/01), reminder 15/12, contact #975 named « Astrid — Therapeia Art Residency » (Pem « OK Therapeia »).
 - Nightly check red (rule 8 on #2410–#2412) → rule 8 skips found works (nightly + Audit panel); trigger `found_work_end_kept.sql` tested on a throwaway Postgres (5/5) and applied on live (Pem « GO 1+2 », then « Apply + merge PR »). PR #9.
 - Film « ὄναρ / ὕπαρ »: script + storyboard, a Reel and a short video (Pem); « do not post anything » → `video/2026-11-27_onar-upar.md`. Pem's Instagram: 120 followers, photos removed.

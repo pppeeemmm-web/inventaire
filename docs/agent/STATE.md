@@ -29,7 +29,12 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
 - Catalogue ≈ 1 180 works; ≈ 70 % on paper (Crayons 251, Graphite 62, Pierre noire 49, Encre noire 75, Pastel 41…),
   Huile 333 — lead with drawing, then oil.
 - Contacts: few art-world cards (4 galleries / gallerists, 5 institutions, 1 collector, 1 adviser).
-- Sales side nearly empty of dates (payments, invoices, shipments: none dated; 1 signed order). `moment`: empty.
+- **No selling or promotion yet (Pem 27/11):** Pem has never tried to sell or promote — no sales, campaigns or CRM
+  strategy exist, so the sales side (payments, invoices, shipments, orders) is empty by design, not a data gap. `moment`: empty.
+- **The word « collection »** (Pem 27/11: « we don't use the term collection »): in the system it only means a
+  collector's private page (`/collection/[id]`) and the groups of the public site (`/works`). Series and dossier
+  selections are both kept as themes (« Selection: Oikeios », « Montrouge », « CoG 26 »): one label doing two jobs.
+  A dossier selection's home is the working group of its Pipeline entry. To discuss with Pem.
   Loans / consignments / exhibition checklists (`event_work`): 0. Pipeline: 5 processes, 24 steps, 11 reminders.
 - `nodes.created_at` holds real creation days for works (usable for « added on »).
 
@@ -52,6 +57,6 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
 0b. **Pem (Therapeia, open since 27/11):** title ὄναρ / ὕπαρ or « Paxos, l'île rêvée » · Reel length (22 s planned) ·
    shoot the six shots of `video/2026-11-27_onar-upar.md` · (Pipeline dated + reminder 15/12 + contact #975: done 27/11) · verify Journal #57 · merge PR #9.
-1. Claude: propose a drawing series from the catalogue for Paréidolie (Pem has none in mind) + gallery shortlist by 20 Dec.
-2. Claude: week-1 data-quality report; Documents d'Artistes PACA requirements + dossier draft.
+1. Claude: one selection for Therapeia + Paréidolie proposed 27/11 → [`selections/2027_therapeia-pareidolie.md`](./selections/2027_therapeia-pareidolie.md) (Pem chooses; years missing on 11 of 15). Gallery shortlist by 20 Dec.
+2. Claude: week-1 **system overview** (every table: what it holds, used / empty and why) + data-quality report on it; Documents d'Artistes PACA requirements + dossier draft.
 3. Claude: shortlist of galleries for Paréidolie 2027 + drawing selection (case file).
