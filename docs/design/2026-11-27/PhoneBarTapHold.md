@@ -8,8 +8,10 @@ card / input with the same level of stability. »
 ## Which kind of thing, which home, what changes
 - **Kind:** navigation to existing capture doors (no new record, no new door).
 - **Home:** the phone input bar (`components/shared/PhoneInputBar.tsx`), the same four buttons.
-- **What changes:** a **tap** does the most frequent action straight away (no choice card); a **hold** (≈½ s) fans the
-  other choices in an arc above the thumb — slide onto one and release, or tap one; release elsewhere = nothing.
+- **What changes:** a **tap** does the most frequent action straight away (no choice card); a **hold** (≈½ s) stacks
+  the other choices straight above the button — slide the thumb onto one and release: it opens. **Released, the stack
+  disappears** (on a choice or not). Pem 2026-11-27 after the mockup: « Don't do fan, just stack is good, and make just
+  when released it disappears ».
 
 ## Use (live, last 90 days)
 Voice notes 22 · inspiration photos 11 · photos into the Journal 10 · typed notes 7.

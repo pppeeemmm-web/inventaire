@@ -22,7 +22,7 @@
   nav button .h { font-size: 10px; color: var(--tx3); }
   nav button.on { background: color-mix(in srgb, var(--ac) 14%, transparent); }
   .fan { position: fixed; inset: 0; pointer-events: none; }
-  .fan .chip { position: fixed; transform: translate(-50%, -50%); pointer-events: auto; min-width: 104px; min-height: 48px;
+  .fan .chip { position: fixed; transform: translate(-50%, -50%); pointer-events: none; width: 200px; min-height: 48px;
         padding: 8px 12px; border-radius: 24px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd);
         box-shadow: 0 6px 18px rgba(0,0,0,.18); display:flex; align-items:center; gap:6px; font-size: 14px; white-space:nowrap; }
   .fan .chip.hot { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 18%, var(--bg1)); }
@@ -32,7 +32,7 @@
 <body>
 <main>
   <h1>Toucher = faire · maintenir = choisir</h1>
-  <p>Maquette à essayer au pouce, rien n’est enregistré. <b>Touchez</b> un bouton : il fait l’action la plus courante, sans carte intermédiaire. <b>Maintenez</b> (½ s) : les autres choix s’ouvrent en éventail au-dessus du pouce — glissez dessus et relâchez, ou relâchez ailleurs pour annuler.</p>
+  <p>Maquette à essayer au pouce, rien n’est enregistré. <b>Touchez</b> un bouton : il fait l’action la plus courante, sans carte intermédiaire. <b>Maintenez</b> (½ s) : les autres choix s’empilent au-dessus du bouton — glissez le pouce sur l’un d’eux et relâchez : il s’ouvre. Relâché ailleurs, la pile disparaît sans rien faire.</p>
   <p>Fréquences des 90 derniers jours : vocal 22 · photo d’inspiration 11 · photo au Journal 10 · écrit 7.</p>
   <div id="log">Le résultat s’affiche ici.</div>
 </main>
@@ -53,19 +53,14 @@ function openFan(btn, item){
   const r = btn.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top
   fan = document.createElement('div'); fan.className = 'fan'
   const veil = document.createElement('div'); veil.className = 'veil'; fan.appendChild(veil)
-  const n = item.hold.length, radius = 120
-  // An arc above the thumb, kept inside the screen.
+  // A straight stack above the button (Pem: « just stack »), the nearest choice closest to the thumb, kept on screen.
+  const x = Math.min(window.innerWidth - 110, Math.max(110, cx))
   item.hold.forEach(([ic, lb], idx) => {
-    const a = Math.PI * (0.15 + 0.7 * (n === 1 ? 0.5 : idx/(n-1)))
-    let x = cx - Math.cos(a) * radius, y = cy - Math.sin(a) * radius - 10
-    x = Math.min(window.innerWidth - 64, Math.max(64, x))
-    const c = document.createElement('button'); c.className = 'chip'; c.dataset.l = lb
+    const c = document.createElement('div'); c.className = 'chip'; c.dataset.l = lb
     c.innerHTML = `<span>${ic}</span><span>${lb}</span>`
-    c.style.left = x + 'px'; c.style.top = y + 'px'
-    c.addEventListener('click', () => { say(item.l + ' › ' + lb); closeFan() })
+    c.style.left = x + 'px'; c.style.top = (cy - 40 - idx * 56) + 'px'
     fan.appendChild(c)
   })
-  veil.addEventListener('click', closeFan)
   document.body.appendChild(fan)
 }
 ITEMS.forEach(item => {
@@ -79,8 +74,9 @@ ITEMS.forEach(item => {
     fan.querySelectorAll('.chip').forEach(c => c.classList.toggle('hot', c === el)); hot = el || null })
   b.addEventListener('pointerup', () => { clearTimeout(timer)
     if (!held) { say(item.tap); return }
-    if (hot) { say(item.l + ' › ' + hot.dataset.l); closeFan() }
-    // Released without sliding: the fan stays open, a tap picks.
+    // Released: the stack goes away (Pem: « when released it disappears »); on a choice, that choice opens.
+    say(hot ? item.l + ' › ' + hot.dataset.l : 'Relâché hors de la pile — rien')
+    closeFan()
   })
   b.addEventListener('pointercancel', () => { clearTimeout(timer); closeFan() })
   bar.appendChild(b)
