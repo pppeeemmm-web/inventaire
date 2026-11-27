@@ -2,8 +2,8 @@
 
 // Production start / end set by hand (start: owner 2026-11-03; end + partial dates: TODO 3–4,
 // 2026-11-14). A date is a year, a month or a day ("2021", "06/2024", "22/08/2026"), stored like
-// "Année" with a precision column (supabase/sql/oeuvres_production_precision.sql). Ticking Catalogué
-// still writes the end as today (trigger). Admin only, like other direct edits to an existing work;
+// "Année" with a precision column (supabase/sql/oeuvres_production_precision.sql). Becoming Prêt
+// (catalogued + photo validated) writes the end as today (trigger, WORK_RULES rule 8). Admin only, like other direct edits to an existing work;
 // the trigger refuses an end before the start.
 
 import { revalidatePath } from 'next/cache'

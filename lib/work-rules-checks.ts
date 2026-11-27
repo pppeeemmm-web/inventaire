@@ -38,6 +38,8 @@ export type CheckWork = {
   Exposable: boolean | null
   place_id: number | null
   production_completed_on: string | null
+  /** 'found' = a work found again: its end is its known year whatever the stage (rule 8 skips it). */
+  production_origin: string | null
   is_public: boolean | null
 }
 
@@ -135,8 +137,8 @@ export function evaluateWorkRules(input: CheckInput): RuleBreak[] {
     else if (cat && openOf(CATALOGUER)) add('6', w, 'wr_b_catalogue_task_open')
     else if (cat && photo && !openOf(PHOTOGRAPHIER)) add('6', w, 'wr_b_no_photo_task')
     else if (!(cat && photo) && openOf(PHOTOGRAPHIER)) add('6', w, 'wr_b_photo_task_open')
-    // 8 — an end of production only on a Prêt work
-    if (w.production_completed_on && !ready(w)) add('8', w, 'wr_b_end_not_ready', w.production_completed_on.slice(0, 10))
+    // 8 — an end of production only on a Prêt work (a found work keeps its known year: not a break)
+    if (w.production_completed_on && !ready(w) && w.production_origin !== 'found') add('8', w, 'wr_b_end_not_ready', w.production_completed_on.slice(0, 10))
     // 9 — owner / custodian / address follow the stage
     if (s != null && [1, 2, 3, 4].includes(s) && owner !== PEM_CONTACT) add('9', w, 'wr_b_owner_not_pem')
     else if (s != null && [1, 2, 3].includes(s) && holder !== PEM_CONTACT && !input.orderExists.get(`${w.OeuvreID}:entrusted`)) add('9', w, 'wr_b_held_elsewhere')

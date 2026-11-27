@@ -52,7 +52,7 @@ export async function runWorkRuleChecks(): Promise<RuleChecksResult> {
     const works = await readAll<CheckWork>((a, b) =>
       supabase
         .from('Oeuvres')
-        .select('OeuvreID, Titre, statusId, "Catalogué", "NeedsPhotograph", fate, ContactID, LocalisationID, "Exposable", place_id, production_completed_on, is_public')
+        .select('OeuvreID, Titre, statusId, "Catalogué", "NeedsPhotograph", fate, ContactID, LocalisationID, "Exposable", place_id, production_completed_on, production_origin, is_public')
         .is('deleted_at', null)
         .order('OeuvreID')
         .range(a, b),
