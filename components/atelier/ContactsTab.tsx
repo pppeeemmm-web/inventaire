@@ -793,6 +793,32 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const editorContactResolved: ContactRow | null =
     !isCreating && activeId != null && editorSourceRow ? { ...editorSourceRow, ...extra[activeId] } : null
 
+  const nameContent = (c: (typeof filtered)[number]) => (
+    <>
+      {(() => {
+        const person = contactPersonListName(c)
+        const inst = (c.NomInstitution ?? '').trim()
+        return person && inst
+          ? <>{person}<span style={{ color: 'var(--tx3)' }}> · {inst}</span></>
+          : displayName(c)
+      })()}
+      {isAdmin && c.is_private && (
+        <span
+          data-testid="contacts-private-chip"
+          title={t('contacts_private_chip_title')}
+          style={{ marginLeft: 8, border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 9, padding: '1px 5px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}
+        >
+          {t('contacts_private_chip')}
+        </span>
+      )}
+      {conflicts.some(conf => conf.public_contact_id === c.ContactID) && (
+        <span style={{ marginLeft: 8, background: 'var(--rust)', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}>
+          {t('contacts_conflict_badge')}
+        </span>
+      )}
+    </>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
@@ -865,9 +891,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('searchPlaceholderContacts')}
-          style={{ ...FIS, flex: 1, minWidth: narrow ? 0 : 200, width: narrow ? '100%' : undefined }}
+          style={{ ...FIS, flex: narrow ? '1 1 100%' : 1, order: narrow ? -1 : undefined, minWidth: narrow ? 0 : 200, minHeight: narrow ? 44 : undefined, fontSize: narrow ? 16 : FIS.fontSize }}
         />
-        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110 }}>
+        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110, minHeight: narrow ? 44 : undefined }}>
           <option value="all">{t('searchFieldAll')}</option>
           <option value="name">{t('searchFieldName')}</option>
           <option value="city">{t('searchFieldCity')}</option>
@@ -1175,6 +1201,41 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,
           }}
         >
+          {narrow ? (
+            <div data-testid="contacts-phone-list">
+              {filtered.map((c) => {
+                const isFoc = c.ContactID === activeId && !isCreating
+                const inactive = extra[c.ContactID]?.Actif === false
+                const owned = workCounts.owner[c.ContactID]
+                const sub = [
+                  (c.Role ?? '').trim(),
+                  (listVille(c.ContactID) ?? '').toString().trim(),
+                  owned && owned > 0 ? `${owned} ${t('contacts_col_works_abbr')}` : '',
+                ].filter((x) => x && x !== '—')
+                const ell = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
+                return (
+                  <button
+                    key={c.ContactID}
+                    type="button"
+                    data-testid="contacts-phone-row"
+                    onClick={() => requestSelectContact(c.ContactID)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left', minHeight: 56,
+                      padding: '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))',
+                      border: 0, borderBottom: '1px solid var(--bd)',
+                      background: isFoc ? 'var(--bg2)' : 'transparent', color: 'var(--tx)',
+                      opacity: inactive ? 0.45 : 1, cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: isFoc ? 600 : 500, ...ell }}>{nameContent(c)}</div>
+                    {sub.length > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2, ...ell }}>{sub.join(' · ')}</div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
           <table
             className="tbl"
             style={{
@@ -1236,27 +1297,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {(() => {
-                        const person = contactPersonListName(c)
-                        const inst = (c.NomInstitution ?? '').trim()
-                        return person && inst
-                          ? <>{person}<span style={{ color: 'var(--tx3)' }}> · {inst}</span></>
-                          : displayName(c)
-                      })()}
-                      {isAdmin && c.is_private && (
-                        <span
-                          data-testid="contacts-private-chip"
-                          title={t('contacts_private_chip_title')}
-                          style={{ marginLeft: 8, border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 9, padding: '1px 5px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}
-                        >
-                          {t('contacts_private_chip')}
-                        </span>
-                      )}
-                      {conflicts.some(conf => conf.public_contact_id === c.ContactID) && (
-                        <span style={{ marginLeft: 8, background: 'var(--rust)', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}>
-                          {t('contacts_conflict_badge')}
-                        </span>
-                      )}
+                      {nameContent(c)}
                     </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.Role ?? '—'}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{listVille(c.ContactID)}</td>
@@ -1270,6 +1311,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               })}
             </tbody>
           </table>
+          )}
         </div>
 
         {showPage && editorContactResolved ? (
