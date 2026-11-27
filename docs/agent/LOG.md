@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.
 - Work group « Sélection 2027 — Therapeia + Paréidolie (proposition) » created on live (15 works, attached to Pipeline « Therapeia ») at Pem's request.
 - PR #9 merged (`4c48873`) on Pem's « Merge ».
 - Pem: no selling or promotion ever tried → no sales, campaigns or CRM: empty by design, not a data gap; the data strategist keeps a complete overview of the system → `ROLE.md`, `STATE.md`. Pem noticed the term « collection » is not used → `STATE.md` (to discuss).
