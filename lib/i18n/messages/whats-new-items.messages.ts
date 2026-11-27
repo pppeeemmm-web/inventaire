@@ -6,6 +6,22 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.110 (2026-11-27) — found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
+  wn_found_work_flow_t: { fr: 'Œuvre retrouvée : année et « Terminée ? »', en: 'Found work: year and « Finished? »' },
+  wn_found_work_flow_d: {
+    fr: 'En choisissant « Ancienne — retrouvée » (nouvelle œuvre sur le téléphone ou le bureau ; dans la fiche pour un administrateur), l’app demande l’année si elle est connue et « Terminée ? ». Oui : la production finit cette année-là et l’œuvre est cataloguée si elle a une photo (sinon un message le dit). L’historique commence par « Retrouvée — œuvre oubliée, jamais cataloguée (année) ».',
+    en: 'When « Older — found » is chosen (new work on the phone or desk; in the card for an admin), the app asks the year if known and « Finished? ». Yes: production ends that year and the work is catalogued if it has a photo (otherwise a message says so). The history starts with « Retrouvée — œuvre oubliée, jamais cataloguée (year) ».',
+  },
+  wn_contacts_phone_list_t: { fr: 'Contacts sur le téléphone', en: 'Contacts on the phone' },
+  wn_contacts_phone_list_d: {
+    fr: 'Sur le téléphone, la recherche des contacts prend toute la largeur et la liste devient une liste de noms (rôle, ville, œuvres) au lieu du tableau du bureau.',
+    en: 'On the phone, the contacts search takes the full width and the list becomes a list of names (role, city, works) instead of the desk table.',
+  },
+  wn_themes_refresh_everywhere_t: { fr: 'Thèmes et groupes : partout tout de suite', en: 'Themes and groups: everywhere at once' },
+  wn_themes_refresh_everywhere_d: {
+    fr: 'Un thème ou un groupe créé, renommé, supprimé ou copié dans Thèmes, une sélection d’exposition, ou une œuvre retirée dans la Constellation : les filtres de l’Inventaire, les choix de la fiche et les pastilles des œuvres suivent sans recharger la page.',
+    en: 'A theme or group made, renamed, deleted or copied in Themes, an exhibition selection, or a work removed in the Constellation: Inventory filters, the card pickers and the works’ chips follow without reloading the page.',
+  },
   // 3.1.109 (2026-11-27) — phone menu: Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » goes back.
   wn_phone_menu_pipeline_t: { fr: 'Menu du téléphone : Pipeline et Ventes', en: 'Phone menu: Pipeline and Sales' },
   wn_phone_menu_pipeline_d: {
