@@ -26,4 +26,8 @@ export const contactDisplayMessages = defineMessages({
     fr: 'Afficher seulement les contacts privés',
     en: 'Show only private contacts',
   },
+  // Phone (Pem 2026-11-27: « avoid clutter, offer collapsible and interactive presentation »).
+  contacts_phone_quick_open: { fr: '+ Ajout rapide', en: '+ Quick add' },
+  contacts_phone_tools: { fr: 'Filtres et actions', en: 'Filters and actions' },
+  contacts_phone_tools_active_fmt: { fr: 'Filtres et actions · {n} actif(s)', en: 'Filters and actions · {n} on' },
 })

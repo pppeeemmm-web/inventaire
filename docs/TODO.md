@@ -34,7 +34,7 @@ Small fixes
 - [ ] After a contact merge the desk keeps the merged contact's duplicate address links until a reload (pickers show a place twice; a save there answers « stale »).
 - [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
-- [ ] A theme or group made, deleted or copied anywhere (Thèmes, batch edit, export, catalogue save, an exhibition) reaches the other screens (Inventory filters, drawer pickers, per-work chips and counts) only after a reload → one shared refresh after any change (a first try that only covered Thèmes is parked on branch `wt-themes-push`).
+- [ ] Desk check (Pem, at the desk): a theme or group created, renamed, deleted or copied in Thèmes, an exhibition selection or the Constellation shows at once in the Inventory filters, the card pickers and the works' chips, with no reload (one shared refresh, PR #11).
 - [ ] Supabase Auth → Redirect URLs, tidy: delete `https://inventaire-dusky.vercel.app/auth/callback` and `http://localhost:3000` (each covered by its `/**` line); `http://192.168.1.9:3000/` → `/**` if Google login on the phone over home Wi-Fi is used. Keep `https://www.thepemworkshop.com/auth/…` (live login) and `https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**` (pull request test copies).
 - [ ] « Ancienne — retrouvée » writes a dated « Retrouvée » line in Historique (the database writes Historique lines, rule 14 — SQL, Pem's OK); today Historique only shows the creation line « [date] Atelier ».
 - [ ] Marking a work « retrouvée » asks « Année » and « Terminée ? », so it lands in the right production place (catalogued or in production) without ticking Catalogué by hand; same build as the Historique line above → [FoundWorkFlow](./design/2026-11-27/FoundWorkFlow.md), decided; build + SQL (throwaway copy, then live with Pem's OK).
@@ -42,7 +42,6 @@ Small fixes
 - [ ] Provenance: a box in the work card to write a work's past steps (gift, succession, sale… with « c. » dates, `@` people) as clean records; parked until Pem clarifies rule 10 for the past, moves between other people, true dates in Historique / « Garde », « c. », public. First case: #2410–#2412 (Maroselli, still read owner Pem, place Marseille) → [ProvenanceInput](./design/2026-11-27/ProvenanceInput.md).
 - [ ] `@name` typed in a caption or a Journal text with no match: kept as text and queued; the PC agent looks it up (handle, website) and proposes a contact card in « Cartes lues »; Pem accepts → the real `@` link (principle 13) → short design first (queue home, what the agent may look up).
 - [ ] Moments as a way of reading: one read-only view over every home (« what happened on day X / to work N / with person P ») so Mois / Années and day paging count everything; SQL, Pem's GO, throwaway copy first → [VirtualMoments](./design/2026-11-26/VirtualMoments.md).
-- [ ] Voice recorder: a pause / resume button, and importing a Voice Memos recording (records with the screen off) into the Journal as a transcribed note → short design first; Pem to decide.
 - [ ] Journal: each added work is a moment « Œuvre ajoutée » (written by the database at creation, linked to the work), labelled nouvelle / retrouvée from the work; one card per day; one-off for the 5 works added since the Journal is written in — reader code on the branch (`f90eced`), SQL not applied: throwaway copy, then live with Pem's OK, then ARCHITECTURE §3 / §7 → [WorksAddedMoments](./design/2026-11-26/WorksAddedMoments.md).
 
 Checks
@@ -113,6 +112,7 @@ Speed and code health
 
 ## 5. Parked — no GO
 
+- [ ] Voice memos as batch instructions for the AI advisors (cloud or local): a memo marked « Instruction » is queued for them → design first (which advisors, what they may do alone, what waits for Pem's OK) → [RecorderPause](./design/2026-11-27/RecorderPause.md).
 Separate systems (another time, maybe another tool)
 - Budgets, forecasts, accountancy — VAT per sale from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a library → [notes](./TODO_NOTES.md#phototheque)

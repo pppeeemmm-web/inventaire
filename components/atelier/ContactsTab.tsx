@@ -151,6 +151,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [archivedOnly, setArchivedOnly] = useState(false)
   /** Sphere filter: '' = all; sphereIds = contacts carrying the chosen sphere (asked of the database). */
   const [sphere, setSphere] = useState('')
+  // Phone: the quick add and the filters / actions fold away; the search and the list stay in view.
+  const [phoneQuickOpen, setPhoneQuickOpen] = useState(false)
+  const [phoneToolsOpen, setPhoneToolsOpen] = useState(false)
   const [sphereIds, setSphereIds] = useState<Set<number> | null>(null)
   const [spheres, setSpheres] = useState<Sphere[]>([])
   const [sphereCounts, setSphereCounts] = useState<Record<string, number>>({})
@@ -819,8 +822,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     </>
   )
 
+  const phoneToolsActive = (searchBy !== 'all' ? 1 : 0) + (role !== 'all' ? 1 : 0) + (sphere ? 1 : 0) + (archivedOnly ? 1 : 0) + (privateOnly ? 1 : 0)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: narrow ? 'auto' : undefined }}>
 
       {navUnsavedDialog}
 
@@ -831,11 +836,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           style={{
             flexShrink: 0,
             borderBottom: '1px solid var(--bd)',
-            padding: '12px max(12px, env(safe-area-inset-right)) 14px max(12px, env(safe-area-inset-left))',
+            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
             background: 'var(--bg1)',
           }}
         >
-          <div className="t-eyebrow" style={{ marginBottom: 10, color: 'var(--tx3)' }}>{t('contacts_quick_title')}</div>
+          <button type="button" className="btn ghost sm" data-testid="contacts-quick-toggle" aria-expanded={phoneQuickOpen}
+            onClick={() => setPhoneQuickOpen((v) => !v)} style={{ minHeight: 44, width: '100%', justifyContent: 'space-between', display: 'flex', alignItems: 'center' }}>
+            <span>{t('contacts_phone_quick_open')}</span><span aria-hidden>{phoneQuickOpen ? '▴' : '▾'}</span>
+          </button>
+          {phoneQuickOpen ? (<>
+          <div className="t-eyebrow" style={{ margin: '10px 0', color: 'var(--tx3)' }}>{t('contacts_quick_title')}</div>
           <form onSubmit={(e) => void handleQuickAdd(e)} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input name="institution" placeholder={t('contacts_quick_inst')} style={{ ...FIS, minHeight: 44 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -865,6 +875,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               </button>
             </div>
           </form>
+          </>) : null}
         </div>
       )}
 
@@ -893,6 +904,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           placeholder={t('searchPlaceholderContacts')}
           style={{ ...FIS, flex: narrow ? '1 1 100%' : 1, order: narrow ? -1 : undefined, minWidth: narrow ? 0 : 200, minHeight: narrow ? 44 : undefined, fontSize: narrow ? 16 : FIS.fontSize }}
         />
+        {narrow ? (
+          <button type="button" className="btn ghost sm" data-testid="contacts-phone-tools" aria-expanded={phoneToolsOpen}
+            onClick={() => setPhoneToolsOpen((v) => !v)}
+            style={{ minHeight: 44, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: phoneToolsActive ? 'var(--ac)' : undefined }}>
+            <span>{phoneToolsActive ? t('contacts_phone_tools_active_fmt').replace('{n}', String(phoneToolsActive)) : t('contacts_phone_tools')}</span>
+            <span aria-hidden>{phoneToolsOpen ? '▴' : '▾'}</span>
+          </button>
+        ) : null}
+        {/* Desk: these sit in the bar (display contents). Phone: folded under « Filtres et actions ». */}
+        <div style={{ display: narrow ? (phoneToolsOpen ? 'flex' : 'none') : 'contents', flexWrap: 'wrap', gap: 8, width: '100%' }}>
         <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110, minHeight: narrow ? 44 : undefined }}>
           <option value="all">{t('searchFieldAll')}</option>
           <option value="name">{t('searchFieldName')}</option>
@@ -1024,6 +1045,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         >
           URL
         </button>
+        </div>
       </div>
 
       {importing && (
@@ -1182,7 +1204,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       {/* Table + editor drawer */}
       <div
         style={{
-          flex: 1,
+          flex: narrow ? 'none' : 1,
           display: 'flex',
           flexDirection: narrow && showEditor ? 'column' : 'row',
           minHeight: 0,
@@ -1195,7 +1217,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             display: narrow && showPage ? 'none' : undefined,
             flex: 1,
             minWidth: 0,
-            overflow: 'auto',
+            // Phone: the page scrolls as one block; with the editor open the list keeps its own short scroll.
+            overflow: narrow && !showEditor ? 'visible' : 'auto',
             borderRight: narrow ? 'none' : '1px solid var(--bd)',
             borderBottom: narrow && showEditor ? '1px solid var(--bd)' : undefined,
             maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,
