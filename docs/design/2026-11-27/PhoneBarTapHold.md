@@ -43,3 +43,10 @@ way to reach it changes. Taps stay ≥ 44 px; the fan keeps inside the screen; n
 1. Tap / hold as in the table — any tap default to change (e.g. Photo → document rather than inspiration)?
 2. Keep the « maintenir : n choix » hint, or remove it once learned?
 3. Same bar on the desk Journal, or phone only?
+
+## Decided (Pem 2026-11-27)
+- A straight **stack** above the button (no fan); **released, it disappears** — on a choice that choice opens.
+- **Keep the hint** « maintenir : n choix » under each button.
+- **Desk:** my call → unchanged (a mouse has no comfortable hold; the desk already shows its choices as separate buttons).
+- Tap defaults as in the table. Build on Pem's « build the bar ».
+
