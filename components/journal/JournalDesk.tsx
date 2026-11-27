@@ -195,6 +195,7 @@ export function JournalDesk() {
   const [dateInput, setDateInput] = useState('')
   const [refreshSignal, setRefreshSignal] = useState(0)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
   const [refreshDaySignal, setRefreshDaySignal] = useState<{ day: string } | null>(null)
   const [editPhotoId, setEditPhotoId] = useState<string | null>(null)
   const streamRef = useRef<HTMLDivElement>(null)
@@ -285,21 +286,36 @@ export function JournalDesk() {
           data-testid="journal-desk-mic"
           aria-label={t('jd_mic_aria')}
           title={t('jd_mic_aria')}
-          onClick={() => setVoiceOpen(true)}
+          onClick={() => { setImportFile(null); setVoiceOpen(true) }}
           style={{ ...MAIN_ACTION_STYLE, marginLeft: page?.isAdmin && tray.status !== 'unsupported' ? 0 : 'auto', minHeight: 36, borderRadius: 999, padding: '0 14px' }}
         >
           🎤 {t('jd_mic')}
         </button>
+        {/* « Importer un enregistrement » (Voice Memos, RecorderPause.md): filed on the day it was recorded. */}
+        <label className="btn ghost sm" data-testid="journal-desk-import-audio" title={t('vc_import_sub')} style={{ minHeight: 36, borderRadius: 999, padding: '0 12px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+          🎧 {t('vc_import')}
+          <input type="file" accept="audio/*,.m4a" hidden onChange={(e) => {
+            const f = e.target.files?.[0]
+            e.target.value = ''
+            if (f) { setImportFile(f); setVoiceOpen(true) }
+          }} />
+        </label>
       </div>
       {voiceOpen ? (
         <VoiceNoteSheet
           open={voiceOpen}
+          importFile={importFile}
           liveWordsOffByDefault
           onClose={() => {
+            setImportFile(null)
             setVoiceOpen(false)
             setRefreshSignal((n) => n + 1)
           }}
-          onSaved={() => setRefreshSignal((n) => n + 1)}
+          onSaved={(info) => {
+            setRefreshSignal((n) => n + 1)
+            // An imported memo lands on its own (older) day: re-read that day too.
+            if (info?.day) setRefreshDaySignal({ day: info.day })
+          }}
         />
       ) : null}
       <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px' }}>

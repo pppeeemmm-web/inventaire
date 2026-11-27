@@ -7,7 +7,7 @@
 // `?write=1` (empty) or `?write=#1234` (a mention) on the URL, or the PHONE_WRITE_EVENT, open it too.
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { PEM_Z_INDEX, useBottomChromeHeight } from '@/components/shared/BottomStack'
@@ -47,7 +47,7 @@ const WORK_CHOICES = [
 type Choice = { href: string; icon: string; label: DictKey; sub: DictKey; testId?: string }
 
 /** Bottom sheet of choices (Photo · doc, Œuvre). */
-function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choices: readonly Choice[]; onClose: () => void; testId: string }) {
+function ChoiceSheet({ title, choices, onClose, testId, extra }: { title: string; choices: readonly Choice[]; onClose: () => void; testId: string; extra?: ReactNode }) {
   const { t } = useI18n()
   return (
     <PemModalOverlay
@@ -77,13 +77,14 @@ function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choic
             </span>
           </Link>
         ))}
+        {extra}
       </div>
     </PemModalOverlay>
   )
 }
 
 /** `stream` (the Journal stream, design 2026-11-22): ✍️ · 📷 · 🎤 large in the middle · 🖼️ — same doors, ranked for the thumb. */
-export function PhoneInputBar({ onVoice, workHref, writeDay, stream = false }: { onVoice: () => void; workHref: string; writeDay?: string; stream?: boolean }) {
+export function PhoneInputBar({ onVoice, onImportAudio, workHref, writeDay, stream = false }: { onVoice: () => void; /** « Importer un enregistrement » (Voice Memos): the picked file opens the voice sheet on it. */ onImportAudio?: (file: File) => void; workHref: string; writeDay?: string; stream?: boolean }) {
   const { t } = useI18n()
   const [docOpen, setDocOpen] = useState(false)
   const [workOpen, setWorkOpen] = useState(false)
@@ -169,6 +170,20 @@ export function PhoneInputBar({ onVoice, workHref, writeDay, stream = false }: {
           choices={workSheet && INSPIRATION_SQL_LIVE ? [INSPIRATION_CHOICE, ...DOC_CHOICES] : DOC_CHOICES}
           onClose={() => setDocOpen(false)}
           testId="phone-doc-sheet"
+          extra={onImportAudio ? (
+            <label data-testid="phone-doc-import-audio" style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, borderTop: '1px solid var(--bd)', color: 'var(--tx)', cursor: 'pointer' }}>
+              <span aria-hidden="true" style={{ fontSize: 20, width: 24, textAlign: 'center', flexShrink: 0 }}>🎧</span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 15 }}>{t('vc_import')}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--tx3)' }}>{t('vc_import_sub')}</span>
+              </span>
+              <input type="file" accept="audio/*,.m4a" hidden onChange={(e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (f) { setDocOpen(false); onImportAudio(f) }
+              }} />
+            </label>
+          ) : null}
         />
       ) : null}
       {writing != null ? <DayWriteSheet day={writeDay ?? todayCalendarDayInParis()} initialText={writing} onClose={() => setWriting(null)} /> : null}

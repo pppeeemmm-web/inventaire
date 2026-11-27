@@ -7,6 +7,11 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.110 (2026-11-27) — found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
+  wn_voice_pause_import_t: { fr: 'Note vocale : pause, et import de Dictaphone', en: 'Voice note: pause, and Voice Memos import' },
+  wn_voice_pause_import_d: {
+    fr: 'Pendant une note vocale, « ⏸ Pause » puis « ▶ Reprendre » continuent la même note ; l’écran reste allumé, même en pause. « 🎧 Importer un enregistrement » (Photo · doc sur le téléphone, à côté de 🎤 dans le Journal du bureau) range un fichier de Dictaphone au jour où il a été enregistré, transcrit comme une note vocale.',
+    en: 'During a voice note, « ⏸ Pause » then « ▶ Resume » continue the same note; the screen stays on, even when paused. « 🎧 Import a recording » (Photo · doc on the phone, beside 🎤 in the desk Journal) files a Voice Memos recording on the day it was recorded, transcribed like a voice note.',
+  },
   wn_found_work_flow_t: { fr: 'Œuvre retrouvée : année et « Terminée ? »', en: 'Found work: year and « Finished? »' },
   wn_found_work_flow_d: {
     fr: 'En choisissant « Ancienne — retrouvée » (nouvelle œuvre sur le téléphone ou le bureau ; dans la fiche pour un administrateur), l’app demande l’année si elle est connue et « Terminée ? ». Oui : la production finit cette année-là et l’œuvre est cataloguée si elle a une photo (sinon un message le dit). L’historique commence par « Retrouvée — œuvre oubliée, jamais cataloguée (année) ».',

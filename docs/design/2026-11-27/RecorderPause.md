@@ -1,6 +1,6 @@
 # Voice recorder: pause / resume, and Voice Memos recordings — short design
 
-Status: **design for Pem to decide — nothing built.** TODO §1 « Voice recorder: a pause / resume button, and importing
+Status: **decided by Pem 2026-11-27, A and B built (PR #11) — see « Decided » at the end.** TODO §1 « Voice recorder: a pause / resume button, and importing
 a Voice Memos recording (records with the screen off) into the Journal as a transcribed note ». Pem in Madrid (Prado):
 « Can I set up a recording session with a pause button for quick fire even if screen is off? »
 
@@ -44,3 +44,20 @@ pocket, Voice Memos + B is the only way that works with the screen off.
 2. Keep the screen awake while recording (A)?
 3. How long are your typical memos — under 9 minutes, or longer (decides whether B needs the bigger upload)?
 4. An imported memo lands on the day it was recorded (proposed) — or today?
+
+## Decided (Pem 2026-11-27)
+1. **Both** A and B.
+2. **Screen kept awake** while recording, **paused included** (« having lock screen is gonna be a pain if paused »):
+   the wake lock is held from start to stop; a pause keeps it.
+3. Memos are under 9 minutes → B uses the normal upload (4.2 MB). Pem's next idea: **voice memos as batch
+   instructions for the AI advisors (cloud or local)** — parked in TODO §5, needs its own design and GO.
+4. An imported memo lands **on the day it was recorded** (the file's date, editable before « Importer »).
+
+## Built
+- A: « ⏸ Pause / ▶ Reprendre » under the stop button; the clock and the note's length count recorded time only; live
+  words stop and continue; locking the phone still stops and saves the note as it is.
+- B: « 🎧 Importer un enregistrement » in the phone's Photo · doc sheet and beside 🎤 on the desk Journal → the voice
+  sheet opens on the file (name, size, length) with « Enregistré le » (the file's day) → « Importer »: same door as a
+  recording (`createVoiceNote`, flag `imported` accepts the older date; .m4a types taken), same Journal entry, same PC
+  transcription, same offline queue.
+

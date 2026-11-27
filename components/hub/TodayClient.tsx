@@ -97,6 +97,8 @@ export function TodayFrame({ day, today, children, stream = false }: { day: stri
   const narrow = useMediaQuery('(max-width: 767px)')
   const [mounted, setMounted] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  /** « Importer un enregistrement » (Voice Memos): the voice sheet opens on this file. */
+  const [importFile, setImportFile] = useState<File | null>(null)
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
   useEffect(() => {
@@ -143,9 +145,9 @@ export function TodayFrame({ day, today, children, stream = false }: { day: stri
 
       {/* Captures kept on the phone with no network are sent from here too (the stream mounts its own). */}
       {stream ? null : <CaptureQueueFlusher onSent={() => router.refresh()} />}
-      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" writeDay={day} stream={stream} />
+      <PhoneInputBar onVoice={() => { setImportFile(null); setVoiceOpen(true) }} onImportAudio={(f) => { setImportFile(f); setVoiceOpen(true) }} workHref="/atelier/session/new" writeDay={day} stream={stream} />
 
-      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} onSaved={() => { if (navigator.onLine !== false) router.refresh() }} oeuvreOptions={[]} /> : null}
+      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} importFile={importFile} onClose={() => { setVoiceOpen(false); setImportFile(null) }} onSaved={() => { if (navigator.onLine !== false) router.refresh() }} oeuvreOptions={[]} /> : null}
     </div>
   )
 }

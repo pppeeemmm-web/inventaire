@@ -134,4 +134,20 @@ export const voiceCaptureMessages = defineMessages({
   // Notes list
   vc_row_audio_fmt: { fr: 'Audio {d}', en: 'Audio {d}' },
   vc_row_text_only: { fr: 'texte seul', en: 'text only' },
+  // Pause / resume and import (design docs/design/2026-11-27/RecorderPause.md, Pem 2026-11-27 « Both »).
+  vc_pause: { fr: 'Pause', en: 'Pause' },
+  vc_resume: { fr: 'Reprendre', en: 'Resume' },
+  vc_paused: { fr: 'En pause — l’écran reste allumé', en: 'Paused — the screen stays on' },
+  vc_pause_failed: { fr: 'Ce téléphone ne sait pas mettre l’enregistrement en pause.', en: 'This phone can’t pause the recording.' },
+  vc_import: { fr: 'Importer un enregistrement', en: 'Import a recording' },
+  vc_import_sub: { fr: 'Dictaphone ou fichier audio (m4a) — rangé au jour où il a été enregistré', en: 'Voice Memos or an audio file (m4a) — filed on the day it was recorded' },
+  vc_import_size_fmt: { fr: '{kb} Ko', en: '{kb} KB' },
+  vc_import_title: { fr: 'Enregistrement à importer', en: 'Recording to import' },
+  vc_import_date: { fr: 'Enregistré le', en: 'Recorded on' },
+  vc_import_save: { fr: 'Importer', en: 'Import' },
+  vc_import_too_big: {
+    fr: 'Fichier trop long pour un envoi (environ 9 minutes au plus). Coupez-le en deux dans Dictaphone.',
+    en: 'File too long for one upload (about 9 minutes at most). Split it in two in Voice Memos.',
+  },
+  vc_import_type: { fr: 'Ce type de fichier n’est pas pris : m4a, mp4, webm ou ogg.', en: 'This file type isn’t taken: m4a, mp4, webm or ogg.' },
 })

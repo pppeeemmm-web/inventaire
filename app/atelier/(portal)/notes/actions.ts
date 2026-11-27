@@ -29,6 +29,12 @@ function allowedAudioMime(m: string): boolean {
   return x === 'audio/webm' || x === 'audio/mp4' || x === 'audio/ogg'
 }
 
+/** iPhone Voice Memos files (.m4a) arrive as audio/x-m4a or audio/m4a: the same container as audio/mp4. */
+function normalizeAudioMime(m: string): string {
+  const x = m.toLowerCase().split(';')[0]?.trim() ?? ''
+  return x === 'audio/x-m4a' || x === 'audio/m4a' ? 'audio/mp4' : m
+}
+
 async function rpcIsAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
   const { data } = await supabase.rpc('is_admin')
   return !!data
@@ -90,7 +96,7 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
   let audioMime: string | null = null
   if (file && file.size > 0) {
     if (file.size > MAX_AUDIO_BYTES) return { error: 'audio_too_large' }
-    audioMime = file.type || 'audio/webm'
+    audioMime = normalizeAudioMime(file.type || 'audio/webm')
     if (!allowedAudioMime(audioMime)) return { error: 'audio_mime' }
     audioBuf = Buffer.from(await file.arrayBuffer())
   }
@@ -112,17 +118,19 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
   }
 
   // When the recording started (client clock): the note's date/time. Kept only when plausible (last 24 h;
-  // 14 days for a note that waited on the phone with no network; not ahead of the server by more than
-  // 5 min); otherwise the DB default (now).
+  // 14 days for a note that waited on the phone with no network; any past date for an imported recording
+  // (`imported`, below); not ahead of the server by more than 5 min); otherwise the DB default (now).
   const recordedAtRaw = (formData.get('recorded_at') as string | null)?.trim() || null
   // Recorded inside an idea (Idées 🎤): the note and its Journal entry are linked to it.
   const conceptRaw = (formData.get('concept_id') as string | null)?.trim() || ''
   let conceptId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conceptRaw) ? conceptRaw : null
   let created_at: string | undefined
+  // « Importer un enregistrement » (RecorderPause.md, Pem 2026-11-27): a memo recorded earlier keeps its own day.
+  const imported = formData.get('imported') === '1' && !!file && file.size > 0
   if (recordedAtRaw) {
     const ts = new Date(recordedAtRaw).getTime()
     const now = Date.now()
-    const back = (clientId ? 14 * 24 : 24) * 60 * 60_000
+    const back = imported ? 50 * 365 * 24 * 60 * 60_000 : (clientId ? 14 * 24 : 24) * 60 * 60_000
     if (Number.isFinite(ts) && ts <= now + 5 * 60_000 && ts >= now - back) {
       created_at = new Date(ts).toISOString()
     }
