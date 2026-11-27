@@ -3,6 +3,10 @@
 Status: **draft, parked until the rules below are clarified (Pem 2026-11-27: « draft input box for provenance to
 write clean records — keep all for TODO, the rule needs clarification »).** Nothing built, nothing written to the data.
 
+**Pem's principle (2026-11-27):** « Provenance and history is a matter of recording sometimes less than perfect data. »
+A guessed date, an unknown deed, a half-remembered chain are recorded as they are, marked « c. », never left out and
+never dressed up as certain.
+
 ## The problem
 A work entered late (found again) carries an ownership history that happened before it was in the catalogue. The
 tools only record moves **as of today**: an order is handed over today, the database writes Historique lines dated
@@ -32,7 +36,7 @@ refusal (principles 1–3).
 3. **Dates:** Historique and « Garde » show the step's true date (« c. 1999 »), and the day it was recorded — both, or
    only the true one? The database today writes its own line dated the day of the change; the box would need it to
    write the step's date instead.
-4. **« c. »** as a precision of its own (beside day / month / year), on works, people and steps.
+4. **« c. »** — decided (Pem 2026-11-27): « circa » is a rule for every date in the app (works, people, steps, papers), its own TODO line.
 5. **Public:** a past gift makes the work « Don », so public by rule 13 — default yes, or ask each time?
 
 ## First case (facts from Pem, 2026-11-27 — guesses marked c.)
