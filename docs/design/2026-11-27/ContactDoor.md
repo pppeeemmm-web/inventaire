@@ -1,6 +1,11 @@
 # One door for contacts (saveContact v2) — plan and Flow trace
 
-Status: **plan for Pem — nothing built.** TODO §4 « `saveContact` v2: phones stored E.164; the server writers still
+Status: **steps 1, 3, 4 (code) built; step 2 and the phone one-off wait for Pem.** Built: supplier inline and the
+primary email through the door; phones stored in one form at the door — only a number typed or changed in the save
+(one sent back as read is left alone, so an untouched card still answers « unchanged »), country from the number, its
+own code, the card's address country, else France; a number found however it is typed (Contacts, suppliers); the
+report's phone column shows its country code. Waiting: `contact_phones_one_form.sql` (54 rows, « apply phones »),
+the duplicates delete (own OK), #393 / #694 / #713 to check by Pem. Was: **plan for Pem — nothing built.** TODO §4 « `saveContact` v2: phones stored E.164; the server writers still
 outside the door » (principle 2: one door per record, on the server, all or nothing). Pem 2026-11-27: « Trying to push
 the ball along ». Inventory read 2026-11-27 (code + live DB).
 

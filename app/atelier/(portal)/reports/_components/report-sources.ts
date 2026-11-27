@@ -354,7 +354,7 @@ function contactsSource(c: SourceCtx): SourceDef<ReportContactRow> {
       { id: 'city', label: t('report_f_city'), kind: 'enum', value: (r) => orNull(r.Ville) },
       { id: 'country', label: t('report_f_country'), kind: 'enum', value: (r) => orNull(r.Pays) },
       { id: 'email', label: t('report_f_email'), kind: 'text', value: (r) => orNull(r.Email) },
-      { id: 'phone', label: t('report_f_phone'), kind: 'text', value: (r) => orNull(r.Téléphone1) },
+      { id: 'phone', label: t('report_f_phone'), kind: 'text', value: (r) => (r.Téléphone1?.trim() ? orNull([r.IndicatifPays1, r.Téléphone1].filter(Boolean).join(' ')) : null) },
       { id: 'active', label: t('report_f_active'), kind: 'bool', value: (r) => !!r.Actif },
       { id: 'team', label: t('report_f_team'), kind: 'bool', value: (r) => r.is_team_member },
       { id: 'owner', label: t('report_f_owner'), kind: 'bool', value: (r) => !!r.PropriétaireOeuvre },

@@ -10,6 +10,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter'
+import { countryFromName, normalizePhone } from '@/lib/contacts/phone'
+import type { CountryCode } from 'libphonenumber-js'
 import type {
   ContactAddress,
   ContactEmail,
@@ -132,6 +134,54 @@ function cleanFields(fields: ContactFields | null | undefined): ContactFields | 
   return f
 }
 
+/**
+ * Phones in one stored form (ContactDoor.md step 4, lib/contacts/phone.ts): « +33 » + « 6 74 89 02 54 ». The country
+ * comes from the number, its own code, the card's address country, else France. Unreadable numbers stay as typed.
+ * Only a number typed or changed in this save is rewritten: one sent back exactly as the screen read it stays as it
+ * is, so an untouched card still answers « unchanged » (no Fil line) and old numbers wait for the one-off / Pem.
+ */
+async function normalizePhones(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: number | null,
+  fields: ContactFields,
+  lists: ContactLists,
+  read: ContactFields | null | undefined,
+  readPhones: ContactLists['phones'] | null | undefined,
+): Promise<void> {
+  const fieldPairs: Array<['IndicatifPays1', 'Téléphone1'] | ['IndicatifPays2', 'Téléphone2']> = [['IndicatifPays1', 'Téléphone1'], ['IndicatifPays2', 'Téléphone2']]
+  const same = (a: unknown, b: unknown) => (a ?? '') === (b ?? '')
+  const fieldTouched = ([ck, tk]: (typeof fieldPairs)[number]) =>
+    typeof fields[tk] === 'string' && !!fields[tk] && !(read && same(fields[tk], read[tk]) && same(fields[ck], read[ck]))
+  const rowTouched = (r: NonNullable<ContactLists['phones']>[number]) => {
+    const was = r.id != null ? readPhones?.find((x) => x.id === r.id) : undefined
+    return !(was && same(was.phone, r.phone) && same(was.country_code, r.country_code))
+  }
+  if (!lists.phones?.some(rowTouched) && !fieldPairs.some(fieldTouched)) return
+  // The address country: from this save's addresses, else the card's stored primary address.
+  const inputAddr = lists.addresses?.find((a) => a.is_primary) ?? lists.addresses?.[0]
+  let country: CountryCode | null = countryFromName(inputAddr?.pays)
+  if (!country && id != null) {
+    const { data } = await supabase.from('contact_place_lines').select('pays').eq('contact_id', id)
+      .order('is_primary', { ascending: false, nullsFirst: false }).order('position', { ascending: true, nullsFirst: false }).limit(1)
+    country = countryFromName((data?.[0] as { pays?: string | null } | undefined)?.pays)
+  }
+  if (lists.phones) {
+    lists.phones = lists.phones.map((r) => {
+      if (!rowTouched(r)) return r
+      const n = normalizePhone({ country_code: r.country_code ?? null, phone: r.phone }, country)
+      return { ...r, country_code: n.country_code, phone: n.phone }
+    })
+  }
+  for (const pair of fieldPairs) {
+    const [ck, tk] = pair
+    const ph = fields[tk]
+    if (typeof ph !== 'string' || !fieldTouched(pair)) continue
+    const n = normalizePhone({ country_code: (fields[ck] as string | null | undefined) ?? null, phone: ph }, country)
+    fields[tk] = n.phone
+    if (n.country_code) fields[ck] = n.country_code
+  }
+}
+
 export async function saveContact(input: SaveContactInput): Promise<SaveContactResult> {
   const supabase = await createClient()
   const {
@@ -139,11 +189,15 @@ export async function saveContact(input: SaveContactInput): Promise<SaveContactR
   } = await supabase.auth.getUser()
   if (!user) return { refused: 'forbidden' }
 
+  const fields = cleanFields(input.fields) ?? {}
+  const lists = cleanLists(input.lists) ?? {}
+  await normalizePhones(supabase, input.id, fields, lists, input.read, input.readLists?.phones)
+
   const p = {
     id: input.id,
-    fields: cleanFields(input.fields) ?? {},
+    fields,
     read: rawRead(input.read),
-    lists: cleanLists(input.lists) ?? {},
+    lists,
     read_lists: input.readLists
       ? Object.fromEntries(Object.entries(input.readLists).map(([k, rows]) => [k, (rows ?? []).map((r) => rawRead(r))]))
       : null,

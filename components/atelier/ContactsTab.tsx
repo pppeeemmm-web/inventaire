@@ -46,6 +46,7 @@ import {
   type Sphere,
 } from '@/app/atelier/(portal)/contacts/people-actions'
 import { ADDRESS_LINE_COLS } from '@/components/atelier/contact-editor-types'
+import { phoneMatches, phoneQueryDigits } from '@/lib/contacts/phone-search'
 import type {
   ContactAddress,
   ContactEmail,
@@ -424,6 +425,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   const filtered = useMemo(() => {
     const sq = q.trim().toLowerCase()
+    const qDigits = phoneQueryDigits(sq)
     const base = browsable.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
       if (isArchivedRow(c) !== archivedOnly) return false
@@ -465,7 +467,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           target = ex?.Notes || ''
         }
 
-        if (!target.toLowerCase().includes(sq)) return false
+        // A number, typed any way, finds the card (lib/contacts/phone-search.ts).
+        const phoneHit = searchBy === 'all' && phoneMatches(qDigits, [
+          ...phoneRows.map((p) => [p.country_code, p.phone] as const),
+          [ex?.IndicatifPays1, ex?.Téléphone1], [ex?.IndicatifPays2, ex?.Téléphone2],
+        ])
+        if (!phoneHit && !target.toLowerCase().includes(sq)) return false
       }
       return true
     })
