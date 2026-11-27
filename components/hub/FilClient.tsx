@@ -51,6 +51,8 @@ export function FilClient() {
   const [isAdmin, setIsAdmin] = useState(true)
   const [tab, setTab] = useState<FilSection | null>(null)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  /** « Importer un enregistrement » (Voice Memos): the voice sheet opens on this file. */
+  const [importFile, setImportFile] = useState<File | null>(null)
 
   useEffect(() => {
     void listFil()
@@ -193,8 +195,8 @@ export function FilClient() {
         )}
       </div>
 
-      <PhoneInputBar onVoice={() => setVoiceOpen(true)} workHref="/atelier/session/new" />
-      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} /> : null}
+      <PhoneInputBar onVoice={() => { setImportFile(null); setVoiceOpen(true) }} onImportAudio={(f) => { setImportFile(f); setVoiceOpen(true) }} workHref="/atelier/session/new" />
+      {voiceOpen ? <VoiceNoteSheet open={voiceOpen} importFile={importFile} onClose={() => { setVoiceOpen(false); setImportFile(null) }} oeuvreOptions={[]} /> : null}
     </div>
   )
 }
