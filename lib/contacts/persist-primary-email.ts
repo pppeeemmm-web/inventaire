@@ -1,57 +1,40 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { saveContact } from '@/app/atelier/(portal)/contacts/save-contact'
 import { normalizeEmail } from './primary-contact-email'
 
-/** Write editor email to Contact.Email + primary contact_emails (single source of truth). */
+/**
+ * The email chosen for studio access becomes the card's primary email — through the one contact door (ContactDoor.md
+ * step 3, BuildingPrinciples 2): `saveContact` writes Contact.Email and the email list (the chosen one primary, the
+ * others kept, ids kept) in one transaction, with the same checks as the contact editor. Caller: admin team access.
+ */
 export async function persistPrimaryEmail(
-  sb: SupabaseClient,
   contactId: number,
   editorEmail: string,
 ): Promise<{ ok: true; email: string } | { error: string }> {
   const email = editorEmail.trim()
   if (!email) return { error: 'Email required' }
 
-  const { error: contactErr } = await sb
-    .from('Contact')
-    .update({ Email: email })
-    .eq('ContactID', contactId)
-
-  if (contactErr) return { error: contactErr.message }
-
+  const sb = await createClient()
   const { data: rows, error: listErr } = await sb
     .from('contact_emails')
-    .select('id, email, is_primary')
+    .select('id, email, label, is_primary')
     .eq('contact_id', contactId)
-
   if (listErr) return { error: listErr.message }
 
   const needle = normalizeEmail(email)
-  const match = rows?.find((r) => normalizeEmail(r.email) === needle)
+  const current = rows ?? []
+  // A row already holding this address keeps its stored spelling, which the door copies to Contact.Email; it is
+  // also the spelling returned, so the caller's later Contact.Email write agrees with it.
+  const known = current.find((r) => normalizeEmail(r.email) === needle)
+  const emails = [
+    ...current.map((r) => ({ id: r.id, email: r.email, label: r.label ?? '', is_primary: normalizeEmail(r.email) === needle })),
+    ...(known ? [] : [{ email, label: 'Principal', is_primary: true }]),
+  ]
 
-  if (!rows?.length) {
-    const { error } = await sb.from('contact_emails').insert({
-      contact_id: contactId,
-      email,
-      label: 'Principal',
-      is_primary: true,
-    })
-    if (error) return { error: error.message }
-  } else if (match) {
-    await sb.from('contact_emails').update({ is_primary: false }).eq('contact_id', contactId)
-    const { error } = await sb
-      .from('contact_emails')
-      .update({ is_primary: true })
-      .eq('id', match.id)
-    if (error) return { error: error.message }
-  } else {
-    await sb.from('contact_emails').update({ is_primary: false }).eq('contact_id', contactId)
-    const { error } = await sb.from('contact_emails').insert({
-      contact_id: contactId,
-      email,
-      label: 'Principal',
-      is_primary: true,
-    })
-    if (error) return { error: error.message }
-  }
-
-  return { ok: true, email }
+  // Contact.Email is copied by the door from the primary row (save_contact step 7).
+  const res = await saveContact({ id: contactId, lists: { emails } })
+  // A refusal is never « ok » (principle 3).
+  if ('error' in res) return { error: res.error }
+  if ('refused' in res) return { error: `refused: ${res.refused}` }
+  return { ok: true, email: known?.email ?? email }
 }

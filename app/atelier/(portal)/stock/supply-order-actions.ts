@@ -6,6 +6,7 @@
 // Behind SUPPLY_ORDERS_SQL_LIVE: until the lead applies the SQL every action returns `so_err_sql_waiting`.
 // Errors are returned as `so_err_*` i18n keys when known, else the raw message.
 
+import { saveContact } from '@/app/atelier/(portal)/contacts/save-contact'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -337,14 +338,21 @@ export async function createSupplierInline(input: { name: string; email: string 
   if ('error' in g) return g
   const name = input.name.trim()
   if (!name) return { error: 'so_err_supplier' }
-  const { data, error } = await g.sb.from('Contact').insert({
-    NomInstitution: name,
-    Role: NEW_SUPPLIER_ROLE,
-    Email: input.email?.trim() || null,
-    ...(input.phone?.trim() ? { Téléphone1: input.phone.trim() } : {}),
-  }).select('ContactID').single()
-  if (error || !data) return dbError(error)
-  return { ok: true, id: num(data.ContactID) }
+  const email = input.email?.trim() || null
+  const phone = input.phone?.trim() || null
+  // Through the one contact door (BuildingPrinciples 2, ContactDoor.md step 1): the card and its email / phone as list
+  // rows in one transaction, so search, duplicate warnings and the person page see them like any other contact.
+  const res = await saveContact({
+    id: null,
+    fields: { NomInstitution: name, Role: NEW_SUPPLIER_ROLE, ...(phone ? { Téléphone1: phone } : {}) },
+    lists: {
+      ...(email ? { emails: [{ email, label: 'Work', is_primary: true }] } : {}),
+      ...(phone ? { phones: [{ phone, country_code: null, label: 'Work', is_primary: true }] } : {}),
+    },
+  })
+  // A refusal is never « ok » (principle 3).
+  if (!('ok' in res)) return { error: 'error' in res ? res.error : `refused: ${'refused' in res ? res.refused : 'unchanged'}` }
+  return { ok: true, id: res.card.contact.ContactID }
 }
 
 export async function createStockItemInline(input: { name: string; unit: string; category: string | null; supplier_id: number | null }): Promise<{ ok: true; id: number } | Err> {

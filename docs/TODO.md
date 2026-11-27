@@ -18,6 +18,9 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 ## 1. Finish first — small, before anything new
 
 Data safety (SQL, Pem's OK given)
+- [ ] Contact door, private cards: `save_contact` (a definer function) has no « private card » check — a team member calling it with a private card's id could change it, where the other people doors answer « not found » (flow review 27/11) → SQL, security.
+- [ ] Fil « Revenir » on a team member's contact change restores the old fields with no stale check: anything changed since on those fields (notes added later) is wiped (`app/atelier/fil/actions.ts` revert sends no `read`) → send what it read.
+- [ ] Share sheet → contact notes: the append reads then writes (two shares at once can lose one) → an atomic append in SQL (ContactDoor.md step 2; not through `saveContact`, which would log every share on the Fil).
 - [ ] An admin's save queued offline on the phone, or a card draft restored, that names a contact deleted meanwhile fails with the raw database message (a team member's becomes a proposal, which approve refuses in words).
 - [ ] Journal corrections, rare cases: a second machine transcription of the same voice note (other engine) shows in Notes over Pem's correction; a correction of a private entry written by a team member stays unreadable to that author; search by meaning still matches the uncorrected words (the semantic index holds the original text).
 - [ ] Order cancel, very unlikely: if a reserved work refuses to be released at the very moment another sale or gift opens a line on the same work, putting the cancelled order back can leave two open lines on that work.

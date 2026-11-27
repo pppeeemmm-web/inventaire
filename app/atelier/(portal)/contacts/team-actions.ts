@@ -153,7 +153,7 @@ export async function connectTeamStudioAccess(
   if (!editor) return { error: 'Enter an email in the Emails section first' }
 
   const svc = createServiceClient()
-  const persisted = await persistPrimaryEmail(svc, contactId, editor)
+  const persisted = await persistPrimaryEmail(contactId, editor)
   if ('error' in persisted) return persisted
 
   const email = normalizeEmail(persisted.email)
@@ -204,7 +204,7 @@ export async function sendAuthInviteToContact(
   if (!editor) return { error: 'Enter an email in the Emails section first' }
 
   const svc = createServiceClient()
-  const persisted = await persistPrimaryEmail(svc, contactId, editor)
+  const persisted = await persistPrimaryEmail(contactId, editor)
   if ('error' in persisted) return persisted
 
   const email = normalizeEmail(persisted.email)
