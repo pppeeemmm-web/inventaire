@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barre du téléphone — toucher / maintenir</title>
+<style>
+  :root { --bg:#f4f2ee; --bg1:#fff; --tx:#1d1b18; --tx3:#8a857c; --bd:#e2ddd4; --ac:#b8860b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151412; --bg1:#1f1d1a; --tx:#f1ede6; --tx3:#9b958a; --bd:#34302a; --ac:#d9a62a; } }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font: 15px/1.45 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--tx); min-height:100dvh; }
+  main { padding: 20px 16px 160px; max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 10px; color: var(--tx3); font-size: 14px; }
+  #log { margin-top: 14px; padding: 12px; border: 1px dashed var(--bd); border-radius: 10px; min-height: 48px; background: var(--bg1); }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+        background: var(--bg1); border-top: 1px solid var(--bd); padding: 6px 6px max(10px, env(safe-area-inset-bottom)); }
+  nav button { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none;
+        border:0; background:none; color:var(--tx); font-size: 13px; min-height: 60px; display:flex; flex-direction:column;
+        align-items:center; justify-content:center; gap:2px; border-radius: 12px; }
+  nav button .i { font-size: 24px; }
+  nav button .h { font-size: 10px; color: var(--tx3); }
+  nav button.on { background: color-mix(in srgb, var(--ac) 14%, transparent); }
+  .fan { position: fixed; inset: 0; pointer-events: none; }
+  .fan .chip { position: fixed; transform: translate(-50%, -50%); pointer-events: auto; min-width: 104px; min-height: 48px;
+        padding: 8px 12px; border-radius: 24px; background: var(--bg1); color: var(--tx); border: 1px solid var(--bd);
+        box-shadow: 0 6px 18px rgba(0,0,0,.18); display:flex; align-items:center; gap:6px; font-size: 14px; white-space:nowrap; }
+  .fan .chip.hot { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 18%, var(--bg1)); }
+  .veil { position: fixed; inset: 0; background: rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Toucher = faire · maintenir = choisir</h1>
+  <p>Maquette à essayer au pouce, rien n’est enregistré. <b>Touchez</b> un bouton : il fait l’action la plus courante, sans carte intermédiaire. <b>Maintenez</b> (½ s) : les autres choix s’ouvrent en éventail au-dessus du pouce — glissez dessus et relâchez, ou relâchez ailleurs pour annuler.</p>
+  <p>Fréquences des 90 derniers jours : vocal 22 · photo d’inspiration 11 · photo au Journal 10 · écrit 7.</p>
+  <div id="log">Le résultat s’affiche ici.</div>
+</main>
+<nav id="bar"></nav>
+<script>
+const ITEMS = [
+  { k:'write', i:'✍️', l:'Écrire', tap:'Écrire — aujourd’hui (champ ouvert)', hold:[['📅','Autre jour'],['#','Lier une œuvre / idée']] },
+  { k:'voice', i:'🎙️', l:'Vocal', tap:'Vocal — l’enregistrement démarre', hold:[['🎧','Importer (Dictaphone)'],['⏯','Note longue (pause)']] },
+  { k:'photo', i:'📷', l:'Photo', tap:'Photo — appareil photo, inspiration du jour', hold:[['📄','Document'],['👤','Carte de visite'],['🔍','QR d’une œuvre']] },
+  { k:'work',  i:'🖼️', l:'Œuvre', tap:'Œuvre — nouvelle œuvre', hold:[['⟳','Reprise'],['📷','Session terrain'],['🕰','Ancienne — retrouvée']] },
+]
+const bar = document.getElementById('bar'), log = document.getElementById('log')
+let timer = null, fan = null, hot = null, cur = null, held = false
+function say(t){ log.textContent = '→ ' + t }
+function closeFan(){ fan?.remove(); fan = null; hot = null; document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on')) }
+function openFan(btn, item){
+  held = true; btn.classList.add('on')
+  const r = btn.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top
+  fan = document.createElement('div'); fan.className = 'fan'
+  const veil = document.createElement('div'); veil.className = 'veil'; fan.appendChild(veil)
+  const n = item.hold.length, radius = 120
+  // An arc above the thumb, kept inside the screen.
+  item.hold.forEach(([ic, lb], idx) => {
+    const a = Math.PI * (0.15 + 0.7 * (n === 1 ? 0.5 : idx/(n-1)))
+    let x = cx - Math.cos(a) * radius, y = cy - Math.sin(a) * radius - 10
+    x = Math.min(window.innerWidth - 64, Math.max(64, x))
+    const c = document.createElement('button'); c.className = 'chip'; c.dataset.l = lb
+    c.innerHTML = `<span>${ic}</span><span>${lb}</span>`
+    c.style.left = x + 'px'; c.style.top = y + 'px'
+    c.addEventListener('click', () => { say(item.l + ' › ' + lb); closeFan() })
+    fan.appendChild(c)
+  })
+  veil.addEventListener('click', closeFan)
+  document.body.appendChild(fan)
+}
+ITEMS.forEach(item => {
+  const b = document.createElement('button')
+  b.innerHTML = `<span class="i">${item.i}</span><span>${item.l}</span><span class="h">maintenir : ${item.hold.length} choix</span>`
+  b.addEventListener('contextmenu', e => e.preventDefault())
+  b.addEventListener('pointerdown', e => { held = false; cur = item; b.setPointerCapture(e.pointerId)
+    timer = setTimeout(() => openFan(b, item), 450) })
+  b.addEventListener('pointermove', e => { if (!fan) return
+    const el = document.elementsFromPoint(e.clientX, e.clientY).find(x => x.classList?.contains('chip'))
+    fan.querySelectorAll('.chip').forEach(c => c.classList.toggle('hot', c === el)); hot = el || null })
+  b.addEventListener('pointerup', () => { clearTimeout(timer)
+    if (!held) { say(item.tap); return }
+    if (hot) { say(item.l + ' › ' + hot.dataset.l); closeFan() }
+    // Released without sliding: the fan stays open, a tap picks.
+  })
+  b.addEventListener('pointercancel', () => { clearTimeout(timer); closeFan() })
+  bar.appendChild(b)
+})
+</script>
+</body>
+</html>
