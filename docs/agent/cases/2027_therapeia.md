@@ -28,7 +28,7 @@ attachments** (`../ROLE.md`).
 - **Series meanings and title (27/11) → [`../SERIES.md`](../SERIES.md):** proposed title **ὄναρ / ὕπαρ** (Homer: dream
   in sleep / waking vision = « rêver le monde et vivre le monde rêvé »), beside « Paxos, l'île rêvée » — Pem chooses.
   Water is the element the series do not have yet; δένδρον for the olive trees and cypresses.
-- **Film (27/11):** script + storyboard, Tell (≈ 72 s) and Short (≈ 22 s), no studio, no face →
+- **Film (27/11):** script + storyboard, Reel (≈ 22 s) and short video (≈ 72 s), no studio, no face →
   [`../video/2026-11-27_onar-upar.md`](../video/2026-11-27_onar-upar.md). Pem's Instagram: 120 followers, no photos —
   the film can be the first post. **Nothing posted** without Pem's written OK.
 
