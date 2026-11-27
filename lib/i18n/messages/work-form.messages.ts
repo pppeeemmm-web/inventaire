@@ -83,8 +83,8 @@ export const workFormMessages = defineMessages({
     en: 'Production started',
   },
   wf_production_start_hint: {
-    fr: 'Année, mois ou jour : 2021, 06/2024, 22/08/2026. La fin se remplit seule quand l’œuvre est cataloguée ou archivée ; on peut aussi la corriger ici.',
-    en: 'Year, month or day: 2021, 2024-06, 2026-08-22. The end fills itself in when the work is catalogued or archived; it can also be corrected here.',
+    fr: 'Année, mois ou jour : 2021, 06/2024, 22/08/2026. La fin se remplit seule quand l’œuvre devient Prête (cataloguée, photo validée) — pas pour une œuvre retrouvée, qui garde son année ; on peut aussi la corriger ici.',
+    en: 'Year, month or day: 2021, 2024-06, 2026-08-22. The end fills itself in when the work becomes Ready (catalogued, photo validated) — not for a found work, which keeps its year; it can also be corrected here.',
   },
   wf_origin_hint: {
     fr: 'Nouvelle : la production démarre aujourd’hui. Ancienne : début inconnu. Sans choix : nouvelle, commencée aujourd’hui — sauf si l’année saisie est antérieure (œuvre ancienne).',

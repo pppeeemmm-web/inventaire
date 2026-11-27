@@ -1,5 +1,5 @@
 -- Rule 8 for found works (Pem's GO 2026-11-27 « GO 1+2 »; decided in docs/design/2026-11-27/FoundWorkFlow.md:
--- « a found work's end is its year when known; never today »). PROPOSAL — not applied; live only on Pem's own OK.
+-- « a found work's end is its year when known; never today »). Applied on live 2026-11-27 (Pem « Apply + merge PR »).
 --
 -- Problem: a work found again (production_origin = 'found', e.g. #2410–#2412, end 1999 precision year) waits for
 -- its photo. The day the photo is validated it becomes Prêt, and oeuvre_production_span replaced its end with
