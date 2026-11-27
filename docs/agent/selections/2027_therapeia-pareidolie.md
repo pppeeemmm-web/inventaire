@@ -43,7 +43,12 @@ Order for **Paréidolie** (galleries): 10, 9, 11 (strong drawing after the maste
 3. **Photo:** 14 of the 15 have their photo validated (catalogued, public); **#2340 *Pied* still has its photo to
    take** (catalogued, not public). Pem also checks each photo is the one to show.
 
-## Where it will live (when Pem says OK)
+## In the Hub (created 27/11, Pem: « won't be able to figure out which is which without a group done »)
+Work group **« Sélection 2027 — Therapeia + Paréidolie (proposition) »**, 15 works in the Therapeia order, attached to
+the Pipeline entry « Therapeia ». Seen in Thèmes (groups), the Inventory filter and the Therapeia Pipeline card.
+Pem adds, removes and reorders there.
+
+## Where it lives
 Not a new store: a **working group** on the Pipeline entry (`working_group` + `working_group_work`, same as an
 exhibition selection), one on « Therapeia », one on « Paréidolie 2027 — galerie », same works. The portfolio PDF
 (`app/atelier/(portal)/portfolio/`) is built from it.
