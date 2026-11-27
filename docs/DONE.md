@@ -2,6 +2,14 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-26 — Phone Journal fixes, « Ancienne — retrouvée » (Pem away; first batch through a pull request: #4, merged `fcc52e3`, live verified by `x-build-sha`)
+
+- `56a1ed2` a line or voice note saved on the phone shows in the Journal at once (the stream ignored the page's fresh copy; the voice sheet had no « saved » follow-up). Seen by Pem on the PR's Vercel preview.
+- `cd3d369` « Ancienne — retrouvée » on the phone add form (kept by « Tous les champs » and the draft) and in the work card (admin door `setProductionOrigin`; « retrouvée » on a new work clears its automatic start); `4ada0b0` the chosen button stays highlighted, « Enregistré dès le choix ». Seen by Pem on #2412; #2410 and #2411 set the same on live at Pem's request (found, 1999, catalogued, photo to take; stamped as Pem's edit).
+- `a3c0583` + `4ada0b0` the phone inspiration photo says « Envoi… » then the result on its button; the button no longer floats over the fields. Seen by Pem on the preview.
+- `f90eced` reader side of « Œuvres ajoutées » (one card per day) and paging of moment-only days — shows nothing until `supabase/sql/moment_work_added.sql` is applied (TODO).
+- Also: What's new 3.1.108; CLAUDE.md rule « work Pem does not watch lands through a draft pull request » (`ce55307`); design notes WorksAddedMoments, VirtualMoments. Not seen: the phone « Tous les champs » path (TODO). Two flow reviews ran; every « NOT updated » fixed before landing.
+
 ## 2026-11-23 — People built (Pem « If it needs to be built, we start building », design [People.md](./design/2026-11-22/People.md))
 
 - `75699a5` person timeline + « Vu » strips; `414ea8c` a captured work counts as new; `dece9b1` spheres, birth / death dates, links between people (SQL live); `4f8b360` moments, archive instead of delete, team changes in Pem's Fil with Vu / Revenir, privacy of moments; `fbd1e95` phone day counts moments, Fil names, phone « Revenir » confirm; `81e526b` custody history « Garde » + « Vie » in the timeline (SQL live); four-tab contact editor cdda771. Duplicate warning on create already live (`de5ce66`). What's new 3.1.106, 3.1.107. Relation-type labels in pivots / graph CSV: nothing to change, every relation type is shown raw there and the new kinds behave like the rest. Open: birthday reminders, journal entries naming the person in the timeline, « feu » on papers for a deceased person; E.164 phones and the autofill / label clean-up stay in TODO.

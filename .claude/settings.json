@@ -55,6 +55,17 @@
             "statusMessage": "Agent guard: checking subagent type..."
           }
         ]
+      },
+      {
+        "matcher": "mcp__.*[Ss]upabase.*__execute_sql",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/sql-readonly.mjs\"",
+            "timeout": 10,
+            "statusMessage": "SQL guard: read-only runs without asking..."
+          }
+        ]
       }
     ]
   },
