@@ -16,6 +16,7 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
      from the catalogue, draft messages (nothing sent).
   3. Week 3 — R&D note: capture in the field (pause / screen-off recording via Voice Memos, offline), cost + small proof.
   4. Week 4 — Pem's review: what was used, what it cost (time, tokens).
+- **Calendar of deadlines:** [`CALENDAR.md`](./CALENDAR.md) — Montrouge (check 1 Dec 2026, call may be open now), Paréidolie, DRAC AIC, Arts at CERN, COAL (« cog »? to confirm), Récits de Paysages, Saison du dessin.
 - **Active cases:** [`cases/2027_drac.md`](./cases/2027_drac.md) · [`cases/2027_pareidolie.md`](./cases/2027_pareidolie.md).
 - **Lead lists (sources + date inside):** [`leads/2026-11-27_art-worlds-sud.csv`](./leads/2026-11-27_art-worlds-sud.csv)
   (54 curated, 49 verified) · [`leads/2026-11-27_pac-members.csv`](./leads/2026-11-27_pac-members.csv) (70 PAC venues,
@@ -45,6 +46,7 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
+0. **1 Dec 2026: Salon de Montrouge** — confirm whether the call for the Feb 2027 salon is open and its deadline; if open, dossier draft for Pem at once (reminder scheduled in the 27/11 session).
 1. Pem: say yes / no to the Pipeline entries proposed in the two case files.
 2. Claude: week-1 data-quality report; Documents d'Artistes PACA requirements + dossier draft.
 3. Claude: shortlist of galleries for Paréidolie 2027 + drawing selection (case file).

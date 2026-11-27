@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-27
+- Pem asked to be reminded of the CERN residency, « the cog » (COAL? to confirm) and Montrouge → `CALENDAR.md`; reminder set for 1 Dec (Montrouge).
 - Roles set: data system strategist, art business developer / agent, R&D advisor (Pem) → `ROLE.md`, PR #6 #7.
 - Hard Rule: nothing reaches outside without Pem's written authorisation for that exact action (Pem) → `CLAUDE.md`.
 - Repository memory: `STATE.md` read first / updated last, this log (Pem: « remember everything »).
