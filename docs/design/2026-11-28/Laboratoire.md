@@ -139,6 +139,9 @@ which Stock items are it. A material page is an idea with `lab_role = matiere`; 
    the trials is the Laboratoire's first real game.
 5. **The book is in English** (most of Pem's materials are in English); French is used too — an entry may be written in either, and the Lexique gives each term in English first with the French (and Italian / German) beside it.
 
+6. **Who writes: Pem only (admin)** — the Laboratoire's ideas, recipes, steps, limits and trials are written by an
+   admin through the doors (`save_recipe` refuses anyone else); the team reads. (Pem 2026-11-28 « Only me ».)
+
 ## Questions for Pem (still open)
 
 1. Chapter order and names (Fonds → Pigments → Liants → Médiums → Procédés → Praxis)?
