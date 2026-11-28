@@ -7,8 +7,8 @@
 
 | Doc | Use when | Verified |
 |-----|----------|----------|
-| [`../SITE_MAP.md`](../SITE_MAP.md) | Every route and tab, the API route handlers — enforced by `npm run docs:routes:check` | 2026-11-18 |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-22 (work save read guard §5, Journal corrections §6b) |
+| [`../SITE_MAP.md`](../SITE_MAP.md) | Every route and tab, the API route handlers — enforced by `npm run docs:routes:check` | 2026-11-28 |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-28 (review guard, ai_job equipment, photo door, year pass) |
 | [`WORK_RULES.md`](./WORK_RULES.md) | **Work rulebook** — Pem's rules on a work's state, where each is enforced, who writes it, live breaks, what is next (batch 1 applied) | 2026-11-18 (push check via `checks:live`) |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`POLICY_NOTES.md`](./POLICY_NOTES.md) | Running list of small policy points to settle (delivery, returns, insurance, fate, COA, files) — each says where it will be written and who confirms | 2026-11-18 |
@@ -19,12 +19,14 @@
 | [`WHERE_WE_STOPPED.md`](./WHERE_WE_STOPPED.md) | **Read first after the pause** (17 Dec 2026): progress per aim, what was in flight, what comes first — first version of the progress dashboard | 2026-11-19 |
 | [`SITE_REVIEW_2026-11-16.md`](./SITE_REVIEW_2026-11-16.md) | Public site review (landing → works, references, daily-feed idea) — TODO R8, parked for Pem | 2026-11-16 |
 | [`DESIGN_DRAWER.md`](./DESIGN_DRAWER.md) | Work drawer (TODO R3) — today's blocks, live emptiness, Pem's agreed structure; next = mockups | 2026-11-16 |
-| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink leftovers / to build / to check once / parked | 2026-11-22 (after `c13e660`) |
-| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-22 |
+| [`TODO.md`](./TODO.md) | Live checklist — one line per open item: bugs to fix now / waiting on Pem / rethink leftovers / to build / to check once / parked | 2026-11-28 |
+| [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-28 |
 | [`design/2026-11-17/Rethink_Board.html`](./design/2026-11-17/Rethink_Board.html) | **Rethink board** — every R step by step, what waits on Pem | 2026-11-18 |
 | [`design/2026-11-21/BuildingPrinciples.md`](./design/2026-11-21/BuildingPrinciples.md) | **Building principles** — the twelve rules, the map of homes, phone and desk; read before any plan. Surveys beside it (`Survey_*.md`: museum standards, Journal capture, legacy, contacts, links, Delacroix) | 2026-11-21 |
 | [`design/2026-11-20/MasterPlan.md`](./design/2026-11-20/MasterPlan.md) | **Master plan** — scenario, target structure, the marching order (§5) to the pause; brief, scope interview and system map draft beside it | 2026-11-22 (steps 1–2 done) |
 | [`design/2026-11-19/CatalogueGaps.notes.md`](./design/2026-11-19/CatalogueGaps.notes.md) | Catalogue gaps, steps 1–8 (MasterPlan §4) | 2026-11-19 |
+| [`design/2026-11-28/`](./design/2026-11-28/) | This week's designs: review tool, Laboratoire, Équipement, one phone pattern (each note opens with a verified « Now » line) | 2026-11-28 |
+| [`agent/reports/`](./agent/reports/) | Claude's reports for Pem — week-1 system overview + data-quality report (`2026-11-28_system-overview.md`) | 2026-11-28 |
 | [`design/2026-11-18/`](./design/2026-11-18/) | This week's designs: R7b order chain, supply orders, collector share kit (Pem's answers), human What's new, Kaizen Création → Idées, products engine | 2026-11-18 |
 | [`LEGAL_POLICY.md`](./LEGAL_POLICY.md) + [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md) | Legal policy (France / EU) and the site's legal pages — drafts for a lawyer / accountant | 2026-11-17 (draft) |
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-16 |
@@ -33,7 +35,7 @@
 | [`lib/aide/`](../lib/aide/) | **In-app Aide** (`/atelier/aide`): team guide FR + EN — replaces the two guides below, chapter by chapter (team guide complete; admin guide 2026-11-18, admins only; the old guides and the Studio Bible retired 2026-11-18 → `archive/`). One parser (`markdown.ts`) for the page, the « ? » panel (`screen-map.ts`: screen → chapter) and the PDF guide (`pdf.ts`, `/atelier/aide/guide.pdf`) | Team 1–16 + admin 1–15 verified 2026-11-18 (complete) |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System ledger contract — screen unreachable since the Kaizen merge; `system_log` access | 2026-11-18 |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill; image copy + readable archive (`npm run archive`) | 2026-11-13 |
-| [`AI_ENGINES.md`](./AI_ENGINES.md) | Which AI engines run where (public site: none; Atelier: Ollama on the PC, optional OpenAI, Make captions) | 2026-11-18 |
+| [`AI_ENGINES.md`](./AI_ENGINES.md) | Which AI engines run where (public site: none; Atelier: Ollama on the PC, optional OpenAI, Make captions) | 2026-11-28 |
 | [`BROADCAST.md`](./BROADCAST.md) | Broadcast HTTP API + DB columns + key files | 2026-11-18 |
 | [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack (outside this repo) | 2026-11-18 |
 | [`CONSTELLATION.md`](./CONSTELLATION.md) | Constellation graph feature contract | 2026-11-18 |

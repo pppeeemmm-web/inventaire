@@ -1,5 +1,6 @@
 # An old work found again — the full flow
 
+Now (verified against `main` 2026-11-28): **Built, on `main`:** `287c9c6`, PR #11 (`c4a22b4`); SQL `found_work_history_line.sql` live (« apply the found line »). The status line below is the original.
 Status: **decided (Pem 2026-11-27), nothing built, no SQL applied.** TODO §1 « « Ancienne — retrouvée » writes a dated line in Historique »
 and « Marking a work « retrouvée » asks « Terminée ? » ». Pem 2026-11-27: « Historique shows latest date but should
 show something more precise like found again » · « I changed to catalogued because it was considered so — maybe need to

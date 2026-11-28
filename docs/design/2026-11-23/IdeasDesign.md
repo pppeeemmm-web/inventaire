@@ -1,5 +1,6 @@
 # Idées — research desks fed by the Journal (draft for Pem, 2026-11-23)
 
+Now (verified against `main` 2026-11-28): **Built, on `main`:** the tree of ideas (`ideas_tree.sql` live), desk and phone (`IdeasHome`, `IdeaDesk`); open: the voice-note link case in TODO « Now ». The status line below is the original.
 Status: **approved by Pem 2026-11-23** (chat: « I am happy to approve. It needs my using it to rate it and review it really. »). Local draft, not committed. Design only: no code, no SQL written; the SQL of §10 still needs its own OK. Pem judges it by using it: the first build step is put in his hands early (phone and desk), and the design is revised from that use. One rule left open on purpose (§8b).
 
 Pem 2026-11-23: « when I capture an idea, writing or recording, it can be an idea and therefore is listed as an idea, but it also remains as a journal entry. Ideas can be input from the phone, straight from the tab, or from the desktop. I'm wondering if ideas shouldn't be almost like desktops, with places with folders, writings, almost like a deep research section. And we could use the seed system. »

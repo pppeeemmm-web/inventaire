@@ -42,6 +42,7 @@ import { PersonLinks } from '@/components/atelier/PersonLinks'
 import { decideAiJob } from '@/app/atelier/(portal)/ai/actions'
 import { sameAddress, sameEmail, samePhone, sameUrl, type CardSuggestion } from '@/lib/ai-card-suggestion'
 import { contactLinks, LINK_GLYPH } from '@/lib/contacts/contact-links'
+import { PHONE_LABELS } from '@/lib/contacts/phone-labels'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useRouter } from 'next/navigation'
 
@@ -1216,14 +1217,19 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                     placeholder={t('contactEditorPhonePh')}
                     style={{ ...FIS, flex: narrow ? undefined : 2 }}
                   />
-                  <input
-                    value={p.label}
+                  {/* A fixed list (PHONE_LABELS); an old imported label stays shown until it is changed. */}
+                  <select
+                    value={p.label ?? ''}
                     onChange={(ev) =>
                       setPhoneList(phoneList.map((x, j) => (i === j ? { ...x, label: ev.target.value } : x)))
                     }
-                    placeholder={t('contactEditorLabelPh')}
-                    style={{ ...FIS, flex: narrow ? undefined : 1 }}
-                  />
+                    aria-label={t('contactEditorLabelPh')}
+                    style={{ ...FIS, flex: narrow ? undefined : 1, minHeight: 44 }}
+                  >
+                    <option value="">{t('contactEditorLabelPh')}</option>
+                    {PHONE_LABELS.map((l) => <option key={l} value={l}>{t(`contact_phone_label_${l.toLowerCase()}` as never)}</option>)}
+                    {p.label && !(PHONE_LABELS as readonly string[]).includes(p.label) ? <option value={p.label}>{t('contact_phone_label_old_fmt').replace('{label}', p.label)}</option> : null}
+                  </select>
                   <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setPhoneList(phoneList.filter((_, j) => i !== j))}>
                     ✕
                   </button>

@@ -1,5 +1,6 @@
 # One phone pattern for every list tab (design for Pem)
 
+Now (verified against `main` 2026-11-28): **Built, on `main` (PR #14):** steps 1–4 — shared pieces; Stock, Comptage, Coffre, Rapports, Fiscal « par année », Audit, Contacts, Kaizen, Production; a row opens its card over the list (Contacts, Stock). Système unchanged (its selects are form fields). The 375 px guard (`tests/phone-pattern.spec.ts`) not re-run since: its PENDING list should shrink. The status line below is the original.
 Status: **design + mockup (`PhonePattern.mockup.html`, Stock), nothing built.** Pem « Go phone pattern design »,
 2026-11-28, after the Stock screenshot (« as usual always the same UX problems ») and « you need the latest
 techniques to make it agile and usable instinctively ». Pem's standing rule: « avoid clutter and offer collapsible

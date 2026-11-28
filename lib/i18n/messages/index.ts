@@ -50,6 +50,7 @@ import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
 import { kaizenMessages } from './kaizen.messages'
 import { reviewMessages } from './review.messages'
+import { yearPassMessages } from './year-pass.messages'
 import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { custodyMessages } from './custody.messages'
@@ -140,6 +141,7 @@ export const featureMessages = {
   ...notesTriageMessages,
   ...kaizenMessages,
   ...reviewMessages,
+  ...yearPassMessages,
   ...reportsUiMessages,
   ...conditionMessages,
   ...custodyMessages,

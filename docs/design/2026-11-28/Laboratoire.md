@@ -1,5 +1,6 @@
 # Laboratoire — recipes, trials and the book (design for Pem)
 
+Now (verified against `main` 2026-11-28): **Built, on `main` (PR #14):** steps 1–4 — Équipement category, SQL (live), the tree in Idées, the recipe card (desk edit, phone read), « Essai » (Journal + label « essai » + the trials cell), the book « 📖 Livre » (reading view). Open: the book as PDF, step 6 (the material, Pem's content), « Ce qui n'a pas marché » (no data state), Lexique / material pages screens. The status line below is the original.
 Status: **design + mockup (`Laboratoire.mockup.html`), nothing built.** Pem « GO design », 2026-11-28.
 
 Pem, 2026-11-28: « extract ordered knowledge through conjectures, ideas, goals, praxis if possible: a book in other

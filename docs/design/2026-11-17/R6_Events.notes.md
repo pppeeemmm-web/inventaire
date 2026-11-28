@@ -47,7 +47,7 @@ This is about **today's Exhibitions tab** (the code live on `main`), not the new
 
 Read in the code (not yet measured — a build starts by measuring, per STRATEGY / usage-driven priorities), _verified against live code 2026-11-17_:
 
-6. **Every keystroke in « Éditer » is a server call and a full reload.** The info inputs call `onUpdate` on each `onChange` ([`ExhibitionDetail.tsx`](../../../components/atelier/exhibitions/ExhibitionDetail.tsx) lines 193–249) → `updateExhibitionProcess` (server action) → `setSelected({...})` → `load` is a `useCallback` on `[selected, deepLinkId]` ([`Exhibitions.tsx`](../../../app/atelier/(portal)/exhibitions/_components/Exhibitions.tsx) lines 70–84), so the effect **re-fetches every exhibition and every step** after each change — and again on every click in the list.
+6. **Every keystroke in « Éditer » is a server call and a full reload.** The info inputs call `onUpdate` on each `onChange` ([`ExhibitionDetail.tsx`](../../../components/atelier/exhibitions/ExhibitionDetail.tsx) lines 193–249) → `updateExhibitionProcess` (server action) → `setSelected({...})` → `load` is a `useCallback` on `[selected, deepLinkId]` (`Exhibitions.tsx` (removed 2026-11-28: replaced by `components/atelier/events/`) lines 70–84), so the effect **re-fetches every exhibition and every step** after each change — and again on every click in the list.
 7. **One step toggle rewrites every step, one after another.** `updateExhibitionProcess` loops over all steps with an awaited `insert` / `update` each ([`actions.ts`](../../../app/atelier/(portal)/exhibitions/actions.ts) lines 338–346): ticking 1 of 11 steps = 11 sequential round trips.
 8. **Works come from the Atelier shell's loaded batch** (`oeuvres` prop; the shell loads the first keyset chunk, then the rest after paint): the « Œuvres » tab and the floor plan filter that array, so a work not yet loaded is missing, and the whole array is re-filtered on each render.
 
@@ -121,7 +121,7 @@ _Verified against live code 2026-11-17_ (worktree HEAD `fb702c6`, on `origin/mai
 
 | Piece | Where | What it does |
 |---|---|---|
-| Tab | Studio group, `exhibitions` → `/atelier/exhibitions` ([`Exhibitions.tsx`](../../../app/atelier/(portal)/exhibitions/_components/Exhibitions.tsx)); deep link `?exhibition=<id>` | List left ([`ExhibitionsListPanel.tsx`](../../../components/atelier/exhibitions/ExhibitionsListPanel.tsx)), detail right ([`ExhibitionDetail.tsx`](../../../components/atelier/exhibitions/ExhibitionDetail.tsx)) |
+| Tab | Studio group, `exhibitions` → `/atelier/exhibitions` (`Exhibitions.tsx` (removed 2026-11-28: replaced by `components/atelier/events/`)); deep link `?exhibition=<id>` | List left ([`ExhibitionsListPanel.tsx`](../../../components/atelier/exhibitions/ExhibitionsListPanel.tsx)), detail right ([`ExhibitionDetail.tsx`](../../../components/atelier/exhibitions/ExhibitionDetail.tsx)) |
 | An exhibition | a Pipeline row: `suivi_process` with `type = 'exposition'`, statut not `perdu` / `annule` ([`actions.ts`](../../../app/atelier/(portal)/exhibitions/actions.ts) `listExhibitionsWithSteps`) | name, type, statut, dates, contact (the venue), place text, URL, notes |
 | « Vue d'ensemble » | detail sub-tab | steps (`suivi_etape`: add, rename, toggle, delete) + info fields (edit mode) |
 | « Calendrier » | sub-tab | start, steps by deadline, end; export to Google / Microsoft calendar ([`CalendarExportStrip.tsx`](../../../components/atelier/exhibitions/CalendarExportStrip.tsx)) |

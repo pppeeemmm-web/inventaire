@@ -2,6 +2,21 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-28 (4)
+
+- Tidy on Pem's « delete all »: 11 source files nothing imported (old phone home `HubHomeClient`, old Exhibitions tab, `oeuvre-historique`, `LandingPdfPopup`, `DrawerContentSaveFooter`, `AsyncButton`, `BlockLayoutCell`, `assert-contact-email-synced`, `broadcast-queue-types`, `worksUx`, `drawer-content-utils`, ~1 650 lines) and the 4 `.ps1` hooks replaced by `guard.mjs` / `session-start.mjs`; the five checks pass without them. The cloud session's 10 scratch worktrees removed. The two old branches (`claude/eloquent-johnson-zlbeqx`, `claude/github-repo-fixes-liz9zp`, fully in main) could not be deleted from the cloud (its git access pushes only its own branch): Pem deletes them on GitHub.
+- Journal #53 « Test note » and #54 « @Natural Pigments EU tell test » (hidden test notes, 26/11) deleted on Pem's « delete 53 54 » (`journal_delete_53_54.sql`: the two guards off for that transaction only, link #100 and the two graph nodes with them); re-read live: 0 left, guards enabled, 62 entries.
+- `stock_photo_key_shape.sql` live (« Apply photo rule »).
+
+## 2026-11-28 (3) — Review tool, phone pattern on 7 tabs, « Dire » → PC, Laboratoire screens + book, Équipement photo (PR #14, `1f1f055`)
+
+- Review tool (ReviewTool.md steps 1–5): desk window « ⚑ Revue » `f9cf3b7`, phone sheet `9aee767`, floating ⚑ on every phone screen `d963497`; `kaizen_review_tool.sql` live (« Apply sql »); flow-review fixes `8dd747b`.
+- Ollama for « Dire »: « Envoyer au PC », the agent's `equipment.mjs`, « Proposé par le PC (n) » `fa6275c`; `ai_job_equipment.sql` live (« Apply sql »).
+- Phone pattern: Coffre `a08db5c`, Rapports `f488bf8`, Fiscal « par année » + Audit `92d24ca`, Contacts `3adf94b`, Kaizen + Production `efd90ae`, a row opens its card over the list `5a86605`.
+- Laboratoire: data part `57597c6` (readLab, saveRecipe, plantLabIdea, addTrial), screens `456189a`, the book `abebeda` + `8e26971`; `laboratoire_essai_label.sql` live (« Apply sql »).
+- Équipement photo per item: door `8f134cb`, screen `c9a693a`, key-shape fixes `2294d16`; `stock_photo_key_shape.sql` live (« Apply photo rule »).
+- Session tooling: session start in Node listing unmerged branches `54602be`; guards in Node `b06f06d`.
+
 ## 2026-11-28 (2) — Phone pattern, Laboratoire and equipment SQL, Équipement, one Stock door (PR #12)
 
 - `7109eef` one phone pattern: shared pieces (`components/shared/phone/`), Stock on the phone list-first, header overlap fixed, the 375 px guard per element; `4e66f4b` Comptage counts on the phone, Fiscal's expenses with a fixed Date column.

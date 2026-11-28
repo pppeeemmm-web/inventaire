@@ -1,5 +1,6 @@
 # Studio equipment — what is in the studio, where, in what state (design for Pem)
 
+Now (verified against `main` 2026-11-28): **Built, on `main` (PR #14):** category « Équipement », the studio tree, the item card, « 🎙️ Dire » split on the device or « Envoyer au PC » (Ollama, `ai_job_equipment.sql` live), a photo per item. Open: QR labels for places (no place has a code, no zones / shelves yet; SQL + a place page), papers and tasks linked to an item, photo → proposed lines. The status line below is the original.
 Status: **design + mockup (`Equipment.mockup.html`), nothing built.** Pem « Go design the equipment system »,
 2026-11-28. Companion of [`Laboratoire.md`](./Laboratoire.md) (recipe steps name the equipment they need).
 

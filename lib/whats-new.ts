@@ -102,7 +102,8 @@
 // '3.1.110' (2026-11-27): phone bar tap = do / hold = choose; phone numbers in one form; voice note pause / import; found work asks the year and « Terminée ? »; contacts on the phone; theme / group changes reach every screen.
 // '3.1.109' (2026-11-27): phone menu — Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » ↔ « ← Formulaire court ».
 // '3.1.112' (2026-11-28 eve): review window, phone pattern on five more tabs, « Envoyer au PC », Laboratoire screens.
-export const WHATS_NEW_RELEASE = '3.1.112'
+// '3.1.113' (2026-11-28 pm): the year pass, phone labels from a fixed list.
+export const WHATS_NEW_RELEASE = '3.1.113'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -128,6 +129,8 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'year_pass', day: '2026-11-28', spot: 'inventory', admin: true },
+  { id: 'contacts_phone_labels_list', day: '2026-11-28', spot: 'contacts' },
   { id: 'review_phone', day: '2026-11-28', spot: 'kaizen-ops' },
   { id: 'equipment_photo', day: '2026-11-28', spot: 'stock' },
   { id: 'laboratoire_book', day: '2026-11-28', spot: 'concepts', admin: true },

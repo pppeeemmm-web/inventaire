@@ -7,6 +7,16 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.112 (2026-11-28 eve) — review window; phone pattern on Coffre, Rapports, Fiscal, Audit, Contacts; « Envoyer au PC »; Laboratoire.
+  wn_year_pass_t: { fr: 'La passe des années', en: 'The year pass' },
+  wn_year_pass_d: {
+    fr: 'Menu ☰ → Catalogue → « Passe des années » : les œuvres sans année, une à une sur le téléphone, avec les années déjà connues de leurs thèmes. La sélection Therapeia / Paréidolie d’abord, puis les dessins.',
+    en: 'Menu ☰ → Catalogue → « Year pass »: works with no year, one at a time on the phone, with the years already known in their themes. The Therapeia / Paréidolie selection first, then the drawings.',
+  },
+  wn_contacts_phone_labels_list_t: { fr: 'Téléphones : une liste de libellés', en: 'Phones: a list of labels' },
+  wn_contacts_phone_labels_list_d: {
+    fr: 'Le libellé d’un numéro se choisit dans une liste : Mobile, Domicile, Travail, Autre.',
+    en: 'A number’s label is chosen from a list: Mobile, Home, Work, Other.',
+  },
   wn_review_phone_t: { fr: '« ⚑ » aussi sur le téléphone', en: '« ⚑ » on the phone too' },
   wn_review_phone_d: {
     fr: 'Dans le menu ☰ : signaler un bug ou noter une idée sur l’écran ouvert, au clavier ou à la voix, avec des captures prises dans Photos.',

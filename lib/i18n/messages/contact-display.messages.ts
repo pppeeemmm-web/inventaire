@@ -28,6 +28,11 @@ export const contactDisplayMessages = defineMessages({
   },
   // Phone (Pem 2026-11-27: « avoid clutter, offer collapsible and interactive presentation »).
   contacts_phone_count_fmt: { fr: '{n} contacts', en: '{n} contacts' },
+  contact_phone_label_mobile: { fr: 'Mobile', en: 'Mobile' },
+  contact_phone_label_home: { fr: 'Domicile', en: 'Home' },
+  contact_phone_label_work: { fr: 'Travail', en: 'Work' },
+  contact_phone_label_other: { fr: 'Autre', en: 'Other' },
+  contact_phone_label_old_fmt: { fr: '{label} (ancien)', en: '{label} (old)' },
   contacts_phone_empty: { fr: 'Aucun contact', en: 'No contacts' },
   contacts_phone_search_in: { fr: 'Chercher dans', en: 'Search in' },
   contacts_phone_sphere: { fr: 'Sphère', en: 'Sphere' },

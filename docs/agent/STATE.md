@@ -32,6 +32,9 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   [`Equipment.md`](../design/2026-11-28/Equipment.md); research copies in [`research/`](./research/).
 
 ## What the data say (keep, re-check monthly)
+- **Week-1 report (28/11):** [`reports/2026-11-28_system-overview.md`](./reports/2026-11-28_system-overview.md) — drawings mostly
+  have no year (Crayons 211 / 251, Graphite 61 / 62); 2025–2026 works mostly have no dimensions (148 / 154, 139 / 206);
+  575 works no theme. Proposed: a phone « year pass » then a « measuring pass » (Pem's GO).
 - Catalogue ≈ 1 180 works; ≈ 70 % on paper (Crayons 251, Graphite 62, Pierre noire 49, Encre noire 75, Pastel 41…),
   Huile 333 — lead with drawing, then oil.
 - Contacts: few art-world cards (4 galleries / gallerists, 5 institutions, 1 collector, 1 adviser).
@@ -71,36 +74,22 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, draft PR #14:** review window
-  « ⚑ Revue » (Kaizen « App », proposé → ouvert → à vérifier → confirmé), phone pattern on Coffre / Rapports /
-  Fiscal « par année » / Audit / Contacts, « Dire » → « Envoyer au PC » (Ollama), Laboratoire screens (tree, recipe
-  card, « Essai »). Its SQL is **live** (« Apply sql »: kaizen_review_tool, ai_job_equipment, laboratoire_essai_label).
-  Next: Vercel preview of PR #14 → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
-  browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
-  fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
-- **Waves 1 + 2 (Pem « go wave 1 and then 2 », 28/11) on PR #14 too:** ⚑ in the phone ☰ menu (review sheet),
-  Laboratoire « 📖 Livre » (`/api/ideas?book=`), phone step 4 (Contacts / Stock: the card over the list, the list keeps
-  its place), Équipement photo per item (`setStockItemPhoto`), Kaizen + Production on the phone toolbar, guards in Node
-  (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
-  no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
-  n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
-- **Floating ⚑ on every phone screen** (`d963497`, Pem « Go »): bottom right, over the screen in use. **Pem tried the
-  preview on the phone: « All good » (28/11).** Next: Pem's desk check (⚑ window, Approuver / Confirmer, recipe edit) or
-  Pem merges PR #14 as it is; then batch C (data-quality report) and the design-note status lines.
-- **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
-  unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
-  …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
-  `pwsh` is missing in cloud sessions, so the commit / push / agent guards (`.ps1`) do not run there — port to Node
-  (parked, its own GO). If a read still prompts, the claude.ai Supabase connector's own setting is the cause.
-- Then batch C — the system overview + data-quality report (read only).
-- PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
-  Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.
-  `gen:types` not run in the cloud (no token): the equipment / lab columns are read through a loose client.
-- Pem's word needed: delete Journal #53 / #54 by switching off the no-delete guard, or keep them hidden.
+- **Shipped 28/11:** PR #14 merged (`1f1f055`, review tool desk + phone + floating ⚑, phone pattern on 7 tabs, « Dire » →
+  PC, Laboratoire screens + book, Équipement photo, session start + guards in Node). Pem tried the phone side
+  (« All good »); **desk not tried yet:** ⚑ window, Kaizen Approuver / Confirmer, recipe edit. Deploy not proven from the
+  cloud (no access to the live host).
+- **Draft PR #15, not merged:** week-1 report, design notes' « now » lines, year pass (`/atelier/year-pass`), phone labels
+  from a list, Journal #53 / #54 deleted (live), photo-key rule (live), TODO → DONE. Pem merges after a phone check.
+- **Waiting on Pem:** delete the branches `claude/eloquent-johnson-zlbeqx` and `claude/github-repo-fixes-liz9zp` on GitHub (fully in main; the cloud cannot delete other branches) · `clean labels` (5 old phone labels) · « better autofill » (which form?) · the two reminder calls
+  (return-period reminders on Idées; « Emportée aujourd'hui » by default) · R4 / R6 look at the desk · `GO measuring pass`.
+- **At the desk (Pem):** `npm run ai:agent` (Ollama « Dire »), `npm run test:e2e:field` (375 px guard: take Coffre,
+  Contacts, Rapports, Fiscal out of PENDING), `npm run gen:types`.
+- **Open, not built:** « c. » for every date (design + SQL) · QR labels (needs shelves / boxes in the tree + SQL) ·
+  Laboratoire PDF, material, « Ce qui n'a pas marché » · year pass desk link.
 - Doerner's own rye-flour recipe: not found online yet (his tempera chapter, 1934 English edition).
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
 0b. **Pem (Therapeia, open since 27/11):** title ὄναρ / ὕπαρ or « Paxos, l'île rêvée » · Reel length (22 s planned) ·
    shoot the six shots of `video/2026-11-27_onar-upar.md` · (Pipeline dated + reminder 15/12 + contact #975: done 27/11) · verify Journal #57 · merge PR #9.
 1. Claude: one selection for Therapeia + Paréidolie proposed 27/11 → [`selections/2027_therapeia-pareidolie.md`](./selections/2027_therapeia-pareidolie.md) (Pem chooses; years missing on 11 of 15). Gallery shortlist by 20 Dec.
-2. Claude: week-1 **system overview** (every table: what it holds, used / empty and why) + data-quality report on it; Documents d'Artistes PACA requirements + dossier draft.
+2. Claude: Documents d'Artistes PACA requirements + dossier draft (the week-1 report is done: `reports/2026-11-28_system-overview.md`).
 3. Claude: shortlist of galleries for Paréidolie 2027 + drawing selection (case file).
