@@ -47,6 +47,9 @@ function run(input) {
 
   if (mode === 'commit') {
     if (!/(^|[;&|]\s*)git\s+commit(\s|$)/.test(cmd)) process.exit(0)
+    // `git add … && git commit` in one command: this runs before the add, so the index cannot be judged yet.
+    const at = cmd.search(/(^|[;&|]\s*)git\s+commit(\s|$)/)
+    if (/(^|[;&|]\s*)git\s+add(\s|$)/.test(cmd.slice(0, at))) process.exit(0)
     if (!sources(git('diff', '--cached', '--name-only', '--diff-filter=ACMRT')).length) {
       block('Commit blocked: no staged source files were found. Stage the intended source files before committing, and do not commit build artifacts.')
     }
