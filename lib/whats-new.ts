@@ -130,6 +130,7 @@ export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
   { id: 'contacts_phone_label_type', day: '2026-11-28', spot: 'contacts' },
   { id: 'contacts_private_admin', day: '2026-11-28', spot: 'contacts' },
   { id: 'work_save_clear_messages', day: '2026-11-28', spot: 'inventory' },
+  { id: 'stock_equipment_view', day: '2026-11-28', spot: 'stock' },
   { id: 'stock_phone_list', day: '2026-11-28', spot: 'stock' },
   { id: 'stock_equipment', day: '2026-11-28', spot: 'stock' },
   { id: 'fil_revert_safe', day: '2026-11-28', spot: 'journal', admin: true },

@@ -28,6 +28,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Au téléphone, Stock s’ouvre sur la liste : une recherche qui reste en haut, des filtres en une touche (Pigment, Liant, Équipement), « Filtres » ouvre une feuille avec catégories, fournisseurs et stock bas, « Voir n articles » ; « … » pour l’export, « + » pour un nouvel article. Le titre en haut ne chevauche plus le nombre d’œuvres.',
     en: 'On the phone, Stock opens on the list: a search that stays at the top, one-tap filters (Pigment, Binder, Equipment), « Filters » opens a sheet with categories, suppliers and low stock, « Show n items »; « … » for export, « + » for a new item. The title at the top no longer runs into the works count.',
   },
+  wn_stock_equipment_view_t: { fr: 'Stock : vue « Équipement » et « Dire »', en: 'Stock: « Equipment » view and « Say »' },
+  wn_stock_equipment_view_d: {
+    fr: 'Stock › Équipement montre l’atelier lieu par lieu (zone, meuble, boîte) et ce qui s’y trouve ; chaque objet a sa fiche (état, année d’arrivée, lieu, notes). Devant une étagère, « 🎙️ Dire » : dites ou tapez ce qu’il y a, cochez les lignes proposées, « Ajouter ». Le découpage se fait sur l’appareil, rien n’est envoyé ailleurs.',
+    en: 'Stock › Equipment shows the studio place by place (zone, furniture, box) and what sits there; each item has its card (condition, year it arrived, place, notes). At a shelf, « 🎙️ Say »: say or type what is there, tick the proposed lines, « Add ». The split happens on the device, nothing is sent anywhere.',
+  },
   wn_stock_equipment_t: { fr: 'Stock : catégorie « Équipement »', en: 'Stock: « Equipment » category' },
   wn_stock_equipment_d: {
     fr: 'Les outils durables de l’atelier (molette, balance, plaque chauffante…) se rangent dans le Stock sous « Équipement ».',
