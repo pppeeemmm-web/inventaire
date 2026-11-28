@@ -12,7 +12,7 @@ flexibility, compatibility, layering, maximum thickness and supports are the lim
 
 | Thing | Kind | Home | Change |
 |---|---|---|---|
-| The field, its chapters, goals, conjectures, rules, recipes, material pages | An idea with a role in the Laboratoire | Idées (`concept`), tree by `parent_id` (exists: « Laboratoire » → « Huile : indice de réfraction et saturation ») | Two columns: `lab_role` (chapitre · but · conjecture · regle · recette · matiere) and `position` (order inside a chapter) — SQL |
+| The field, its chapters, goals, conjectures, rules, recipes, material pages | An idea with a role in the Laboratoire | Idées (`concept`), tree by `parent_id` (exists: « Laboratoire » → « Huile : indice de réfraction et saturation ») | Two columns: `lab_role` (chapitre · but · conjecture · regle · recette · matiere · terme) and `position` (order inside a chapter) — SQL |
 | A recipe's ingredients | Lines with an amount or ratio | **New** `recipe_ingredient` | Why no existing home: an idea holds text, not quantities to scale |
 | A recipe's steps | Ordered lines with a time and equipment | **New** `recipe_step` | Why: order, times and tools are not text |
 | A recipe's limits (adhesion, flexibility…) | One value per criterion, by source | **New** `lab_assessment` | Why: the same grid for every recipe, so they compare; literature and trials side by side |
@@ -42,6 +42,12 @@ cours → abandonné / devenu règle).
 
 ## The recipe card (Theophilus' order)
 
+- **But** — what the recipe is for, in Pem's words (Temperone: mix water and oil; quick drying with time to work
+  before it sets for good; flexibility from the oil and Venice turpentine; chroma as high as the pigments allow;
+  quick grisaille). Every recipe and conjecture opens with it (Pem 2026-11-28: « name what the aim of the recipe
+  is for »).
+- **Déclencheur** — what started the research (a book, a painting seen, a failure). Temperone: Doerner's rye-flour
+  tempera, Kremer's « used by Tintoretto », then Tintoretto at the Thyssen.
 - **Ingrédients** — each a Stock item (PW6, huile de lin pressée à froid, calcite…) or free text; an amount + unit,
   or a ratio. « Échelle : 50 g » recomputes every line. « Fait » can deduct the amounts from Stock (asked each time).
 - **Étapes** — ordered; each with an optional time (« repos 24 h »), the equipment it needs (a Stock item in
@@ -62,6 +68,16 @@ maigre, nombre de couches) · Épaisseur maximale par couche · Supports (pannea
 Maniement (temps ouvert, pinceau / couteau) · Conservation du mélange · Santé / coût.
 
 Value per cell: ✓ tient · ~ sous condition (+ the condition) · ✗ ne tient pas · ? inconnu — plus a short note.
+
+## Lexique — the technical vocabulary (Mayer's glossary)
+
+Pem 2026-11-28: « there is a very large technical vocabulary as well ». The book ends with a glossary, French
+first with the English / Italian / German word beside it (sources mix languages): émulsion (maigre / grasse),
+tempera grassa, gras sur maigre, térébenthine de Venise (baume de mélèze) ≠ essence de térébenthine, huile cuite /
+standolie, siccatif, imprimeure, aparejo, gesso, demi-pâte, empâtement, glacis, frottis, velatura, grisaille,
+technique mixte (Mischtechnik), embu, chancis, craquelure, repentir, saponification, CPVC… A term is a short entry
+(an idea with `lab_role = terme`): definition, where it is used (recipes, chapters), the source. Words in recipe and
+chapter text link to it (principle 13: one way to link).
 
 ## Material pages (Mayer / Doerner)
 
