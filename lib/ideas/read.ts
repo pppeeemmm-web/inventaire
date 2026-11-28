@@ -333,3 +333,70 @@ async function readLab(supabase: Supabase, id: string): Promise<LabDesk | null> 
 function dayDiff(a: string, b: string): number {
   return Math.round((new Date(`${b}T12:00:00Z`).getTime() - new Date(`${a}T12:00:00Z`).getTime()) / 86_400_000)
 }
+
+// ── Laboratoire book (Laboratoire.md build step 4): the whole field in the book's order, one read ──────────────────
+export type LabBookNode = {
+  id: string
+  title: string
+  text: string
+  role: NonNullable<ReturnType<typeof labRoleOf>>
+  stage: string
+  version: number | null
+  children: LabBookNode[]
+  ingredients: LabDesk['ingredients']
+  steps: LabDesk['steps']
+  assessments: LabDesk['assessments']
+}
+
+function labRoleOf(x: unknown) {
+  return isLabRole(x) ? x : null
+}
+
+/**
+ * The book of one Laboratoire field (or chapter): every Laboratoire idea under it, ordered by `position` (then title),
+ * with each recipe's lines / steps and each recipe's or conjecture's grid. Bounded: 4 levels, 500 ideas.
+ */
+export async function readLabBook(rootId: string): Promise<{ root: LabBookNode } | { error: string }> {
+  if (!UUID_RE.test(rootId)) return { error: 'id' }
+  const c = await ctx()
+  if ('error' in c) return c
+  const sb = c.supabase as unknown as Loose
+  type Row = { id: string; titre: string | null; description: string | null; lab_role: string | null; position: number | null; maturity: string | null; lab_version: number | null; parent_id: string | null }
+  const cols = 'id, titre, description, lab_role, position, maturity, lab_version, parent_id'
+  const { data: top, error } = await sb.from('concept').select(cols).eq('id', rootId).maybeSingle()
+  if (error) return { error: 'read' }
+  if (!top || !labRoleOf((top as Row).lab_role)) return { error: 'not_found' }
+  const rows: Row[] = [top as Row]
+  let level = [rootId]
+  for (let depth = 0; depth < 4 && level.length && rows.length < 500; depth++) {
+    const { data: kids } = await sb.from('concept').select(cols).in('parent_id', level).not('lab_role', 'is', null).limit(500)
+    const next = ((kids ?? []) as Row[]).filter((k) => !rows.some((r) => r.id === k.id))
+    rows.push(...next)
+    level = next.map((k) => k.id)
+  }
+  const recipes = rows.filter((r) => r.lab_role === 'recette').map((r) => r.id)
+  const graded = rows.filter((r) => r.lab_role === 'recette' || r.lab_role === 'conjecture').map((r) => r.id)
+  const [ing, steps, grid] = await Promise.all([
+    recipes.length ? sb.from('recipe_ingredient').select('recipe_id, position, stock_item_id, label, amount, unit, ratio_pct, note, stock_item(name)').in('recipe_id', recipes).order('position') : null,
+    recipes.length ? sb.from('recipe_step').select('recipe_id, position, body, duration, equipment_stock_item_id, warning, stock_item(name)').in('recipe_id', recipes).order('position') : null,
+    graded.length ? sb.from('lab_assessment').select('subject_id, criterion, source, sign, score, note, source_ref, journal_entry_id').in('subject_id', graded) : null,
+  ])
+  for (const r of [ing, steps, grid]) if (r?.error) await logError('lab book read failed', r.error, { source: 'ideas.readLabBook', metadata: { rootId } })
+  const nameOf = (x: unknown) => (x && typeof x === 'object' && 'name' in x ? String((x as { name: unknown }).name ?? '') || null : null)
+  const node = (r: Row): LabBookNode => ({
+    id: r.id,
+    title: r.titre?.trim() || '—',
+    text: r.description ?? '',
+    role: labRoleOf(r.lab_role) ?? 'champ',
+    stage: r.maturity ?? 'graine',
+    version: r.lab_version ?? null,
+    children: rows
+      .filter((k) => k.parent_id === r.id && k.id !== r.id)
+      .sort((a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || (a.titre ?? '').localeCompare(b.titre ?? ''))
+      .map(node),
+    ingredients: (ing?.data ?? []).filter((x) => x.recipe_id === r.id).map((x) => ({ stockItemId: x.stock_item_id ?? null, stockName: nameOf(x.stock_item), label: x.label ?? null, amount: x.amount ?? null, unit: x.unit ?? null, ratioPct: x.ratio_pct ?? null, note: x.note ?? null })),
+    steps: (steps?.data ?? []).filter((x) => x.recipe_id === r.id).map((x) => ({ body: x.body, duration: x.duration ?? null, equipmentId: x.equipment_stock_item_id ?? null, equipmentName: nameOf(x.stock_item), warning: x.warning ?? null })),
+    assessments: (grid?.data ?? []).filter((x) => x.subject_id === r.id).map((x) => ({ criterion: x.criterion, source: x.source, sign: x.sign, score: x.score ?? null, note: x.note ?? null, sourceRef: x.source_ref ?? null, journalEntryId: x.journal_entry_id ?? null })),
+  })
+  return { root: node(top as Row) }
+}
