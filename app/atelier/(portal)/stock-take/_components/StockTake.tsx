@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { labelStockCategory } from '@/lib/i18n/stockCategories'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { PhoneListToolbar, PhoneChip } from '@/components/shared/phone/PhoneListToolbar'
+import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
 import { toast } from '@/lib/ui/toast'
 import { stringifyError } from '@/lib/error'
 import {
@@ -123,9 +125,12 @@ export function StockTake({ contacts }: Props) {
     setApplyModal(false)
   }
 
-  const stepStyle = narrow
-    ? { minWidth: 44, minHeight: 44, padding: 0 }
-    : { minWidth: 32, minHeight: 32, padding: '2px 6px' }
+  // One way to change a count, for the desk table and the phone rows alike.
+  const setCount = (id: number, v: number) => setCounts((prev) => ({ ...prev, [id]: v }))
+  const bump = (id: number, d: number) => setCounts((prev) => ({ ...prev, [id]: d < 0 ? Math.max(0, (prev[id] ?? 0) + d) : (prev[id] ?? 0) + d }))
+
+  const stepStyle = { minWidth: 32, minHeight: 32, padding: '2px 6px' }
+  const phoneStep = { minWidth: 44, minHeight: 44, padding: 0 }
 
   return (
     <div
@@ -135,6 +140,7 @@ export function StockTake({ contacts }: Props) {
         flexDirection: 'column',
         height: '100%',
         minWidth: 0,
+        overflowY: narrow ? 'auto' : undefined,
         padding: narrow
           ? `12px 12px max(12px, env(safe-area-inset-bottom))`
           : '24px 32px',
@@ -183,60 +189,74 @@ export function StockTake({ contacts }: Props) {
         )}
       </div>
 
-      <div
-        data-testid="atelier-stock-take-toolbar"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 10,
-          alignItems: 'center',
-          marginBottom: 12,
-          flexShrink: 0,
-        }}
-      >
-        <input
-          type="search"
-          className="t-mono-sm"
+      {narrow ? (
+        <PhoneListToolbar
+          query={search}
+          onQuery={setSearch}
           placeholder={t('stock_take_search_ph')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: '1 1 200px',
-            minWidth: 120,
-            maxWidth: 360,
-            padding: '10px 12px',
-            background: 'var(--bg0)',
-            border: '1px solid var(--bd)',
-            color: 'var(--tx)',
-            borderRadius: 4,
-          }}
+          chips={<PhoneChip label={t('stock_take_diff_only')} active={diffOnly} onClick={() => setDiffOnly((v) => !v)} />}
+          testId="atelier-stock-take-phone-toolbar"
         />
-        <label
-          className="t-mono-sm"
+      ) : (
+        <div
+          data-testid="atelier-stock-take-toolbar"
           style={{
-            display: 'inline-flex',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 10,
             alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
+            marginBottom: 12,
+            flexShrink: 0,
           }}
         >
           <input
-            type="checkbox"
-            checked={diffOnly}
-            onChange={(e) => setDiffOnly(e.target.checked)}
+            type="search"
+            className="t-mono-sm"
+            placeholder={t('stock_take_search_ph')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: '1 1 200px',
+              minWidth: 120,
+              maxWidth: 360,
+              padding: '10px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              color: 'var(--tx)',
+              borderRadius: 4,
+            }}
           />
-          {t('stock_take_diff_only')}
-        </label>
-      </div>
+          <label
+            className="t-mono-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={diffOnly}
+              onChange={(e) => setDiffOnly(e.target.checked)}
+            />
+            {t('stock_take_diff_only')}
+          </label>
+        </div>
+      )}
 
       <div
         data-testid="atelier-stock-take-scroll"
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          border: '1px solid var(--bd)',
-          background: 'var(--bg1)',
-        }}
+        style={
+          narrow
+            ? { flex: '1 0 auto' }
+            : {
+                flex: 1,
+                overflow: 'auto',
+                border: '1px solid var(--bd)',
+                background: 'var(--bg1)',
+              }
+        }
       >
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--tx3)' }}>
@@ -249,6 +269,77 @@ export function StockTake({ contacts }: Props) {
         ) : filteredItems.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--tx3)' }}>
             {t('stock_take_no_rows_filtered')}
+          </div>
+        ) : narrow ? (
+          <div data-testid="atelier-stock-take-phone-list">
+            {categories.map((cat) => (
+              <div key={cat}>
+                <h3 className="t-eyebrow" style={{ color: 'var(--tx3)', margin: '14px 0 4px' }}>
+                  {cat === UNCATEGORIZED_BUCKET
+                    ? t('stock_uncategorized')
+                    : labelStockCategory(cat, t)}
+                </h3>
+                <ul style={{ margin: 0, padding: 0 }}>
+                  {filteredItems
+                    .filter((it) => bucketFor(it) === cat)
+                    .map((it) => {
+                      const diff = counts[it.id] - it.quantity
+                      const sup = contacts.find((c) => c.ContactID === it.supplier_id)
+                      const supName = sup ? supplierDisplayName(sup) : '\u2014'
+                      return (
+                        <PhoneListRow
+                          key={it.id}
+                          title={it.name}
+                          sub={`${supName} · ${it.quantity} ${it.unit}`.trim()}
+                          value={diff > 0 ? `+${diff}` : diff === 0 ? '\u2014' : String(diff)}
+                          alert={diff !== 0}
+                          testId={`atelier-stock-take-row-${it.id}`}
+                          trailing={
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                className="btn sm ghost"
+                                style={phoneStep}
+                                onClick={() => bump(it.id, -1)
+                                }
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                value={counts[it.id] ?? 0}
+                                onChange={(e) => setCount(it.id, Number(e.target.value))
+                                }
+                                style={{
+                                  width: 64,
+                                  minHeight: 44,
+                                  textAlign: 'center',
+                                  padding: '4px',
+                                  background: 'var(--bg0)',
+                                  border: '1px solid var(--bd)',
+                                  color: 'var(--tx)',
+                                  fontSize: 16,
+                                  fontWeight: 600,
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="btn sm ghost"
+                                style={phoneStep}
+                                onClick={() => bump(it.id, 1)
+                                }
+                              >
+                                +
+                              </button>
+                            </div>
+                          }
+                        />
+                      )
+                    })}
+                </ul>
+              </div>
+            ))}
           </div>
         ) : (
           <table className="tbl" data-testid="atelier-stock-take-table" style={{ border: 'none' }}>
@@ -264,13 +355,13 @@ export function StockTake({ contacts }: Props) {
                 <th style={{ paddingLeft: 20 }}>{t('stock_take_th_name')}</th>
                 <th>{t('stock_take_th_supplier')}</th>
                 <th className="num">{t('stock_take_th_theoretical')}</th>
-                <th className="num" style={{ width: narrow ? 140 : 120 }}>
+                <th className="num" style={{ width: 120 }}>
                   {t('stock_take_th_actual')}
                 </th>
-                <th className="num" style={{ width: narrow ? 96 : 80 }}>
+                <th className="num" style={{ width: 80 }}>
                   {t('stock_take_th_diff')}
                 </th>
-                <th style={{ width: narrow ? 52 : 40 }} />
+                <th style={{ width: 40 }} />
               </tr>
             </thead>
             <tbody>
@@ -332,11 +423,7 @@ export function StockTake({ contacts }: Props) {
                                 type="button"
                                 className="btn sm ghost"
                                 style={stepStyle}
-                                onClick={() =>
-                                  setCounts((prev) => ({
-                                    ...prev,
-                                    [it.id]: Math.max(0, (prev[it.id] ?? 0) - 1),
-                                  }))
+                                onClick={() => bump(it.id, -1)
                                 }
                               >
                                 −
@@ -344,14 +431,10 @@ export function StockTake({ contacts }: Props) {
                               <input
                                 type="number"
                                 value={counts[it.id] ?? 0}
-                                onChange={(e) =>
-                                  setCounts((prev) => ({
-                                    ...prev,
-                                    [it.id]: Number(e.target.value),
-                                  }))
+                                onChange={(e) => setCount(it.id, Number(e.target.value))
                                 }
                                 style={{
-                                  width: narrow ? 56 : 50,
+                                  width: 50,
                                   textAlign: 'center',
                                   padding: '4px',
                                   background: 'var(--bg0)',
@@ -365,11 +448,7 @@ export function StockTake({ contacts }: Props) {
                                 type="button"
                                 className="btn sm ghost"
                                 style={stepStyle}
-                                onClick={() =>
-                                  setCounts((prev) => ({
-                                    ...prev,
-                                    [it.id]: (prev[it.id] ?? 0) + 1,
-                                  }))
+                                onClick={() => bump(it.id, 1)
                                 }
                               >
                                 +
@@ -395,16 +474,9 @@ export function StockTake({ contacts }: Props) {
                               <button
                                 type="button"
                                 className="btn sm ghost"
-                                style={{
-                                  ...stepStyle,
-                                  minWidth: narrow ? 44 : undefined,
-                                }}
+                                style={{ ...stepStyle, minWidth: undefined }}
                                 title={t('stock_take_reset_title')}
-                                onClick={() =>
-                                  setCounts((prev) => ({
-                                    ...prev,
-                                    [it.id]: it.quantity,
-                                  }))
+                                onClick={() => setCount(it.id, it.quantity)
                                 }
                               >
                                 ↺
@@ -430,8 +502,8 @@ export function StockTake({ contacts }: Props) {
             left: 0,
             right: 0,
             marginTop: 'auto',
-            marginLeft: narrow ? -12 : 0,
-            marginRight: narrow ? -12 : 0,
+            marginLeft: -12,
+            marginRight: -12,
             padding: `10px 12px max(10px, env(safe-area-inset-bottom))`,
             background: 'var(--bg2)',
             borderTop: '1px solid var(--bd)',

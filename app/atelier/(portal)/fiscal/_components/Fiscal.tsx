@@ -4,7 +4,7 @@
 // Régimes: Micro-BNC (abattement 34%) or Déclaration contrôlée (réel).
 // URSSAF cotisations ~21.1%. TVA franchise thresholds.
 
-import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect, type CSSProperties } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { compareContactsByName, contactListLabel, pickableContacts } from '@/lib/contacts/contact-display'
@@ -119,6 +119,8 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, tM = {} }: Props) {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
+  // Phone: the expenses table scrolls inside its own frame (both ways); the Date column stays, above the other headers.
+  const stickyFirst: CSSProperties | undefined = narrow ? { position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg1)' } : undefined
   // Cost per work is admin-only (owner enters costs alone for now).
   const [isAdmin, setIsAdmin] = useState(false)
   useEffect(() => {
@@ -330,15 +332,15 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
           {navBtn('expenses', `${t('expenses')} (${expenses.length})`)}
           {navBtn('framework', t('framework'))}
         </div>
-        <div style={{ display: section === 'by_year' || section === 'sales' ? 'none' : 'flex', alignItems: 'center', gap: 10, padding: narrow ? '6px 4px 8px' : undefined }}>
+        <div style={{ display: section === 'by_year' || section === 'sales' ? 'none' : 'flex', ...(narrow ? { flexDirection: 'column' as const, alignItems: 'stretch', gap: 8, flexBasis: '100%', padding: '6px 4px 8px' } : { alignItems: 'center', gap: 10 }) }}>
           {/* Year selector (By year shows every year, so it is hidden there) */}
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
+            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10, ...(narrow ? { width: '100%', minHeight: 44, fontSize: 16 } : null) }}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
           {/* Regime selector */}
           <select value={regime} onChange={(e) => setRegime(e.target.value as 'micro' | 'reel')}
-            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
+            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10, ...(narrow ? { width: '100%', minHeight: 44, fontSize: 16 } : null) }}>
             <option value="micro">Micro-BNC</option>
             <option value="reel">{t('fiscal_regime_reel')}</option>
           </select>
@@ -464,11 +466,11 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
               {interpolateMessage(t('fiscal_no_expenses_year'), { year })}
             </div>
           ) : (
-            <div style={{ flex: 1, overflow: 'auto' }}>
+            <div style={{ flex: 1, overflow: 'auto' }} data-phone-scroll-x={narrow ? '' : undefined}>
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th onClick={() => toggleSort('date')} style={{ cursor: 'pointer' }}>{t('date')} <SortInd k="date" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('date')} style={{ cursor: 'pointer', ...stickyFirst }}>{t('date')} <SortInd k="date" current={sortKey} dir={sortDir} /></th>
                     <th onClick={() => toggleSort('label')} style={{ cursor: 'pointer' }}>{t('label')} <SortInd k="label" current={sortKey} dir={sortDir} /></th>
                     <th onClick={() => toggleSort('category')} style={{ cursor: 'pointer' }}>{t('category')} <SortInd k="category" current={sortKey} dir={sortDir} /></th>
                     <th onClick={() => toggleSort('ht')} style={{ textAlign: 'right', cursor: 'pointer' }}>HT <SortInd k="ht" current={sortKey} dir={sortDir} /></th>
@@ -480,7 +482,7 @@ export function Fiscal({ oeuvres, contacts = [], statusLabelMap = {}, cM = {}, t
                 <tbody>
                   {sortedExpenses.map((e) => (
                     <tr key={e.id} onClick={() => setEditing(e)} style={{ cursor: 'pointer' }}>
-                      <td className="t-mono-sm" style={{ whiteSpace: 'nowrap', color: 'var(--tx3)' }}>
+                      <td className="t-mono-sm" style={{ whiteSpace: 'nowrap', color: 'var(--tx3)', ...stickyFirst }}>
                         {new Date(e.date).toLocaleDateString('fr-FR')}
                       </td>
                       <td>{e.libelle}</td>

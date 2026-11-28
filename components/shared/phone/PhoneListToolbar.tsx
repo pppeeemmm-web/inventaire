@@ -39,12 +39,13 @@ const row: CSSProperties = { display: 'flex', gap: 6, overflowX: 'auto', padding
  * scrolls, then a row of chips — « Filtres n » (opens the tab's filter sheet), the active filters, or a few
  * one-tap filters when none is active. The tab keeps its own filter state; this only draws it.
  */
-export function PhoneListToolbar({ query, onQuery, placeholder, activeCount, onOpenFilters, chips, testId }: {
+export function PhoneListToolbar({ query, onQuery, placeholder, activeCount = 0, onOpenFilters, chips, testId }: {
   query: string
   onQuery: (q: string) => void
   placeholder: string
-  activeCount: number
-  onOpenFilters: () => void
+  activeCount?: number
+  /** Omitted when the tab has no filter sheet (its chips are enough). */
+  onOpenFilters?: () => void
   chips: ReactNode
   testId?: string
 }) {
@@ -66,9 +67,11 @@ export function PhoneListToolbar({ query, onQuery, placeholder, activeCount, onO
         ) : null}
       </div>
       <div style={row}>
-        <PhoneChip label={t('phone_filters')} active={false} onClick={onOpenFilters} testId={testId ? `${testId}-filters` : undefined}>
-          {activeCount > 0 ? <span style={{ background: 'var(--ac)', color: 'var(--bg0)', borderRadius: 9, fontSize: 12, padding: '0 6px' }}>{activeCount}</span> : null}
-        </PhoneChip>
+        {onOpenFilters ? (
+          <PhoneChip label={t('phone_filters')} active={false} onClick={onOpenFilters} testId={testId ? `${testId}-filters` : undefined}>
+            {activeCount > 0 ? <span style={{ background: 'var(--ac)', color: 'var(--bg0)', borderRadius: 9, fontSize: 12, padding: '0 6px' }}>{activeCount}</span> : null}
+          </PhoneChip>
+        ) : null}
         {chips}
       </div>
     </div>

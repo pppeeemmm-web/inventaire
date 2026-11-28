@@ -17,7 +17,8 @@ const TABS = [
 ] as const
 
 /** PhonePattern.md group A still on their desk layout. */
-const PENDING = new Set<string>(['reports', 'vault', 'fiscal', 'contacts'])
+/** Fiscal: its expenses table is framed, but « par année » is still a desk layout. */
+const PENDING = new Set<string>(['reports', 'vault', 'contacts', 'fiscal'])
 
 async function phoneProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
