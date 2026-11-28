@@ -4,6 +4,8 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 ## 2026-11-28 (4)
 
+- Return-period reminders (« Fin du délai de retour — vente … ») no longer listed in Idées « Rappels sans projet » (Pem « C »): Ventes shows the sale's window, Aujourd'hui the reminder on its day.
+- Triple back-tap → the ⚑ review sheet: any page opened with `?review=1` opens it (Shortcut: Open URL `https://www.thepemworkshop.com/hub?review=1`).
 - PR #15 merged (`75bccd8`) on Pem's « merge pr »: year pass, phone labels from a list, week-1 report, design notes' « now » lines, tidy. Pem used the year pass on the preview: 25 works dated, all 11 selection works (579 → 554 without a year).
 - Phone labels cleaned on Pem's « clean labels » (by number type and card kind): #689 → Work, #715 Main → Home, #729 Main → Work, #743 Móvil → Mobile, #780 Carte → Work; every phone now carries one of the four labels. « Better autofill »: Pem does not know what it meant → dropped (reopen if felt).
 - Phone checks by Pem (airport, « ok perfect for both »): Aujourd'hui reopens offline from its cached copy; double back-tap opens the recorder on today. Triple back-tap is free (Pem).

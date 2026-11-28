@@ -57,7 +57,7 @@ Checks
 - [ ] **Delacroix's notebooks:** read Hannoosh's article, or allow one page fetch → [survey §3](./design/2026-11-21/Survey_DelacroixJournal.md).
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.
-- [ ] **Your call:** the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées — hide them there, or give them their own fold? And should a new sale tick « Emportée aujourd'hui » by default?
+- [ ] **Your call:** should a new sale tick « Emportée aujourd'hui » by default?
 - [ ] **Vault:** delete the two old guides « Admin guide html » and « Team member Guide html » (type Studio Bible) with the Vault's own delete — the Aide replaces them.
 - [ ] **Aide wording:** read chapter 1 « Le projet et son périmètre » (`lib/aide/team.fr.ts`) — the French of your quote is a translation.
 - [ ] **Reverse pricing inputs:** the cost items to count, the running-cost share rule (per work, per m², per hour?), the charges rate → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)

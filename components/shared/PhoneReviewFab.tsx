@@ -5,7 +5,7 @@
 // sheet over the screen in use; the screen stays underneath, its address and build go with the report. It sits
 // above the bottom chrome (`--pem-bottom-chrome-h`), under every sheet and modal. The sheet's code loads on tap only.
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
@@ -16,6 +16,15 @@ export function PhoneReviewFab() {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [open, setOpen] = useState(false)
+  // `?review=1` opens the sheet at once — what the iPhone's triple back-tap Shortcut opens (Pem 2026-11-28); the
+  // parameter is taken out of the address so a reload does not open it again.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('review') !== '1') return
+    url.searchParams.delete('review')
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+    setOpen(true)
+  }, [])
   if (!narrow) return null
   return (
     <>
