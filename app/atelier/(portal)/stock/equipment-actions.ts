@@ -92,6 +92,23 @@ export type SaveStockItemResult =
   | { refused: string; detail?: string; item?: EquipmentItem }
   | Err
 
+/** Comptage « Appliquer »: many counts in one request (one team check), each through the door; failed ids returned. */
+export async function saveStockQuantities(rows: { id: number; quantity: number }[]): Promise<{ saved: number; failed: number[] } | Err> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  let saved = 0
+  const failed: number[] = []
+  for (const row of (Array.isArray(rows) ? rows : []).slice(0, 2000)) {
+    if (!Number.isInteger(row?.id) || !(Number.isFinite(row.quantity) && row.quantity >= 0)) { failed.push(Number(row?.id)); continue }
+    const { data, error } = await g.sb.rpc('save_stock_item', { p: { id: row.id, fields: { quantity: row.quantity } } })
+    const r = (data ?? {}) as { ok?: boolean; unchanged?: boolean }
+    if (error) void logError('equipment: saveStockQuantities', error)
+    if (!error && (r.ok || r.unchanged)) saved++
+    else failed.push(row.id)
+  }
+  return { saved, failed }
+}
+
 /** The one Stock door (`save_stock_item`): create (no id) or update; `readUpdatedAt` refuses a stale save. */
 export async function saveStockItem(input: {
   id?: number | null

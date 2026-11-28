@@ -33,6 +33,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Stock › Équipement montre l’atelier lieu par lieu (zone, meuble, boîte) et ce qui s’y trouve ; chaque objet a sa fiche (état, année d’arrivée, lieu, notes). Devant une étagère, « 🎙️ Dire » : dites ou tapez ce qu’il y a, cochez les lignes proposées, « Ajouter ». Le découpage se fait sur l’appareil, rien n’est envoyé ailleurs.',
     en: 'Stock › Equipment shows the studio place by place (zone, furniture, box) and what sits there; each item has its card (condition, year it arrived, place, notes). At a shelf, « 🎙️ Say »: say or type what is there, tick the proposed lines, « Add ». The split happens on the device, nothing is sent anywhere.',
   },
+  wn_stock_save_safe_t: { fr: 'Stock : un enregistrement ne recouvre plus un changement plus récent', en: 'Stock: a save no longer overwrites a later change' },
+  wn_stock_save_safe_d: {
+    fr: 'Si un article a changé ailleurs (Comptage, réception d’une commande, Équipement, un autre appareil) depuis que vous l’avez ouvert, l’enregistrement est refusé et la fiche se rouvre sur la dernière version. Comptage dit quelles lignes n’ont pas été enregistrées et les garde.',
+    en: 'If an item changed elsewhere (count, order received, Equipment, another device) since you opened it, the save is refused and the card reopens on the latest version. Count names the lines that were not saved and keeps them.',
+  },
   wn_stock_equipment_t: { fr: 'Stock : catégorie « Équipement »', en: 'Stock: « Equipment » category' },
   wn_stock_equipment_d: {
     fr: 'Les outils durables de l’atelier (molette, balance, plaque chauffante…) se rangent dans le Stock sous « Équipement ».',

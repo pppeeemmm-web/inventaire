@@ -66,7 +66,7 @@ Order of work — each step useful on its own; stop whenever it is enough.
 ## Build steps (each its own GO)
 
 1. Category « Équipement » (code + FR/EN) — usable at once in today's Stock screen.
-2. SQL: the six columns + `save_stock_item` door; the four browser writers moved to it.
+2. SQL: the six columns + `save_stock_item` door (live 2026-11-28); the four browser writers moved to it (2026-11-28, with steps 3–4: SupplierHub, Comptage via `saveStockQuantities`, Réassort, the order sheet's new item; only the delete stays a browser write).
 3. Phone « by place » screen + desk item page.
 4. Voice walk → proposed lines. 5. Photo → proposed lines. 6. QR printing for places.
 

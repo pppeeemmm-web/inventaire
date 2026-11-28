@@ -1,4 +1,4 @@
-import type { Lang } from '@/lib/i18n/dictionary'
+import type { DictKey, Lang } from '@/lib/i18n/dictionary'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 
 /** Row shape for `stock_item` (Supabase client). */
@@ -13,6 +13,15 @@ export interface StockItemRow {
   cost_unit: number | null
   notes: string | null
   updated_at: string
+}
+
+const DOOR_CODES = new Set(['auth', 'forbidden', 'bad_field', 'not_found', 'db'])
+
+/** Why the Stock door (`saveStockItem`) did not save, as copy (`eq_err_*`); never raw database text. */
+export function stockDoorReason(r: { refused: string; detail?: string } | { error: string }, t: (k: DictKey) => string): string {
+  const code = 'refused' in r ? r.refused : r.error
+  const detail = 'refused' in r ? r.detail : undefined
+  return (DOOR_CODES.has(code) ? t(`eq_err_${code}` as DictKey) : code) + (detail ? ` (${detail})` : '')
 }
 
 export interface StockContactLike {

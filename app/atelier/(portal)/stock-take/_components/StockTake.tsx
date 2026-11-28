@@ -9,6 +9,7 @@ import { PhoneListToolbar, PhoneChip } from '@/components/shared/phone/PhoneList
 import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
 import { toast } from '@/lib/ui/toast'
 import { stringifyError } from '@/lib/error'
+import { saveStockQuantities } from '@/app/atelier/(portal)/stock/equipment-actions'
 import {
   type StockItemRow,
   type StockContactLike,
@@ -95,7 +96,6 @@ export function StockTake({ contacts }: Props) {
 
   async function runApply() {
     setBusy(true)
-    const sb = createClient()
     const updates = items.filter((it) => counts[it.id] !== it.quantity)
 
     if (updates.length === 0) {
@@ -104,23 +104,21 @@ export function StockTake({ contacts }: Props) {
       return
     }
 
-    const results = await Promise.all(
-      updates.map((it) =>
-        sb.from('stock_item').update({ quantity: counts[it.id] }).eq('id', it.id),
-      ),
-    )
-
-    const errors = results.filter((r) => r.error)
-    if (errors.length > 0) {
-      toast.error(
-        t('stock_take_err_fmt').replace(/\{n\}/g, String(errors.length)),
-      )
+    // Through the Stock door, one request; the count is the truth, so no stale check (the door stamps updated_at).
+    // Not all or nothing: what saved is reloaded, the failed lines keep their typed count and are named.
+    const r = await saveStockQuantities(updates.map((it) => ({ id: it.id, quantity: counts[it.id] })))
+    const failedIds = 'error' in r ? updates.map((it) => it.id) : r.failed
+    if (failedIds.length > 0) {
+      const names = updates.filter((it) => failedIds.includes(it.id)).map((it) => it.name).slice(0, 5).join(', ')
+      toast.error(`${t('stock_take_err_fmt').replace(/\{n\}/g, String(failedIds.length))} ${names}`)
     } else {
       toast.success(
         t('stock_take_ok_fmt').replace(/\{n\}/g, String(updates.length)),
       )
-      await load()
     }
+    const keep = Object.fromEntries(failedIds.map((id) => [id, counts[id]]))
+    await load()
+    if (failedIds.length > 0) setCounts((prev) => ({ ...prev, ...keep }))
     setBusy(false)
     setApplyModal(false)
   }
