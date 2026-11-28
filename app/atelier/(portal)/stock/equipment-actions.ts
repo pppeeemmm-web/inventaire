@@ -6,6 +6,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter'
+import crypto, { randomUUID } from 'crypto'
+import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
+import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
 
 /** Error codes the view turns into copy (`eq_err_*`); raw database text is logged, never shown. */
 type Err = { error: 'auth' | 'forbidden' | 'bad_field' | 'not_found' | 'db' }
@@ -20,6 +23,8 @@ export type StudioPlace = { id: number; name: string; kind: StudioKind; parent_i
 export type EquipmentItem = {
   id: number; name: string; category: string | null; quantity: number; unit: string; place_id: number | null
   condition: EquipmentCondition | null; acquired_on: string | null; acquired_precision: string | null; notes: string | null
+  /** R2 key of the item's photo (`stock/S_…avif`; thumb under `thumbs/`); read through `thumbUrl` / `imageUrl`. */
+  photo_key: string | null
   updated_at: string
 }
 
@@ -63,7 +68,7 @@ export async function listEquipment(): Promise<{ places: StudioPlace[]; items: E
   const [places, i] = await Promise.all([
     studioTree(g.sb),
     g.sb.from('stock_item')
-      .select('id, name, category, quantity, unit, place_id, condition, acquired_on, acquired_precision, notes, updated_at')
+      .select('id, name, category, quantity, unit, place_id, condition, acquired_on, acquired_precision, notes, photo_key, updated_at')
       .or('place_id.not.is.null,category.eq.Équipement').order('name').limit(1000),
   ])
   if ('error' in places) return places
@@ -184,4 +189,52 @@ export async function closePcProposal(id: number, decision: 'accepted' | 'reject
   const { data, error } = await g.sb.rpc('decide_equipment_job', { p_id: id, p_decision: decision })
   if (error) return dbError('closePcProposal', error)
   return data === true ? { ok: true } : { error: 'unchanged' }
+}
+
+// ── A photo per item (Equipment.md: « Its photo — stock_item.photo_key, same pipeline as other photos ») ──────────────
+
+const MAX_PHOTO_BYTES = 12 * 1024 * 1024
+
+/**
+ * Sets (or replaces) one Stock item's photo: normalised to AVIF (2100 px + thumb) under `stock/S_{id}_{rand8}_{hash8}`,
+ * then written through the one Stock door (save_stock_item, stale-checked on `readUpdatedAt`). A refused save takes
+ * the upload back; a replaced photo goes to the R2 recycle bin (kept 90 days), never deleted outright.
+ */
+export async function setStockItemPhoto(id: number, readUpdatedAt: string, formData: FormData): Promise<SaveStockItemResult | { error: 'empty' | 'too_large' | 'invalid_format' | 'upload' }> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  if (!Number.isInteger(id) || id <= 0) return { error: 'not_found' }
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) return { error: 'empty' }
+  if (file.size > MAX_PHOTO_BYTES) return { error: 'too_large' }
+  const { data: cur } = await g.sb.from('stock_item').select('photo_key').eq('id', id).maybeSingle()
+  if (!cur) return { error: 'not_found' }
+
+  const raw = Buffer.from(await file.arrayBuffer())
+  if ('error' in (await validateWorkImageBuffer(raw))) return { error: 'invalid_format' }
+  const base = `S_${id}_${randomUUID().slice(0, 8)}_${crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)}`
+  const key = `stock/${base}.avif`
+  const thumb = `thumbs/stock/${base}.avif`
+  try {
+    const { mainBuf, thumbBuf } = await normalizeImageToAvifPair(raw, { maxEdge: 2100 })
+    const refs = [{ table: 'stock_item', column: 'photo_key', row_id: String(id) }]
+    await r2PutObject(mainBuf, key, 'image/avif', { source: 'stock_photo', classification: 'linked', linkedRefs: refs, metadata: { role: 'main', stock_item_id: id } })
+    await r2PutObject(thumbBuf, thumb, 'image/avif', { source: 'stock_photo_thumb', classification: 'linked', linkedRefs: refs, metadata: { role: 'thumb', original_key: key } })
+  } catch (e) {
+    void logError('equipment: photo upload', e)
+    return { error: 'upload' }
+  }
+
+  const saved = await saveStockItem({ id, readUpdatedAt, fields: { photo_key: key } })
+  if (!('ok' in saved)) {
+    await r2SoftDeleteObject(key).catch(() => {})
+    await r2SoftDeleteObject(thumb).catch(() => {})
+    return saved
+  }
+  const old = (cur as { photo_key: string | null }).photo_key
+  if (old && old !== key) {
+    await r2SoftDeleteObject(old).catch(() => {})
+    await r2SoftDeleteObject(old.replace(/^stock\//, 'thumbs/stock/')).catch(() => {})
+  }
+  return saved
 }
