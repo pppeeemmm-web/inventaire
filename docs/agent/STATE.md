@@ -71,11 +71,11 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, no PR yet:** review window
+- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, draft PR #14:** review window
   « ⚑ Revue » (Kaizen « App », proposé → ouvert → à vérifier → confirmé), phone pattern on Coffre / Rapports /
   Fiscal « par année » / Audit / Contacts, « Dire » → « Envoyer au PC » (Ollama), Laboratoire screens (tree, recipe
   card, « Essai »). Its SQL is **live** (« Apply sql »: kaizen_review_tool, ai_job_equipment, laboratoire_essai_label).
-  Next: draft PR → Vercel preview → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
+  Next: Vercel preview of PR #14 → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
   browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
   fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
