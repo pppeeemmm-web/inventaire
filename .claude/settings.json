@@ -1,12 +1,28 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__Supabase__list_projects",
+      "mcp__Supabase__get_project",
+      "mcp__Supabase__get_project_url",
+      "mcp__Supabase__list_tables",
+      "mcp__Supabase__list_extensions",
+      "mcp__Supabase__list_migrations",
+      "mcp__Supabase__get_advisors",
+      "mcp__Supabase__search_docs",
+      "mcp__Supabase__list_branches",
+      "mcp__Supabase__list_edge_functions",
+      "mcp__Supabase__get_edge_function",
+      "mcp__Supabase__generate_typescript_types"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.ps1\"",
-            "timeout": 15
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.mjs\"",
+            "timeout": 30
           }
         ]
       }

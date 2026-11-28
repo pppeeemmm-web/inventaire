@@ -78,11 +78,11 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   Next: draft PR → Vercel preview → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
   browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
   fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
-- **Waiting on Pem's GO (asked 28/11):** session start in Node (lists every unmerged `origin/claude/*` branch — the
-  review tool's design sat unmerged on `claude/eloquent-johnson-zlbeqx` and this session started blind); SQL guard
-  allows catalog reads (`pg_get_expr` asked); allow read-only Supabase tools (`list_projects` asked); project id in
-  `supabase/CLAUDE.md` (`mcrzsxrcoexnlwmaunte`). **Found:** `pwsh` is not installed in cloud sessions, so every
-  `.ps1` hook (session start, commit / push / agent guards) does not run there.
+- **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
+  unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
+  …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
+  `pwsh` is missing in cloud sessions, so the commit / push / agent guards (`.ps1`) do not run there — port to Node
+  (parked, its own GO). If a read still prompts, the claude.ai Supabase connector's own setting is the cause.
 - Then batch C — the system overview + data-quality report (read only).
 - PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
   Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.

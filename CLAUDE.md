@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Repo guide. Conflict → ask owner before edit. Area rules live next to their code and load when you work there: `supabase/` (DB, grants, backups), `lib/` (images, R2), `lib/i18n/`, `lib/calendar/`, `app/hub/` (phone terminal), `app/atelier/(portal)/portfolio/` (PDF). A session-start hook prints git status + the docs read order.
+Repo guide. Conflict → ask owner before edit. Area rules live next to their code and load when you work there: `supabase/` (DB, grants, backups), `lib/` (images, R2), `lib/i18n/`, `lib/calendar/`, `app/hub/` (phone terminal), `app/atelier/(portal)/portfolio/` (PDF). A session-start hook (`.claude/hooks/session-start.mjs`, Node — `pwsh` is missing in cloud sessions) prints git status, every unmerged `origin` branch and what docs it touches, the read order and STATE's next actions: read the unmerged branches before planning.
 
 ## Hard Rules
 - CAUTION > SPEED. Think first. Surgical edits. Small diffs. No bloat.

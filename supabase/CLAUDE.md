@@ -1,5 +1,6 @@
 # supabase/ — database rules (loaded when working here; root CLAUDE.md still applies)
 
+- Live project: « Pem Art db », id **`mcrzsxrcoexnlwmaunte`** (eu-north-1) — pass it to the Supabase MCP tools directly; no `list_projects`.
 - DB schema: read live (Supabase MCP or `lib/types/supabase.generated.ts`), never from guides.
 - New public tables: snake_case, no `tbl` prefix; RLS + policies + explicit `GRANT` for PostgREST roles (`authenticated`, `anon` where public writes). Missing grant => 42501 despite RLS.
 - Audit grants after schema changes: `supabase/sql/grant_audit_queries.sql`. Service-role-only tables: say so in the migration comment; don't widen the grant.
