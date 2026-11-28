@@ -4,6 +4,15 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-28
+- Evening, Pem « Build feedback tool and other designs as well in parallel »: review window, Laboratoire step 3,
+  phone pattern on the other tabs, Ollama for « Dire » (choosing it = « GO Ollama ») built on
+  `claude/awesome-keller-jgcusv`; the review tool's design branch (`claude/eloquent-johnson-zlbeqx`) merged into it
+  first. Flow review found 11 gaps; fixed in `8dd747b` (approval held by the database, failed walks kept, no double add).
+- SQL live on Pem's « Apply sql »: `kaizen_review_tool.sql`, `ai_job_equipment.sql`, `laboratoire_essai_label.sql`
+  (each proved on a throwaway Postgres first; live re-read: 33/33 Kaizen items approved, trigger, kinds, label).
+- Pem, angry: a fresh session must know everything from the start (the unmerged branch was missed) and SQL reads
+  keep asking → fix proposed (Node session start listing unmerged branches; SQL guard + read-only Supabase tools);
+  waits for GO.
 - PR #11 merged (`c4a22b4`) on Pem's « Merge »: found work, contacts on the phone, themes refresh, voice pause +
   import, contact door + phone numbers, phone bar tap / hold.
 - Live data on Pem's word: phone one-off + duplicates (« Apply phone », « Ok to delete duplicates »); countries for

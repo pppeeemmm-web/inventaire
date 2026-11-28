@@ -1,4 +1,5 @@
 -- Laboratoire « Essai » (docs/design/2026-11-28/Laboratoire.md, build step 3; Pem « Build … Laboratoire step 3 »).
+-- Applied on live 2026-11-28 on Pem's « Apply sql » (migration laboratoire_essai_label), after the throwaway test; verified by a live re-read.
 -- A trial is a Journal entry with the label « essai », linked to its recipe (journal_entry_link, admin only through
 -- journal_link_lab_guard). The label list gains 'essai' — same list as lib/journal/labels.ts JOURNAL_LABELS.
 alter table public.journal_entry_label drop constraint if exists journal_entry_label_label_ck;

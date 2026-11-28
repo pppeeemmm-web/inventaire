@@ -5,7 +5,7 @@ roles (`ROLE.md`) **reads this file first** and **updates it before ending** (wh
 the day's decisions to `LOG.md`. Nothing here overrides `CLAUDE.md`; the rule on reaching outside (`ROLE.md`, Hard
 Rules) holds for every line below.
 
-Last updated: 2026-11-28 (cloud session, Pem in Madrid).
+Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
 
 ## Where things stand
 - **Roles:** data system strategist · art business developer / agent · R&D advisor for the PEM Hub — `ROLE.md`
@@ -71,13 +71,19 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **Next session, first:** re-ask Pem the six questions of the review tool (window on top, reports for Claude) →
-  [`ReviewTool.md`](../design/2026-11-28/ReviewTool.md); then the master plan checked against live code → one ordered
-  plan to the 10 Dec freeze (runbook, mock-year test, restore drill first).
-- **Next session:** first read proves the SQL fix (no prompt); the review tool (`docs/design/2026-11-28/ReviewTool.md`, Pem's GO on step 1); then batch C — the system overview + data-quality report
-  (read only). Then on Pem's GO: Laboratoire step 3 (screens: tree in Idées, recipe card, « Essai » from the phone),
-  Ollama for « Dire » (designed, waits « GO Ollama », TODO §2), phone pattern on Coffre / Contacts / Rapports /
-  Audit / Fiscal « par année » (TODO §1).
+- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, no PR yet:** review window
+  « ⚑ Revue » (Kaizen « App », proposé → ouvert → à vérifier → confirmé), phone pattern on Coffre / Rapports /
+  Fiscal « par année » / Audit / Contacts, « Dire » → « Envoyer au PC » (Ollama), Laboratoire screens (tree, recipe
+  card, « Essai »). Its SQL is **live** (« Apply sql »: kaizen_review_tool, ai_job_equipment, laboratoire_essai_label).
+  Next: draft PR → Vercel preview → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
+  browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
+  fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
+- **Waiting on Pem's GO (asked 28/11):** session start in Node (lists every unmerged `origin/claude/*` branch — the
+  review tool's design sat unmerged on `claude/eloquent-johnson-zlbeqx` and this session started blind); SQL guard
+  allows catalog reads (`pg_get_expr` asked); allow read-only Supabase tools (`list_projects` asked); project id in
+  `supabase/CLAUDE.md` (`mcrzsxrcoexnlwmaunte`). **Found:** `pwsh` is not installed in cloud sessions, so every
+  `.ps1` hook (session start, commit / push / agent guards) does not run there.
+- Then batch C — the system overview + data-quality report (read only).
 - PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
   Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.
   `gen:types` not run in the cloud (no token): the equipment / lab columns are read through a loose client.

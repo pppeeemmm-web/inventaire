@@ -1,4 +1,5 @@
 -- Ollama for « Dire » (Stock › Équipement; TODO §2, Pem « GO Ollama » by choosing it 2026-11-28).
+-- Applied on live 2026-11-28 on Pem's « Apply sql » (migration ai_job_equipment), after the throwaway test; verified by a live re-read.
 -- « Envoyer au PC » queues the spoken list as an ai_job of kind 'equipment':
 --   target_id = a walk id made on the device (a retry of the same walk does not queue twice — ai_job_one_open),
 --   payload   = { text, place_id (null = « Sans lieu »), lang }.

@@ -1,4 +1,5 @@
 -- Review tool, step 1 (docs/design/2026-11-28/ReviewTool.md; Pem « Build feedback tool », 2026-11-28).
+-- Applied on live 2026-11-28 on Pem's « Apply sql » (migration kaizen_review_tool), after the throwaway test; verified by a live re-read.
 -- A report from the review window is a Kaizen item in the new section « app ». Added:
 --   context      jsonb        page, build, device, pointed element — written once, at creation.
 --   fixed_sha    text         the build that fixes it (set with « done »).
