@@ -57,7 +57,12 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
   the claude.ai Supabase connector's own tool permission (`mcpServerPolicy`), which overrides the hook — « fresh
   session » was a wrong fix. Pem set `execute_sql` to always allow in the connector 28/11 (not yet in effect in the
   session that changed it; the next session's first read proves it or not). The hook now answers « ask » for
-  anything not proven read-only, so writes still ask. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
+  anything not proven read-only, so writes still ask.
+  **Not proven (28/11, later session):** the first read (`information_schema.columns`, `kaizen_item`) was still
+  refused — log `toolDenialKind: permission-rule`, no `mcpServerPolicy`. The connector first loaded under an id
+  name (`mcp__45c2b1ae…__execute_sql`), which the hook matcher `mcp__.*[Ss]upabase.*__execute_sql` misses — the hook
+  never ran; it later reconnected as `mcp__Supabase__…` (matched). Docker works in the cloud container: the review
+  tool's step 1 SQL can be proved on a throwaway copy there before any live read. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
 - Live SQL is always rebuilt from the live body (md5 guard), never from the repo copy: twice on 27–28/11 the repo
   copy was older (oeuvre_history lacked « Volée », save_contact differed).
 - The Journal never edits or deletes: a day move = `journal_move_entry`'s writes; a change = a correction entry.
