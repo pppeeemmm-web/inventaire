@@ -46,10 +46,10 @@ function run(input) {
   const sources = (out) => out.split('\n').filter((f) => f && SOURCE.test(f) && !/(^|\/)(\.next|node_modules|test-results|playwright-report)\//.test(f) && f !== 'tsconfig.tsbuildinfo')
 
   if (mode === 'commit') {
-    if (!/(^|[;&|]\s*)git\s+commit(\s|$)/.test(cmd)) process.exit(0)
+    if (!/(^|[;&|\n]\s*)git\s+commit(\s|$)/.test(cmd)) process.exit(0)
     // `git add … && git commit` in one command: this runs before the add, so the index cannot be judged yet.
-    const at = cmd.search(/(^|[;&|]\s*)git\s+commit(\s|$)/)
-    if (/(^|[;&|]\s*)git\s+add(\s|$)/.test(cmd.slice(0, at))) process.exit(0)
+    const at = cmd.search(/(^|[;&|\n]\s*)git\s+commit(\s|$)/)
+    if (/(^|[;&|\n]\s*)git\s+add(\s|$)/.test(cmd.slice(0, at))) process.exit(0)
     if (!sources(git('diff', '--cached', '--name-only', '--diff-filter=ACMRT')).length) {
       block('Commit blocked: no staged source files were found. Stage the intended source files before committing, and do not commit build artifacts.')
     }
@@ -61,7 +61,7 @@ function run(input) {
   }
 
   if (mode === 'push') {
-    if (!/(^|[;&|]\s*)git\s+push(\s|$)/.test(cmd)) process.exit(0)
+    if (!/(^|[;&|\n]\s*)git\s+push(\s|$)/.test(cmd)) process.exit(0)
     if (/\s(--force|-f|--force-with-lease)(\s|$)/.test(cmd) || /\s\+\S+/.test(cmd.replace(/^.*?git\s+push/, ' '))) {
       block('Push blocked: force push is not allowed without explicit owner approval.')
     }
@@ -72,8 +72,8 @@ function run(input) {
       block(`Push blocked: current branch is '${branch}', not 'main'. origin/main is release truth; a cloud session pushes only its own claude/… branch.`)
     }
     // `git commit … && git push` in one command: this runs before the commit, so the tree cannot be judged yet.
-    const pushAt = cmd.search(/(^|[;&|]\s*)git\s+push(\s|$)/)
-    const commitsFirst = /(^|[;&|]\s*)git\s+commit(\s|$)/.test(cmd.slice(0, pushAt))
+    const pushAt = cmd.search(/(^|[;&|\n]\s*)git\s+push(\s|$)/)
+    const commitsFirst = /(^|[;&|\n]\s*)git\s+commit(\s|$)/.test(cmd.slice(0, pushAt))
     if (!commitsFirst && git('status', '--porcelain')) block('Push blocked: working tree is dirty. Commit or explicitly leave local draft files before pushing.')
     process.exit(0)
   }
