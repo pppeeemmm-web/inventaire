@@ -9,6 +9,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
+- **Review tool (window on top, reports for Claude):** Pem's « best tool we need right now » — six questions to settle first, re-asked at the next session's start → [ReviewTool](./design/2026-11-28/ReviewTool.md).
 - People: the design is built (timeline, spheres, dates, links, moments, archive, Fil, custody, four-tab editor); open: birthday reminders and the two care rules, journal entries that name the person in the timeline, « feu » on papers for a deceased person → [People.md](./design/2026-11-22/People.md).
 - Reverse pricing: first slice live (admin block on the work card); open: the contributions rate and how a consignment receipt is declared (accountant), a database sum for the running-cost rate.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).

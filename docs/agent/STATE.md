@@ -64,6 +64,9 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
+- **Next session, first:** re-ask Pem the six questions of the review tool (window on top, reports for Claude) →
+  [`ReviewTool.md`](../design/2026-11-28/ReviewTool.md); then the master plan checked against live code → one ordered
+  plan to the 10 Dec freeze (runbook, mock-year test, restore drill first).
 - **Next session (fresh, so the read-only SQL guard works):** batch C — the system overview + data-quality report
   (read only). Then on Pem's GO: Laboratoire step 3 (screens: tree in Idées, recipe card, « Essai » from the phone),
   Ollama for « Dire » (designed, waits « GO Ollama », TODO §2), phone pattern on Coffre / Contacts / Rapports /
