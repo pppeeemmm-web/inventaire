@@ -74,29 +74,22 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **PR #14 merged at Pem's « Merge »** (`1f1f055`, pushed to origin/main; deploy not proven from the cloud — no
-  access to the live host). Pem tried the phone side (« All good »); desk parts (⚑ window, Approuver / Confirmer,
-  recipe edit) not yet tried. The photo-key rule is live (« Apply photo rule »). Next: Pem's GO on the report's
-  two passes (year pass, measuring pass); the 375 px guard re-run at the desk; draft PR #15 (docs) to merge.
-- **On draft PR #15 (28/11 pm), not merged:** week-1 report, design notes' « now » lines, year pass
-  (`/atelier/year-pass`, `setWorkYear`; flow-review fixes `080d40f`), phone labels from a fixed list (`3ca0c39`).
-  Live SQL: `stock_photo_key_shape.sql` (« Apply photo rule »). Waiting on Pem: `clean labels` (5 old phone labels:
-  Main ×2, Móvil, Carte, empty), « better autofill » (which form?) the two reminder calls, R4 / R6 look (desk). The year pass has no « c. »
-  (waits for the « c. » design) and no desk link yet.
-- **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
-  unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
-  …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
-  `pwsh` is missing in cloud sessions, so the commit / push / agent guards (`.ps1`) do not run there — port to Node
-  (parked, its own GO). If a read still prompts, the claude.ai Supabase connector's own setting is the cause.
-- Then batch C — the system overview + data-quality report (read only).
-- PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
-  Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.
-  `gen:types` not run in the cloud (no token): the equipment / lab columns are read through a loose client.
-- Pem's word needed: delete Journal #53 / #54 by switching off the no-delete guard, or keep them hidden.
+- **Shipped 28/11:** PR #14 merged (`1f1f055`, review tool desk + phone + floating ⚑, phone pattern on 7 tabs, « Dire » →
+  PC, Laboratoire screens + book, Équipement photo, session start + guards in Node). Pem tried the phone side
+  (« All good »); **desk not tried yet:** ⚑ window, Kaizen Approuver / Confirmer, recipe edit. Deploy not proven from the
+  cloud (no access to the live host).
+- **Draft PR #15, not merged:** week-1 report, design notes' « now » lines, year pass (`/atelier/year-pass`), phone labels
+  from a list, Journal #53 / #54 deleted (live), photo-key rule (live), TODO → DONE. Pem merges after a phone check.
+- **Waiting on Pem:** `clean labels` (5 old phone labels) · « better autofill » (which form?) · the two reminder calls
+  (return-period reminders on Idées; « Emportée aujourd'hui » by default) · R4 / R6 look at the desk · `GO measuring pass`.
+- **At the desk (Pem):** `npm run ai:agent` (Ollama « Dire »), `npm run test:e2e:field` (375 px guard: take Coffre,
+  Contacts, Rapports, Fiscal out of PENDING), `npm run gen:types`.
+- **Open, not built:** « c. » for every date (design + SQL) · QR labels (needs shelves / boxes in the tree + SQL) ·
+  Laboratoire PDF, material, « Ce qui n'a pas marché » · year pass desk link.
 - Doerner's own rye-flour recipe: not found online yet (his tempera chapter, 1934 English edition).
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
 0b. **Pem (Therapeia, open since 27/11):** title ὄναρ / ὕπαρ or « Paxos, l'île rêvée » · Reel length (22 s planned) ·
    shoot the six shots of `video/2026-11-27_onar-upar.md` · (Pipeline dated + reminder 15/12 + contact #975: done 27/11) · verify Journal #57 · merge PR #9.
 1. Claude: one selection for Therapeia + Paréidolie proposed 27/11 → [`selections/2027_therapeia-pareidolie.md`](./selections/2027_therapeia-pareidolie.md) (Pem chooses; years missing on 11 of 15). Gallery shortlist by 20 Dec.
-2. Claude: week-1 **system overview** (every table: what it holds, used / empty and why) + data-quality report on it; Documents d'Artistes PACA requirements + dossier draft.
+2. Claude: Documents d'Artistes PACA requirements + dossier draft (the week-1 report is done: `reports/2026-11-28_system-overview.md`).
 3. Claude: shortlist of galleries for Paréidolie 2027 + drawing selection (case file).
