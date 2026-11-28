@@ -48,6 +48,7 @@ export const reportsUiMessages = defineMessages({
   report_move_down: { fr: 'Descendre', en: 'Move down' },
   report_reset: { fr: 'Par défaut', en: 'Defaults' },
   report_filters_active_fmt: { fr: '{n} filtre(s)', en: '{n} filter(s)' },
+  report_phone_count_fmt: { fr: '{shown} / {total} lignes', en: '{shown} / {total} rows' },
   report_filters_clear_all: { fr: 'Effacer les filtres', en: 'Clear filters' },
   report_filter_clear: { fr: 'Effacer', en: 'Clear' },
   report_filter_contains: { fr: 'Contient…', en: 'Contains…' },

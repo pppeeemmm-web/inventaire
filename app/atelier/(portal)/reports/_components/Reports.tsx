@@ -33,6 +33,7 @@ import { listDescriptionRatings, type DescriptionRating } from '@/app/atelier/wo
 import { listKaizen } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchSaleOrdersForReport, type ReportSaleOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import { PivotAtlasPanel } from '@/app/atelier/(portal)/reports/_components/PivotAtlasPanel'
+import { ReportsPhoneList, type ReportPhoneRow } from '@/app/atelier/(portal)/reports/_components/ReportsPhoneList'
 import { ReportFieldsPanel } from '@/app/atelier/(portal)/reports/_components/ReportFieldsPanel'
 import { SOURCE_HINT, SOURCE_LABEL, buildSource, type SaleRow, type SourceCtx } from '@/app/atelier/(portal)/reports/_components/report-sources'
 import { usePeriodSource } from '@/lib/atelier/use-period-source'
@@ -282,6 +283,17 @@ export function Reports({
   }, [def.fields, config.fields])
   const headers = useMemo(() => shownFields.map((f) => f.label), [shownFields])
   const matrix = useMemo(() => result.map((r) => shownFields.map((f) => cellText(f, r))), [result, shownFields])
+  // Phone rows: first column = title, next two = sub, last numeric column = value (same cells as the desk table).
+  const phoneRows: ReportPhoneRow[] = useMemo(() => {
+    const valueIdx = shownFields.reduce((acc, f, i) => (f.kind === 'number' && i > 0 ? i : acc), -1)
+    const subIdx = shownFields.map((_, i) => i).filter((i) => i > 0 && i !== valueIdx).slice(0, 2)
+    return result.map((r, i) => ({
+      key: String(def.rowKey(r)),
+      title: matrix[i][0] ?? '',
+      sub: subIdx.map((k) => matrix[i][k]).filter(Boolean).join(' · '),
+      value: valueIdx >= 0 ? matrix[i][valueIdx] || undefined : undefined,
+    }))
+  }, [result, matrix, shownFields, def])
   const activeFilters = Object.values(config.filters).filter(isActiveFilter).length
 
   // ── Source switching (picker, "Rapport" buttons via ?source=, saved reports) ──
@@ -516,10 +528,61 @@ tr{page-break-inside:avoid}
     </button>
   )
 
+  const fieldsPanel = (
+    <div
+      className="panel"
+      style={{
+        ...panelPad,
+        flexShrink: 0,
+        width: narrow ? undefined : 300,
+        overflowY: narrow ? undefined : 'auto',
+        minHeight: 0,
+      }}
+    >
+      <div className="row between" style={{ gap: 8, marginBottom: fieldsOpen ? 8 : 0 }}>
+        <button
+          type="button"
+          onClick={() => setFieldsOpen((o) => !o)}
+          aria-expanded={fieldsOpen}
+          className="t-label"
+          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, minHeight: narrow ? 44 : 28, color: 'var(--tx)' }}
+        >
+          {t('report_fields_toggle_fmt').replace('{n}', String(shownFields.length))} {fieldsOpen ? '▾' : '▸'}
+        </button>
+        <button type="button" className="btn ghost sm" style={{ minHeight: narrow ? 44 : 28 }} onClick={() => setCfg(null)} data-testid="report-reset">
+          {t('report_reset')}
+        </button>
+      </div>
+      {fieldsOpen ? (
+        <ReportFieldsPanel fields={def.fields} rows={sourceRows ?? []} cfg={config} onChange={setCfg} locale={locale} narrow={narrow} />
+      ) : null}
+    </div>
+  )
+
+  const pivotBlock = (
+    config.pivot && result.length > 0 ? (
+      pivotDims.length ? (
+        <div style={{ flexShrink: 0, marginBottom: 10 }}>
+          <PivotPanel<unknown>
+            key={`${source}-${pivotDims.map((d) => d.id).join(',')}-${pivotValues.length}`}
+            rows={result}
+            availableDims={pivotDims}
+            availableValues={pivotValues}
+            defaultRowDimId={pivotDims[0].id}
+            defaultValueIds={['count']}
+            exportFileName={`${fileStem}_pivot`}
+          />
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10 }}>{t('report_pivot_no_dims')}</div>
+      )
+    ) : null
+  )
+
   return (
     <div
       data-testid="reports-root"
-      style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: narrow ? 88 : 0 }}
+      style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: narrow ? 12 : 0 }}
     >
       {/* Header: title, source, saved reports */}
       <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
@@ -531,9 +594,11 @@ tr{page-break-inside:avoid}
             {tk('report_mode_atlas')}
           </button>
         </div>
-        <div role="tablist" aria-label={t('report_source_label')} style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--bd)', marginTop: 6 }}>
-          {REPORT_SOURCES.map(sourceTab)}
-        </div>
+        {narrow ? null : (
+          <div role="tablist" aria-label={t('report_source_label')} style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--bd)', marginTop: 6 }}>
+            {REPORT_SOURCES.map(sourceTab)}
+          </div>
+        )}
         <div style={{ fontSize: 12, color: 'var(--tx3)', maxWidth: 760, lineHeight: 1.4, marginTop: 8 }}>{t(SOURCE_HINT[source])}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10 }}>
           <label className="t-label" htmlFor="report-saved">{t('report_saved_label')}</label>
@@ -577,35 +642,39 @@ tr{page-break-inside:avoid}
 
       {/* Body: fields on the left, preview on the right (stacked on phone). Never collapses: on a
           short window the page scrolls instead of squeezing the table. */}
-      <div style={{ flex: 1, minHeight: narrow ? undefined : 'min(560px, 80vh)', display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: 8 }}>
-        <div
-          className="panel"
-          style={{
-            ...panelPad,
-            flexShrink: 0,
-            width: narrow ? undefined : 300,
-            overflowY: narrow ? undefined : 'auto',
-            minHeight: 0,
-          }}
-        >
-          <div className="row between" style={{ gap: 8, marginBottom: fieldsOpen ? 8 : 0 }}>
-            <button
-              type="button"
-              onClick={() => setFieldsOpen((o) => !o)}
-              aria-expanded={fieldsOpen}
-              className="t-label"
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, minHeight: narrow ? 44 : 28, color: 'var(--tx)' }}
-            >
-              {t('report_fields_toggle_fmt').replace('{n}', String(shownFields.length))} {fieldsOpen ? '▾' : '▸'}
-            </button>
-            <button type="button" className="btn ghost sm" style={{ minHeight: narrow ? 44 : 28 }} onClick={() => setCfg(null)} data-testid="report-reset">
-              {t('report_reset')}
-            </button>
+      {narrow ? (
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ minWidth: 0 }}>
+            <ReportsPhoneList
+              sources={REPORT_SOURCES.map((s) => ({ id: s, label: t(SOURCE_LABEL[s]) }))}
+              source={source}
+              onSource={(id) => startSource(id as ReportSource)}
+              query={config.q}
+              onQuery={(q) => setCfg({ ...config, q })}
+              rows={phoneRows}
+              total={sourceRows?.length ?? 0}
+              loading={sourceLoading}
+              activeFilters={activeFilters}
+              onClearFilters={() => setCfg({ ...config, filters: {} })}
+              pivotOn={config.pivot}
+              onTogglePivot={() => setCfg({ ...config, pivot: !config.pivot })}
+              fieldsCount={shownFields.length}
+              onToggleFields={() => setFieldsOpen(true)}
+              onPrint={printReport}
+              onXlsx={exportXlsx}
+              onCsv={exportCsv}
+              onPdf={exportPdf}
+              pdfPending={pdfPending}
+              cap={PREVIEW_CAP}
+            />
           </div>
-          {fieldsOpen ? (
-            <ReportFieldsPanel fields={def.fields} rows={sourceRows ?? []} cfg={config} onChange={setCfg} locale={locale} narrow={narrow} />
-          ) : null}
+          {loadErr === source ? <div className="t-mono-sm" style={{ color: 'var(--rust)' }}>{t('report_load_error')}</div> : null}
+          {pivotBlock}
+          {fieldsPanel}
         </div>
+      ) : (
+      <div style={{ flex: 1, minHeight: 'min(560px, 80vh)', display: 'flex', flexDirection: 'row', gap: 8 }}>
+        {fieldsPanel}
 
         <div className="panel" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: narrow ? 100 : 8, ...panelPad }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -639,23 +708,7 @@ tr{page-break-inside:avoid}
 
           {loadErr === source ? <div className="t-mono-sm" style={{ color: 'var(--rust)' }}>{t('report_load_error')}</div> : null}
 
-          {config.pivot && result.length > 0 ? (
-            pivotDims.length ? (
-              <div style={{ flexShrink: 0, marginBottom: 10 }}>
-                <PivotPanel<unknown>
-                  key={`${source}-${pivotDims.map((d) => d.id).join(',')}-${pivotValues.length}`}
-                  rows={result}
-                  availableDims={pivotDims}
-                  availableValues={pivotValues}
-                  defaultRowDimId={pivotDims[0].id}
-                  defaultValueIds={['count']}
-                  exportFileName={`${fileStem}_pivot`}
-                />
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 10 }}>{t('report_pivot_no_dims')}</div>
-            )
-          ) : null}
+          {pivotBlock}
 
           {!sourceLoading && result.length === 0 && loadErr !== source ? <EmptyState title={t('shell_empty')} /> : null}
           <div style={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch', display: result.length === 0 ? 'none' : undefined }}>
@@ -732,7 +785,9 @@ tr{page-break-inside:avoid}
           </div>
         </div>
       </div>
+      )}
 
+      {narrow ? null : (
       <div
         style={{
           position: narrow ? 'fixed' : 'sticky',
@@ -754,6 +809,7 @@ tr{page-break-inside:avoid}
         <button type="button" className="btn secondary" style={{ minHeight: 44, padding: '10px 16px' }} onClick={exportCsv} data-testid="report-csv">{t('report_export_csv')}</button>
         <button type="button" className="btn" style={{ minHeight: 44, padding: '10px 16px' }} disabled={pdfPending} onClick={exportPdf}>{pdfPending ? t('generating') : t('report_export_pdf')}</button>
       </div>
+      )}
     </div>
   )
 }
