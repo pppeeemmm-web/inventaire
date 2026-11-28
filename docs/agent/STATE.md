@@ -78,6 +78,12 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   access to the live host). Pem tried the phone side (« All good »); desk parts (⚑ window, Approuver / Confirmer,
   recipe edit) not yet tried. The photo-key rule is live (« Apply photo rule »). Next: Pem's GO on the report's
   two passes (year pass, measuring pass); the 375 px guard re-run at the desk; draft PR #15 (docs) to merge.
+- **On draft PR #15 (28/11 pm), not merged:** week-1 report, design notes' « now » lines, year pass
+  (`/atelier/year-pass`, `setWorkYear`; flow-review fixes `080d40f`), phone labels from a fixed list (`3ca0c39`).
+  Live SQL: `stock_photo_key_shape.sql` (« Apply photo rule »). Waiting on Pem: `clean labels` (5 old phone labels:
+  Main ×2, Móvil, Carte, empty), « better autofill » (which form?), Journal #53 / #54 (still in the DB, hidden — a delete
+  needs the no-delete guard off for them), the two reminder calls, R4 / R6 look (desk). The year pass has no « c. »
+  (waits for the « c. » design) and no desk link yet.
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
   unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
   …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
