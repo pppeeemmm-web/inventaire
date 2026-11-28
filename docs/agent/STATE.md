@@ -53,9 +53,11 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
 ## How we work (learned 2026-11-26/27)
 - Work Pem does not watch: branch → draft PR (CI) → Vercel preview (live database) → Pem tries → merge (Pem, or
   Claude when Pem says « merge when green »). `x-build-sha` proves a deploy; docs-only merges may not redeploy.
-- Read-only Supabase SQL runs without a prompt (`.claude/hooks/sql-readonly.mjs`); any write asks. After a worker
-  restart in a cloud session the hook may not be loaded (every read prompts; `/hooks` is not available there) →
-  start a fresh session. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
+- SQL prompts (found 28/11 in the session log): the hook ran and said « allow » every time; the prompt came from
+  the claude.ai Supabase connector's own tool permission (`mcpServerPolicy`), which overrides the hook — « fresh
+  session » was a wrong fix. Pem set `execute_sql` to always allow in the connector 28/11 (not yet in effect in the
+  session that changed it; the next session's first read proves it or not). The hook now answers « ask » for
+  anything not proven read-only, so writes still ask. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
 - Live SQL is always rebuilt from the live body (md5 guard), never from the repo copy: twice on 27–28/11 the repo
   copy was older (oeuvre_history lacked « Volée », save_contact differed).
 - The Journal never edits or deletes: a day move = `journal_move_entry`'s writes; a change = a correction entry.
@@ -67,7 +69,7 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
 - **Next session, first:** re-ask Pem the six questions of the review tool (window on top, reports for Claude) →
   [`ReviewTool.md`](../design/2026-11-28/ReviewTool.md); then the master plan checked against live code → one ordered
   plan to the 10 Dec freeze (runbook, mock-year test, restore drill first).
-- **Next session (fresh, so the read-only SQL guard works):** batch C — the system overview + data-quality report
+- **Next session:** first read proves the SQL fix (no prompt); the review tool (`docs/design/2026-11-28/ReviewTool.md`, Pem's GO on step 1); then batch C — the system overview + data-quality report
   (read only). Then on Pem's GO: Laboratoire step 3 (screens: tree in Idées, recipe card, « Essai » from the phone),
   Ollama for « Dire » (designed, waits « GO Ollama », TODO §2), phone pattern on Coffre / Contacts / Rapports /
   Audit / Fiscal « par année » (TODO §1).
