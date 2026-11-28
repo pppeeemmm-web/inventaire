@@ -9,6 +9,7 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
+- **Review tool (window on top, reports for Claude):** Pem's « best tool we need right now » — six questions to settle first, re-asked at the next session's start → [ReviewTool](./design/2026-11-28/ReviewTool.md).
 - People: the design is built (timeline, spheres, dates, links, moments, archive, Fil, custody, four-tab editor); open: birthday reminders and the two care rules, journal entries that name the person in the timeline, « feu » on papers for a deceased person → [People.md](./design/2026-11-22/People.md).
 - Reverse pricing: first slice live (admin block on the work card); open: the contributions rate and how a consignment receipt is declared (accountant), a database sum for the running-cost rate.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
@@ -29,6 +30,7 @@ Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.no
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
+- [ ] Stock: deleting an item (SupplierHub, a browser delete) leaves its Équipement photo in R2 (`stock/S_…` + thumb, ledger still « linked »); and `save_stock_item` accepts any `photo_key` text from a direct call — the door should hold the `stock/S_{id}_…` shape (SQL, Pem's OK).
 - [ ] Phone pattern, tabs still failing the 375 px guard (`tests/phone-pattern.spec.ts` PENDING): Coffre, Contacts (onto the shared pieces), Rapports, Audit, Fiscal « par année » → [PhonePattern](./design/2026-11-28/PhonePattern.md).
 - [ ] A contact merge rewrites a Stock line's supplier without marking the line changed: a Stock card open across the merge saves the deleted supplier back and fails with « erreur de la base » (admin merge, rare).
 - [ ] Desk Journal: an image dropped offline on a day older than the 5 newest is not reread when it is sent, and waits under today with no sign of its day.

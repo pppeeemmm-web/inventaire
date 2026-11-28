@@ -6,6 +6,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter'
+import crypto, { randomUUID } from 'crypto'
+import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
+import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
 
 /** Error codes the view turns into copy (`eq_err_*`); raw database text is logged, never shown. */
 type Err = { error: 'auth' | 'forbidden' | 'bad_field' | 'not_found' | 'db' }
@@ -20,6 +23,8 @@ export type StudioPlace = { id: number; name: string; kind: StudioKind; parent_i
 export type EquipmentItem = {
   id: number; name: string; category: string | null; quantity: number; unit: string; place_id: number | null
   condition: EquipmentCondition | null; acquired_on: string | null; acquired_precision: string | null; notes: string | null
+  /** R2 key of the item's photo (`stock/S_…avif`; thumb under `thumbs/`); read through `thumbUrl` / `imageUrl`. */
+  photo_key: string | null
   updated_at: string
 }
 
@@ -63,7 +68,7 @@ export async function listEquipment(): Promise<{ places: StudioPlace[]; items: E
   const [places, i] = await Promise.all([
     studioTree(g.sb),
     g.sb.from('stock_item')
-      .select('id, name, category, quantity, unit, place_id, condition, acquired_on, acquired_precision, notes, updated_at')
+      .select('id, name, category, quantity, unit, place_id, condition, acquired_on, acquired_precision, notes, photo_key, updated_at')
       .or('place_id.not.is.null,category.eq.Équipement').order('name').limit(1000),
   ])
   if ('error' in places) return places
@@ -121,6 +126,8 @@ export async function saveStockItem(input: {
   if ('name' in f && (typeof f.name !== 'string' || !f.name.trim() || f.name.trim().length > 120)) return { refused: 'bad_field', detail: 'name' }
   if ('quantity' in f && !(Number.isFinite(f.quantity) && Number(f.quantity) >= 0)) return { refused: 'bad_field', detail: 'quantity' }
   if ('min_stock' in f && !(Number.isFinite(f.min_stock) && Number(f.min_stock) >= 0)) return { refused: 'bad_field', detail: 'min_stock' }
+  // A photo key is only ever one the photo door made for this item (or null): never another record's image.
+  if ('photo_key' in f && f.photo_key != null && !(input.id && stockPhotoKeyOf(input.id, f.photo_key))) return { refused: 'bad_field', detail: 'photo_key' }
   const fields = 'name' in f ? { ...f, name: String(f.name).trim() } : f
   const { data, error } = await g.sb.rpc('save_stock_item', {
     p: { id: input.id ?? null, ...(input.readUpdatedAt ? { read_updated_at: input.readUpdatedAt } : {}), fields },
@@ -131,4 +138,114 @@ export async function saveStockItem(input: {
   if (r.unchanged && r.row) return { unchanged: true, item: r.row }
   if (r.ok && r.row) return { ok: true, item: r.row, ...(r.created ? { created: true } : {}) }
   return dbError('save_stock_item: unexpected reply', data)
+}
+
+// ── « Dire » → the studio PC's Ollama (ai_job_equipment.sql; Pem « GO Ollama » 2026-11-28) ─────────────────────
+// The spoken list goes to the queue; the PC agent names the lines (scripts/ai-agent/equipment.mjs); the team ticks
+// them (each through save_stock_item) and closes the proposal through decide_equipment_job. Nothing leaves the PC.
+
+export type PcLine = { name: string; quantity: number }
+export type PcProposal = { id: number; placeId: number | null; text: string; status: 'waiting' | 'running' | 'done' | 'failed'; lines: PcLine[] }
+type PcErr = { error: Err['error'] | 'empty' | 'already' | 'unchanged' }
+
+export async function sendWalkToPc(input: { walkId: string; text: string; placeId: number | null; lang: 'fr' | 'en' }): Promise<{ ok: true } | PcErr> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const text = String(input.text ?? '').trim().slice(0, 4000)
+  if (!text || !/^[\w-]{8,64}$/.test(input.walkId)) return { error: 'empty' }
+  const placeId = Number.isInteger(input.placeId) ? input.placeId : null
+  const { error } = await g.sb.from('ai_job').insert({
+    kind: 'equipment', target_id: input.walkId, payload: { text, place_id: placeId, lang: input.lang === 'en' ? 'en' : 'fr' },
+  })
+  if (error?.code === '23505') return { error: 'already' }
+  if (error) return dbError('sendWalkToPc', error)
+  return { ok: true }
+}
+
+/** Open proposals (not yet ticked or ignored), newest first; a failed one stays listed so its words are never lost. */
+export async function listPcProposals(): Promise<{ rows: PcProposal[] } | Err> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { data, error } = await g.sb
+    .from('ai_job')
+    .select('id, status, payload, result')
+    .eq('kind', 'equipment')
+    .in('status', ['waiting', 'running', 'done', 'failed'])
+    .is('decision', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) return dbError('listPcProposals', error)
+  const rows = (data ?? []).map((r: { id: number; status: PcProposal['status']; payload: { text?: string; place_id?: number | null } | null; result: { lines?: PcLine[] } | null }) => ({
+    id: r.id,
+    status: r.status,
+    placeId: r.payload?.place_id ?? null,
+    text: r.payload?.text ?? '',
+    lines: Array.isArray(r.result?.lines) ? r.result.lines.filter((l) => typeof l?.name === 'string' && l.name.trim()) : [],
+  }))
+  return { rows }
+}
+
+export async function closePcProposal(id: number, decision: 'accepted' | 'rejected'): Promise<{ ok: true } | PcErr> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { data, error } = await g.sb.rpc('decide_equipment_job', { p_id: id, p_decision: decision })
+  if (error) return dbError('closePcProposal', error)
+  return data === true ? { ok: true } : { error: 'unchanged' }
+}
+
+// ── A photo per item (Equipment.md: « Its photo — stock_item.photo_key, same pipeline as other photos ») ──────────────
+
+const MAX_PHOTO_BYTES = 12 * 1024 * 1024
+
+/**
+ * Sets (or replaces) one Stock item's photo: normalised to AVIF (2100 px + thumb) under `stock/S_{id}_{rand8}_{hash8}`,
+ * then written through the one Stock door (save_stock_item, stale-checked on `readUpdatedAt`). A refused save takes
+ * the upload back; a replaced photo goes to the R2 recycle bin (kept 90 days), never deleted outright.
+ */
+export async function setStockItemPhoto(id: number, readUpdatedAt: string, formData: FormData): Promise<SaveStockItemResult | { error: 'empty' | 'too_large' | 'invalid_format' | 'upload' }> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  if (!Number.isInteger(id) || id <= 0) return { error: 'not_found' }
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) return { error: 'empty' }
+  if (file.size > MAX_PHOTO_BYTES) return { error: 'too_large' }
+  const { data: cur } = await g.sb.from('stock_item').select('photo_key').eq('id', id).maybeSingle()
+  if (!cur) return { error: 'not_found' }
+
+  const raw = Buffer.from(await file.arrayBuffer())
+  if ('error' in (await validateWorkImageBuffer(raw))) return { error: 'invalid_format' }
+  const base = `S_${id}_${randomUUID().slice(0, 8)}_${crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)}`
+  const key = `stock/${base}.avif`
+  const thumb = `thumbs/stock/${base}.avif`
+  let mainUp = false
+  try {
+    const { mainBuf, thumbBuf } = await normalizeImageToAvifPair(raw, { maxEdge: 2100 })
+    const refs = [{ table: 'stock_item', column: 'photo_key', row_id: String(id) }]
+    await r2PutObject(mainBuf, key, 'image/avif', { source: 'stock_photo', classification: 'linked', linkedRefs: refs, metadata: { role: 'main', stock_item_id: id } })
+    mainUp = true
+    await r2PutObject(thumbBuf, thumb, 'image/avif', { source: 'stock_photo_thumb', classification: 'linked', linkedRefs: refs, metadata: { role: 'thumb', original_key: key } })
+  } catch (e) {
+    void logError('equipment: photo upload', e)
+    if (mainUp) await r2SoftDeleteObject(key).catch(() => {})
+    return { error: 'upload' }
+  }
+
+  const saved = await saveStockItem({ id, readUpdatedAt, fields: { photo_key: key } })
+  if (!('ok' in saved)) {
+    await r2SoftDeleteObject(key).catch(() => {})
+    await r2SoftDeleteObject(thumb).catch(() => {})
+    return saved
+  }
+  // Only this item's own earlier photo goes to the recycle bin — never a key of another kind or record.
+  const old = (cur as { photo_key: string | null }).photo_key
+  if (old && old !== key && stockPhotoKeyOf(id, old)) {
+    await r2SoftDeleteObject(old).catch(() => {})
+    await r2SoftDeleteObject(`thumbs/${old}`).catch(() => {})
+  }
+  return saved
+}
+
+/** True when `key` is a photo key the photo door made for item `id` (`stock/S_{id}_{rand8}_{hash8}.avif`). */
+function stockPhotoKeyOf(id: number, key: unknown): boolean {
+  return typeof key === 'string' && new RegExp(`^stock/S_${id}_[0-9a-f]{8}_[0-9a-f]{8}\\.avif$`).test(key)
 }

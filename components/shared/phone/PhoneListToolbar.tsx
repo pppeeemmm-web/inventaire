@@ -3,13 +3,15 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 
-/** A filter chip: an active one shows « ✕ » and removes itself; an inactive one applies itself. */
-export function PhoneChip({ label, active = false, onClick, testId, children }: {
+/** A filter chip: an active one shows « ✕ » and removes itself; an inactive one applies itself. `removable={false}`: a choice
+ * (one of a set is always on, e.g. « En cours » / « Faites »), so no « ✕ ». */
+export function PhoneChip({ label, active = false, onClick, testId, children, removable = true }: {
   label: string
   active?: boolean
   onClick: () => void
   testId?: string
   children?: ReactNode
+  removable?: boolean
 }) {
   const { t } = useI18n()
   return (
@@ -18,7 +20,7 @@ export function PhoneChip({ label, active = false, onClick, testId, children }: 
       onClick={onClick}
       data-testid={testId}
       aria-pressed={active}
-      aria-label={active ? t('phone_chip_remove_fmt').replace('{label}', label) : undefined}
+      aria-label={active && removable ? t('phone_chip_remove_fmt').replace('{label}', label) : undefined}
       style={{
         flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 14px',
         borderRadius: 22, border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`, font: 'inherit', fontSize: 14,
@@ -27,7 +29,7 @@ export function PhoneChip({ label, active = false, onClick, testId, children }: 
     >
       {label}
       {children}
-      {active ? <span aria-hidden="true">✕</span> : null}
+      {active && removable ? <span aria-hidden="true">✕</span> : null}
     </button>
   )
 }

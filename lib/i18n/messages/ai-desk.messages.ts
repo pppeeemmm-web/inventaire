@@ -94,6 +94,7 @@ export const aiDeskMessages = defineMessages({
   ai_copy: { fr: 'Copier', en: 'Copy' },
   ai_copied: { fr: 'Copié', en: 'Copied' },
   ai_kind_card: { fr: 'Carte de visite', en: 'Business card' },
+  ai_kind_equipment: { fr: 'Équipement dit (« Dire »)', en: 'Spoken equipment (« Say »)' },
   ai_cards_review: { fr: 'Cartes lues, à vérifier ({n})', en: 'Cards read, to check ({n})' },
   ai_card_nothing_new: { fr: 'Rien de nouveau sur la carte : la fiche a déjà tout.', en: 'Nothing new on the card: the contact already has it all.' },
   ai_card_empty: { fr: 'vide', en: 'empty' },

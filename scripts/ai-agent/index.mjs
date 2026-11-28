@@ -27,10 +27,11 @@ import { supabaseAdmin } from '../embed-worker/supabase-admin.mjs'
 import { ollamaBaseUrl } from '../embed-worker/ollama-client.mjs'
 import { ensureOllamaRunning } from '../embed-worker/ensure-ollama.mjs'
 import { checkCardKey, readCard } from './card.mjs'
+import { nameEquipmentLines } from './equipment.mjs'
 import { runTray } from './tray.mjs'
 
 const AGENT_ID = process.env.AI_AGENT_ID?.trim() || 'studio-pc'
-const KINDS = ['voice', 'describe', 'embed', 'card']
+const KINDS = ['voice', 'describe', 'embed', 'card', 'equipment']
 const MODELS = ['nomic-embed-text', 'llama3.2:1b', 'gemma3:4b']
 const POLL_MS = 15_000
 const HEARTBEAT_MS = 60_000
@@ -96,9 +97,21 @@ async function runCardJob(job) {
   }
 }
 
+/** Equipment job: the spoken list named line by line by the local model → a SUGGESTION in `result`. */
+async function runEquipmentJob(job) {
+  await ensureOllamaRunning()
+  try {
+    const r = await nameEquipmentLines(job.payload)
+    return { code: 0, out: `${r.model}: ${r.lines.length} lines`, result: r }
+  } catch (e) {
+    return { code: 1, out: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 async function runJob(job) {
   const kind = job.kind
   if (kind === 'card') return runCardJob(job)
+  if (kind === 'equipment') return runEquipmentJob(job)
   if (kind === 'embed') {
     await ensureOllamaRunning()
     return drainIndex()

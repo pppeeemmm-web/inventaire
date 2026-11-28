@@ -68,6 +68,7 @@ import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { useWhatsNewDots } from '@/lib/whats-new-dots'
 import { WhatsNewSpotNotice } from '@/components/atelier/WhatsNewSpotNotice'
+import { ReviewButton } from '@/components/atelier/review/ReviewWindow'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
 /** Tab hop → menu badges refresh after this delay, so the new tab's own read is not queued behind them (TODO 19). */
@@ -193,6 +194,8 @@ function AtelierHeaderChrome({
             ?
           </button>
         ) : null}
+        {/* Review window (ReviewTool.md): desk first; the phone sheet is a later step. */}
+        {!compact ? <ReviewButton style={actionStyle} /> : null}
         {/* Audit items waiting (owner 2026-11-03: "be better informed on the desktop"). */}
         {onPendingReview && pendingReviewCount > 0 ? (
           <button

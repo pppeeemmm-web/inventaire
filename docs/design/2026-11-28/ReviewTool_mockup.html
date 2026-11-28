@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Outil de revue — maquette</title>
+<style>
+:root{--bg:#f4f2ee;--card:#fff;--ink:#1d1b18;--mute:#77716a;--line:#ddd7cf;--acc:#b4532a;--ok:#2f7d4f;--warn:#b8860b;--hl:rgba(180,83,42,.12)}
+@media (prefers-color-scheme:dark){:root{--bg:#171614;--card:#22201d;--ink:#eee9e2;--mute:#9b948b;--line:#3a3631;--acc:#e07a4f;--ok:#5fb37f;--warn:#d9a93a;--hl:rgba(224,122,79,.18)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,sans-serif;padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 8px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+p.n{color:var(--mute);margin:0 0 12px;font-size:13px}
+.desk{position:relative;background:var(--card);border:1px solid var(--line);border-radius:10px;min-height:540px;padding:14px;overflow:hidden}
+.bar{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:10px;font-weight:600}
+.bar .sp{flex:1}.flag{border:1px solid var(--acc);color:var(--acc);border-radius:6px;padding:4px 10px;font-size:13px}
+.rows div{padding:10px 4px;border-bottom:1px solid var(--line);color:var(--mute)}
+.pointed{outline:2px solid var(--acc);background:var(--hl);color:var(--ink)!important;position:relative}
+.pointed::after{content:"🎯 inventory-filter-save";position:absolute;right:6px;top:-11px;background:var(--acc);color:#fff;font-size:11px;padding:1px 6px;border-radius:4px}
+.pip{position:absolute;right:14px;top:56px;width:340px;max-width:calc(100% - 28px);background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px}
+.pip .t{font-size:12px;color:var(--mute);display:flex;justify-content:space-between;margin-bottom:8px}
+.sw{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.sw span{flex:1;text-align:center;padding:8px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.sw .on{background:var(--acc);color:#fff;font-weight:600}
+textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);padding:8px;font:inherit;resize:none}
+.tools{display:flex;gap:6px;margin:8px 0}.tools span{flex:1;border:1px solid var(--line);border-radius:8px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.tools .live{border-color:var(--acc);color:var(--acc)}
+.shots{display:flex;gap:6px;margin-bottom:8px}.shots i{width:56px;height:38px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(135deg,var(--hl),transparent);position:relative}
+.shots i::after{content:"";position:absolute;left:14px;top:12px;width:22px;height:9px;border:1.5px solid var(--acc)}
+.ctx{font-size:12px;color:var(--mute);border-top:1px dashed var(--line);padding-top:6px;margin-bottom:8px}
+.send{background:var(--acc);color:#fff;border-radius:8px;min-height:44px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.k{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px}
+.k b{display:block}.k small{color:var(--mute)}
+.tag{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;margin-right:6px;border:1px solid currentColor}
+.w{color:var(--warn)}.o{color:var(--acc)}.c{color:var(--ok)}
+.btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.btns span{border:1px solid var(--line);border-radius:8px;padding:0 12px;min-height:44px;display:flex;align-items:center;font-size:13px}
+.phone{width:100%;max-width:375px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px;margin:0 auto}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:900px){.grid{grid-template-columns:1.4fr 1fr}}
+</style></head><body>
+<h1>Outil de revue — maquette</h1>
+<p class="n">Rien n'est construit. Bug → Kaizen · Idée → page du jour du Journal. Données fictives.</p>
+
+<h2>1 · Bureau : la fenêtre reste au-dessus de Chrome</h2>
+<div class="desk">
+  <div class="bar">Inventaire <span class="sp"></span><span class="flag">⚑ Revue</span></div>
+  <div class="rows"><div>#2410 · Sans titre · Huile</div><div class="pointed">Filtres &amp; vues · Enregistrer la vue</div><div>#2411 · Paréidolie III · Crayon</div><div>#2412 · Oikeios 7 · Pierre noire</div></div>
+  <div class="pip">
+    <div class="t"><span>⚑ Revue</span><span>Ctrl+Maj+K</span></div>
+    <div class="sw"><span class="on">Bug</span><span>Idée</span></div>
+    <textarea>« Enregistrer la vue » ne garde pas le tri
+Je trie par année, j'enregistre, je recharge : retour au tri par numéro.</textarea>
+    <div class="tools"><span class="live">🎙 écoute…</span><span>📷 Capture</span><span>🎯 Pointer</span></div>
+    <div class="shots"><i></i></div>
+    <div class="ctx">/atelier/inventory?view=3 · live a1b2c3d · 28/11 10:42 · 1440×900 Chrome</div>
+    <div class="send">Envoyer → Kaizen</div>
+  </div>
+</div>
+
+<div class="grid">
+<div>
+<h2>2 · Kaizen : la boucle</h2>
+<div class="k"><span class="tag w">à vérifier</span><small>corrigé dans preview d4e5f6a</small><b>#42 « Enregistrer la vue » ne garde pas le tri</b><small>/atelier/inventory · 🎯 inventory-filter-save · 1 capture</small>
+  <div class="btns"><span>Ouvrir la version</span><span style="color:var(--ok)">Confirmer</span><span style="color:var(--acc)">Rouvrir</span></div></div>
+<div class="k"><span class="tag o">ouvert</span><b>#43 Le compteur des contacts inclut les archivés</b><small>/atelier/contacts · live a1b2c3d</small></div>
+<div class="k"><span class="tag c">confirmé</span><b>#39 Photo du jour sans « ajouté le »</b><small>confirmé le 27/11 sur live 9f8e7d6</small></div>
+</div>
+<div>
+<h2>3 · Téléphone (étape suivante)</h2>
+<div class="phone">
+  <div class="sw"><span>Bug</span><span class="on">Idée</span></div>
+  <textarea>Une vue « dessins sans dimensions » pour les mesurer à l'atelier</textarea>
+  <div class="tools"><span>🎙 Dicter</span><span>🖼 Joindre une capture</span></div>
+  <div class="ctx">/hub · live a1b2c3d · iPhone 390×844</div>
+  <div class="send">Envoyer → Journal, aujourd'hui</div>
+</div>
+</div>
+</div>
+</body></html>

@@ -69,4 +69,32 @@ export const vaultUiMessages = defineMessages({
     fr: 'Glisser pour déplacer',
     en: 'Drag to move',
   },
+  vault_phone_count_fmt: {
+    fr: '{n} documents',
+    en: '{n} documents',
+  },
+  vault_phone_search_ph: {
+    fr: 'Rechercher un document…',
+    en: 'Search documents…',
+  },
+  vault_phone_up: {
+    fr: '← Dossier parent',
+    en: '← Parent folder',
+  },
+  vault_phone_empty: {
+    fr: 'Aucun document.',
+    en: 'No documents.',
+  },
+  vault_phone_no_results: {
+    fr: 'Aucun résultat.',
+    en: 'No results.',
+  },
+  vault_phone_folder: {
+    fr: 'Dossier',
+    en: 'Folder',
+  },
+  vault_phone_coa: {
+    fr: 'Générer un COA',
+    en: 'Generate a COA',
+  },
 })

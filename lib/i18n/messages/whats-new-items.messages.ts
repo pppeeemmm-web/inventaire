@@ -6,6 +6,42 @@ import { defineMessages } from '../message-core'
  * a page's i18n catalog (/hub JS budget, 2026-11-18). New items go here, newest first, FR + EN together.
  */
 export const whatsNewItemMessages = defineMessages({
+  // 3.1.112 (2026-11-28 eve) — review window; phone pattern on Coffre, Rapports, Fiscal, Audit, Contacts; « Envoyer au PC »; Laboratoire.
+  wn_review_phone_t: { fr: '« ⚑ » aussi sur le téléphone', en: '« ⚑ » on the phone too' },
+  wn_review_phone_d: {
+    fr: 'Dans le menu ☰ : signaler un bug ou noter une idée sur l’écran ouvert, au clavier ou à la voix, avec des captures prises dans Photos.',
+    en: 'In the ☰ menu: report a bug or note an idea about the open screen, typed or dictated, with screenshots from Photos.',
+  },
+  wn_equipment_photo_t: { fr: 'Équipement : une photo par objet', en: 'Equipment: a photo per item' },
+  wn_equipment_photo_d: {
+    fr: 'La fiche d’un objet prend une photo (« 📷 Photo ») ; la liste la montre en vignette.',
+    en: 'An item’s card takes a photo (« 📷 Photo »); the list shows it as a thumbnail.',
+  },
+  wn_laboratoire_book_t: { fr: 'Laboratoire : « 📖 Livre »', en: 'Laboratoire: « 📖 Book »' },
+  wn_laboratoire_book_d: {
+    fr: 'Le Laboratoire se lit comme un livre, chapitre par chapitre : buts, règles, recettes, conjectures et leurs grilles.',
+    en: 'The Laboratoire reads as a book, chapter by chapter: aims, rules, recipes, conjectures and their grids.',
+  },
+  wn_review_window_t: { fr: '« ⚑ Revue » : signaler un bug ou noter une idée sans quitter la page', en: '« ⚑ Review »: report a bug or note an idea without leaving the page' },
+  wn_review_window_d: {
+    fr: 'En haut de l’Atelier (ou Ctrl+Maj+K), une petite fenêtre reste au-dessus de Chrome : écrire ou dicter, montrer l’élément, ajouter des captures. Bug → Kaizen « App » avec la page et la version ; Idée → le Journal du jour. Un signalement de l’équipe attend l’accord de Pem.',
+    en: 'At the top of the Atelier (or Ctrl+Shift+K), a small window stays on top of Chrome: write or dictate, point at the element, add screenshots. Bug → Kaizen « App » with the page and the build; Idea → today’s Journal. A team report waits for Pem’s OK.',
+  },
+  wn_phone_pattern_tabs_t: { fr: 'Téléphone : Contacts, Coffre, Rapports, Fiscal et Audit en liste', en: 'Phone: Contacts, Vault, Reports, Fiscal and Audit as lists' },
+  wn_phone_pattern_tabs_d: {
+    fr: 'Comme le Stock : une recherche, des filtres en puces, une ligne par élément ; un toucher ouvre la fiche. Les actions secondaires sont sous « … ».',
+    en: 'Like Stock: one search, filters as chips, one row per item; a tap opens the card. Secondary actions are under « … ».',
+  },
+  wn_equipment_send_pc_t: { fr: 'Équipement : « Envoyer au PC »', en: 'Equipment: « Send to the PC »' },
+  wn_equipment_send_pc_d: {
+    fr: 'Après « 🎙️ Dire », le PC de l’atelier nomme les objets (IA locale, rien ne sort) ; ils reviennent dans « Proposé par le PC » à cocher.',
+    en: 'After « 🎙️ Say », the studio PC names the objects (local AI, nothing leaves); they come back under « Proposed by the PC » to tick.',
+  },
+  wn_laboratoire_screens_t: { fr: 'Laboratoire : l’arbre, la fiche recette et « Essai »', en: 'Laboratoire: the tree, the recipe card and « Trial »' },
+  wn_laboratoire_screens_d: {
+    fr: 'Dans Idées → Laboratoire : chapitres, recettes et conjectures dans l’ordre ; la fiche (ingrédients, étapes, grille des limites) ; « Essai » depuis le téléphone, noté sur le jour et dans la grille.',
+    en: 'In Ideas → Laboratoire: chapters, recipes and conjectures in order; the card (ingredients, steps, grid of limits); « Trial » from the phone, written on the day and in the grid.',
+  },
   // 3.1.110 (2026-11-27) — phone bar tap / hold; found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
   // 3.1.111 (2026-11-28) — phone labels by type; private cards; clearer save messages; Équipement; Fil « Revenir ».
   wn_contacts_phone_label_type_t: { fr: 'Téléphones : le libellé suit le numéro', en: 'Phones: the label follows the number' },

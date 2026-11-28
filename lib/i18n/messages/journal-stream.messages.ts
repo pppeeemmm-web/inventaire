@@ -144,6 +144,7 @@ export const journalStreamMessages = defineMessages({
   js_label_note: { fr: 'Note', en: 'Note' },
   js_label_idea: { fr: 'Idée', en: 'Idea' },
   js_label_research: { fr: 'Recherche', en: 'Research' },
+  js_label_essai: { fr: 'Essai', en: 'Trial' },
   js_menu_labels: { fr: 'Étiquettes', en: 'Labels' },
   js_menu_suite: { fr: 'Ajouter une suite', en: 'Add a follow-up' },
   js_menu_move: { fr: 'Placer sur un autre jour', en: 'Place on another day' },

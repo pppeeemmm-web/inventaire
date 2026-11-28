@@ -1,6 +1,6 @@
 'use server'
 
-// Kaizen — ideas and improvements (owner 2026-11-02). Sections: Création, Site web, Business;
+// Kaizen — ideas and improvements (owner 2026-11-02). Sections: Création, Site web, Business, App (review window);
 // NULL section = migrated entry waiting for the owner to confirm its suggested section.
 // Entries are ticked done / reopened, never deleted (no DELETE grant or policy).
 
@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
-import { parseKaizenSection as parseSection, type KaizenItem, type KaizenScope } from '@/lib/kaizen'
+import { parseKaizenContext, parseKaizenSection as parseSection, type KaizenItem, type KaizenScope } from '@/lib/kaizen'
 
 export type KaizenErr = { error: string }
 
@@ -62,6 +62,8 @@ export async function createKaizen(input: {
   title: string
   body: string
   section: string
+  /** Review window only: page, build, device, pointed element (cleaned; written once). */
+  context?: unknown
 }): Promise<{ ok: true; item: KaizenItem } | KaizenErr> {
   const supabase = await createClient()
   const {
@@ -75,10 +77,12 @@ export async function createKaizen(input: {
   // « Création » moved to Idées (Pem 2026-11-18): a new entry without a section is Business.
   const section = parseSection(input.section) ?? 'business'
   const work_ids = await worksMentioned(supabase, `${title} ${body ?? ''}`)
+  const context = parseKaizenContext(input.context)
 
   const { data, error } = await supabase
     .from('kaizen_item')
-    .insert({ author_id: user.id, title, body, section, work_ids })
+    // `context` only when the review window sends one: an ordinary add never names the column.
+    .insert({ author_id: user.id, title, body, section, work_ids, ...(context ? { context } : {}) })
     .select('*')
     .single()
   if (error || !data) return { error: error?.message ?? 'insert' }
@@ -130,15 +134,40 @@ export async function setKaizenDone(id: number, done: boolean): Promise<{ ok: tr
   } = await supabase.auth.getUser()
   if (!user) return { error: 'auth' }
 
+  // A review-window report ticked done names the build it is fixed in (this deploy); reopening clears it (trigger).
+  const { data: cur } = await supabase.from('kaizen_item').select('section').eq('id', id).maybeSingle()
+  const fixedSha = done && cur?.section === 'app' ? (process.env.VERCEL_GIT_COMMIT_SHA ?? null) : undefined
   const { data, error } = await supabase
     .from('kaizen_item')
-    .update(done ? { done_at: new Date().toISOString(), done_by: user.id } : { done_at: null, done_by: null })
+    .update(
+      done
+        ? { done_at: new Date().toISOString(), done_by: user.id, ...(fixedSha !== undefined ? { fixed_sha: fixedSha } : {}) }
+        : { done_at: null, done_by: null },
+    )
     .eq('id', id)
     .select('*')
     .maybeSingle()
   if (error) return { error: error.message }
   if (!data) return { error: 'forbidden' }
   revalidatePath('/atelier')
+  return { ok: true, item: data as KaizenItem }
+}
+
+/**
+ * Review window loop (ReviewTool.md): Pem approves a team report (« proposé » → « ouvert »), confirms a fix on its
+ * build (« à vérifier » → « confirmé »). The database refuses both to anyone but an admin (kaizen_item_review_guard).
+ */
+export async function reviewKaizen(id: number, what: 'approve' | 'verify'): Promise<{ ok: true; item: KaizenItem } | KaizenErr> {
+  const supabase = await createClient()
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'forbidden' }
+  const now = new Date().toISOString()
+  let q = supabase.from('kaizen_item').update(what === 'approve' ? { approved_at: now } : { verified_at: now }).eq('id', id)
+  q = what === 'approve' ? q.is('approved_at', null) : q.not('done_at', 'is', null).is('verified_at', null)
+  const { data, error } = await q.select('*').maybeSingle()
+  if (error) return { error: error.message }
+  // Nothing changed (already approved / verified, or reopened meanwhile): say so, never « ok ».
+  if (!data) return { error: 'unchanged' }
   return { ok: true, item: data as KaizenItem }
 }
 

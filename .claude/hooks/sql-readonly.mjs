@@ -8,13 +8,18 @@ process.stdin.on('end', () => {
   try {
     q = String(JSON.parse(raw)?.tool_input?.query ?? '')
   } catch {
-    return
+    q = ''
   }
-  if (readOnly(q)) {
-    process.stdout.write(JSON.stringify({
-      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: 'read-only SQL (sql-readonly hook)' },
-    }))
-  }
+  // Pem 2026-11-28: the claude.ai Supabase connector sets execute_sql to « Always allow » (its own « ask » overrode this
+  // hook's allow), so anything not proven read-only must ask here, explicitly.
+  const ok = readOnly(q)
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: ok ? 'allow' : 'ask',
+      permissionDecisionReason: ok ? 'read-only SQL (sql-readonly hook)' : 'not provably read-only SQL: Pem decides (sql-readonly hook)',
+    },
+  }))
 })
 
 // Keywords that write, change the schema, lock, run code or reach the server's files: any one → ask.
@@ -33,7 +38,18 @@ const READ_FN = new Set(['count', 'sum', 'min', 'max', 'avg', 'coalesce', 'nulli
   'generate_series', 'make_date', 'date', 'interval', 'quote_ident', 'quote_literal', 'string_to_array', 'array_to_string', 'bool_or', 'bool_and',
   'percentile_cont', 'percentile_disc', 'mode', 'initcap', 'reverse', 'repeat', 'lpad', 'rpad', 'trunc', 'mod', 'power', 'sqrt', 'random',
   'current_setting', 'has_table_privilege', 'has_function_privilege', 'obj_description', 'col_description', 'format_type', 'array_position',
-  'to_number', 'timezone', 'justify_interval', 'isfinite'])
+  'to_number', 'timezone', 'justify_interval', 'isfinite',
+  // Catalog and JSON reads used when checking the live schema (Pem 2026-11-28: « SQL reading asking me again and again »).
+  'pg_get_expr', 'pg_get_userbyid', 'pg_get_function_arguments', 'pg_get_function_result', 'pg_get_function_identity_arguments',
+  'pg_get_serial_sequence', 'pg_get_keywords', 'pg_table_is_visible', 'pg_function_is_visible', 'to_regclass', 'to_regproc',
+  'to_regprocedure', 'to_regtype', 'format_type', 'pg_column_size', 'pg_indexes_size', 'pg_table_size', 'pg_database_size',
+  'jsonb_array_length', 'json_array_length', 'jsonb_pretty', 'jsonb_extract_path', 'jsonb_extract_path_text', 'jsonb_strip_nulls',
+  'jsonb_object_agg', 'json_object_agg', 'jsonb_build_array', 'json_build_array', 'jsonb_each_text', 'jsonb_array_elements_text',
+  'jsonb_path_query', 'jsonb_path_exists', 'array_remove', 'array_cat', 'array_append', 'array_prepend', 'regexp_split_to_table',
+  'regexp_split_to_array', 'regexp_count', 'octet_length', 'bit_length', 'encode', 'sha256', 'translate', 'starts_with',
+  'unaccent', 'date_bin', 'make_timestamp', 'make_interval', 'to_regnamespace', 'version', 'current_database', 'current_schema'])
+// Read-only by name: catalog getters, privilege checks, descriptions.
+const READ_FN_RE = /^(pg_get_\w+|has_\w+_privilege|\w+_description)$/
 
 export function readOnly(sql) {
   // One left-to-right pass: strings, quoted identifiers, dollar-quoted bodies and comments, whichever starts first,
@@ -50,7 +66,7 @@ export function readOnly(sql) {
   if (WRITE.test(s)) return false
   for (const m of s.matchAll(/([A-Za-z_][A-Za-z0-9_.]*)\s*\(/g)) {
     const name = m[1].toLowerCase().split('.').pop()
-    if (NOT_CALL.has(name) || READ_FN.has(name)) continue
+    if (NOT_CALL.has(name) || READ_FN.has(name) || READ_FN_RE.test(name)) continue
     return false // a function that is not known to only read
   }
   return true

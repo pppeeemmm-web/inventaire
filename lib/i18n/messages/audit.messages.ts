@@ -1,6 +1,11 @@
 import { defineMessages } from '../message-core'
 
 export const auditMessages = defineMessages({
+  audit_sheet_when: { fr: 'Date', en: 'When' },
+  audit_sheet_event: { fr: 'Événement', en: 'Event' },
+  audit_sheet_user: { fr: 'Utilisateur', en: 'User' },
+  audit_sheet_table: { fr: 'Table', en: 'Table' },
+  audit_sheet_details: { fr: 'Détails', en: 'Details' },
   audit_select_all: {
     fr: 'Tout sélectionner',
     en: 'Select all',

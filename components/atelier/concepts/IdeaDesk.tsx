@@ -13,6 +13,7 @@ import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { WorkRef } from '@/components/atelier/WorkRef'
 import { EntryCard } from '@/components/journal/JournalStream'
 import { ConceptDocuments } from '@/components/atelier/concepts/ConceptDocuments'
+import { LabPanel } from '@/components/atelier/concepts/LabPanel'
 import { PlantIdeaSheet } from '@/components/atelier/concepts/PlantIdeaSheet'
 import { ideaErrorText, SEED, STAGES, stageOffer, type Stage } from '@/components/atelier/concepts/idea-ui'
 import { deleteIdea, saveIdeaText, setIdeaParent, setIdeaStage, writeInIdea } from '@/app/atelier/(portal)/concepts/idea-actions'
@@ -222,6 +223,7 @@ export function IdeaDesk({
           <img src={imageUrl(i.sketch) ?? ''} alt={t('it_sketch')} style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, objectFit: 'contain' }} />
         </figure>
       ) : null}
+      {desk.lab ? <LabPanel ideaId={id} lab={desk.lab} isAdmin={desk.isAdmin} narrow={!wide} onOpen={onOpen} onChanged={() => void load()} /> : null}
       <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('it_fil_hint')}</div>
       {items.length ? items.map((x) => x.node) : <p style={{ color: 'var(--tx3)' }}>{t('it_fil_empty')}</p>}
       {i.oldNotes ? (

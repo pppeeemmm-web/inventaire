@@ -6,6 +6,7 @@ import { swipeDeckMessages } from './swipe-deck.messages'
 import { filMessages } from './fil.messages'
 import { ideasMessages } from './ideas.messages'
 import { ideaTreeMessages } from './idea-tree.messages'
+import { labMessages } from './lab.messages'
 import { noteLinesMessages } from './note-lines.messages'
 import { mobileSaleMessages } from './mobile-sale.messages'
 import { portfolioPdfMessages } from './portfolio-pdf.messages'
@@ -48,6 +49,7 @@ import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
 import { kaizenMessages } from './kaizen.messages'
+import { reviewMessages } from './review.messages'
 import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { custodyMessages } from './custody.messages'
@@ -96,6 +98,7 @@ export const featureMessages = {
   ...filMessages,
   ...ideasMessages,
   ...ideaTreeMessages,
+  ...labMessages,
   ...noteLinesMessages,
   ...portfolioPdfMessages,
   ...mobileSaleMessages,
@@ -136,6 +139,7 @@ export const featureMessages = {
   ...conceptDocsMessages,
   ...notesTriageMessages,
   ...kaizenMessages,
+  ...reviewMessages,
   ...reportsUiMessages,
   ...conditionMessages,
   ...custodyMessages,

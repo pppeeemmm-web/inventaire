@@ -101,7 +101,8 @@
 // '3.1.111' (2026-11-28): phone labels by type; private cards admin-only; clearer save messages; Stock « Équipement »; Fil « Revenir » safe.
 // '3.1.110' (2026-11-27): phone bar tap = do / hold = choose; phone numbers in one form; voice note pause / import; found work asks the year and « Terminée ? »; contacts on the phone; theme / group changes reach every screen.
 // '3.1.109' (2026-11-27): phone menu — Pipeline tile, « Ventes », « Tout le reste » open; « Tous les champs » ↔ « ← Formulaire court ».
-export const WHATS_NEW_RELEASE = '3.1.111'
+// '3.1.112' (2026-11-28 eve): review window, phone pattern on five more tabs, « Envoyer au PC », Laboratoire screens.
+export const WHATS_NEW_RELEASE = '3.1.112'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -127,6 +128,13 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'review_phone', day: '2026-11-28', spot: 'kaizen-ops' },
+  { id: 'equipment_photo', day: '2026-11-28', spot: 'stock' },
+  { id: 'laboratoire_book', day: '2026-11-28', spot: 'concepts', admin: true },
+  { id: 'review_window', day: '2026-11-28', spot: 'kaizen-ops' },
+  { id: 'phone_pattern_tabs', day: '2026-11-28', spot: 'contacts' },
+  { id: 'equipment_send_pc', day: '2026-11-28', spot: 'stock' },
+  { id: 'laboratoire_screens', day: '2026-11-28', spot: 'concepts', admin: true },
   { id: 'contacts_phone_label_type', day: '2026-11-28', spot: 'contacts' },
   { id: 'contacts_private_admin', day: '2026-11-28', spot: 'contacts' },
   { id: 'work_save_clear_messages', day: '2026-11-28', spot: 'inventory' },

@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { PhoneListToolbar } from '@/components/shared/phone/PhoneListToolbar'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
@@ -299,22 +300,24 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
             </div>
           )}
         </div>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('prod_tab_filter_ph')}
-          style={{
-            marginLeft: narrow ? 0 : 'auto',
-            padding: '8px 14px',
-            fontSize: 13,
-            background: 'var(--bg1)',
-            border: '1px solid var(--bd)',
-            color: 'var(--tx)',
-            width: narrow ? '100%' : 220,
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        />
+        {narrow ? null : (
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('prod_tab_filter_ph')}
+            style={{
+              marginLeft: 'auto',
+              padding: '8px 14px',
+              fontSize: 13,
+              background: 'var(--bg1)',
+              border: '1px solid var(--bd)',
+              color: 'var(--tx)',
+              width: 220,
+              minWidth: 0,
+              boxSizing: 'border-box',
+            }}
+          />
+        )}
         <button
           type="button"
           onClick={() => setEditingTypes((v) => !v)}
@@ -335,6 +338,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         {/* Access-style: the report lives in Studio → Rapports, seeded with this board's works. */}
         <ReportLinkButton source="production" style={{ alignSelf: narrow ? 'stretch' : undefined }} />
       </div>
+
+      {narrow ? <PhoneListToolbar query={search} onQuery={setSearch} placeholder={t('prod_tab_filter_ph')} chips={null} testId="prod-phone-toolbar" /> : null}
 
       <MaterialOverview
         fieldIssues={fieldIssues}

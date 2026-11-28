@@ -242,7 +242,7 @@ export function AiDesk({ isAdmin }: { isAdmin: boolean }) {
   const running = jobs.some((j) => j.status === 'running')
   const when = (d: string) => new Date(d).toLocaleString(loc, { dateStyle: 'short', timeStyle: 'short' })
   const kindLabel = (k: string) =>
-    k === 'voice' ? t('ai_kind_voice') : k === 'embed' ? t('ai_kind_embed') : k === 'describe' ? t('ai_kind_describe') : k === 'card' ? t('ai_kind_card') : k
+    k === 'voice' ? t('ai_kind_voice') : k === 'embed' ? t('ai_kind_embed') : k === 'describe' ? t('ai_kind_describe') : k === 'card' ? t('ai_kind_card') : k === 'equipment' ? t('ai_kind_equipment') : k
   const statusLabel = (s: string) =>
     s === 'waiting' ? t('ai_job_waiting') : s === 'running' ? t('ai_job_running') : s === 'done' ? t('ai_job_done') : t('ai_job_failed')
   const ollamaOk = data?.ollama != null

@@ -38,6 +38,7 @@ import {
 } from '@/lib/stock-material-list-export'
 import { pickableContacts } from '@/lib/contacts/contact-display'
 import { useIsAdmin } from '@/hooks/useIsAdmin'
+import { PHONE_SLIDE_UP_CLASS, PhoneSlideUpStyle } from '@/components/shared/phone/PhoneSlideUp'
 import { StockPhoneList } from '@/components/atelier/supplies/StockPhoneList'
 import { phoneMatches, phoneQueryDigits } from '@/lib/contacts/phone-search'
 import { saveStockItem } from '@/app/atelier/(portal)/stock/equipment-actions'
@@ -1385,6 +1386,7 @@ export function SupplierHub({ contacts }: Props) {
       {editing && (
         <>
           {unsavedStockDialog}
+          {narrow ? <PhoneSlideUpStyle /> : null}
           <div
             role="presentation"
             data-testid="atelier-stock-editor-overlay"
@@ -1403,6 +1405,7 @@ export function SupplierHub({ contacts }: Props) {
             <div
               role="dialog"
               aria-modal
+              className={narrow ? PHONE_SLIDE_UP_CLASS : undefined}
               data-testid="atelier-stock-editor"
               style={{
                 background: 'var(--bg1)',

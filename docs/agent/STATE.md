@@ -5,7 +5,7 @@ roles (`ROLE.md`) **reads this file first** and **updates it before ending** (wh
 the day's decisions to `LOG.md`. Nothing here overrides `CLAUDE.md`; the rule on reaching outside (`ROLE.md`, Hard
 Rules) holds for every line below.
 
-Last updated: 2026-11-28 (cloud session, Pem in Madrid).
+Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
 
 ## Where things stand
 - **Roles:** data system strategist · art business developer / agent · R&D advisor for the PEM Hub — `ROLE.md`
@@ -53,9 +53,16 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
 ## How we work (learned 2026-11-26/27)
 - Work Pem does not watch: branch → draft PR (CI) → Vercel preview (live database) → Pem tries → merge (Pem, or
   Claude when Pem says « merge when green »). `x-build-sha` proves a deploy; docs-only merges may not redeploy.
-- Read-only Supabase SQL runs without a prompt (`.claude/hooks/sql-readonly.mjs`); any write asks. After a worker
-  restart in a cloud session the hook may not be loaded (every read prompts; `/hooks` is not available there) →
-  start a fresh session. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
+- SQL prompts (found 28/11 in the session log): the hook ran and said « allow » every time; the prompt came from
+  the claude.ai Supabase connector's own tool permission (`mcpServerPolicy`), which overrides the hook — « fresh
+  session » was a wrong fix. Pem set `execute_sql` to always allow in the connector 28/11 (not yet in effect in the
+  session that changed it; the next session's first read proves it or not). The hook now answers « ask » for
+  anything not proven read-only, so writes still ask.
+  **Not proven (28/11, later session):** the first read (`information_schema.columns`, `kaizen_item`) was still
+  refused — log `toolDenialKind: permission-rule`, no `mcpServerPolicy`. The connector first loaded under an id
+  name (`mcp__45c2b1ae…__execute_sql`), which the hook matcher `mcp__.*[Ss]upabase.*__execute_sql` misses — the hook
+  never ran; it later reconnected as `mcp__Supabase__…` (matched). Docker works in the cloud container: the review
+  tool's step 1 SQL can be proved on a throwaway copy there before any live read. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
 - Live SQL is always rebuilt from the live body (md5 guard), never from the repo copy: twice on 27–28/11 the repo
   copy was older (oeuvre_history lacked « Volée », save_contact differed).
 - The Journal never edits or deletes: a day move = `journal_move_entry`'s writes; a change = a correction entry.
@@ -64,10 +71,28 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **Next session (fresh, so the read-only SQL guard works):** batch C — the system overview + data-quality report
-  (read only). Then on Pem's GO: Laboratoire step 3 (screens: tree in Idées, recipe card, « Essai » from the phone),
-  Ollama for « Dire » (designed, waits « GO Ollama », TODO §2), phone pattern on Coffre / Contacts / Rapports /
-  Audit / Fiscal « par année » (TODO §1).
+- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, draft PR #14:** review window
+  « ⚑ Revue » (Kaizen « App », proposé → ouvert → à vérifier → confirmé), phone pattern on Coffre / Rapports /
+  Fiscal « par année » / Audit / Contacts, « Dire » → « Envoyer au PC » (Ollama), Laboratoire screens (tree, recipe
+  card, « Essai »). Its SQL is **live** (« Apply sql »: kaizen_review_tool, ai_job_equipment, laboratoire_essai_label).
+  Next: Vercel preview of PR #14 → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
+  browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
+  fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
+- **Waves 1 + 2 (Pem « go wave 1 and then 2 », 28/11) on PR #14 too:** ⚑ in the phone ☰ menu (review sheet),
+  Laboratoire « 📖 Livre » (`/api/ideas?book=`), phone step 4 (Contacts / Stock: the card over the list, the list keeps
+  its place), Équipement photo per item (`setStockItemPhoto`), Kaizen + Production on the phone toolbar, guards in Node
+  (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
+  no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
+  n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
+- **Floating ⚑ on every phone screen** (`d963497`, Pem « Go »): bottom right, over the screen in use. **Pem tried the
+  preview on the phone: « All good » (28/11).** Next: Pem's desk check (⚑ window, Approuver / Confirmer, recipe edit) or
+  Pem merges PR #14 as it is; then batch C (data-quality report) and the design-note status lines.
+- **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
+  unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
+  …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
+  `pwsh` is missing in cloud sessions, so the commit / push / agent guards (`.ps1`) do not run there — port to Node
+  (parked, its own GO). If a read still prompts, the claude.ai Supabase connector's own setting is the cause.
+- Then batch C — the system overview + data-quality report (read only).
 - PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
   Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.
   `gen:types` not run in the cloud (no token): the equipment / lab columns are read through a loose client.

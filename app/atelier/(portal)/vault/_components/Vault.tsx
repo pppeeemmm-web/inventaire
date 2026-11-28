@@ -7,6 +7,9 @@ import React, { useState, useEffect, useRef, useTransition, useCallback, useMemo
 import Image from 'next/image'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { VaultPhoneList } from './VaultPhoneList'
+import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 import { createClient } from '@/lib/supabase/client'
 import {
   uploadDocument, updateDocument, deleteDocument, getSignedUrl, getDocumentTextPreview, generateCOA,
@@ -47,6 +50,7 @@ interface Props {
 
 export function Vault({ oeuvres, tM }: Props) {
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [docs,     setDocs]     = useState<VaultDoc[]>([])
   const [loading,  setLoading]  = useState(true)
   const [kindFilter, setKindFilter] = useState<string | null>(null)
@@ -355,6 +359,28 @@ export function Vault({ oeuvres, tM }: Props) {
   return (
     <div data-testid="atelier-vault-root" style={{ display: 'flex', height: '100%', minHeight: 0 }}>
 
+      {narrow ? (
+        <VaultPhoneList
+          docs={filtered}
+          folders={visibleFolders}
+          loading={loading}
+          hasAnyDoc={docs.length > 0}
+          search={search}
+          onSearch={setSearch}
+          currentPath={currentPath}
+          onGoToPath={setCurrentPath}
+          kindFilter={kindFilter}
+          kindLabel={kindFilter ? kindLabel(kindFilter) : ''}
+          onClearKind={() => setKindFilter(null)}
+          mimeIcon={mimeIcon}
+          formatSize={formatSize}
+          onEnterFolder={(f) => setCurrentPath([...currentPath, f])}
+          onOpen={setSelected}
+          onImport={() => setShowUpload(true)}
+          onNewFolder={() => setShowNewFolder(true)}
+          onCoa={() => setShowCoa(true)}
+        />
+      ) : (<>
       {/* ── Sidebar ── */}
       <div style={{
         width: 260,
@@ -784,10 +810,13 @@ export function Vault({ oeuvres, tM }: Props) {
         </div>
       </div>
 
+      </>)}
+
       {/* ── Right rail: preview ────────────────────────────────── */}
       {selected && (
+        <RailShell narrow={narrow} title={selected.name} onClose={() => setSelected(null)}>
         <div style={{
-          width: 340, flexShrink: 0, borderLeft: '1px solid var(--bd)',
+          width: narrow ? '100%' : 340, flexShrink: 0, borderLeft: narrow ? 'none' : '1px solid var(--bd)',
           background: 'var(--bg1)', display: 'flex', flexDirection: 'column',
           overflow: 'auto',
         }}>
@@ -931,6 +960,7 @@ export function Vault({ oeuvres, tM }: Props) {
             </div>
           </div>
         </div>
+        </RailShell>
       )}
 
       {showEdit && editingDoc && (
@@ -1003,6 +1033,12 @@ export function Vault({ oeuvres, tM }: Props) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
+
+/** Desk: the preview rail sits beside the list. Phone: the same rail opens in a bottom sheet. */
+function RailShell({ narrow, title, onClose, children }: { narrow: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
+  if (!narrow) return <>{children}</>
+  return <PhoneSheet title={title} onClose={onClose} testId="atelier-vault-phone-detail">{children}</PhoneSheet>
+}
 
 function Row({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (

@@ -4,6 +4,17 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-28
+- Pem on the PR #14 preview, phone (« All good », ~10:50 UTC): the floating ⚑ (`d963497`) and the phone builds of the
+  day. Desk parts (⚑ window, Kaizen Approuver / Confirmer, recipe edit) not tried yet. Not merged.
+- Evening, Pem « Build feedback tool and other designs as well in parallel »: review window, Laboratoire step 3,
+  phone pattern on the other tabs, Ollama for « Dire » (choosing it = « GO Ollama ») built on
+  `claude/awesome-keller-jgcusv`; the review tool's design branch (`claude/eloquent-johnson-zlbeqx`) merged into it
+  first. Flow review found 11 gaps; fixed in `8dd747b` (approval held by the database, failed walks kept, no double add).
+- SQL live on Pem's « Apply sql »: `kaizen_review_tool.sql`, `ai_job_equipment.sql`, `laboratoire_essai_label.sql`
+  (each proved on a throwaway Postgres first; live re-read: 33/33 Kaizen items approved, trigger, kinds, label).
+- Pem, angry: a fresh session must know everything from the start (the unmerged branch was missed) and SQL reads
+  keep asking → fix proposed (Node session start listing unmerged branches; SQL guard + read-only Supabase tools);
+  waits for GO.
 - PR #11 merged (`c4a22b4`) on Pem's « Merge »: found work, contacts on the phone, themes refresh, voice pause +
   import, contact door + phone numbers, phone bar tap / hold.
 - Live data on Pem's word: phone one-off + duplicates (« Apply phone », « Ok to delete duplicates »); countries for
@@ -28,6 +39,16 @@ writing by Pem) also become a moment in the Hub. Nothing in this file authorises
   Stock lines is not archived). The three studios (Marseille, Tooreeney, Waterford) already exist: no place marked.
 - Voice import missing on the Atelier phone bar (Pem) → fixed on « GO »; Pem stopped the flow review before it ran.
 - PR #12 merged on « Finish merge and close session ».
+- SQL prompts, real cause (session log): the claude.ai Supabase connector's tool permission overrides the repo
+  hook's « allow »; Pem set `execute_sql` to always allow there; the hook now answers « ask » for anything not proven
+  read-only (`174a296`). Not yet proven in a new session.
+- Review tool answers (Pem): Chrome pop-out first, then phone; words + voice + screenshot + pointing; each report a
+  Kaizen item read at session start; switch Bug → Kaizen « App » / Idée → today's Journal; loop open → to verify →
+  confirmed; the team can report but everything waits for Pem's OK → `docs/design/2026-11-28/ReviewTool.md` (+ mockup).
+  Build waits for Pem's GO on step 1 (SQL).
+- SQL prompt fix **not proven** (later session): the first read was still refused (`permission-rule`, no
+  `mcpServerPolicy`); the hook never ran — the connector loaded as `mcp__45c2b1ae…`, which its matcher misses.
+  Pem stopped the session to restart fresh; nothing else changed → `STATE.md` (`393dd97`).
 
 ## 2026-11-27
 - PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.

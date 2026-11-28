@@ -1,12 +1,28 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__Supabase__list_projects",
+      "mcp__Supabase__get_project",
+      "mcp__Supabase__get_project_url",
+      "mcp__Supabase__list_tables",
+      "mcp__Supabase__list_extensions",
+      "mcp__Supabase__list_migrations",
+      "mcp__Supabase__get_advisors",
+      "mcp__Supabase__search_docs",
+      "mcp__Supabase__list_branches",
+      "mcp__Supabase__list_edge_functions",
+      "mcp__Supabase__get_edge_function",
+      "mcp__Supabase__generate_typescript_types"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.ps1\"",
-            "timeout": 15
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.mjs\"",
+            "timeout": 30
           }
         ]
       }
@@ -18,28 +34,28 @@
           {
             "type": "command",
             "if": "Bash(git commit *)",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/commit-guard.ps1\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\" commit",
             "timeout": 15,
             "statusMessage": "Commit guard: checking for unstaged files..."
           },
           {
             "type": "command",
             "if": "PowerShell(git commit *)",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/commit-guard.ps1\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\" commit",
             "timeout": 15,
             "statusMessage": "Commit guard: checking for unstaged files..."
           },
           {
             "type": "command",
             "if": "Bash(git push *)",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-push-checks.ps1\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\" push",
             "timeout": 120,
             "statusMessage": "Pre-push: checking branch + working tree..."
           },
           {
             "type": "command",
             "if": "PowerShell(git push *)",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-push-checks.ps1\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\" push",
             "timeout": 120,
             "statusMessage": "Pre-push: checking branch + working tree..."
           }
@@ -50,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-guard.ps1\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\" agent",
             "timeout": 15,
             "statusMessage": "Agent guard: checking subagent type..."
           }
