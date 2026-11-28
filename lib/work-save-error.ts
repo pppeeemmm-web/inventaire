@@ -13,6 +13,8 @@ export const WORK_BASE_EDITED_AT_FIELD = '__base_edited_at'
 export const WORK_CHANGED_ERROR = 'work_changed'
 /** `saveWork` refusal: the work was put in the bin after the card opened. */
 export const WORK_IN_BIN_ERROR = 'work_in_bin'
+/** `saveWork` refusal: a contact the save names (owner, location, buyer…) was deleted since; nothing written. */
+export const WORK_CONTACT_GONE_ERROR = 'work_contact_gone'
 /** `saveWork` refusal of a card save, field by field: `work_fields_changed:<form key>,<form key>` — those fields
  *  were changed here and elsewhere since the card opened; nothing written. */
 const WORK_FIELDS_CHANGED_PREFIX = 'work_fields_changed:'
@@ -24,6 +26,12 @@ export function workFieldsChangedError(formKeys: readonly string[]): string {
 /** Saved elsewhere / binned since the card (or a queued phone save) opened: replaying it cannot succeed. */
 export function isWorkStaleError(error: string): boolean {
   return error === WORK_CHANGED_ERROR || error === WORK_IN_BIN_ERROR || error.startsWith(WORK_FIELDS_CHANGED_PREFIX)
+}
+
+/** A write refused because a contact it names (owner `ContactID`, buyer `AcheteurID`, location `LocalisationID`) no
+ *  longer exists — only those foreign keys; any other 23503 (a deleted author, a trigger's child row) keeps its own message. */
+export function isContactGoneDbError(err: { code?: string | null; message?: string | null } | null | undefined): boolean {
+  return err?.code === '23503' && /contact|acheteur|localisation/i.test(err.message ?? '')
 }
 
 /** Readable names of card fields (form keys), e.g. « Prix, Statut ». */
@@ -104,6 +112,7 @@ export function workSaveErrorToastMessage(
   t: (key: AnyDictKey) => string,
 ): string {
   if (isWorkSaveI18nError(error)) return t(error)
+  if (error === WORK_CONTACT_GONE_ERROR) return t('wc_contact_gone')
   if (error.startsWith(WORK_FIELDS_CHANGED_PREFIX)) {
     const keys = error.slice(WORK_FIELDS_CHANGED_PREFIX.length).split(',').filter(Boolean)
     return t('wc_err_work_fields_changed').replace('{fields}', workFieldLabels(keys, t))

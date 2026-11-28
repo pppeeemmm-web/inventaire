@@ -51,7 +51,7 @@ export async function insertOeuvreRow(
   oid: number,
   columns: OeuvreCreateColumns,
   provenance: { actorId: string | null; editedAt: string },
-): Promise<{ error: string } | { ok: true }> {
+): Promise<{ error: string; code?: string } | { ok: true }> {
   // Studio rule: the artist is the producer, so a new work is owned by the artist
   // unless the caller names another holder — ownership moves only by explicit transfer.
   // A work then lives wherever its owner is, so location follows ownership; an explicit
@@ -72,6 +72,6 @@ export async function insertOeuvreRow(
     edited_at:  provenance.editedAt,
   })
 
-  if (insertErr) return { error: insertErr.message }
+  if (insertErr) return { error: insertErr.message, code: insertErr.code }
   return { ok: true }
 }

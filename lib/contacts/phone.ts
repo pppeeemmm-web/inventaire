@@ -1,4 +1,4 @@
-import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/max'
 
 /**
  * One stored form for phone numbers (ContactDoor.md step 4, Pem 2026-11-27: « France is the default although can
@@ -49,4 +49,20 @@ export function normalizePhone(parts: PhoneParts, addressCountry?: CountryCode |
   const cc = `+${n.countryCallingCode}`
   const intl = n.formatInternational() // « +33 6 74 89 02 54 »
   return { country_code: cc, phone: intl.startsWith(cc) ? intl.slice(cc.length).trim() : n.nationalNumber }
+}
+
+/**
+ * The label follows the number's real type (Pem 2026-11-27): MOBILE + empty / « Other » / « Autre » → « Mobile »;
+ * FIXED_LINE or VOIP + « Mobile » / « Móvil » → « Home »; anything else (Work, Main, unknown, unreadable) unchanged.
+ */
+export function phoneLabelFor(parts: PhoneParts, label: string | null | undefined): string | null {
+  const current = label ?? null
+  const ccDigits = (parts.country_code ?? '').replace(/\D/g, '')
+  const digits = (parts.phone ?? '').replace(/\D/g, '').replace(/^0/, '')
+  if (!ccDigits || !digits) return current
+  const type = parsePhoneNumberFromString(`+${ccDigits}${digits}`)?.getType()
+  const l = (current ?? '').trim().toLowerCase()
+  if (type === 'MOBILE' && (l === '' || l === 'other' || l === 'autre')) return 'Mobile'
+  if ((type === 'FIXED_LINE' || type === 'VOIP') && (l === 'mobile' || l === 'móvil')) return 'Home'
+  return current
 }

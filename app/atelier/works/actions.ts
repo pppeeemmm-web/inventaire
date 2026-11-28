@@ -15,7 +15,7 @@ import {
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
 import { insertPendingChange } from '@/lib/pending-changes-insert'
-import { pendingInsertToSaveError, WORK_BASE_EDITED_AT_FIELD, WORK_CHANGED_ERROR, WORK_IN_BIN_ERROR, workFieldsChangedError } from '@/lib/work-save-error'
+import { pendingInsertToSaveError, WORK_BASE_EDITED_AT_FIELD, WORK_CHANGED_ERROR, WORK_CONTACT_GONE_ERROR, WORK_IN_BIN_ERROR, isContactGoneDbError, workFieldsChangedError } from '@/lib/work-save-error'
 import {
   CARD_SHOWN_FORM_FIELD,
   formDataForPendingEdit,
@@ -534,7 +534,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       production_started_on: productionOrigin === 'new' ? calendarDayInParisFromIso(new Date().toISOString()) : null,
     }, { actorId, editedAt })
 
-    if ('error' in insertRes) return { error: insertRes.error }
+    // A contact named on the card (owner, location…) deleted meanwhile: say it in words (WORK_CONTACT_GONE_ERROR).
+    if ('error' in insertRes) return { error: isContactGoneDbError({ code: insertRes.code, message: insertRes.error }) ? WORK_CONTACT_GONE_ERROR : insertRes.error }
 
     // Commit the cover image through the shared image-commit pipeline (tblImage insert +
     // cover/pipeline side effects + capture_meta/sha256 + logging — parity with addWorkImage).
@@ -722,7 +723,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       .select(OEUVRES_KEYSET_SELECT)
       .maybeSingle()
 
-    if (updateErr) return { error: updateErr.message }
+    if (updateErr) return { error: isContactGoneDbError(updateErr) ? WORK_CONTACT_GONE_ERROR : updateErr.message }
     if ((baseEditedAt !== null || readGuard) && !savedRow) return { error: WORK_CHANGED_ERROR }
 
     // ── Log Significant Event: Image Upload (form) ──

@@ -14,7 +14,7 @@ import {
 } from '@/lib/mobile/offline-work-queue'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
-import { isWorkStaleError, workSaveErrorToastMessage } from '@/lib/work-save-error'
+import { isWorkStaleError, WORK_CHANGED_ERROR, WORK_CONTACT_GONE_ERROR, workSaveErrorToastMessage } from '@/lib/work-save-error'
 
 export function AtelierOfflineFlush() {
   const { t } = useI18n()
@@ -43,7 +43,18 @@ export function AtelierOfflineFlush() {
             if (isWorkStaleError(res.error)) {
               await removeOfflineWorkSave(row.id)
               const id = String(fd.get('oeuvre_id') ?? '')
-              toast.error(`${t('wc_offline_save_dropped').replace('{id}', id)} ${workSaveErrorToastMessage(res.error, t)}`)
+              // « Saved elsewhere » is also what a save whose answer was lost meets on replay (it already landed):
+              // not « Pas enregistré » then, but « perhaps saved — check the card » (TODO §1).
+              if (res.error === WORK_CHANGED_ERROR) toast.info(t('wc_offline_save_maybe_saved').replace('{id}', id))
+              else toast.error(`${t('wc_offline_save_dropped').replace('{id}', id)} ${workSaveErrorToastMessage(res.error, t)}`)
+              continue
+            }
+            // A contact on a queued EDIT was deleted meanwhile: replaying can't succeed — drop it, say the whole change is
+            // lost. A queued CREATE (no work id) is never dropped: this record is the only copy of the new work.
+            const editId = String(fd.get('oeuvre_id') ?? '')
+            if (res.error === WORK_CONTACT_GONE_ERROR && editId) {
+              await removeOfflineWorkSave(row.id)
+              toast.error(t('wc_offline_contact_gone_dropped').replace('{id}', editId))
               continue
             }
             toast.error(workSaveErrorToastMessage(res.error, t))
