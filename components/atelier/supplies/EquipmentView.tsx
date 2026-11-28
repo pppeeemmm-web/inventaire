@@ -9,9 +9,11 @@ import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
 import { PhoneChip } from '@/components/shared/phone/PhoneListToolbar'
 import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 import {
-  addStudioPlace, closePcProposal, listEquipment, listPcProposals, saveStockItem, sendWalkToPc,
+  addStudioPlace, closePcProposal, listEquipment, listPcProposals, saveStockItem, sendWalkToPc, setStockItemPhoto,
   type EquipmentCondition, type EquipmentItem, type PcProposal, type StudioKind, type StudioPlace,
 } from '@/app/atelier/(portal)/stock/equipment-actions'
+import { imageUrl, thumbUrl } from '@/lib/data'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { splitSpokenList } from '@/lib/equipment-lines'
 
 /** The « Sans lieu » node: Équipement lines not placed yet. */
@@ -22,7 +24,7 @@ const field = { width: '100%', minHeight: 44, fontSize: 16, padding: '8px 10px',
 
 type Draft = { id: number | null; readUpdatedAt: string | null; name: string; condition: EquipmentCondition | null; year: string; placeId: number | null; notes: string }
 type Proposed = { name: string; quantity: number; keep: boolean }
-const ERR_CODES = new Set(['auth', 'forbidden', 'bad_field', 'not_found', 'db', 'empty', 'already', 'unchanged'])
+const ERR_CODES = new Set(['auth', 'forbidden', 'bad_field', 'not_found', 'db', 'empty', 'already', 'unchanged', 'too_large', 'invalid_format', 'upload', 'stale'])
 
 /**
  * Équipement (Equipment.md steps 3–4): the studio tree, what sits where, one item's card, and the voice walk —
@@ -40,6 +42,8 @@ export function EquipmentView() {
   const [newPlace, setNewPlace] = useState<{ name: string; kind: Exclude<StudioKind, 'studio'> } | null>(null)
   const [walk, setWalk] = useState<{ text: string; listening: boolean; proposed: Proposed[] | null } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const photoInput = useRef<HTMLInputElement | null>(null)
   const [pc, setPc] = useState<PcProposal[]>([])
   const [pcOpen, setPcOpen] = useState(false)
   /** Per proposal: its lines as ticked / renamed in the sheet (from the PC's answer until touched). */
@@ -86,6 +90,22 @@ export function EquipmentView() {
     id: it.id, readUpdatedAt: it.updated_at, name: it.name, condition: it.condition,
     year: it.acquired_on ? it.acquired_on.slice(0, 4) : '', placeId: it.place_id, notes: it.notes ?? '',
   })
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file || !draft || draft.id == null || draft.readUpdatedAt == null) return
+    setPhotoBusy(true)
+    const fd = new FormData()
+    fd.set('file', await downscaleImageFileForMobileIfNeeded(file, true))
+    const r = await setStockItemPhoto(draft.id, draft.readUpdatedAt, fd)
+    setPhotoBusy(false)
+    if ('error' in r) { toast.error(t('eq_error').replace('{e}', errText(r.error))); return }
+    if ('refused' in r) { toast.error(t('eq_error').replace('{e}', errText(r.refused, r.detail))); return }
+    // Keep the typed fields; only the read version moves, so a later Save is not refused as stale.
+    const v = r.item.updated_at
+    setDraft((d) => (d && d.id === r.item.id ? { ...d, readUpdatedAt: v } : d))
+    toast.success(t('eq_photo_saved'))
+    await load()
+  }
 
   const saveDraft = async () => {
     if (!draft || !draft.name.trim()) return
@@ -253,6 +273,10 @@ export function EquipmentView() {
         {hereItems.map((it) => (
           <PhoneListRow
             key={`i${it.id}`}
+            leading={it.photo_key ? (
+              // eslint-disable-next-line @next/next/no-img-element -- small R2 thumb in a list row; no optimizer by design (see thumbUrl)
+              <img src={thumbUrl(it.photo_key) ?? ''} alt="" loading="lazy" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+            ) : undefined}
             title={it.quantity > 1 ? `${it.name} ×${it.quantity}` : it.name}
             sub={[it.condition ? condLabel(it.condition) : '', it.acquired_on ? it.acquired_on.slice(0, 4) : ''].filter(Boolean).join(' · ')}
             alert={it.condition === 'hors_service' || it.condition === 'a_reparer'}
@@ -271,6 +295,22 @@ export function EquipmentView() {
           testId="equipment-item-sheet"
           footer={<button type="button" className="btn primary" disabled={busy || !draft.name.trim()} onClick={() => void saveDraft()} style={{ width: '100%', minHeight: 48 }}>{t('eq_save')}</button>}
         >
+          {draft.id != null ? (
+            <div style={{ marginBottom: 12 }}>
+              {(() => {
+                const pk = items.find((i) => i.id === draft.id)?.photo_key
+                const src = imageUrl(pk)
+                return src ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- R2 photo preview in a sheet; no optimizer by design (see imageUrl)
+                  <img src={src} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 220, objectFit: 'contain', margin: '0 auto 8px' }} />
+                ) : <div style={{ height: 96, border: '1px dashed var(--bd)', borderRadius: 8, marginBottom: 8 }} />
+              })()}
+              <input ref={photoInput} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void pickPhoto(f) }} />
+              <button type="button" className="btn ghost" disabled={photoBusy} onClick={() => photoInput.current?.click()} style={{ width: '100%', minHeight: 44 }}>
+                {photoBusy ? t('eq_photo_sending') : items.find((i) => i.id === draft.id)?.photo_key ? t('eq_photo_change') : t('eq_photo_add')}
+              </button>
+            </div>
+          ) : <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 12px' }}>{t('eq_photo_after_save')}</p>}
           <label className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('eq_name')}</label>
           <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} style={field} />
           <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginTop: 12 }}>{t('eq_condition')}</div>
