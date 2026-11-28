@@ -12,6 +12,8 @@ import { addKaizenScreenshot, createKaizen } from '@/app/atelier/(portal)/kaizen
 import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
+import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 
 type Kind = 'bug' | 'idea'
 type Pointed = { label: string; rect: DOMRect }
@@ -145,7 +147,20 @@ export function ReviewButton({ style }: { style?: CSSProperties }) {
   )
 }
 
-function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }) {
+/**
+ * Phone (ReviewTool.md step 5): ⚑ in the phone menu opens the same panel as a sheet. No pointing and no tab capture
+ * (Safari cannot capture the screen): « Joindre une capture » takes screenshots from Photos.
+ */
+export function PhoneReviewSheet({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n()
+  return (
+    <PhoneSheet title={`⚑ ${t('review_title')}`} onClose={onClose} testId="phone-review-sheet">
+      <ReviewPanel onClose={onClose} inPip={false} phone />
+    </PhoneSheet>
+  )
+}
+
+function ReviewPanel({ onClose, inPip, phone = false }: { onClose: () => void; inPip: boolean; phone?: boolean }) {
   const { t, lang } = useI18n()
   const [kind, setKind] = useState<Kind>('bug')
   const [text, setText] = useState('')
@@ -205,6 +220,13 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
     }
   }, [pointing])
 
+  // Phone: screenshots picked from Photos, shrunk on the device before upload (the Server Action body limit).
+  const attach = async (files: FileList | null) => {
+    const picked = Array.from(files ?? []).slice(0, MAX_SHOTS - shots.length)
+    const ready = await Promise.all(picked.map((f) => downscaleImageFileForMobileIfNeeded(f, true)))
+    setShots((s) => [...s, ...ready.map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(0, MAX_SHOTS))
+  }
+
   const shoot = async () => {
     if (shots.length >= MAX_SHOTS) return
     try {
@@ -260,27 +282,35 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
 
   const seg = (k: Kind, label: string) => (
     <button type="button" aria-pressed={kind === k} onClick={() => setKind(k)} data-testid={`review-kind-${k}`}
-      style={{ flex: 1, minHeight: 40, border: 0, cursor: 'pointer', font: 'inherit', fontSize: 13, background: kind === k ? 'var(--tx)' : 'transparent', color: kind === k ? 'var(--bg0)' : 'var(--tx2)' }}>
+      style={{ flex: 1, minHeight: 44, border: 0, cursor: 'pointer', font: 'inherit', fontSize: 13, background: kind === k ? 'var(--tx)' : 'transparent', color: kind === k ? 'var(--bg0)' : 'var(--tx2)' }}>
       {label}
     </button>
   )
 
   return (
-    <div data-testid="review-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, color: 'var(--tx)', background: 'var(--bg0)', minHeight: inPip ? '100vh' : undefined, boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="serif" style={{ fontSize: 18, flex: 1 }}>⚑ {t('review_title')}</div>
-        <button type="button" className="btn ghost sm" onClick={onClose} aria-label={t('review_close')} style={{ minWidth: 40, minHeight: 40 }}>✕</button>
-      </div>
+    <div data-testid="review-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: phone ? '4px 0' : 14, color: 'var(--tx)', background: 'var(--bg0)', minHeight: inPip ? '100vh' : undefined, boxSizing: 'border-box' }}>
+      {phone ? null : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="serif" style={{ fontSize: 18, flex: 1 }}>⚑ {t('review_title')}</div>
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label={t('review_close')} style={{ minWidth: 40, minHeight: 40 }}>✕</button>
+        </div>
+      )}
       <div role="group" style={{ display: 'flex', border: '1px solid var(--bd)' }}>
         {seg('bug', t('review_kind_bug'))}
         {seg('idea', t('review_kind_idea'))}
       </div>
-      <textarea className="input" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('review_text_ph')} aria-label={t('review_text_ph')} data-testid="review-text" style={{ resize: 'vertical', fontSize: 14 }} />
+      <textarea className="input" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('review_text_ph')} aria-label={t('review_text_ph')} data-testid="review-text" style={{ resize: 'vertical', fontSize: phone ? 16 : 14 }} />
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button type="button" className="btn sm" aria-pressed={listening} onClick={() => void toggleVoice()} style={{ minHeight: 40, borderColor: listening ? 'var(--rust)' : undefined }}>
+        <button type="button" className="btn sm" aria-pressed={listening} onClick={() => void toggleVoice()} style={{ minHeight: 44, borderColor: listening ? 'var(--rust)' : undefined }}>
           🎙 {listening ? t('review_voice_stop') : t('review_voice')}
         </button>
-        {kind === 'bug' ? (
+        {kind === 'bug' && phone ? (
+          <label className="btn sm" style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', opacity: shots.length >= MAX_SHOTS ? 0.5 : 1 }} data-testid="review-attach">
+            📷 {t('review_attach_fmt').replace('{n}', String(shots.length)).replace('{max}', String(MAX_SHOTS))}
+            <input type="file" accept="image/*" multiple hidden disabled={shots.length >= MAX_SHOTS} onChange={(e) => { void attach(e.target.files); e.target.value = '' }} />
+          </label>
+        ) : null}
+        {kind === 'bug' && !phone ? (
           <>
             <button type="button" className="btn sm" aria-pressed={pointing} onClick={() => setPointing((p) => !p)} style={{ minHeight: 40 }} data-testid="review-point">
               🎯 {pointing ? t('review_point_cancel') : t('review_point')}

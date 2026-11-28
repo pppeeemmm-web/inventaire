@@ -18,6 +18,7 @@ export const reviewMessages = defineMessages({
   review_point_clear: { fr: 'Retirer l’élément montré', en: 'Remove the pointed element' },
   review_shot_fmt: { fr: 'Capture ({n}/{max})', en: 'Screenshot ({n}/{max})' },
   review_shot_failed: { fr: 'Capture refusée ou impossible.', en: 'Screenshot refused or not possible.' },
+  review_attach_fmt: { fr: 'Joindre une capture ({n}/{max})', en: 'Attach a screenshot ({n}/{max})' },
   review_shot_remove: { fr: 'Retirer cette capture', en: 'Remove this screenshot' },
   review_bug_hint: { fr: 'Bug → Kaizen « App », avec la page, la version et l’écran.', en: 'Bug → Kaizen « App », with the page, the build and the screen.' },
   review_idea_hint: { fr: 'Idée → le Journal d’aujourd’hui, avec l’adresse de la page.', en: 'Idea → today’s Journal page, with the page address.' },

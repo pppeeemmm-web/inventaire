@@ -80,7 +80,7 @@ const ACTIONS: Array<{ testId: string; emoji: string; label: DictKey; href: stri
 const summary: CSSProperties = { minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '0 16px', fontSize: 14, color: 'var(--tx2)' }
 const row: CSSProperties = { minHeight: 44, display: 'flex', alignItems: 'center', gap: 12, color: 'var(--tx)', textDecoration: 'none', fontSize: 15 }
 
-export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; onNavigate?: PhoneNavigate }) {
+export function PhoneMenuSheet({ onClose, onNavigate, onReview }: { onClose: () => void; onNavigate?: PhoneNavigate; onReview?: () => void }) {
   const { t, lang, setLang } = useI18n()
   const pathname = usePathname() || ''
   const router = useRouter()
@@ -342,6 +342,12 @@ export function PhoneMenuSheet({ onClose, onNavigate }: { onClose: () => void; o
             const href = `/atelier/aide?${h.guide === 'admin' ? 'g=admin&' : ''}ch=${h.ch}`
             return link(href, <><span aria-hidden="true" style={{ width: 22, textAlign: 'center', fontWeight: 600 }}>?</span>{t('aide_help_button')}</>, row, 'phone-menu-help')
           })()}
+          {/* « ⚑ Revue » (ReviewTool.md step 5): a bug or an idea about the screen under the menu. */}
+          {onReview ? (
+            <button type="button" onClick={onReview} data-testid="phone-menu-review" style={{ ...row, width: '100%', background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 15, cursor: 'pointer', textAlign: 'left' }}>
+              <span aria-hidden="true" style={{ width: 22, textAlign: 'center' }}>⚑</span>{t('review_open')}
+            </button>
+          ) : null}
         </div>
 
         <details className="pem-fold" data-testid="phone-menu-rest" open style={{ borderTop: '1px solid var(--bd)' }}>

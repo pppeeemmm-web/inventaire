@@ -10,6 +10,8 @@ import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 
 const PhoneMenuSheet = dynamic(() => import('@/components/shared/PhoneMenuSheet').then((m) => m.PhoneMenuSheet), { ssr: false })
+// The review sheet's code (Kaizen + Journal doors) is fetched only when « ⚑ Revue » is tapped: /hub keeps its JS budget.
+const PhoneReviewSheet = dynamic(() => import('@/components/atelier/review/ReviewWindow').then((m) => m.PhoneReviewSheet), { ssr: false })
 
 /** Inside the Atelier, navigation goes through the shell's unsaved-changes guard. */
 export type PhoneNavigate = (href: string) => void
@@ -22,6 +24,7 @@ const iconBtn: CSSProperties = {
 export function PhoneMenuButton({ onNavigate, style }: { onNavigate?: PhoneNavigate; style?: CSSProperties }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
+  const [review, setReview] = useState(false)
   useEffect(() => {
     // The sheet's code, fetched once the page is idle.
     const id = window.setTimeout(() => void import('@/components/shared/PhoneMenuSheet'), 1200)
@@ -32,7 +35,8 @@ export function PhoneMenuButton({ onNavigate, style }: { onNavigate?: PhoneNavig
       <button type="button" aria-label={t('today_menu')} aria-expanded={open} data-testid="phone-menu-open" onClick={() => setOpen(true)} style={{ ...iconBtn, ...style }}>
         ☰
       </button>
-      {open ? <PhoneMenuSheet onClose={() => setOpen(false)} onNavigate={onNavigate} /> : null}
+      {open ? <PhoneMenuSheet onClose={() => setOpen(false)} onNavigate={onNavigate} onReview={() => { setOpen(false); setReview(true) }} /> : null}
+      {review ? <PhoneReviewSheet onClose={() => setReview(false)} /> : null}
     </>
   )
 }
