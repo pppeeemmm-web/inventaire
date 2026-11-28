@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { getSessionUserDisplay } from '@/lib/session-user'
 import { LoggedInBar } from '@/components/shared/LoggedInBar'
+import { PhoneReviewFab } from '@/components/shared/PhoneReviewFab'
 
 /**
  * Protected internal shell — floating signed-in hint only.
@@ -15,6 +16,8 @@ export function InternalSessionChrome({ children }: { children: React.ReactNode 
         <SessionPill />
       </Suspense>
       {children}
+      {/* « ⚑ » on every phone screen: a bug or an idea without leaving the screen (ReviewTool.md step 5). */}
+      <PhoneReviewFab />
     </>
   )
 }
