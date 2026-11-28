@@ -107,7 +107,23 @@ which Stock items are it. A material page is an idea with `lab_role = matiere`; 
 6. Move today's material in: chapter « Transparence » (goal, rules and conjectures from the oil doc), the
    white-budget recipe, Temperone from Pem's own trials, material page « Calcite ».
 
-## Questions for Pem
+## Decided (Pem 2026-11-28)
+
+1. Chapter order and names: **ok** (Fonds → Pigments → Liants → Médiums → Procédés → Praxis).
+2. Grid of limits: **ok as listed, plus a score** — each cell keeps its sign (✓ / ~ / ✗ / ?) and its note, and gets
+   a score 1–5 so recipes can be ranked per criterion.
+3. Amounts and Stock: **possible, never required** — « it is sometimes impulsive ». A trial saves with or without
+   amounts; « Fait » offers to deduct from Stock, nothing is asked when no amounts were given.
+4. Temperone: **the fun part** — a secret recipe (Kremer sells it without the full formula); Doerner refers to it;
+   Kremer gives emulsion ingredients and says Tintoretto used it. Pem looked at Tintoretto at the Thyssen: real
+   thickness, numerous layers, coarse canvas, zones of matte and gloss. So its card starts as a **conjecture** —
+   « what is in Temperone, and is it Tintoretto's way? » — with Kremer's and Doerner's claims as literature, Pem's
+   Thyssen observation as the first evidence (a Journal entry: museum visit), and Pem's own trials (it worked;
+   adhesion, flexibility, layering, thickness and supports as the limits met). Reverse-engineering the recipe from
+   the trials is the Laboratoire's first real game.
+5. French only: not answered yet.
+
+## Questions for Pem (still open)
 
 1. Chapter order and names (Fonds → Pigments → Liants → Médiums → Procédés → Praxis)?
 2. The grid of limits — anything to add or drop? The ✓ / ~ / ✗ / ? scale, or a 1–5 score?
