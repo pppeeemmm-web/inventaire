@@ -26,7 +26,8 @@ create policy ai_job_team_equipment_select on public.ai_job
   for select to authenticated
   using (public.is_team() and kind = 'equipment');
 
--- The one door that closes a proposal: team, done, not yet decided. Returns false when nothing changed.
+-- The one door that closes a proposal: team, done or failed, not yet decided. Returns false when nothing changed.
+-- « Ajouter » claims it first (accepted), so two taps or two phones never add the lines twice.
 create or replace function public.decide_equipment_job(p_id bigint, p_decision text)
   returns boolean
   language plpgsql security definer set search_path to 'public' as $$
@@ -41,7 +42,7 @@ begin
   end if;
   update public.ai_job
      set decision = p_decision, decided_by = auth.uid(), decided_at = now()
-   where id = p_id and kind = 'equipment' and status = 'done' and decision is null;
+   where id = p_id and kind = 'equipment' and status in ('done', 'failed') and decision is null;
   get diagnostics v_n = row_count;
   return v_n = 1;
 end;

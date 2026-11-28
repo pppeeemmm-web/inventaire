@@ -138,7 +138,7 @@ export async function saveStockItem(input: {
 // them (each through save_stock_item) and closes the proposal through decide_equipment_job. Nothing leaves the PC.
 
 export type PcLine = { name: string; quantity: number }
-export type PcProposal = { id: number; placeId: number | null; text: string; status: 'waiting' | 'running' | 'done'; lines: PcLine[] }
+export type PcProposal = { id: number; placeId: number | null; text: string; status: 'waiting' | 'running' | 'done' | 'failed'; lines: PcLine[] }
 type PcErr = { error: Err['error'] | 'empty' | 'already' | 'unchanged' }
 
 export async function sendWalkToPc(input: { walkId: string; text: string; placeId: number | null; lang: 'fr' | 'en' }): Promise<{ ok: true } | PcErr> {
@@ -155,7 +155,7 @@ export async function sendWalkToPc(input: { walkId: string; text: string; placeI
   return { ok: true }
 }
 
-/** Open proposals (not yet ticked or ignored), newest first; a failed job stays in Bureau IA, not here. */
+/** Open proposals (not yet ticked or ignored), newest first; a failed one stays listed so its words are never lost. */
 export async function listPcProposals(): Promise<{ rows: PcProposal[] } | Err> {
   const g = await guardTeam()
   if ('error' in g) return g
@@ -163,7 +163,7 @@ export async function listPcProposals(): Promise<{ rows: PcProposal[] } | Err> {
     .from('ai_job')
     .select('id, status, payload, result')
     .eq('kind', 'equipment')
-    .in('status', ['waiting', 'running', 'done'])
+    .in('status', ['waiting', 'running', 'done', 'failed'])
     .is('decision', null)
     .order('created_at', { ascending: false })
     .limit(20)

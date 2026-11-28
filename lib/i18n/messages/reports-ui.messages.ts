@@ -78,6 +78,8 @@ export const reportsUiMessages = defineMessages({
   report_f_kaizen_body: { fr: 'Détails', en: 'Details' },
   report_f_kaizen_section: { fr: 'Rubrique', en: 'Section' },
   report_f_kaizen_state: { fr: 'État', en: 'State' },
+  report_f_kaizen_fixed_in: { fr: 'Corrigé dans (version)', en: 'Fixed in (build)' },
+  report_f_kaizen_page: { fr: 'Page signalée', en: 'Reported page' },
   report_f_author: { fr: 'Auteur', en: 'Author' },
   report_f_created: { fr: 'Créée le', en: 'Created' },
   report_f_done_at: { fr: 'Faite le', en: 'Done on' },

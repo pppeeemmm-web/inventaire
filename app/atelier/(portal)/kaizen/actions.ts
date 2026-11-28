@@ -1,6 +1,6 @@
 'use server'
 
-// Kaizen — ideas and improvements (owner 2026-11-02). Sections: Création, Site web, Business;
+// Kaizen — ideas and improvements (owner 2026-11-02). Sections: Création, Site web, Business, App (review window);
 // NULL section = migrated entry waiting for the owner to confirm its suggested section.
 // Entries are ticked done / reopened, never deleted (no DELETE grant or policy).
 
@@ -77,10 +77,12 @@ export async function createKaizen(input: {
   // « Création » moved to Idées (Pem 2026-11-18): a new entry without a section is Business.
   const section = parseSection(input.section) ?? 'business'
   const work_ids = await worksMentioned(supabase, `${title} ${body ?? ''}`)
+  const context = parseKaizenContext(input.context)
 
   const { data, error } = await supabase
     .from('kaizen_item')
-    .insert({ author_id: user.id, title, body, section, work_ids, context: parseKaizenContext(input.context) })
+    // `context` only when the review window sends one: an ordinary add never names the column.
+    .insert({ author_id: user.id, title, body, section, work_ids, ...(context ? { context } : {}) })
     .select('*')
     .single()
   if (error || !data) return { error: error?.message ?? 'insert' }

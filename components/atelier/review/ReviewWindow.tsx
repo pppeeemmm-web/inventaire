@@ -150,6 +150,8 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
   const [kind, setKind] = useState<Kind>('bug')
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
+  /** Words came from dictation: the Journal keeps them « voice, unverified » until checked. */
+  const [dictated, setDictated] = useState(false)
   const [pointing, setPointing] = useState(false)
   const [pointed, setPointed] = useState<Pointed | null>(null)
   const [shots, setShots] = useState<Shot[]>([])
@@ -166,7 +168,7 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
     setListening(true)
     const s = await startLiveDictation(lang === 'fr' ? 'fr-FR' : 'en-GB', {
       onInterim: () => {},
-      onFinal: (chunk) => setText((x) => `${x} ${chunk}`.trim()),
+      onFinal: (chunk) => { setDictated(true); setText((x) => `${x} ${chunk}`.trim()) },
       onError: () => setListening(false),
     })
     session.current = s
@@ -221,11 +223,12 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
     setResult(null)
     const page = `${window.location.pathname}${window.location.search}`
     if (kind === 'idea') {
-      const r = await createJournalEntry({ day: todayCalendarDayInParis(), kind: 'note', body: `${clean}\n\n${page}` })
+      const r = await createJournalEntry({ day: todayCalendarDayInParis(), kind: 'note', body: `${clean}\n\n${page}`, dictated })
       setBusy(false)
       if ('error' in r) { setResult({ ok: false, text: t('review_refused_fmt').replace('{e}', r.error) }); return }
       setResult({ ok: true, text: t('review_sent_idea') })
       setText('')
+      setDictated(false)
       return
     }
     const [first, ...rest] = clean.split('\n')
@@ -250,6 +253,7 @@ function ReviewPanel({ onClose, inPip }: { onClose: () => void; inPip: boolean }
       text: t('review_sent_bug_fmt').replace('{id}', String(r.item.id)) + (failedShots ? ` · ${t('review_shots_failed_fmt').replace('{n}', String(failedShots))}` : ''),
     })
     setText('')
+    setDictated(false)
     setShots([])
     setPointed(null)
   }

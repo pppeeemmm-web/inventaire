@@ -36,6 +36,8 @@ export const equipmentMessages = defineMessages({
   eq_pc_none: { fr: 'Aucune proposition en attente.', en: 'No proposal waiting.' },
   eq_pc_waiting: { fr: 'En attente du PC de l’atelier…', en: 'Waiting for the studio PC…' },
   eq_pc_ignore: { fr: 'Ignorer', en: 'Ignore' },
+  eq_pc_failed: { fr: 'Le PC n’a pas pu lire cette liste (les mots sont gardés).', en: 'The PC could not read this list (the words are kept).' },
+  eq_pc_resend: { fr: 'Renvoyer', en: 'Send again' },
   eq_kind_zone: { fr: 'Zone', en: 'Zone' },
   eq_kind_furniture: { fr: 'Meuble', en: 'Furniture' },
   eq_kind_container: { fr: 'Boîte', en: 'Box' },

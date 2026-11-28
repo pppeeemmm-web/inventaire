@@ -124,7 +124,8 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
   }
 
   const replace = (it: KaizenItem) => setItems((prev) => prev.map((x) => (x.id === it.id ? it : x)))
-  const errText = (code: string) => (code === 'forbidden' ? t('kaizen_forbidden') : `${t('error_prefix')} ${code}`)
+  const errText = (code: string) =>
+    code === 'forbidden' || /kaizen_admin_only|kaizen_not_approved/.test(code) ? t('kaizen_forbidden') : `${t('error_prefix')} ${code}`
 
   const visible = useMemo(() => {
     if (view === 'review') return pending
@@ -421,9 +422,12 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
                       <button type="button" className="btn ghost sm" onClick={() => { setEditingId(it.id); setDraft({ title: it.title, body: it.body ?? '' }) }}>
                         {t('kaizen_edit')}
                       </button>
-                      <button type="button" className="btn sm" onClick={() => void toggleDone(it)} data-testid={`kaizen-done-${it.id}`}>
-                        {done ? t('kaizen_reopen') : t('kaizen_mark_done')}
-                      </button>
+                      {/* App: the database refuses a team member ticking an unapproved report or reopening a confirmed one. */}
+                      {isAdmin || (state !== 'proposed' && state !== 'confirmed') ? (
+                        <button type="button" className="btn sm" onClick={() => void toggleDone(it)} data-testid={`kaizen-done-${it.id}`}>
+                          {it.done_at ? t('kaizen_reopen') : t('kaizen_mark_done')}
+                        </button>
+                      ) : null}
                     </>
                   ) : null}
                 </div>

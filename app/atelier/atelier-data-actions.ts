@@ -97,7 +97,7 @@ export async function fetchAtelierOverviewBootstrap(
       .from('kaizen_item')
       .select('id', { count: 'exact', head: true })
       .is('done_at', null)
-      .or('section.is.null,section.in.(website,business)'),
+      .or('section.is.null,section.in.(website,business,app)'),
     supabase
       .from('work_session')
       .select('id', { count: 'exact', head: true })

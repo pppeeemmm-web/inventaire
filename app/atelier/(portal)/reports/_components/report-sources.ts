@@ -3,7 +3,7 @@
 
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
-import type { KaizenItem } from '@/lib/kaizen'
+import { kaizenStateOf, type KaizenItem } from '@/lib/kaizen'
 import { ACTION_STATUS_KEY, GRADE_KEY, type ConditionReport } from '@/lib/condition'
 import type { ReportSaleOrder } from '@/app/atelier/(portal)/sales/orders-actions'
 import type { ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
@@ -258,7 +258,9 @@ function kaizenSource(c: SourceCtx): SourceDef<KaizenItem> {
         ? t('kaizen_section_website')
         : i.section === 'business'
           ? t('kaizen_section_business')
-          : t('report_v_to_confirm')
+          : i.section === 'app'
+            ? t('kaizen_section_app')
+            : t('report_v_to_confirm')
   return {
     id: 'kaizen',
     fields: [
@@ -266,7 +268,9 @@ function kaizenSource(c: SourceCtx): SourceDef<KaizenItem> {
       { id: 'title', label: t('report_f_kaizen_title'), kind: 'text', value: (i) => i.title },
       { id: 'body', label: t('report_f_kaizen_body'), kind: 'text', value: (i) => orNull(i.body) },
       { id: 'section', label: t('report_f_kaizen_section'), kind: 'enum', value: section },
-      { id: 'state', label: t('report_f_kaizen_state'), kind: 'enum', value: (i) => (i.done_at ? t('report_v_done') : t('report_v_live')) },
+      { id: 'state', label: t('report_f_kaizen_state'), kind: 'enum', value: (i) => (i.section === 'app' ? t(`kaizen_state_${kaizenStateOf(i)}` as const) : i.done_at ? t('report_v_done') : t('report_v_live')) },
+      { id: 'fixed_sha', label: t('report_f_kaizen_fixed_in'), kind: 'text', value: (i) => i.fixed_sha?.slice(0, 7) ?? null },
+      { id: 'page', label: t('report_f_kaizen_page'), kind: 'text', value: (i) => i.context?.page ?? null },
       { id: 'author', label: t('report_f_author'), kind: 'enum', value: (i) => who(i.author_id) },
       { id: 'created', label: t('report_f_created'), kind: 'date', value: (i) => i.created_at, display: (i) => day(i.created_at, locale) },
       { id: 'done_at', label: t('report_f_done_at'), kind: 'date', value: (i) => i.done_at, display: (i) => day(i.done_at, locale) },

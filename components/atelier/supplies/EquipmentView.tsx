@@ -179,6 +179,9 @@ export function EquipmentView() {
     const list = pickOf(p).filter((x) => x.keep && x.name.trim())
     if (!list.length) return
     setBusy(true)
+    // Claim the proposal first: a second tap or another phone gets « rien n'a changé », never the lines twice.
+    const c = await closePcProposal(p.id, 'accepted')
+    if ('error' in c) { setBusy(false); toast.error(t('eq_error').replace('{e}', errText(c.error))); await load(); return }
     // The place it was said in; archived since → « Sans lieu », so nothing is lost.
     const placeId = p.placeId != null && byId.has(p.placeId) ? p.placeId : null
     const left: Proposed[] = []
@@ -186,15 +189,24 @@ export function EquipmentView() {
       const r = await saveStockItem({ fields: { name: x.name.trim(), category: 'Équipement', quantity: x.quantity, unit: '', place_id: placeId } })
       if (!('ok' in r)) left.push(x)
     }
-    if (!left.length) {
-      const c = await closePcProposal(p.id, 'accepted')
-      if ('error' in c) toast.error(t('eq_error').replace('{e}', errText(c.error)))
-      else toast.success(t('eq_added_n').replace('{n}', String(list.length)))
-    } else {
-      toast.error(t('eq_added_failed').replace('{n}', String(list.length - left.length)).replace('{m}', String(left.length)))
-      setPick(p.id, left)
-    }
     setBusy(false)
+    await load()
+    if (!left.length) { toast.success(t('eq_added_n').replace('{n}', String(list.length))); return }
+    // Principle 3: what did not save opens in the walk sheet at that place, ticked, to add again.
+    toast.error(t('eq_added_failed').replace('{n}', String(list.length - left.length)).replace('{m}', String(left.length)))
+    setPcOpen(false)
+    setHere(placeId ?? UNPLACED)
+    walkOpen.current = true
+    setWalk({ text: p.text, listening: false, proposed: left })
+  }
+  /** A walk the PC could not read: queue the same words again, then close the failed one. */
+  const resendPc = async (p: PcProposal) => {
+    setBusy(true)
+    const r = await sendWalkToPc({ walkId: crypto.randomUUID(), text: p.text, placeId: p.placeId, lang: lang === 'en' ? 'en' : 'fr' })
+    if (!('error' in r)) await closePcProposal(p.id, 'rejected')
+    setBusy(false)
+    if ('error' in r) toast.error(t('eq_error').replace('{e}', errText(r.error)))
+    else toast.success(t('eq_pc_sent'))
     await load()
   }
   const ignorePc = async (p: PcProposal) => {
@@ -337,7 +349,15 @@ export function EquipmentView() {
             <section key={p.id} style={{ borderBottom: '1px solid var(--bd)', padding: '10px 0' }}>
               <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{p.placeId != null && byId.has(p.placeId) ? pathLabel(p.placeId) : t('eq_unplaced')}</div>
               <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--tx2)' }}>« {p.text} »</p>
-              {p.status !== 'done' ? (
+              {p.status === 'failed' ? (
+                <>
+                  <p className="t-mono-sm" style={{ color: 'var(--rust)', margin: 0 }}>{t('eq_pc_failed')}</p>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button type="button" className="btn ghost" disabled={busy} onClick={() => void ignorePc(p)} style={{ flex: 1, minHeight: 44 }}>{t('eq_pc_ignore')}</button>
+                    <button type="button" className="btn primary" disabled={busy} onClick={() => void resendPc(p)} style={{ flex: 1, minHeight: 44 }}>{t('eq_pc_resend')}</button>
+                  </div>
+                </>
+              ) : p.status !== 'done' ? (
                 <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>{t('eq_pc_waiting')}</p>
               ) : (
                 <>

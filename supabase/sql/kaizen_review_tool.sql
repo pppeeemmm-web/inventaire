@@ -7,7 +7,7 @@
 --                             stays « proposé » (null) until Pem approves. Only an admin sets it (the rule is here).
 -- States are read from the columns (no state column): proposé (approved_at null) → ouvert → à vérifier (done_at set,
 -- verified_at null) → confirmé (verified_at set). Reopen = done_at cleared, which also clears fixed_sha / verified_at.
--- Writers: createKaizen / updateKaizen / setKaizenDone / approveKaizen / verifyKaizen (app/atelier/(portal)/kaizen/actions.ts).
+-- Writers: createKaizen / updateKaizen / setKaizenDone / reviewKaizen (app/atelier/(portal)/kaizen/actions.ts).
 -- Readers unchanged by the new columns: listKaizen `select *`, Journal « Création » (section = 'creation' only), Fil.
 
 alter table public.kaizen_item add column if not exists context jsonb;
@@ -47,6 +47,15 @@ begin
   if not v_admin and not v_db
      and (new.approved_at is distinct from old.approved_at or new.verified_at is distinct from old.verified_at) then
     raise exception 'kaizen_admin_only' using errcode = '42501';
+  end if;
+  -- App reports: a team member cannot tick a report Pem has not approved, nor reopen one Pem confirmed.
+  if not v_admin and not v_db and new.section = 'app' then
+    if new.done_at is not null and old.done_at is null and new.approved_at is null then
+      raise exception 'kaizen_not_approved' using errcode = '42501';
+    end if;
+    if old.verified_at is not null and new.done_at is distinct from old.done_at then
+      raise exception 'kaizen_admin_only' using errcode = '42501';
+    end if;
   end if;
   if new.context is distinct from old.context and old.context is not null then
     raise exception 'kaizen_context_fixed' using errcode = '22023';
