@@ -17,6 +17,17 @@ writing by Pem) also become a moment in the Hub. Nothing in this file authorises
   Designs Laboratoire + Equipment (« GO design », « Go design the equipment system »); Stock « Équipement » built.
 - Pem: batch C (system overview) waits for a fresh session; Journal #53 / #54 « Delete them » — needs the guard
   switched off, asked.
+- Phone pattern (« GO build », « Go build the others if ready »): shared pieces, Stock, Comptage, Fiscal; « Careful
+  with the code make sure it stays tidy ».
+- Laboratoire: only Pem writes (« Only me »); `laboratoire.sql` live (« apply lab »). Equipment: `equipment.sql` live
+  (« apply equipment »); steps 3–4 built (« GO equipment 3-4 »): Équipement view, voice walk, every Stock save
+  through the door.
+- « Dire » sends nothing to an outside AI (admin guide: nothing leaves for an outside AI); Pem chose Ollama → design
+  proposed (PC job queue), waits « GO Ollama ».
+- « Ok and ok »: `equipment_place_rules.sql` live (door only takes studio-tree places, names ≤ 120, a place holding
+  Stock lines is not archived). The three studios (Marseille, Tooreeney, Waterford) already exist: no place marked.
+- Voice import missing on the Atelier phone bar (Pem) → fixed on « GO »; Pem stopped the flow review before it ran.
+- PR #12 merged on « Finish merge and close session ».
 
 ## 2026-11-27
 - PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.

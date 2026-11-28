@@ -2,6 +2,16 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-28 (2) — Phone pattern, Laboratoire and equipment SQL, Équipement, one Stock door (PR #12)
+
+- `7109eef` one phone pattern: shared pieces (`components/shared/phone/`), Stock on the phone list-first, header overlap fixed, the 375 px guard per element; `4e66f4b` Comptage counts on the phone, Fiscal's expenses with a fixed Date column.
+- `laboratoire.sql` applied live (« apply lab », `6b43ada`): roles on ideas, recipe ingredients / steps / grid of limits, `save_recipe` (admin only).
+- `equipment.sql` applied live (« apply equipment », `7f973c7`): `stock_item` place / condition / arrival / photo, document + task links, the `save_stock_item` door.
+- `42a4f8b` Stock › Équipement: the studio tree, the item card (stale check), « + Lieu », « + Objet », « 🎙️ Dire » split on the device (no AI; Ollama waits for its GO).
+- `a9fd509` every Stock create / update through `save_stock_item` (SupplierHub card and ±, Comptage via `saveStockQuantities`, Réassort, the order sheet's new item); only the delete stays a browser write.
+- `857e11c` `equipment_place_rules.sql` applied live (« Ok and ok »): the door takes only places in the studio tree, names ≤ 120, a place holding Stock lines is not archived.
+- `a5e1661` Atelier tabs: 🎙️ hold offers « Importer un enregistrement » again (it existed only on the Hub).
+
 ## 2026-11-28 — Found work, contacts, phone bar, data safety (PR #11 merged `c4a22b4`; batch A / B on the next pull request)
 
 - `287c9c6` « Ancienne — retrouvée » asks « Année » and « Terminée ? »; `found_work_history_line.sql` applied live 2026-11-27 (rebuilt from the live body, the « Volée » branch kept; #2410–#2412 open with the found line).

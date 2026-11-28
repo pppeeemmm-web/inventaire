@@ -65,8 +65,12 @@ Last updated: 2026-11-28 (cloud session, Pem in Madrid).
 
 ## Next actions (in order)
 - **Next session (fresh, so the read-only SQL guard works):** batch C — the system overview + data-quality report
-  (read only). Then the Laboratoire build steps on Pem's GO (SQL first, throwaway copy).
-- Pem: try the pull request for batches A / B on the preview, then « merge » (its SQL is already live).
+  (read only). Then on Pem's GO: Laboratoire step 3 (screens: tree in Idées, recipe card, « Essai » from the phone),
+  Ollama for « Dire » (designed, waits « GO Ollama », TODO §2), phone pattern on Coffre / Contacts / Rapports /
+  Audit / Fiscal « par année » (TODO §1).
+- PR #12 (batches A / B, phone pattern, Laboratoire + equipment SQL, Équipement, one Stock door, place rules, the
+  Atelier voice import) merged at Pem's « Finish merge and close session »; all its SQL was applied live before.
+  `gen:types` not run in the cloud (no token): the equipment / lab columns are read through a loose client.
 - Pem's word needed: delete Journal #53 / #54 by switching off the no-delete guard, or keep them hidden.
 - Doerner's own rye-flour recipe: not found online yet (his tempera chapter, 1934 English edition).
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
