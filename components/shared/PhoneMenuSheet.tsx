@@ -39,6 +39,7 @@ const REST: Array<{ label: DictKey; items: Array<{ label: DictKey; href: string;
   {
     label: 'nav_group_catalogue',
     items: [
+      { label: 'yp_tab' as DictKey, href: '/atelier/year-pass', admin: true },
       { label: 'tab_reports', href: '/atelier/reports' },
       { label: 'themes', href: '/atelier/themes' },
       { label: 'constellation', href: '/atelier/constellation' },
