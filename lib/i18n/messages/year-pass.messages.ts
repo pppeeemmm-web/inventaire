@@ -18,9 +18,9 @@ export const yearPassMessages = defineMessages({
   yp_fixing_fmt: { fr: 'Correction : elle a {y} — tapez la bonne année.', en: 'Correcting: it has {y} — type the right year.' },
   yp_fixed: { fr: '#{n} corrigée : {y}', en: '#{n} corrected: {y}' },
   yp_admin_only: { fr: 'La passe des années est réservée à Pem (admin).', en: 'The year pass is for Pem (admin) only.' },
-  yp_err_year: { fr: 'Une année entre 1950 et {max}.', en: 'A year between 1950 and {max}.' },
+  yp_err_year: { fr: 'Une année entre 1900 et {max}.', en: 'A year between 1900 and {max}.' },
   yp_err_oeuvre_id: { fr: 'Œuvre introuvable.', en: 'Work not found.' },
   yp_err_admin_only: { fr: 'Réservé à l’admin.', en: 'Admin only.' },
-  yp_err_unchanged: { fr: 'Rien n’a changé : l’année a été modifiée ailleurs entre-temps.', en: 'Nothing changed: the year was changed elsewhere meanwhile.' },
+  yp_err_unchanged: { fr: 'Rien n’a changé : l’année a été modifiée ailleurs entre-temps, ou l’œuvre est à la corbeille.', en: 'Nothing changed: the year was changed elsewhere meanwhile, or the work is in the bin.' },
   yp_err_failed: { fr: 'Erreur de la base, réessayez.', en: 'Database error, try again.' },
 })

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 /** The selection's works still without a year (2026-11-27 proposal, Pem chooses). */
 const SELECTION = [1493, 1846, 1870, 1862, 1416, 1844, 1840, 1492, 1501, 1308, 1868]
-/** Drawing techniques, the dossiers' strongest card (report §2.1), most numerous first. */
+/** Drawing techniques, the dossiers' strongest card (report §2.1). The page lists them by technique id, then work id. */
 const DRAWING = ['Crayons', 'Encre noire', 'Graphite', 'Pastel', 'Pierre noire', 'Feutre', 'Scratchboard', 'Marker', 'Sanguine', 'Encre couleur', 'Lavis brun', 'Fusain liquide']
 const PAGE = 20
 
@@ -88,5 +88,6 @@ export default async function YearPassPage({ searchParams }: { searchParams: Pro
       .filter((x) => x.name),
   }))
 
-  return <YearPassClient works={works} remaining={count ?? 0} skipped={skip} />
+  // A new page of 20 starts a fresh screen (position, count and « Précédente » belong to one page).
+  return <YearPassClient key={works.map((w) => w.id).join(',')} works={works} remaining={count ?? 0} skipped={skip} />
 }

@@ -41,7 +41,7 @@ export function YearPassClient({ works, remaining, skipped, adminOnly = false }:
     const ys = new Set<number>()
     for (const th of work?.themes ?? []) if (th.n) { ys.add(th.min); ys.add(th.max) }
     for (const d of done.slice(-3)) ys.add(d.year)
-    return [...ys].filter((y) => y >= 1950 && y <= now).sort((a, b) => b - a).slice(0, 6)
+    return [...ys].filter((y) => y >= 1900 && y <= now).sort((a, b) => b - a).slice(0, 6)
   }, [work, done, now])
 
   const nextPage = (extraSkip: number[]) => {
@@ -58,7 +58,7 @@ export function YearPassClient({ works, remaining, skipped, adminOnly = false }:
 
   const save = async (year: number) => {
     if (!work || busy) return
-    if (!Number.isInteger(year) || year < 1950 || year > now) { setMsg(t('yp_err_year').replace('{max}', String(now))); return }
+    if (!Number.isInteger(year) || year < 1900 || year > now) { setMsg(t('yp_err_year').replace('{max}', String(now))); return }
     setBusy(true)
     const r = await setWorkYear(work.id, year, fix ? fix.year : null)
     setBusy(false)
