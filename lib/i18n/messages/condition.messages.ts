@@ -115,8 +115,8 @@ export const conditionMessages = defineMessages({
   },
   // Places phase B refusals (supabase/sql/places_phase_b_switch.sql)
   err_place_not_empty: {
-    fr: 'Ce lieu contient encore des œuvres ou d’autres lieux : les déplacer d’abord.',
-    en: 'This place still holds works or other places: move them first.',
+    fr: 'Ce lieu contient encore des œuvres, d’autres lieux ou des objets du Stock : les déplacer d’abord.',
+    en: 'This place still holds works, other places or Stock items: move them first.',
   },
   err_place_never_deleted: { fr: 'Un lieu ne se supprime pas : il s’archive.', en: 'A place is never deleted: it is archived.' },
   err_place_is_an_address: {
