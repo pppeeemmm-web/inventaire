@@ -10,6 +10,8 @@ import { logError } from '@/lib/error-reporter/server'
 import { readJournalDays } from '@/lib/journal/day-read'
 import type { JournalDayEntry } from '@/app/atelier/(portal)/journal/entry-actions'
 import type { ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
+import { isLabRole, type LabDesk } from '@/lib/lab'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -52,6 +54,8 @@ export type IdeaDesk = {
   /** The tree path from the trunk to this idea's parent. */
   path: Array<{ id: string; title: string }>
   isAdmin: boolean
+  /** Laboratoire part (lab_role set): its ordered children, and a recipe's lines / steps / grid of limits. */
+  lab: LabDesk | null
 }
 
 type Ctx = { supabase: Supabase; userId: string; isAdmin: boolean }
@@ -294,6 +298,35 @@ export async function readIdeaDesk(id: string): Promise<IdeaDesk | { error: stri
     linked,
     path,
     isAdmin: c.isAdmin,
+    lab: await readLab(supabase, id),
+  }
+}
+
+// laboratoire.sql columns and tables are not in the generated types until `gen:types` runs.
+type Loose = SupabaseClient<any, any, any>
+
+/** The Laboratoire part of one idea; null when the idea has no lab_role (an ordinary idea). */
+async function readLab(supabase: Supabase, id: string): Promise<LabDesk | null> {
+  const sb = supabase as unknown as Loose
+  const { data: me } = await sb.from('concept').select('lab_role, lab_version, updated_at').eq('id', id).maybeSingle()
+  if (!me || !isLabRole(me.lab_role)) return null
+  const isCard = me.lab_role === 'recette' || me.lab_role === 'conjecture'
+  const [kids, ing, steps, grid] = await Promise.all([
+    sb.from('concept').select('id, titre, lab_role, position, maturity').eq('parent_id', id).not('lab_role', 'is', null).order('position', { ascending: true, nullsFirst: false }).limit(500),
+    me.lab_role === 'recette' ? sb.from('recipe_ingredient').select('stock_item_id, label, amount, unit, ratio_pct, note, stock_item(name)').eq('recipe_id', id).order('position') : null,
+    me.lab_role === 'recette' ? sb.from('recipe_step').select('body, duration, equipment_stock_item_id, warning, stock_item(name)').eq('recipe_id', id).order('position') : null,
+    isCard ? sb.from('lab_assessment').select('criterion, source, sign, score, note, source_ref, journal_entry_id').eq('subject_id', id) : null,
+  ])
+  for (const r of [kids, ing, steps, grid]) if (r?.error) await logError('lab read failed', r.error, { source: 'ideas.readLab', metadata: { id } })
+  const nameOf = (x: unknown) => (x && typeof x === 'object' && 'name' in x ? String((x as { name: unknown }).name ?? '') || null : null)
+  return {
+    role: me.lab_role,
+    version: me.lab_version ?? null,
+    updatedAt: me.updated_at,
+    children: (kids.data ?? []).filter((k) => isLabRole(k.lab_role)).map((k) => ({ id: k.id, title: k.titre?.trim() || '—', role: k.lab_role, position: k.position ?? null, stage: k.maturity ?? 'graine' })),
+    ingredients: (ing?.data ?? []).map((r) => ({ stockItemId: r.stock_item_id ?? null, stockName: nameOf(r.stock_item), label: r.label ?? null, amount: r.amount ?? null, unit: r.unit ?? null, ratioPct: r.ratio_pct ?? null, note: r.note ?? null })),
+    steps: (steps?.data ?? []).map((r) => ({ body: r.body, duration: r.duration ?? null, equipmentId: r.equipment_stock_item_id ?? null, equipmentName: nameOf(r.stock_item), warning: r.warning ?? null })),
+    assessments: (grid?.data ?? []).map((r) => ({ criterion: r.criterion, source: r.source, sign: r.sign, score: r.score ?? null, note: r.note ?? null, sourceRef: r.source_ref ?? null, journalEntryId: r.journal_entry_id ?? null })),
   }
 }
 
