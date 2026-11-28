@@ -1,5 +1,6 @@
 # Vue d'ensemble — « coup d'œil » (design for Pem, 2026-11-23)
 
+Now (verified against `main` 2026-11-28): **Built, on `main`:** `1f867fe` (« coup d'œil »: signal cards, compact Fil, the month calendar). The status line below is the original.
 Status: **local draft**, not committed. Mockup beside it: [`OverviewGlance_Mockup.html`](OverviewGlance_Mockup.html) (example numbers; click a card, toggle « Le Fil vide / 4 lignes », 2000 / 1280 px, dark / light; phone at 375 px). Read: root `CLAUDE.md`, `BuildingPrinciples.md`, `OverviewTab.tsx` (all 822 lines), `overview-counts.ts`, `overview-business-actions.ts`, `OverviewFil.tsx` head, `R1_InputsFeed.notes.md` § « Where the feed lives ». **Not read:** the live screen (admin login; the 2000 px view is from Pem's screenshot only), `OverviewMine.tsx` body, `SeeAgainCard.tsx`.
 
 Pem 2026-11-23: « you can see the same rows as the same columns. The at-a-glance doesn't really work. Maybe not a liquid grid, but you hover over a caption and it opens the drawer or something. »

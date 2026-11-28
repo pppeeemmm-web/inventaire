@@ -1,5 +1,6 @@
 # The Journal — design (draft for Pem, 2026-11-22)
 
+Now (verified against `main` 2026-11-28): **Built, on `main`:** the Journal stream is the default on desk and phone (`?stream=0` keeps the old day screens); open: the desk hotkey (TODO « Now »). The status line below is the original.
 Status: **approved by Pem 2026-11-22** (chat: « Approve »), with his answers of §9 folded in. Local draft, not committed. MasterPlan step 3 closed; the build is step 5 (after step 4, the checks), starting with Step A on the throwaway copy. Step B SQL still needs its own OK. Mockup beside this file: [`Journal_Mockup.html`](./Journal_Mockup.html) (desk and phone, clickable).
 
 Read before writing: root `CLAUDE.md`; [`BuildingPrinciples.md`](../2026-11-21/BuildingPrinciples.md); [`MasterPlan.md`](../2026-11-20/MasterPlan.md) §3.1 and §5; the « First: » item of `docs/TODO.md`; the six surveys of 2026-11-21. Live code read (2026-11-22): `app/atelier/(portal)/journal/entry-actions.ts`, `components/atelier/SessionJournalTab.tsx`, `components/atelier/journal/*`, `app/hub/today/page.tsx`, `components/hub/TodayClient.tsx`, `DayTools.tsx`, `lib/journal-corrections.ts`, `ARCHITECTURE.md` §6b. Live database read only (counts and columns below). Not done: nothing tried on Pem's phone; the screens not opened signed in.

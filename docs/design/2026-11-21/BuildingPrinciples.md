@@ -1,5 +1,6 @@
 # PEM Hub — how anything is built (draft for Pem, 2026-11-21)
 
+Now (verified against `main` 2026-11-28): **Committed and in force** (summarised in root `CLAUDE.md` § Building principles). The status line below is the original.
 Status: **local draft**, not committed. Written by the architect session after reading the schema, `ARCHITECTURE.md`, a scan of 918 code files, the stress-test report (2026-11-18), the speed measurements (2026-11-18), the Journal's data code, and the master plan of 2026-11-20. Not read: the live database, the screens in a browser, `/hub`, the public site, the PC scripts.
 
 Purpose: one fixed picture to hold every request against, so a new feature lands as a tweak and not as a new door. Every session (Opus included) builds from this page. Nothing here throws existing work away: the database, the rules, the screens and the shell stay; the wiring is corrected where a screen is next touched, and every new screen follows the page from day one.

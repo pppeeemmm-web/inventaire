@@ -1,5 +1,6 @@
 # Review tool — the window that stays on top (design for Pem's GO, 2026-11-28)
 
+Now (verified against `main` 2026-11-28): **Built, on `main` (PR #14, 1f1f055):** steps 1–5 — SQL live (`kaizen_review_tool.sql`), desk window « ⚑ Revue » (Document Picture-in-Picture, Ctrl+Shift+K), screenshots + pointing, Kaizen « App » loop (Approuver / Confirmer / Rouvrir), phone sheet in ☰ and a floating ⚑ on every phone screen. Tried by Pem on the phone (« All good »); desk not yet tried. The status line below is the original.
 Status: **design, not built.** Pem 2026-11-28: « it's the best tool we need right now ». Origin: the « debug window »
 of the scope interview (`docs/design/2026-11-20/ScopeInterview.notes.md` §51, §68, §94), master plan « Now » §3.1,
 Journal design step 5 / build step 4. Mockup: [`ReviewTool_mockup.html`](./ReviewTool_mockup.html).
