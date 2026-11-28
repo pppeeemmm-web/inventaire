@@ -50,7 +50,6 @@ Checks
 
 ## 2. Waiting on you, Pem
 
-- [ ] **Journal #53 / #54 (test notes, hidden):** a real delete means switching off the Journal's « never delete » guard (and those on their labels and links) for that delete — your word on that method, or they stay hidden.
 - [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form; micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses). The site has no legal pages yet.
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.

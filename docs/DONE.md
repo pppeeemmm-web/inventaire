@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-28 (4)
+
+- Journal #53 « Test note » and #54 « @Natural Pigments EU tell test » (hidden test notes, 26/11) deleted on Pem's « delete 53 54 » (`journal_delete_53_54.sql`: the two guards off for that transaction only, link #100 and the two graph nodes with them); re-read live: 0 left, guards enabled, 62 entries.
+- `stock_photo_key_shape.sql` live (« Apply photo rule »).
+
 ## 2026-11-28 (3) — Review tool, phone pattern on 7 tabs, « Dire » → PC, Laboratoire screens + book, Équipement photo (PR #14, `1f1f055`)
 
 - Review tool (ReviewTool.md steps 1–5): desk window « ⚑ Revue » `f9cf3b7`, phone sheet `9aee767`, floating ⚑ on every phone screen `d963497`; `kaizen_review_tool.sql` live (« Apply sql »); flow-review fixes `8dd747b`.
