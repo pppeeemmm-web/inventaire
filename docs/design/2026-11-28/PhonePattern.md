@@ -65,6 +65,20 @@ failure names the tab and the element. (Runs at the desk or on the preview — t
 3. The other list tabs, one batch per group, from the inventory below — the worst first.
 4. Row → card as a sheet with a view transition, where the tab has a drawer.
 
+## Keeping the code tidy (Pem 2026-11-28: « careful with the code, make sure it stays tidy »)
+
+1. **Replace, never add beside.** A tab moved onto the shared pieces loses its own phone branch (its
+   `useMediaQuery` layout, its hand-made toolbar) in the same commit. Each batch reports the lines removed and
+   added; the count should go down.
+2. **Few, small shared pieces**, one folder (`components/shared/phone/`), one job per file: toolbar (search +
+   chips), filter sheet, list row, item sheet, actions menu. No per-tab copies, no options added « just in case ».
+3. **The platform before code:** `<dialog>` for sheets, `popover` for menus, CSS container queries for the two
+   layouts — less JavaScript to own than custom overlays and resize listeners. No new library.
+4. **Data untouched:** the pieces receive what the tab already loads (principle 5 unchanged); no new reads, no new
+   doors.
+5. **Every batch passes:** typecheck, lint, i18n, chrome, the phone check, a code-review / simplify pass on the diff,
+   and the flow review; I read every diff before it lands.
+
 ## Scenario (steps Pem can check, on the phone)
 
 1. Stock opens on the list: title, sections, search, three chips, « 235 articles · 1 sous le seuil », rows. Nothing
