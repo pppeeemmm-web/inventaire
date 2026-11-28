@@ -1,6 +1,10 @@
 import { defineMessages } from '../message-core'
 
 export const stockUiMessages = defineMessages({
+  stock_cat_equipment: {
+    fr: 'Équipement',
+    en: 'Equipment',
+  },
   stock_suppliers_section: {
     fr: 'Fournisseurs',
     en: 'Suppliers',
