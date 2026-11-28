@@ -2,6 +2,19 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-28 — Found work, contacts, phone bar, data safety (PR #11 merged `c4a22b4`; batch A / B on the next pull request)
+
+- `287c9c6` « Ancienne — retrouvée » asks « Année » and « Terminée ? »; `found_work_history_line.sql` applied live 2026-11-27 (rebuilt from the live body, the « Volée » branch kept; #2410–#2412 open with the found line).
+- `9e7c68f` + `0517967` Contacts at 375: search on its own row, a list of names, one scroll, quick add and filters folded.
+- `14a8562` a theme / group change reaches every screen without reload (desk check by Pem still open in §1).
+- `2178b85` + `8f7cb4f` voice note pause / resume, Voice Memos import on its day (Journal and Fil).
+- `dfe3de4` supplier « + nouveau » and the studio-access email through the contact door; `b22219b` phones in one form at the door, found however typed; `contact_phones_one_form.sql` + duplicates + #393 / #694 / #713 applied live on Pem's word; the « 0 » numbers and Marie Vecchioli's broken home number deleted; 14 phone labels corrected by type.
+- `fc7e919` phone bar: tap = do, hold = choose.
+- `eba53f2` + `d96803f` batch A — `save_contact` private card « not found » for a non-admin, `append_contact_notes` (both applied live 2026-11-28 on « Apply A »); the editor says « Fiche privée : seul un administrateur peut la modifier »; share → contact in one statement; Fil « Revenir » refuses a field changed again since.
+- `5bd13a8` batch B — phone label follows its type; a deleted contact on a work save said in words (queued new works never dropped); « peut-être déjà enregistrée » for a lost answer.
+- Stock category « Équipement » (Equipment.md step 1).
+- Designs: Laboratoire (recipes, grid of limits, the book) and studio equipment; Hub: « Laboratoire » with two conjectures (oil / refractive index, Temperone), Journal #61–#63.
+
 ## 2026-11-27 — Phone menu and « Tous les champs », found works keep their year (PRs #9, #10, merged `4c48873`, `34656a2`; tried by Pem on the preview)
 
 - `d02bda4` phone menu: Pipeline tile replaces Logistique (now in « Tout le reste », open by default), « Commandes » reads « Ventes ».

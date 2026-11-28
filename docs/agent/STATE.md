@@ -5,7 +5,7 @@ roles (`ROLE.md`) **reads this file first** and **updates it before ending** (wh
 the day's decisions to `LOG.md`. Nothing here overrides `CLAUDE.md`; the rule on reaching outside (`ROLE.md`, Hard
 Rules) holds for every line below.
 
-Last updated: 2026-11-27 (cloud session, Pem in Madrid).
+Last updated: 2026-11-28 (cloud session, Pem in Madrid).
 
 ## Where things stand
 - **Roles:** data system strategist · art business developer / agent · R&D advisor for the PEM Hub — `ROLE.md`
@@ -25,6 +25,12 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
   (54 curated, 49 verified) · [`leads/2026-11-27_pac-members.csv`](./leads/2026-11-27_pac-members.csv) (70 PAC venues,
   19 in « Saison du dessin 2026 »). Import into Contacts: waits for Pem's GO.
 
+- **Laboratoire (28/11):** a field in the Hub (idea « Laboratoire », artistic, research) to extract ordered knowledge
+  — conjectures, goals, praxis — into a book (English, French alongside; order of the treatises: Cennini, Pacheco,
+  Mayer, Doerner). Two conjectures in: « Oil: refractive index and saturation » and « Temperone (Kremer) —
+  Tintoretto's way? » (Kremer sheet filed, Thyssen visit 26/11). Designs: [`Laboratoire.md`](../design/2026-11-28/Laboratoire.md),
+  [`Equipment.md`](../design/2026-11-28/Equipment.md); research copies in [`research/`](./research/).
+
 ## What the data say (keep, re-check monthly)
 - Catalogue ≈ 1 180 works; ≈ 70 % on paper (Crayons 251, Graphite 62, Pierre noire 49, Encre noire 75, Pastel 41…),
   Huile 333 — lead with drawing, then oil.
@@ -39,21 +45,30 @@ Last updated: 2026-11-27 (cloud session, Pem in Madrid).
 - `nodes.created_at` holds real creation days for works (usable for « added on »).
 
 ## Open threads (detail in `docs/TODO.md` and the design notes)
-- Retrouvée flow (decided, to build) — `docs/design/2026-11-27/FoundWorkFlow.md`.
 - « Œuvres ajoutées » SQL (not applied; throwaway copy first) — `docs/design/2026-11-26/WorksAddedMoments.md`.
 - Provenance box (parked on 5 rules; Maroselli #2410–#2412 wait here) — `docs/design/2026-11-27/ProvenanceInput.md`.
-- « c. » everywhere + its tracking count · virtual moments view · `@name` → proposed card · recorder pause / Voice Memos.
-- Waiting on Pem: phone « Tous les champs » screenshot · Supabase redirect tidy · one Lightroom export (darker image).
+- « c. » everywhere + its tracking count · virtual moments view · `@name` → proposed card · (recorder pause / Voice Memos: built).
+- Waiting on Pem: Supabase redirect tidy · one Lightroom export (darker image).
 
 ## How we work (learned 2026-11-26/27)
 - Work Pem does not watch: branch → draft PR (CI) → Vercel preview (live database) → Pem tries → merge (Pem, or
   Claude when Pem says « merge when green »). `x-build-sha` proves a deploy; docs-only merges may not redeploy.
-- Read-only Supabase SQL runs without a prompt (`.claude/hooks/sql-readonly.mjs`); any write asks.
+- Read-only Supabase SQL runs without a prompt (`.claude/hooks/sql-readonly.mjs`); any write asks. After a worker
+  restart in a cloud session the hook may not be loaded (every read prompts; `/hooks` is not available there) →
+  start a fresh session. Kremer's and the Prado's sites sit behind Cloudflare: Pem drops the PDF instead.
+- Live SQL is always rebuilt from the live body (md5 guard), never from the repo copy: twice on 27–28/11 the repo
+  copy was older (oeuvre_history lacked « Volée », save_contact differed).
+- The Journal never edits or deletes: a day move = `journal_move_entry`'s writes; a change = a correction entry.
 - Cloud environment « Research (Prado collection) » allows: `www.thepemworkshop.com`, `p-a-c.fr`, `botoxs.fr` (did not
   answer), `www.museodelprado.es` (blocked by Cloudflare). Supabase Auth accepts preview logins
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
+- **Next session (fresh, so the read-only SQL guard works):** batch C — the system overview + data-quality report
+  (read only). Then the Laboratoire build steps on Pem's GO (SQL first, throwaway copy).
+- Pem: try the pull request for batches A / B on the preview, then « merge » (its SQL is already live).
+- Pem's word needed: delete Journal #53 / #54 by switching off the no-delete guard, or keep them hidden.
+- Doerner's own rye-flour recipe: not found online yet (his tempera chapter, 1934 English edition).
 0. **Pem: SIRET decision by 31 Dec** (no SIRET → no DRAC AIC 2027). Session reminder 1 Dec, Pipeline reminder 15 Dec.
 0b. **Pem (Therapeia, open since 27/11):** title ὄναρ / ὕπαρ or « Paxos, l'île rêvée » · Reel length (22 s planned) ·
    shoot the six shots of `video/2026-11-27_onar-upar.md` · (Pipeline dated + reminder 15/12 + contact #975: done 27/11) · verify Journal #57 · merge PR #9.

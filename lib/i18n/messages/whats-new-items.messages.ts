@@ -7,6 +7,32 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.110 (2026-11-27) — phone bar tap / hold; found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
+  // 3.1.111 (2026-11-28) — phone labels by type; private cards; clearer save messages; Équipement; Fil « Revenir ».
+  wn_contacts_phone_label_type_t: { fr: 'Téléphones : le libellé suit le numéro', en: 'Phones: the label follows the number' },
+  wn_contacts_phone_label_type_d: {
+    fr: 'Un numéro tapé ou modifié sur une fiche prend « Mobile » si c’est un portable et « Home » si c’est un fixe (au lieu de « Mobile » par défaut) ; « Travail » et les libellés choisis restent.',
+    en: 'A number typed or changed on a card gets « Mobile » if it is a mobile and « Home » if it is a landline (instead of « Mobile » by default); « Work » and chosen labels stay.',
+  },
+  wn_contacts_private_admin_t: { fr: 'Fiches privées : réservées à l’administrateur', en: 'Private cards: admin only' },
+  wn_contacts_private_admin_d: {
+    fr: 'Une fiche marquée privée s’ouvre en lecture pour l’équipe : « Enregistrer » est désactivé avec « Fiche privée : seul un administrateur peut la modifier ».',
+    en: 'A card marked private opens read-only for the team: « Save » is disabled with « Private card: only an admin can change it ».',
+  },
+  wn_work_save_clear_messages_t: { fr: 'Œuvres : messages d’enregistrement plus clairs', en: 'Works: clearer save messages' },
+  wn_work_save_clear_messages_d: {
+    fr: 'Si un contact choisi sur la fiche a été supprimé entre-temps, le message le dit. Au téléphone, une modification faite hors ligne dont la réponse s’était perdue dit « peut-être déjà enregistrée — ouvrez la fiche » au lieu de « Pas enregistré ».',
+    en: 'If a contact chosen on the card was deleted meanwhile, the message says so. On the phone, an offline change whose answer was lost says « perhaps already saved — open the card » instead of « Not saved ».',
+  },
+  wn_stock_equipment_t: { fr: 'Stock : catégorie « Équipement »', en: 'Stock: « Equipment » category' },
+  wn_stock_equipment_d: {
+    fr: 'Les outils durables de l’atelier (molette, balance, plaque chauffante…) se rangent dans le Stock sous « Équipement ».',
+    en: 'Durable studio tools (muller, scale, hot plate…) go into Stock under « Equipment ».',
+  },
+  wn_fil_revert_safe_t: { fr: 'Fil : « Revenir » n’efface plus un changement plus récent', en: 'Fil: « Undo » no longer wipes a later change' },
+  wn_fil_revert_safe_d: {
+    fr: '« Revenir » sur un changement de fiche par l’équipe refuse si le champ a encore changé depuis (« Pas annulé : … »), au lieu de l’écraser.',
+    en: '« Undo » on a team change to a card refuses if the field changed again since (« Not undone: … »), instead of overwriting it.',
+  },
   wn_phone_bar_tap_hold_t: { fr: 'Téléphone : toucher = faire, maintenir = choisir', en: 'Phone: tap = do, hold = choose' },
   wn_phone_bar_tap_hold_d: {
     fr: 'Dans la barre du bas, un toucher fait l’action la plus courante, sans carte intermédiaire : 📷 Photo → inspiration du jour (ou document), 🖼️ Œuvre → nouvelle œuvre, 🎙️ Vocal → l’enregistrement démarre. Maintenir ½ s empile les autres choix au-dessus du bouton (document, carte de visite, QR ; reprise, session terrain ; 🎧 import de Dictaphone) : glissez le pouce sur l’un et relâchez. « maintenir : n choix » sous chaque bouton le rappelle.',

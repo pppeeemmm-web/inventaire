@@ -18,16 +18,13 @@ The lead keeps this current; nothing here is landed until it moves to DONE.
 ## 1. Finish first — small, before anything new
 
 Data safety (SQL, Pem's OK given)
-- [ ] Contact door, private cards: `save_contact` (a definer function) has no « private card » check — a team member calling it with a private card's id could change it, where the other people doors answer « not found » (flow review 27/11) → SQL, security.
-- [ ] Fil « Revenir » on a team member's contact change restores the old fields with no stale check: anything changed since on those fields (notes added later) is wiped (`app/atelier/fil/actions.ts` revert sends no `read`) → send what it read.
-- [ ] Share sheet → contact notes: the append reads then writes (two shares at once can lose one) → an atomic append in SQL (ContactDoor.md step 2; not through `saveContact`, which would log every share on the Fil).
-- [ ] An admin's save queued offline on the phone, or a card draft restored, that names a contact deleted meanwhile fails with the raw database message (a team member's becomes a proposal, which approve refuses in words).
+- [ ] Share sheet → a work's « Commentaires » and a Pipeline entry's notes: the same read-then-write the contact notes had (two shares at once can lose one) → the same one-statement append (`append_contact_notes` pattern).
+- [ ] Contacts batch edit stops halfway (the cards before are saved) when one card is refused — e.g. a private card kept on screen for a team member.
 - [ ] Journal corrections, rare cases: a second machine transcription of the same voice note (other engine) shows in Notes over Pem's correction; a correction of a private entry written by a team member stays unreadable to that author; search by meaning still matches the uncorrected words (the semantic index holds the original text).
 - [ ] Order cancel, very unlikely: if a reserved work refuses to be released at the very moment another sale or gift opens a line on the same work, putting the cancelled order back can leave two open lines on that work.
 - [ ] A theme or group list changed in the same split second as a card save that also changes that list is replaced by the card's list (the lists are written apart from the work row, outside the save's guard).
 
 Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.notes.md))
-- [ ] Contacts at 375: search box 42 px wide; the list is the desktop table.
 - [ ] Contacts: the « n / total » counter counts archived cards in the total.
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
@@ -35,12 +32,9 @@ Small fixes
 - [ ] Desk Journal: an image dropped offline on a day older than the 5 newest is not reread when it is sent, and waits under today with no sign of its day.
 - [ ] Phone Aujourd'hui and the old day page show the clock time, not « ajouté le … », for a photo added later to a past day.
 - [ ] After a contact merge the desk keeps the merged contact's duplicate address links until a reload (pickers show a place twice; a save there answers « stale »).
-- [ ] Phone offline queue: a save whose answer was lost is replayed, refused and dropped with « Pas enregistré » although it was saved → a softer message for that case.
 - [ ] Site editor previews (hero picker, Site panel) show the stored hero key: the old picture after a retouch, while `/` shows the new one. OG images refresh within the hour.
 - [ ] Desk check (Pem, at the desk): a theme or group created, renamed, deleted or copied in Thèmes, an exhibition selection or the Constellation shows at once in the Inventory filters, the card pickers and the works' chips, with no reload (one shared refresh, PR #11).
 - [ ] Supabase Auth → Redirect URLs, tidy: delete `https://inventaire-dusky.vercel.app/auth/callback` and `http://localhost:3000` (each covered by its `/**` line); `http://192.168.1.9:3000/` → `/**` if Google login on the phone over home Wi-Fi is used. Keep `https://www.thepemworkshop.com/auth/…` (live login) and `https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**` (pull request test copies).
-- [ ] « Ancienne — retrouvée » writes a dated « Retrouvée » line in Historique (the database writes Historique lines, rule 14 — SQL, Pem's OK); today Historique only shows the creation line « [date] Atelier ».
-- [ ] Marking a work « retrouvée » asks « Année » and « Terminée ? », so it lands in the right production place (catalogued or in production) without ticking Catalogué by hand; same build as the Historique line above → [FoundWorkFlow](./design/2026-11-27/FoundWorkFlow.md), decided; build + SQL (throwaway copy, then live with Pem's OK).
 - [ ] « c. » (circa) for every date in the app — works (year, production start / end, fate), people (born / died), moments, orders, papers: a guessed date is recorded and shown as « c. 1999 », never as certain (Pem: « provenance and history is a matter of recording sometimes less than perfect data »). The gap is itself data: counted at the top (« n dates c. à préciser », asked of the database) and opened down to each record to firm it up when the information turns up → design first (one precision value beside day / month / year, every reader that prints a date, the count and its list).
 - [ ] Provenance: a box in the work card to write a work's past steps (gift, succession, sale… with « c. » dates, `@` people) as clean records; parked until Pem clarifies rule 10 for the past, moves between other people, true dates in Historique / « Garde », « c. », public. First case: #2410–#2412 (Maroselli, still read owner Pem, place Marseille) → [ProvenanceInput](./design/2026-11-27/ProvenanceInput.md).
 - [ ] `@name` typed in a caption or a Journal text with no match: kept as text and queued; the PC agent looks it up (handle, website) and proposes a contact card in « Cartes lues »; Pem accepts → the real `@` link (principle 13) → short design first (queue home, what the agent may look up).
@@ -53,6 +47,7 @@ Checks
 
 ## 2. Waiting on you, Pem
 
+- [ ] **Journal #53 / #54 (test notes, hidden):** a real delete means switching off the Journal's « never delete » guard (and those on their labels and links) for that delete — your word on that method, or they stay hidden.
 - [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form; micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses). The site has no legal pages yet.
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
 - [ ] **Site module:** fill email, phone and Instagram.
@@ -69,7 +64,9 @@ Checks
 
 ## 3. Big designs — one at a time, design first (whole screen before code)
 
-- [ ] **Contacts, rest of the review:** better autofill, one phone format E.164 shown grouped, a fixed FR / EN label list + clean-up of imported labels → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
+- [ ] **Laboratoire:** recipes (ingredients, steps, the grid of limits + score, « But » / « Déclencheur »), trials from the phone, the book in English and its Lexique; designed, each build step its own GO → [Laboratoire](./design/2026-11-28/Laboratoire.md)
+- [ ] **Studio equipment:** placed in the studio tree, state, papers, upkeep, a framework of photos + recordings for the bulk; the Stock category is in, the rest each its own GO → [Equipment](./design/2026-11-28/Equipment.md)
+- [ ] **Contacts, rest of the review:** better autofill; a fixed FR / EN label list for phones and the clean-up of the other imported labels (« Main », « Móvil », « Carte », « Travail » — « Mobile » / « Home » now follow the number's type) → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
 - [ ] **Reverse pricing:** from the net wanted after discount, commission, taxes and costs back to the list price per channel; the wholesale price falls out of it (needs your inputs, §2) → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)
 - [ ] **Phone outbox on mobile data (designed with the Journal capture):** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
 - [ ] **R8 public site:** look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md)
@@ -109,7 +106,7 @@ Storage and Vault
 Speed and code health
 - [ ] 17. Session flow: a « photo 3 of 12 » counter while applying session photos → [measurements, 17–19](./TODO_NOTES.md#speed)
 - [ ] 18. Reports on keyset totals · one status-label layer · the voice-note sheet's work picker lists only the loaded works.
-- [ ] `saveContact` v2: phones stored E.164; the server writers still outside the door (quick add / import / order party, supplier inline, share-triage notes, team access, signature) → [People.md §3](./design/2026-11-22/People.md).
+- [ ] `saveContact`: the server writers still outside the door — team access, signature → [People.md §3](./design/2026-11-22/People.md).
 - [ ] Eight kinds of record the museum standards expect (inscriptions, moves with « seen on », valuations, treatments, licences / reproductions, literature, objects coming in, details of each showing): place each on the map of homes, with the catalogue-gaps steps → [survey](./design/2026-11-21/Survey_MuseumStandards.md).
 - [ ] 19. Fewer silent catches (lint warns) · one combined badge action on tab switch.
 

@@ -70,7 +70,17 @@ Order of work — each step useful on its own; stop whenever it is enough.
 3. Phone « by place » screen + desk item page.
 4. Voice walk → proposed lines. 5. Photo → proposed lines. 6. QR printing for places.
 
-## Questions for Pem
+## Decided (Pem 2026-11-28)
+
+1. States: **bon · à réparer · hors service · prêté** — ok.
+2. Zones: **a framework first** — pictures to draft the places and the proceedings, recordings to do the bulk
+   (the photo and voice walks of « Making the overwhelming list small » become the way in, not an extra).
+3. Value: **yes, with invoices** — the purchase price and date come from the invoice (Vault); without an invoice the
+   line stays without a value. (For an accountant, equipment bought for the studio counts on invoices; whether it is
+   expensed or depreciated depends on the status chosen with the SIRET decision — a question for the accountant.)
+4. **Step 1 alone first** — the Stock category « Équipement » is in (2026-11-28).
+
+## Questions for Pem (answered above)
 
 1. The states: bon · à réparer · hors service · prêté — enough?
 2. Rooms of the studio today (the zones), to seed the tree — or by voice on the day?

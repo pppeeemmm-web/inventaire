@@ -3,6 +3,21 @@
 One line per decision or authorised send: date · what · who decided · where it lives. Sends outside (authorised in
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
+## 2026-11-28
+- PR #11 merged (`c4a22b4`) on Pem's « Merge »: found work, contacts on the phone, themes refresh, voice pause +
+  import, contact door + phone numbers, phone bar tap / hold.
+- Live data on Pem's word: phone one-off + duplicates (« Apply phone », « Ok to delete duplicates »); countries for
+  Eileen Dalton (IE), Eric Petr (FR), Pem's own (IE); the four « 0 » numbers deleted; Marie Vecchioli's broken home
+  number dropped, her death recorded (June 2025), Mobile → Home and main; 14 labels corrected by type (« Go labels »).
+- `found_work_history_line.sql` applied (« apply the found line ») — rebuilt from live first.
+- Batch A applied (« Apply A »): `save_contact` private-card check, `append_contact_notes`. Batches A / B code on the
+  next pull request (« Pr »).
+- Laboratoire: field « Laboratoire » (name chosen by Pem over « Bricolage technique »), conjectures oil / refractive
+  index and Temperone; Journal #61 (oil doc, AI, verified via correction #63), #62 (Thyssen, 26/11). Book in English.
+  Designs Laboratoire + Equipment (« GO design », « Go design the equipment system »); Stock « Équipement » built.
+- Pem: batch C (system overview) waits for a fresh session; Journal #53 / #54 « Delete them » — needs the guard
+  switched off, asked.
+
 ## 2026-11-27
 - PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.
 - Work group « Sélection 2027 — Therapeia + Paréidolie (proposition) » created on live (15 works, attached to Pipeline « Therapeia ») at Pem's request.
