@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { PhoneListToolbar, PhoneChip } from '@/components/shared/phone/PhoneListToolbar'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { KaizenScreenshots } from './KaizenScreenshots'
@@ -304,6 +305,24 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
               </button>
             ) : null}
           </div>
+        ) : narrow ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="t-mono-sm" style={{ flex: 1, minWidth: 0, color: 'var(--tx3)' }}>
+                {stack === 'live' ? t('kaizen_stack_live_fmt').replace('{n}', String(stackCount(false))) : t('kaizen_stack_done_fmt').replace('{n}', String(stackCount(true)))}
+              </div>
+              <button type="button" className="btn primary sm" aria-label={showNew ? t('kaizen_new_close') : t('kaizen_new')} data-testid="kaizen-new-toggle" onClick={() => setShowNew((v) => !v)} style={{ minWidth: 44, minHeight: 44, borderRadius: 22, fontSize: 20 }}>{showNew ? '×' : '+'}</button>
+            </div>
+            <PhoneListToolbar
+              query={q}
+              onQuery={setQ}
+              placeholder={t('kaizen_search_ph')}
+              testId="kaizen-phone-toolbar"
+              chips={(['live', 'done'] as const).map((s) => (
+                <PhoneChip key={s} testId={`kaizen-stack-${s}`} active={stack === s} removable={false} onClick={() => setStack(s)} label={t(s === 'live' ? 'kaizen_stack_live_fmt' : 'kaizen_stack_done_fmt').replace('{n}', String(stackCount(s === 'done')))} />
+              ))}
+            />
+          </>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
             <button type="button" className="btn sm" style={{ minHeight: 44 }} onClick={() => setShowNew((v) => !v)} data-testid="kaizen-new-toggle">
