@@ -28,6 +28,13 @@ writing by Pem) also become a moment in the Hub. Nothing in this file authorises
   Stock lines is not archived). The three studios (Marseille, Tooreeney, Waterford) already exist: no place marked.
 - Voice import missing on the Atelier phone bar (Pem) → fixed on « GO »; Pem stopped the flow review before it ran.
 - PR #12 merged on « Finish merge and close session ».
+- SQL prompts, real cause (session log): the claude.ai Supabase connector's tool permission overrides the repo
+  hook's « allow »; Pem set `execute_sql` to always allow there; the hook now answers « ask » for anything not proven
+  read-only (`174a296`). Not yet proven in a new session.
+- Review tool answers (Pem): Chrome pop-out first, then phone; words + voice + screenshot + pointing; each report a
+  Kaizen item read at session start; switch Bug → Kaizen « App » / Idée → today's Journal; loop open → to verify →
+  confirmed; the team can report but everything waits for Pem's OK → `docs/design/2026-11-28/ReviewTool.md` (+ mockup).
+  Build waits for Pem's GO on step 1 (SQL).
 
 ## 2026-11-27
 - PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.
