@@ -9,8 +9,8 @@ import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
 import { PhoneChip } from '@/components/shared/phone/PhoneListToolbar'
 import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 import {
-  addStudioPlace, listEquipment, saveStockItem,
-  type EquipmentCondition, type EquipmentItem, type StudioKind, type StudioPlace,
+  addStudioPlace, closePcProposal, listEquipment, listPcProposals, saveStockItem, sendWalkToPc,
+  type EquipmentCondition, type EquipmentItem, type PcProposal, type StudioKind, type StudioPlace,
 } from '@/app/atelier/(portal)/stock/equipment-actions'
 import { splitSpokenList } from '@/lib/equipment-lines'
 
@@ -22,12 +22,13 @@ const field = { width: '100%', minHeight: 44, fontSize: 16, padding: '8px 10px',
 
 type Draft = { id: number | null; readUpdatedAt: string | null; name: string; condition: EquipmentCondition | null; year: string; placeId: number | null; notes: string }
 type Proposed = { name: string; quantity: number; keep: boolean }
-const ERR_CODES = new Set(['auth', 'forbidden', 'bad_field', 'not_found', 'db'])
+const ERR_CODES = new Set(['auth', 'forbidden', 'bad_field', 'not_found', 'db', 'empty', 'already', 'unchanged'])
 
 /**
  * Équipement (Equipment.md steps 3–4): the studio tree, what sits where, one item's card, and the voice walk —
  * stand at a shelf, say what is there, tick the proposed lines. Phone and desk use the same view (a list reads well
- * on both). Writes: `saveStockItem` (the Stock door) and `addStudioPlace`. The voice walk splits on the device (no AI).
+ * on both). Writes: `saveStockItem` (the Stock door) and `addStudioPlace`. The voice walk splits on the device, or
+ * « Envoyer au PC » queues it for the studio PC's Ollama (`sendWalkToPc`); its lines come back as « Proposé par le PC ».
  */
 export function EquipmentView() {
   const { t, lang } = useI18n()
@@ -39,6 +40,10 @@ export function EquipmentView() {
   const [newPlace, setNewPlace] = useState<{ name: string; kind: Exclude<StudioKind, 'studio'> } | null>(null)
   const [walk, setWalk] = useState<{ text: string; listening: boolean; proposed: Proposed[] | null } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pc, setPc] = useState<PcProposal[]>([])
+  const [pcOpen, setPcOpen] = useState(false)
+  /** Per proposal: its lines as ticked / renamed in the sheet (from the PC's answer until touched). */
+  const [pcPick, setPcPick] = useState<Record<number, Proposed[]>>({})
   const session = useRef<LiveDictationSession | null>(null)
   /** False once the walk sheet closes or the view unmounts: a dictation that starts after that is stopped at once. */
   const walkOpen = useRef(false)
@@ -48,6 +53,8 @@ export function EquipmentView() {
     const r = await listEquipment()
     if ('error' in r) toast.error(t('eq_load_error').replace('{e}', errText(r.error)))
     else { setPlaces(r.places); setItems(r.items) }
+    const q = await listPcProposals()
+    if (!('error' in q)) setPc(q.rows)
     setLoading(false)
   }, [t, errText])
   useEffect(() => { void load() }, [load])
@@ -154,6 +161,48 @@ export function EquipmentView() {
     setWalk((w) => (w ? { ...w, proposed: left } : w))
   }
 
+  const sendToPc = async () => {
+    if (!walk?.text.trim() || here == null) return
+    stopListening()
+    setBusy(true)
+    const r = await sendWalkToPc({ walkId: crypto.randomUUID(), text: walk.text, placeId: here === UNPLACED ? null : here, lang: lang === 'en' ? 'en' : 'fr' })
+    setBusy(false)
+    if ('error' in r) { toast.error(t('eq_error').replace('{e}', errText(r.error))); return }
+    toast.success(t('eq_pc_sent'))
+    closeWalk()
+    await load()
+  }
+
+  const pickOf = (p: PcProposal): Proposed[] => pcPick[p.id] ?? p.lines.map((l) => ({ name: l.name, quantity: l.quantity, keep: true }))
+  const setPick = (id: number, list: Proposed[]) => setPcPick((m) => ({ ...m, [id]: list }))
+  const addFromPc = async (p: PcProposal) => {
+    const list = pickOf(p).filter((x) => x.keep && x.name.trim())
+    if (!list.length) return
+    setBusy(true)
+    // The place it was said in; archived since → « Sans lieu », so nothing is lost.
+    const placeId = p.placeId != null && byId.has(p.placeId) ? p.placeId : null
+    const left: Proposed[] = []
+    for (const x of list) {
+      const r = await saveStockItem({ fields: { name: x.name.trim(), category: 'Équipement', quantity: x.quantity, unit: '', place_id: placeId } })
+      if (!('ok' in r)) left.push(x)
+    }
+    if (!left.length) {
+      const c = await closePcProposal(p.id, 'accepted')
+      if ('error' in c) toast.error(t('eq_error').replace('{e}', errText(c.error)))
+      else toast.success(t('eq_added_n').replace('{n}', String(list.length)))
+    } else {
+      toast.error(t('eq_added_failed').replace('{n}', String(list.length - left.length)).replace('{m}', String(left.length)))
+      setPick(p.id, left)
+    }
+    setBusy(false)
+    await load()
+  }
+  const ignorePc = async (p: PcProposal) => {
+    const c = await closePcProposal(p.id, 'rejected')
+    if ('error' in c) toast.error(t('eq_error').replace('{e}', errText(c.error)))
+    await load()
+  }
+
   const inPlace = here != null && here !== UNPLACED
 
   return (
@@ -166,6 +215,11 @@ export function EquipmentView() {
           {here == null ? t('eq_title_root') : here === UNPLACED ? t('eq_unplaced') : pathLabel(here)}
         </h2>
       </div>
+      {pc.length ? (
+        <div style={{ margin: '8px 0' }}>
+          <PhoneChip label={t('eq_pc_proposed_fmt').replace('{n}', String(pc.filter((p) => p.status === 'done').length))} onClick={() => setPcOpen(true)} testId="equipment-pc-proposed" />
+        </div>
+      ) : null}
       {inPlace || here === UNPLACED ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0' }}>
           <button type="button" className="btn primary sm" data-testid="equipment-say" style={{ minHeight: 44 }} onClick={() => void startWalk()}>{t('eq_say')}</button>
@@ -246,7 +300,10 @@ export function EquipmentView() {
               {t('eq_add_n').replace('{n}', String(walk.proposed.filter((p) => p.keep).length))}
             </button>
           ) : (
-            <button type="button" className="btn primary" disabled={busy || !walk.text.trim()} onClick={propose} style={{ width: '100%', minHeight: 48 }}>{t('eq_propose')}</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn ghost" disabled={busy || !walk.text.trim()} onClick={() => void sendToPc()} data-testid="equipment-send-pc" style={{ flex: 1, minHeight: 48 }}>{t('eq_send_pc')}</button>
+              <button type="button" className="btn primary" disabled={busy || !walk.text.trim()} onClick={propose} style={{ flex: 1, minHeight: 48 }}>{t('eq_propose')}</button>
+            </div>
           )}
         >
           {walk.proposed ? (
@@ -270,6 +327,37 @@ export function EquipmentView() {
               <textarea value={walk.text} placeholder={t('eq_typed_ph')} onChange={(e) => setWalk({ ...walk, text: e.target.value })} rows={4} style={{ ...field, minHeight: 110 }} />
             </>
           )}
+        </PhoneSheet>
+      ) : null}
+
+      {pcOpen ? (
+        <PhoneSheet title={t('eq_pc_title')} onClose={() => setPcOpen(false)} testId="equipment-pc-sheet">
+          {pc.length === 0 ? <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('eq_pc_none')}</p> : null}
+          {pc.map((p) => (
+            <section key={p.id} style={{ borderBottom: '1px solid var(--bd)', padding: '10px 0' }}>
+              <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{p.placeId != null && byId.has(p.placeId) ? pathLabel(p.placeId) : t('eq_unplaced')}</div>
+              <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--tx2)' }}>« {p.text} »</p>
+              {p.status !== 'done' ? (
+                <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>{t('eq_pc_waiting')}</p>
+              ) : (
+                <>
+                  {pickOf(p).map((x, i) => (
+                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 48 }}>
+                      <input type="checkbox" checked={x.keep} onChange={(e) => setPick(p.id, pickOf(p).map((y, j) => (j === i ? { ...y, keep: e.target.checked } : y)))} style={{ width: 22, height: 22 }} />
+                      <input value={x.name} onChange={(e) => setPick(p.id, pickOf(p).map((y, j) => (j === i ? { ...y, name: e.target.value } : y)))} style={{ ...field, minHeight: 40 }} />
+                      {x.quantity > 1 ? <span className="t-mono-sm">×{x.quantity}</span> : null}
+                    </label>
+                  ))}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button type="button" className="btn ghost" disabled={busy} onClick={() => void ignorePc(p)} style={{ flex: 1, minHeight: 44 }}>{t('eq_pc_ignore')}</button>
+                    <button type="button" className="btn primary" disabled={busy || !pickOf(p).some((x) => x.keep)} onClick={() => void addFromPc(p)} style={{ flex: 1, minHeight: 44 }}>
+                      {t('eq_add_n').replace('{n}', String(pickOf(p).filter((x) => x.keep).length))}
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+          ))}
         </PhoneSheet>
       ) : null}
     </div>

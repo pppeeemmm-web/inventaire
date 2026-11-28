@@ -132,3 +132,56 @@ export async function saveStockItem(input: {
   if (r.ok && r.row) return { ok: true, item: r.row, ...(r.created ? { created: true } : {}) }
   return dbError('save_stock_item: unexpected reply', data)
 }
+
+// ── « Dire » → the studio PC's Ollama (ai_job_equipment.sql; Pem « GO Ollama » 2026-11-28) ─────────────────────
+// The spoken list goes to the queue; the PC agent names the lines (scripts/ai-agent/equipment.mjs); the team ticks
+// them (each through save_stock_item) and closes the proposal through decide_equipment_job. Nothing leaves the PC.
+
+export type PcLine = { name: string; quantity: number }
+export type PcProposal = { id: number; placeId: number | null; text: string; status: 'waiting' | 'running' | 'done'; lines: PcLine[] }
+type PcErr = { error: Err['error'] | 'empty' | 'already' | 'unchanged' }
+
+export async function sendWalkToPc(input: { walkId: string; text: string; placeId: number | null; lang: 'fr' | 'en' }): Promise<{ ok: true } | PcErr> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const text = String(input.text ?? '').trim().slice(0, 4000)
+  if (!text || !/^[\w-]{8,64}$/.test(input.walkId)) return { error: 'empty' }
+  const placeId = Number.isInteger(input.placeId) ? input.placeId : null
+  const { error } = await g.sb.from('ai_job').insert({
+    kind: 'equipment', target_id: input.walkId, payload: { text, place_id: placeId, lang: input.lang === 'en' ? 'en' : 'fr' },
+  })
+  if (error?.code === '23505') return { error: 'already' }
+  if (error) return dbError('sendWalkToPc', error)
+  return { ok: true }
+}
+
+/** Open proposals (not yet ticked or ignored), newest first; a failed job stays in Bureau IA, not here. */
+export async function listPcProposals(): Promise<{ rows: PcProposal[] } | Err> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { data, error } = await g.sb
+    .from('ai_job')
+    .select('id, status, payload, result')
+    .eq('kind', 'equipment')
+    .in('status', ['waiting', 'running', 'done'])
+    .is('decision', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) return dbError('listPcProposals', error)
+  const rows = (data ?? []).map((r: { id: number; status: PcProposal['status']; payload: { text?: string; place_id?: number | null } | null; result: { lines?: PcLine[] } | null }) => ({
+    id: r.id,
+    status: r.status,
+    placeId: r.payload?.place_id ?? null,
+    text: r.payload?.text ?? '',
+    lines: Array.isArray(r.result?.lines) ? r.result.lines.filter((l) => typeof l?.name === 'string' && l.name.trim()) : [],
+  }))
+  return { rows }
+}
+
+export async function closePcProposal(id: number, decision: 'accepted' | 'rejected'): Promise<{ ok: true } | PcErr> {
+  const g = await guardTeam()
+  if ('error' in g) return g
+  const { data, error } = await g.sb.rpc('decide_equipment_job', { p_id: id, p_decision: decision })
+  if (error) return dbError('closePcProposal', error)
+  return data === true ? { ok: true } : { error: 'unchanged' }
+}
