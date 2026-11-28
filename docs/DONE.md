@@ -4,6 +4,10 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 ## 2026-11-28 (4)
 
+- PR #15 merged (`75bccd8`) on Pem's « merge pr »: year pass, phone labels from a list, week-1 report, design notes' « now » lines, tidy. Pem used the year pass on the preview: 25 works dated, all 11 selection works (579 → 554 without a year).
+- Phone labels cleaned on Pem's « clean labels » (by number type and card kind): #689 → Work, #715 Main → Home, #729 Main → Work, #743 Móvil → Mobile, #780 Carte → Work; every phone now carries one of the four labels. « Better autofill »: Pem does not know what it meant → dropped (reopen if felt).
+- Phone checks by Pem (airport, « ok perfect for both »): Aujourd'hui reopens offline from its cached copy; double back-tap opens the recorder on today. Triple back-tap is free (Pem).
+- R4 tab name « Chronologie » kept (Pem « yes keep »).
 - Tidy on Pem's « delete all »: 11 source files nothing imported (old phone home `HubHomeClient`, old Exhibitions tab, `oeuvre-historique`, `LandingPdfPopup`, `DrawerContentSaveFooter`, `AsyncButton`, `BlockLayoutCell`, `assert-contact-email-synced`, `broadcast-queue-types`, `worksUx`, `drawer-content-utils`, ~1 650 lines) and the 4 `.ps1` hooks replaced by `guard.mjs` / `session-start.mjs`; the five checks pass without them. The cloud session's 10 scratch worktrees removed. The two old branches (`claude/eloquent-johnson-zlbeqx`, `claude/github-repo-fixes-liz9zp`, fully in main) could not be deleted from the cloud (its git access pushes only its own branch): Pem deletes them on GitHub.
 - Journal #53 « Test note » and #54 « @Natural Pigments EU tell test » (hidden test notes, 26/11) deleted on Pem's « delete 53 54 » (`journal_delete_53_54.sql`: the two guards off for that transaction only, link #100 and the two graph nodes with them); re-read live: 0 left, guards enabled, 62 entries.
 - `stock_photo_key_shape.sql` live (« Apply photo rule »).

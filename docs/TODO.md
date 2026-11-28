@@ -51,14 +51,12 @@ Checks
 ## 2. Waiting on you, Pem
 
 - [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form; micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses). The site has no legal pages yet.
-- [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
+- [ ] **Your look (desk):** R4 (Chronologie — the name stays —, map « Création », thumbnails), R6 (Studio → Expositions: enter one past show).
 - [ ] **Site module:** fill email, phone and Instagram.
 - [ ] **Restore drill (O4):** run it once ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)) — 20 minutes together.
-- [ ] **Phone capture gesture:** on the live Journal stream, two minutes with the phone in hand — tap the back twice → the recorder opens on today; the Journal design states the other iPhone limits as assumptions → [survey](./design/2026-11-21/Survey_JournalCapture.md).
 - [ ] **Delacroix's notebooks:** read Hannoosh's article, or allow one page fetch → [survey §3](./design/2026-11-21/Survey_DelacroixJournal.md).
 - [ ] **Handwriting test:** the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2):** rotate, and note the date in `CLAUDE.md`.
-- [ ] **Phone check:** open Aujourd'hui once on Wi-Fi, then airplane mode and reopen (cached copy).
 - [ ] **Your call:** the automatic « Fin du délai de retour » reminders fill « Rappels sans projet » on Idées — hide them there, or give them their own fold? And should a new sale tick « Emportée aujourd'hui » by default?
 - [ ] **Vault:** delete the two old guides « Admin guide html » and « Team member Guide html » (type Studio Bible) with the Vault's own delete — the Aide replaces them.
 - [ ] **Aide wording:** read chapter 1 « Le projet et son périmètre » (`lib/aide/team.fr.ts`) — the French of your quote is a translation.
@@ -70,7 +68,6 @@ Checks
 
 - [ ] **Laboratoire:** open — the book as PDF, the material (Pem's content: Temperone, the white-budget recipe, « Transparence »), « Ce qui n'a pas marché » (a data state for a failed idea), Lexique and material pages → [Laboratoire](./design/2026-11-28/Laboratoire.md)
 - [ ] **Studio equipment:** open — QR labels for places (first: shelves / boxes in the tree; codes need SQL + a place page), papers and tasks linked to an item, photo → proposed lines → [Equipment](./design/2026-11-28/Equipment.md)
-- [ ] **Contacts, rest of the review:** better autofill; a fixed FR / EN label list for phones and the clean-up of the other imported labels (« Main », « Móvil », « Carte », « Travail » — « Mobile » / « Home » now follow the number's type) → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
 - [ ] **Reverse pricing:** from the net wanted after discount, commission, taxes and costs back to the list price per channel; the wholesale price falls out of it (needs your inputs, §2) → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)
 - [ ] **Phone outbox on mobile data (designed with the Journal capture):** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
 - [ ] **R8 public site:** look decisions A big painting vs true-scale wall, B a work's page, C landing, D one name → [`R8_SiteAssessment.notes.md`](./design/2026-11-17/R8_SiteAssessment.notes.md); then one page per work (`/works/[id]-[slug]`), landing, one name, real FR / EN, About / Practice content, daily feed (`/journal` + RSS → weekly letter + Instagram) → [SITE_REVIEW](./SITE_REVIEW_2026-11-16.md)
