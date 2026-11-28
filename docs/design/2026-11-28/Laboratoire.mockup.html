@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratoire — maquette</title>
+<style>
+  :root { --bg:#f4f2ee; --bg1:#fff; --tx:#1d1b18; --tx3:#8a857c; --bd:#e2ddd4; --ac:#b8860b; --ok:#3d7a3d; --ko:#a33a2a; --mid:#b07a12; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151412; --bg1:#1f1d1a; --tx:#f1ede6; --tx3:#9b958a; --bd:#34302a; --ac:#d9a62a; --ok:#6fb26f; --ko:#e0735f; --mid:#e0b04a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 15px/1.5 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--tx); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 60px; }
+  .note { font-size: 13px; color: var(--tx3); margin: 0 0 12px; }
+  nav.tabs { display:flex; gap:6px; flex-wrap:wrap; margin: 8px 0 16px; }
+  nav.tabs button { border:1px solid var(--bd); background:var(--bg1); color:var(--tx); border-radius:20px; padding:8px 14px; min-height:44px; font:inherit; cursor:pointer; }
+  nav.tabs button[aria-pressed="true"] { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, var(--bg1)); }
+  section.view { display:none; } section.view.on { display:block; }
+  .crumb { font-size: 13px; color: var(--tx3); }
+  h1 { font-size: 22px; margin: 2px 0 4px; } h2 { font-size: 16px; margin: 22px 0 8px; border-bottom: 1px solid var(--bd); padding-bottom: 4px; }
+  .goal { background: var(--bg1); border-left: 3px solid var(--ac); padding: 10px 12px; border-radius: 6px; }
+  .card { background: var(--bg1); border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .pill { display:inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--bd); color: var(--tx3); margin-left: 6px; vertical-align: 1px; }
+  .ev { font-size: 12px; color: var(--tx3); }
+  ol, ul { margin: 6px 0; padding-left: 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg1); }
+  th, td { border: 1px solid var(--bd); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; background: color-mix(in srgb, var(--bd) 35%, var(--bg1)); }
+  .ok { color: var(--ok); font-weight: 600; } .ko { color: var(--ko); font-weight: 600; } .mid { color: var(--mid); font-weight: 600; } .q { color: var(--tx3); }
+  .scale { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin: 6px 0 10px; }
+  .scale input { width: 70px; min-height: 36px; font: inherit; padding: 4px 8px; border: 1px solid var(--bd); border-radius: 6px; background: var(--bg1); color: var(--tx); }
+  .wrap { overflow-x: auto; }
+  .struck { text-decoration: line-through; color: var(--tx3); }
+</style>
+</head>
+<body>
+<main>
+  <p class="note">Maquette — rien n'est enregistré. Contenu réel tiré du doc « Oil darkening » (28/11) ; Temperone attend vos propres données.</p>
+  <nav class="tabs" aria-label="Vues">
+    <button type="button" data-v="chap" aria-pressed="true">Chapitre</button>
+    <button type="button" data-v="rec" aria-pressed="false">Recette</button>
+    <button type="button" data-v="mat" aria-pressed="false">Matière</button>
+    <button type="button" data-v="book" aria-pressed="false">Livre</button>
+  </nav>
+
+  <!-- CHAPITRE -->
+  <section class="view on" id="chap">
+    <div class="crumb">Laboratoire › Pigments ›</div>
+    <h1>Transparence</h1>
+    <div class="goal"><b>But</b> — garder la saturation dans les clairs : la clarté vient du dessous ou de la dilution, pas du blanc.</div>
+
+    <h2>Règles qui tiennent</h2>
+    <div class="card">1. <b>Fond clair et absorbant</b>, laissé visible sous les couches minces. <span class="pill">mûre</span>
+      <div class="ev">Preuves : doc huile (optique, indice ≈ 1,48) · Cennini, Pacheco (aparejo) · essais : —</div></div>
+    <div class="card">2. <b>Éclaircir par dilution</b> (calcite), non au blanc. <span class="pill">mûre</span>
+      <div class="ev">Preuves : céruse de Rembrandt / Velázquez · Velázquez Medium · essais : —</div></div>
+    <div class="card">3. <b>Peinture maigre</b> : buvarder 15–30 min, pas de médium gras ajouté. <span class="pill">pousse</span>
+      <div class="ev">Preuves : Degas (peinture à l'essence) · limite : film fragile, couches supérieures seulement</div></div>
+
+    <h2>Recettes</h2>
+    <div class="card"><b>Budget de blancs</b> v1 <span class="pill">0 essai</span><div class="ev">zirconium · lithopone · pâte de calcite</div></div>
+    <div class="card"><b>Temperone</b> (Kremer) <span class="pill">à remplir</span><div class="ev">a bien marché — limites : adhésion, souplesse, superposition, épaisseur, supports</div></div>
+
+    <h2>Conjectures ouvertes</h2>
+    <div class="card">Silice pyrogénée dans l'huile : rend de la diffusion sans abîmer le film ? <span class="pill">graine</span>
+      <div class="ev">Prochain essai : 1 %, 3 %, 5 % dans le blanc de titane, bande sur fond craie, lecture à 3 mois.</div></div>
+    <div class="card">Le voile de la calcite s'efface avec les décennies (l'indice de l'huile monte vers 1,55). <span class="pill">graine</span>
+      <div class="ev">Prochain essai : vieillissement accéléré (UV) d'une bande calcite / huile.</div></div>
+
+    <h2>Ce qui n'a pas marché</h2>
+    <p class="ev">Rien encore. Un essai raté ou une conjecture abandonnée vient ici, barrée mais gardée, avec la raison.</p>
+  </section>
+
+  <!-- RECETTE -->
+  <section class="view" id="rec">
+    <div class="crumb">Laboratoire › Pigments › Transparence ›</div>
+    <h1>Budget de blancs <span class="pill">v1</span></h1>
+    <p class="ev">Résultat attendu : éclaircir sans désaturer — le zirconium pour ce qui se voit, la calcite pour le volume.</p>
+
+    <h2>Ingrédients</h2>
+    <div class="scale">Échelle <input type="number" value="100" min="1" id="batch"> g de pâte
+      <span class="ev">— les quantités se recalculent ; « Fait » peut les retirer du Stock (demandé à chaque fois)</span></div>
+    <div class="wrap"><table id="ing">
+      <tr><th>Ingrédient (Stock)</th><th>Part</th><th>Quantité</th><th>Rôle</th></tr>
+      <tr data-p="5"><td>PW12 zirconium (tube testé)</td><td>5 %</td><td class="qty"></td><td>accents, ce qui se voit</td></tr>
+      <tr data-p="25"><td>PW5 lithopone</td><td>25 %</td><td class="qty"></td><td>demi-teintes, dessous</td></tr>
+      <tr data-p="70"><td>Pâte de calcite (huile épaissie)</td><td>70 %</td><td class="qty"></td><td>volume, dilution</td></tr>
+    </table></div>
+    <p class="ev">Parts proposées pour la maquette (le doc dit « environ 5 % / au besoin / la masse ») — à fixer par vos essais.</p>
+
+    <h2>Étapes</h2>
+    <ol>
+      <li>Broyer la calcite dans l'huile épaissie jusqu'à une pâte courte — <span class="ev">molette en verre · 10 min</span></li>
+      <li>Repos de la pâte — <span class="ev">24 h</span></li>
+      <li>Mélanger au couteau le lithopone, puis le zirconium en dernier — <span class="ev">couteau à palette</span></li>
+      <li>Tester en bande sur fond craie, trois proportions — <span class="ev">lecture à 1 semaine et 3 mois</span></li>
+    </ol>
+
+    <h2>Limites</h2>
+    <div class="wrap"><table>
+      <tr><th>Critère</th><th>Littérature</th><th>Essais</th></tr>
+      <tr><td>Adhésion</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Souplesse</td><td><span class="mid">~</span> zinc cassant ; le zirconium inerte</td><td class="q">?</td></tr>
+      <tr><td>Conservation</td><td><span class="mid">~</span> voile de calcite peut-être réduit avec l'âge <span class="ev">(doc huile, spéculatif)</span></td><td class="q">?</td></tr>
+      <tr><td>Compatibilité</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Superposition</td><td><span class="ok">✓</span> maigre, sous les glacis</td><td class="q">?</td></tr>
+      <tr><td>Épaisseur max.</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Supports</td><td><span class="ok">✓</span> fond craie / gesso <span class="ev">(Cennini)</span></td><td class="q">?</td></tr>
+      <tr><td>Séchage</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Effet optique</td><td><span class="ok">✓</span> garde la saturation <span class="ev">(indices 2,1 / 1,8 / 1,49–1,66)</span></td><td class="q">?</td></tr>
+      <tr><td>Solubilité</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Maniement</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Conservation du mélange</td><td class="q">?</td><td class="q">?</td></tr>
+      <tr><td>Santé / coût</td><td><span class="mid">~</span> zirconium cher</td><td class="q">?</td></tr>
+    </table></div>
+    <p class="ev">✓ tient · ~ sous condition · ✗ ne tient pas · ? inconnu. Un « ? » = une question ouverte, visible.</p>
+
+    <h2>Essais</h2>
+    <p class="ev">Aucun encore. Au téléphone : Journal → « Essai » → cette recette → photo + une ligne. Exemple de ce qui s'afficherait :</p>
+    <div class="card"><b>12/12</b> · v1 · bandes 1/2/3 sur fond craie <span class="pill">exemple</span>
+      <div class="ev">« zinc fissuré à 3 mois » → Souplesse, colonne Essais : <span class="ko">✗</span></div></div>
+  </section>
+
+  <!-- MATIERE -->
+  <section class="view" id="mat">
+    <div class="crumb">Laboratoire › Matières ›</div>
+    <h1>Calcite (PW18)</h1>
+    <div class="wrap"><table>
+      <tr><th>Indice de réfraction</th><td>1,49 / 1,66 (biréfringente)</td></tr>
+      <tr><th>Dans l'huile</th><td>Voile semi-opaque, jamais crayeux ; éclaircit un transparent foncé par dilution</td></tr>
+      <tr><th>Mises en garde</th><td>Le voile pourrait s'effacer avec les décennies (spéculatif) ; la dilution reste</td></tr>
+      <tr><th>Histoire</th><td>Céruse (blanc de plomb + calcite) — Rembrandt, Velázquez ; Velázquez Medium en est la moitié sans plomb</td></tr>
+      <tr><th>Recettes qui l'utilisent</th><td>Budget de blancs</td></tr>
+      <tr><th>En Stock</th><td>(à relier à vos lignes Stock)</td></tr>
+      <tr><th>Sources</th><td>Natural Pigments — Velázquez Medium, Ceruse · doc « Oil darkening »</td></tr>
+    </table></div>
+  </section>
+
+  <!-- LIVRE -->
+  <section class="view" id="book">
+    <div class="crumb">Laboratoire ›</div>
+    <h1>Le livre</h1>
+    <p class="ev">Une lecture, pas une copie : l'arbre parcouru dans l'ordre d'apprentissage (Cennini, Pacheco). Plus tard : PDF.</p>
+    <ol>
+      <li>Fonds</li>
+      <li>Pigments
+        <ol><li><b>Transparence</b> — but · 3 règles · 2 recettes · 2 conjectures · 0 échec</li></ol></li>
+      <li>Liants</li>
+      <li>Médiums</li>
+      <li>Procédés</li>
+      <li>Praxis</li>
+    </ol>
+    <h2>Index des matières</h2>
+    <p>Calcite · Lithopone · Zirconium · Huile de lin <span class="ev">— chaque nom ouvre sa page matière</span></p>
+    <h2>Ce qui n'a pas marché (tous chapitres)</h2>
+    <p class="ev"><span class="struck">Exemple : silice pyrogénée 5 %</span> — film poudreux à 3 mois (exemple de forme, pas un résultat).</p>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+    document.querySelectorAll('section.view').forEach((s) => s.classList.toggle('on', s.id === b.dataset.v))
+  }))
+  const batch = document.getElementById('batch')
+  const fill = () => document.querySelectorAll('#ing tr[data-p]').forEach((tr) => {
+    const g = (Number(batch.value) || 0) * Number(tr.dataset.p) / 100
+    tr.querySelector('.qty').textContent = (Math.round(g * 10) / 10) + ' g'
+  })
+  batch.addEventListener('input', fill); fill()
+</script>
+</body>
+</html>
