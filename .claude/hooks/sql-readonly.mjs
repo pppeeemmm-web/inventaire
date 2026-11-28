@@ -8,13 +8,18 @@ process.stdin.on('end', () => {
   try {
     q = String(JSON.parse(raw)?.tool_input?.query ?? '')
   } catch {
-    return
+    q = ''
   }
-  if (readOnly(q)) {
-    process.stdout.write(JSON.stringify({
-      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: 'read-only SQL (sql-readonly hook)' },
-    }))
-  }
+  // Pem 2026-11-28: the claude.ai Supabase connector sets execute_sql to « Always allow » (its own « ask » overrode this
+  // hook's allow), so anything not proven read-only must ask here, explicitly.
+  const ok = readOnly(q)
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: ok ? 'allow' : 'ask',
+      permissionDecisionReason: ok ? 'read-only SQL (sql-readonly hook)' : 'not provably read-only SQL: Pem decides (sql-readonly hook)',
+    },
+  }))
 })
 
 // Keywords that write, change the schema, lock, run code or reach the server's files: any one → ask.
