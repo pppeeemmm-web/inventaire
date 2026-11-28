@@ -74,23 +74,10 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`https://inventaire-git-*-pppeeemmm-webs-projects.vercel.app/**`).
 
 ## Next actions (in order)
-- **Branch `claude/awesome-keller-jgcusv` (2026-11-28 eve), pushed, NOT merged, draft PR #14:** review window
-  « ⚑ Revue » (Kaizen « App », proposé → ouvert → à vérifier → confirmé), phone pattern on Coffre / Rapports /
-  Fiscal « par année » / Audit / Contacts, « Dire » → « Envoyer au PC » (Ollama), Laboratoire screens (tree, recipe
-  card, « Essai »). Its SQL is **live** (« Apply sql »: kaizen_review_tool, ai_job_equipment, laboratoire_essai_label).
-  Next: Vercel preview of PR #14 → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
-  browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
-  fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
-- **Waves 1 + 2 (Pem « go wave 1 and then 2 », 28/11) on PR #14 too:** ⚑ in the phone ☰ menu (review sheet),
-  Laboratoire « 📖 Livre » (`/api/ideas?book=`), phone step 4 (Contacts / Stock: the card over the list, the list keeps
-  its place), Équipement photo per item (`setStockItemPhoto`), Kaizen + Production on the phone toolbar, guards in Node
-  (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
-  no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
-  n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
 - **PR #14 merged at Pem's « Merge »** (`1f1f055`, pushed to origin/main; deploy not proven from the cloud — no
   access to the live host). Pem tried the phone side (« All good »); desk parts (⚑ window, Approuver / Confirmer,
-  recipe edit) not yet tried. Next: the photo-key rule live (`stock_photo_key_shape.sql`, proved, waits for OK);
-  Pem's GO on the report's two passes.
+  recipe edit) not yet tried. The photo-key rule is live (« Apply photo rule »). Next: Pem's GO on the report's
+  two passes (year pass, measuring pass); the 375 px guard re-run at the desk; draft PR #15 (docs) to merge.
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
   unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
   …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**

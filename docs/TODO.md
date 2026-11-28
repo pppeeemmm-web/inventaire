@@ -9,7 +9,6 @@ Item numbers (1, 1c, 11e, 12–15, 17–19) stay fixed: code comments and other 
 The lead keeps this current; nothing here is landed until it moves to DONE.
 
 - Journal stream (the default on desk and phone; `?stream=0` keeps the old day screens) — open pieces: the desk hotkey → [JournalDesign](./design/2026-11-22/JournalDesign.md).
-- **Review tool (window on top, reports for Claude):** Pem's « best tool we need right now » — six questions to settle first, re-asked at the next session's start → [ReviewTool](./design/2026-11-28/ReviewTool.md).
 - People: the design is built (timeline, spheres, dates, links, moments, archive, Fil, custody, four-tab editor); open: birthday reminders and the two care rules, journal entries that name the person in the timeline, « feu » on papers for a deceased person → [People.md](./design/2026-11-22/People.md).
 - Reverse pricing: first slice live (admin block on the work card); open: the contributions rate and how a consignment receipt is declared (accountant), a database sum for the running-cost rate.
 - Idées: a voice note recorded in an idea whose Journal entry fails, or that is re-sent after a crash, gets no link to the idea — its desk shows it through the note, the idea list's counts leave it out → [IdeasDesign](./design/2026-11-23/IdeasDesign.md).
@@ -30,8 +29,8 @@ Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.no
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
-- [ ] Stock: deleting an item (SupplierHub, a browser delete) leaves its Équipement photo in R2 (`stock/S_…` + thumb, ledger still « linked »); and `save_stock_item` accepts any `photo_key` text from a direct call — the door should hold the `stock/S_{id}_…` shape (SQL, Pem's OK).
-- [ ] Phone pattern, tabs still failing the 375 px guard (`tests/phone-pattern.spec.ts` PENDING): Coffre, Contacts (onto the shared pieces), Rapports, Audit, Fiscal « par année » → [PhonePattern](./design/2026-11-28/PhonePattern.md).
+- [ ] Stock: deleting an item (SupplierHub, a browser delete) leaves its Équipement photo in R2 (`stock/S_…` + thumb, ledger still « linked »).
+- [ ] Phone pattern: re-run the 375 px guard (`npm run test:e2e:field`, `tests/phone-pattern.spec.ts`) — Coffre, Contacts, Rapports, Fiscal should now pass: take them out of PENDING; add Audit to TABS → [PhonePattern](./design/2026-11-28/PhonePattern.md).
 - [ ] A contact merge rewrites a Stock line's supplier without marking the line changed: a Stock card open across the merge saves the deleted supplier back and fails with « erreur de la base » (admin merge, rare).
 - [ ] Desk Journal: an image dropped offline on a day older than the 5 newest is not reread when it is sent, and waits under today with no sign of its day.
 - [ ] Phone Aujourd'hui and the old day page show the clock time, not « ajouté le … », for a photo added later to a past day.
@@ -51,7 +50,6 @@ Checks
 
 ## 2. Waiting on you, Pem
 
-- [ ] **Ollama for « Dire » (Équipement):** « Envoyer au PC » queues the spoken list with its place, the PC agent's Ollama names the lines, « Proposé par le PC (n) » to tick — one SQL change (a new job kind), an agent script, the list in Équipement; your « GO Ollama ».
 - [ ] **Journal #53 / #54 (test notes, hidden):** a real delete means switching off the Journal's « never delete » guard (and those on their labels and links) for that delete — your word on that method, or they stay hidden.
 - [ ] **Lawyer / accountant:** [`LEGAL_POLICY.md`](./LEGAL_POLICY.md), [`WEBSITE_LEGAL_PAGES.md`](./WEBSITE_LEGAL_PAGES.md), [`POLICY_NOTES.md`](./POLICY_NOTES.md), the order papers ([`R7_Papers_Wording.md`](./design/2026-11-17/R7_Papers_Wording.md)); the VAT rate for the order form; micro-BNC / VAT thresholds on money received vs definitive (Revenus & Dépenses). The site has no legal pages yet.
 - [ ] **Your look:** R4 (Chronologie, map « Création », thumbnails), R6 (Studio → Expositions).
@@ -69,8 +67,10 @@ Checks
 
 ## 3. Big designs — one at a time, design first (whole screen before code)
 
-- [ ] **Laboratoire:** recipes (ingredients, steps, the grid of limits + score, « But » / « Déclencheur »), trials from the phone, the book in English and its Lexique; designed, each build step its own GO → [Laboratoire](./design/2026-11-28/Laboratoire.md)
-- [ ] **Studio equipment:** a photo per item (the column exists, no screen), QR labels for places, papers and tasks linked to an item, photo → proposed lines; each its own GO → [Equipment](./design/2026-11-28/Equipment.md)
+- [ ] **Catalogue gaps for the dossiers** (week-1 report): a phone « year pass » for drawings (211 / 251 Crayons have no year; the selection's 15 first) and a « measuring pass » for 2025–2026 (287 works with no size) — each its own GO → [report](./agent/reports/2026-11-28_system-overview.md)
+
+- [ ] **Laboratoire:** open — the book as PDF, the material (Pem's content: Temperone, the white-budget recipe, « Transparence »), « Ce qui n'a pas marché » (a data state for a failed idea), Lexique and material pages → [Laboratoire](./design/2026-11-28/Laboratoire.md)
+- [ ] **Studio equipment:** open — QR labels for places (first: shelves / boxes in the tree; codes need SQL + a place page), papers and tasks linked to an item, photo → proposed lines → [Equipment](./design/2026-11-28/Equipment.md)
 - [ ] **Contacts, rest of the review:** better autofill; a fixed FR / EN label list for phones and the clean-up of the other imported labels (« Main », « Móvil », « Carte », « Travail » — « Mobile » / « Home » now follow the number's type) → [notes E, I](./design/2026-11-19/CatalogueGaps.notes.md#e-contacts-item-8)
 - [ ] **Reverse pricing:** from the net wanted after discount, commission, taxes and costs back to the list price per channel; the wholesale price falls out of it (needs your inputs, §2) → [notes J](./design/2026-11-19/CatalogueGaps.notes.md#j-reverse-pricing-new-from-question-6)
 - [ ] **Phone outbox on mobile data (designed with the Journal capture):** a « hold uploads until Wi-Fi / Tout envoyer » switch (manual — an iPhone can't tell Wi-Fi from mobile data); an outbox for voice notes, photos, journal entries and captures, a one-time id per item so a resend never duplicates, « send » from /hub too, the phone's capture time trusted past 24 h. Today only work text saves are kept and resent.
