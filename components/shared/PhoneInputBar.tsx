@@ -15,7 +15,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { PEM_Z_INDEX, useBottomChromeHeight } from '@/components/shared/BottomStack'
-import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
+import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 import { INSPIRATION_SQL_LIVE } from '@/lib/inspiration-photo'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import { PHONE_WRITE_EVENT } from '@/lib/phone-write-event'
@@ -63,25 +63,13 @@ function ChoiceSheet({ title, choices, onClose, testId }: { title: string; choic
     </>
   )
   return (
-    <PemModalOverlay
-      onClose={onClose}
-      panelStyle={{
-        alignSelf: 'flex-end', width: '100%', borderRadius: '14px 14px 0 0',
-        padding: '12px 16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-      }}
-    >
-      <div data-testid={testId}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-          <h2 style={{ fontSize: 16, margin: 0, flex: 1 }}>{title}</h2>
-          <button type="button" onClick={onClose} className="btn ghost sm" style={{ minHeight: 44 }}>{t('today_doc_close')}</button>
-        </div>
+    <PhoneSheet title={title} onClose={onClose} testId={testId}>
         {choices.map((c) => c.href ? (
           <Link key={c.label} href={c.href} onClick={onClose} data-testid={c.testId} style={row}>{inner(c)}</Link>
         ) : (
           <button key={c.label} type="button" onClick={() => { onClose(); c.run?.() }} data-testid={c.testId} style={row}>{inner(c)}</button>
         ))}
-      </div>
-    </PemModalOverlay>
+    </PhoneSheet>
   )
 }
 

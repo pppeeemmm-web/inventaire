@@ -359,14 +359,13 @@ export async function createStockItemInline(input: { name: string; unit: string;
   const g = await guardTeam()
   if ('error' in g) return g
   const name = input.name.trim()
-  if (!name) return { error: 'so_err_item' }
-  const { data, error } = await g.sb.from('stock_item').insert({
-    name,
-    unit: input.unit.trim() || 'units',
-    category: input.category?.trim() || null,
-    supplier_id: input.supplier_id,
-    quantity: 0,
-  }).select('id').single()
-  if (error || !data) return dbError(error)
-  return { ok: true, id: num(data.id) }
+  if (!name || name.length > 120) return { error: 'so_err_item' }
+  // The Stock door (`save_stock_item`, equipment.sql): one writer for stock_item; a refusal is never « ok ».
+  const { data, error } = await g.sb.rpc('save_stock_item', {
+    p: { id: null, fields: { name, unit: input.unit.trim() || 'units', category: input.category?.trim() || null, supplier_id: input.supplier_id, quantity: 0 } },
+  })
+  if (error) return dbError(error)
+  const r = (data ?? {}) as { ok?: boolean; refused?: string; detail?: string; row?: { id: number } }
+  if (!r.ok || !r.row) return { error: 'so_err_item' }
+  return { ok: true, id: num(r.row.id) }
 }

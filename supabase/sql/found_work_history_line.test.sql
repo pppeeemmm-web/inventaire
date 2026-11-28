@@ -18,7 +18,8 @@ insert into public."Oeuvres" ("OeuvreID", "Historique", "Année", production_ori
   (1, '[2026/01/01] Atelier', '1999-01-01', null, 1, 13),   -- becomes found, year known
   (2, '[2026/01/01] Atelier', null, 'new', 1, 13),           -- becomes found, no year
   (3, '[2026/01/01] Atelier', '2001-01-01', 'found', 1, 13), -- already found: no new line
-  (4, '[2026/01/01] Atelier', null, 'new', 1, 13);           -- status change only (regression)
+  (4, '[2026/01/01] Atelier', null, 'new', 1, 13),           -- status change only (regression)
+  (5, '[2026/01/01] Atelier', null, 'new', 1, 13);           -- stolen (regression: the live « Volée » branch kept)
 
 \i found_work_history_line.sql
 create trigger trg_zz_oeuvre_history before update on public."Oeuvres" for each row execute function public.oeuvre_history();
@@ -27,6 +28,7 @@ update public."Oeuvres" set production_origin = 'found' where "OeuvreID" in (1, 
 update public."Oeuvres" set "Année" = '2002-01-01' where "OeuvreID" = 3;
 update public."Oeuvres" set "statusId" = 2 where "OeuvreID" = 4;
 update public."Oeuvres" set production_origin = 'found' where "OeuvreID" = 1; -- again: no duplicate
+update public."Oeuvres" set fate = 'stolen', fate_on = '2026-02-03', fate_precision = 'day' where "OeuvreID" = 5;
 
 do $$
 declare h text; d text := to_char((now() at time zone 'Europe/Paris')::date, 'YYYY/MM/DD');
@@ -43,5 +45,7 @@ begin
   assert h = '[2026/01/01] Atelier', 'already found, no line: ' || h;
   select "Historique" into h from public."Oeuvres" where "OeuvreID" = 4;
   assert h = '[2026/01/01] Atelier' || E'\n' || '[' || d || '] En production → Disponible', 'status line unchanged: ' || h;
-  raise notice 'found_work_history_line: 6/6 checks passed';
+  select "Historique" into h from public."Oeuvres" where "OeuvreID" = 5;
+  assert h = '[2026/01/01] Atelier' || E'\n' || '[2026/02/03] Volée', 'stolen line kept: ' || h;
+  raise notice 'found_work_history_line: 7/7 checks passed';
 end $$;

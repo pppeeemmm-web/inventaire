@@ -145,7 +145,7 @@ export const supplyOrdersMessages = defineMessages({
     fr: 'Une ligne déjà reçue ne peut pas être retirée.',
     en: 'A line already received cannot be removed.',
   },
-  so_err_item: { fr: 'Nom d’article manquant.', en: 'Item name missing.' },
+  so_err_item: { fr: 'Article non créé : nom manquant, trop long (120 signes) ou refusé.', en: 'Item not created: name missing, too long (120 characters) or refused.' },
   so_err_nothing_to_receive: { fr: 'Rien à recevoir.', en: 'Nothing to receive.' },
   so_err_not_open: { fr: 'Cette commande n’est plus ouverte.', en: 'This order is no longer open.' },
   so_err_cancel_received: {

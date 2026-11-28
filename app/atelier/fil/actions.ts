@@ -467,7 +467,14 @@ export async function decideFil(kind: FilKind, id: string, decision: FilDecision
         const fields = { ...o }
         delete fields._lists
         if (Object.keys(fields).length) {
-          const res = await saveContact({ id: contactId, fields: fields as ContactFields })
+          // What the team member wrote is what « Revenir » expects to find (TODO §1): a field changed again since
+          // (notes added later…) is refused by the door as stale, nothing written — never silently wiped.
+          const read = Object.fromEntries(Object.keys(fields).map((k) => [k, n[k] ?? null]))
+          const res = await saveContact({ id: contactId, fields: fields as ContactFields, read: read as ContactFields })
+          const stale = res as { refused?: string; detail?: unknown }
+          if (stale.refused === 'stale') {
+            return { error: resolveMessage('fr', 'fil_c_revert_stale').replace('{field}', String(stale.detail ?? '')) }
+          }
           const bad = refusal(res)
           if (bad) return bad
         }

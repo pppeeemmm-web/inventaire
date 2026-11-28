@@ -282,8 +282,20 @@ export const workCardMessages = defineMessages({
     fr: 'Pas enregistré : cette œuvre a été mise à la corbeille depuis l’ouverture de la fiche.',
     en: 'Not saved: this work was put in the bin since the card opened.',
   },
+  wc_contact_gone: {
+    fr: 'Pas enregistré : un contact choisi sur cette fiche (propriétaire, lieu, acheteur…) a été supprimé entre-temps. Choisissez-en un autre, puis enregistrez.',
+    en: 'Not saved: a contact chosen on this card (owner, location, buyer…) was deleted meanwhile. Pick another one, then save.',
+  },
   wc_offline_save_dropped: {
     fr: '#{id} : la modification faite hors ligne est abandonnée.',
     en: '#{id}: the change made offline is dropped.',
+  },
+  wc_offline_contact_gone_dropped: {
+    fr: '#{id} : la modification faite hors ligne est abandonnée — un contact choisi sur la fiche a été supprimé entre-temps. Rouvrez la fiche et refaites les changements.',
+    en: '#{id}: the change made offline is dropped — a contact chosen on the card was deleted meanwhile. Reopen the card and redo the changes.',
+  },
+  wc_offline_save_maybe_saved: {
+    fr: '#{id} : la fiche a changé depuis cette modification hors ligne — peut-être déjà enregistrée (la réponse s’était perdue), ou modifiée ailleurs. Ouvrez la fiche pour vérifier.',
+    en: '#{id}: the card changed since this offline change — perhaps already saved (the answer was lost), or changed elsewhere. Open the card to check.',
   },
 })

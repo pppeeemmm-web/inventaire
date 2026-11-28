@@ -10,6 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { StockContactLike } from '@/lib/stock-item'
 import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 function TabPanelFallback() {
   return <div style={{ flex: 1 }} />
@@ -18,15 +19,16 @@ function TabPanelFallback() {
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTake = dynamic(() => import('@/app/atelier/(portal)/stock-take/_components/StockTake').then((m) => ({ default: m.StockTake })), { loading: () => <TabPanelFallback />, ssr: false })
 const SuppliesRestock = dynamic(() => import('@/components/atelier/supplies/SuppliesRestock').then((m) => ({ default: m.SuppliesRestock })), { loading: () => <TabPanelFallback />, ssr: false })
+const EquipmentView = dynamic(() => import('@/components/atelier/supplies/EquipmentView').then((m) => ({ default: m.EquipmentView })), { loading: () => <TabPanelFallback />, ssr: false })
 const SupplyOrders = dynamic(() => import('@/components/atelier/supplies/SupplyOrders').then((m) => ({ default: m.SupplyOrders })), { loading: () => <TabPanelFallback />, ssr: false })
 
-export type SuppliesView = 'stock' | 'count' | 'restock' | 'orders'
+export type SuppliesView = 'stock' | 'equipment' | 'count' | 'restock' | 'orders'
 // « Commandes » (supply orders, TODO 11) shows once supabase/sql/supply_orders.sql is live.
-const VIEWS: SuppliesView[] = SUPPLY_ORDERS_SQL_LIVE ? ['stock', 'count', 'restock', 'orders'] : ['stock', 'count', 'restock']
+const VIEWS: SuppliesView[] = SUPPLY_ORDERS_SQL_LIVE ? ['stock', 'equipment', 'count', 'restock', 'orders'] : ['stock', 'equipment', 'count', 'restock']
 
 export function parseSuppliesView(raw: string | null | undefined): SuppliesView {
   if (raw === 'orders') return SUPPLY_ORDERS_SQL_LIVE ? 'orders' : 'stock'
-  return raw === 'count' || raw === 'restock' ? raw : 'stock'
+  return raw === 'count' || raw === 'restock' || raw === 'equipment' ? raw : 'stock'
 }
 
 export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
@@ -35,6 +37,7 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const view = parseSuppliesView(params.get('view'))
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   const setView = (v: SuppliesView) => {
     const next = new URLSearchParams(params.toString())
@@ -49,7 +52,11 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
       <div
         role="tablist"
         aria-label={t('supplies_views_aria')}
-        style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '0 16px', flexShrink: 0, overflowX: 'auto' }}
+        style={{
+          display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '0 16px', flexShrink: 0, overflowX: 'auto',
+          // Phone: the row scrolls sideways; the fading edge says there is more (PhonePattern.md).
+          ...(narrow ? { padding: '0 8px', scrollbarWidth: 'none', maskImage: 'linear-gradient(to right, #000 85%, transparent)' } : null),
+        }}
       >
         {VIEWS.map((v) => (
           <button
@@ -72,6 +79,7 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
       </div>
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {view === 'stock' ? <SupplierHub contacts={contacts} /> : null}
+        {view === 'equipment' ? <EquipmentView /> : null}
         {view === 'count' ? <StockTake contacts={contacts} /> : null}
         {view === 'restock' ? <SuppliesRestock contacts={contacts} /> : null}
         {view === 'orders' ? <SupplyOrders contacts={contacts} /> : null}

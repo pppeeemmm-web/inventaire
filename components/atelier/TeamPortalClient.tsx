@@ -1101,6 +1101,8 @@ export function TeamPortalClient({
 
   const [subsetChipExpanded, setSubsetChipExpanded] = useState(false)
   const [voiceNoteSheetOpen, setVoiceNoteSheetOpen] = useState(false)
+  /** A Voice Memos file picked from the phone bar's 🎙️ stack: the voice sheet opens on it (as on the Hub). */
+  const [voiceImportFile, setVoiceImportFile] = useState<File | null>(null)
   const [voiceNotesTick, setVoiceNotesTick] = useState(0)
   useEffect(() => {
     setSubsetChipExpanded(false)
@@ -1300,7 +1302,7 @@ export function TeamPortalClient({
           isAdmin ? () => void router.push('/atelier/session/new') : undefined
         }
         onScanQr={() => void router.push('/atelier/scan')}
-        onFieldNote={() => setVoiceNoteSheetOpen(true)}
+        onFieldNote={() => { setVoiceImportFile(null); setVoiceNoteSheetOpen(true) }}
         onReminders={openFieldReminders}
         onNewWork={() => router.push('/atelier/works/new')}
         onNewSale={openNewSaleOrder}
@@ -1351,10 +1353,10 @@ export function TeamPortalClient({
             style={{
               color: 'var(--ac)',
               fontSize: 10,
-              overflow: atelierNarrow ? 'visible' : 'hidden',
-              textOverflow: atelierNarrow ? 'clip' : 'ellipsis',
-              whiteSpace: atelierNarrow ? 'normal' : 'nowrap',
-              lineHeight: atelierNarrow ? 1.25 : undefined,
+              // One line everywhere: on the phone a long title used to spill over the count (PhonePattern.md).
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
               minWidth: 0,
             }}
           >
@@ -1363,7 +1365,8 @@ export function TeamPortalClient({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: atelierNarrow ? 8 : 12, flexShrink: 0 }}>
-          {oeuvresPaging ? (
+          {/* The catalogue count belongs to the works tab on the phone; elsewhere it crowded the title. */}
+          {oeuvresPaging && (!atelierNarrow || activeTab === 'inventory') ? (
             <AtelierCatalogueTotalBadge
               total={oeuvresPaging.totalCount}
               loaded={oeuvres.length}
@@ -1625,8 +1628,11 @@ export function TeamPortalClient({
 
         <BottomStackLayer layer="voiceNote" visible={voiceNoteSheetOpen}>
         <VoiceNoteSheet
+          // The sheet stays mounted here: a new key per import starts it fresh on the file (its first screen is read at mount).
+          key={voiceImportFile ? `import-${voiceImportFile.name}-${voiceImportFile.lastModified}` : 'record'}
           open={voiceNoteSheetOpen}
-          onClose={() => setVoiceNoteSheetOpen(false)}
+          importFile={voiceImportFile}
+          onClose={() => { setVoiceNoteSheetOpen(false); setVoiceImportFile(null) }}
           oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
           onSaved={() => setVoiceNotesTick((n) => n + 1)}
         />
@@ -1634,7 +1640,8 @@ export function TeamPortalClient({
 
         <BottomStackLayer layer="mobileActionBar" visible={showMobileActionBar}>
           <PhoneInputBar
-            onVoice={() => setVoiceNoteSheetOpen(true)}
+            onVoice={() => { setVoiceImportFile(null); setVoiceNoteSheetOpen(true) }}
+            onImportAudio={(f) => { setVoiceImportFile(f); setVoiceNoteSheetOpen(true) }}
             workHref={isAdmin ? '/atelier/session/new' : atelierTabHref('journal')}
           />
         </BottomStackLayer>

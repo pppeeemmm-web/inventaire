@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Équipement — maquette</title>
+<style>
+  :root { --bg:#f4f2ee; --bg1:#fff; --tx:#1d1b18; --tx3:#8a857c; --bd:#e2ddd4; --ac:#b8860b; --ko:#a33a2a; --mid:#b07a12; --ok:#3d7a3d; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151412; --bg1:#1f1d1a; --tx:#f1ede6; --tx3:#9b958a; --bd:#34302a; --ac:#d9a62a; --ko:#e0735f; --mid:#e0b04a; --ok:#6fb26f; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 15px/1.45 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--tx); }
+  main { max-width: 480px; margin: 0 auto; padding: 14px 16px 90px; }
+  .note { font-size: 13px; color: var(--tx3); margin: 0 0 10px; }
+  nav.tabs { display:flex; gap:6px; margin: 6px 0 14px; }
+  nav.tabs button { flex:1; border:1px solid var(--bd); background:var(--bg1); color:var(--tx); border-radius:20px; min-height:44px; font:inherit; cursor:pointer; }
+  nav.tabs button[aria-pressed="true"] { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, var(--bg1)); }
+  section.view { display:none; } section.view.on { display:block; }
+  .crumb { font-size: 13px; color: var(--tx3); }
+  h1 { font-size: 20px; margin: 2px 0 10px; } h2 { font-size: 15px; margin: 18px 0 6px; color: var(--tx3); font-weight: 600; }
+  .row { display:flex; align-items:center; gap:10px; min-height: 52px; padding: 6px 10px; background: var(--bg1); border:1px solid var(--bd); border-radius: 10px; margin: 6px 0; }
+  .ph { width: 40px; height: 40px; border-radius: 8px; background: color-mix(in srgb, var(--bd) 70%, var(--bg)); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size: 18px; }
+  .grow { flex:1; min-width:0; } .sub { font-size: 12px; color: var(--tx3); }
+  .st { font-size: 12px; font-weight: 600; } .bon { color: var(--ok); } .rep { color: var(--mid); } .hs { color: var(--ko); }
+  .tree div { padding: 8px 0 8px calc(var(--d) * 18px); min-height: 44px; display:flex; align-items:center; gap: 8px; border-bottom: 1px solid var(--bd); }
+  .code { font-size: 11px; color: var(--tx3); border:1px solid var(--bd); border-radius: 6px; padding: 0 6px; margin-left: auto; }
+  .prop { border-style: dashed; }
+  .prop input { width: 22px; height: 22px; }
+  .bar { position: fixed; left:0; right:0; bottom:0; display:flex; gap:8px; justify-content:center; padding: 10px 16px max(12px, env(safe-area-inset-bottom)); background: var(--bg1); border-top:1px solid var(--bd); }
+  .bar button { flex:1; max-width: 150px; min-height: 48px; border-radius: 12px; border:1px solid var(--bd); background: var(--bg1); color: var(--tx); font: inherit; }
+  .bar button.main { background: var(--ac); color: var(--bg); border-color: var(--ac); }
+  table { width:100%; border-collapse: collapse; font-size: 14px; background: var(--bg1); }
+  th, td { border:1px solid var(--bd); padding: 7px 9px; text-align:left; vertical-align: top; } th { width: 34%; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <p class="note">Maquette téléphone — rien n'est enregistré. Lieux et objets donnés en exemple.</p>
+  <nav class="tabs" aria-label="Vues">
+    <button type="button" data-v="tree" aria-pressed="true">Lieux</button>
+    <button type="button" data-v="place" aria-pressed="false">Étagère A</button>
+    <button type="button" data-v="item" aria-pressed="false">Objet</button>
+  </nav>
+
+  <section class="view on" id="tree">
+    <h1>Équipement</h1>
+    <div class="tree">
+      <div style="--d:0">🏠 <b>Atelier</b> <span class="code">AT</span></div>
+      <div style="--d:1">Coin broyage <span class="sub">· 6 objets</span> <span class="code">AT-BR</span></div>
+      <div style="--d:2">Étagère A <span class="sub">· 4 objets</span> <span class="code">AT-BR-A</span></div>
+      <div style="--d:2">Boîte 3 — pigments <span class="sub">· 2 objets</span> <span class="code">AT-BR-3</span></div>
+      <div style="--d:1">Mur des toiles <span class="sub">· 3 objets</span> <span class="code">AT-TO</span></div>
+      <div style="--d:1">Prise de vue <span class="sub">· 5 objets</span> <span class="code">AT-PV</span></div>
+    </div>
+    <p class="sub">Chaque lieu a son code (étiquette QR) ; scanner ouvre sa liste. « + Lieu » ajoute une zone, un meuble, une boîte.</p>
+  </section>
+
+  <section class="view" id="place">
+    <div class="crumb">Atelier › Coin broyage ›</div>
+    <h1>Étagère A</h1>
+    <div class="row"><div class="ph">🫙</div><div class="grow"><b>Molette en verre</b><div class="sub">Laboratoire : broyage</div></div><span class="st bon">bon</span></div>
+    <div class="row"><div class="ph">⚖️</div><div class="grow"><b>Balance au centième</b><div class="sub">tâche : recalibrer · 15/12</div></div><span class="st rep">à réparer</span></div>
+    <div class="row"><div class="ph">🔪</div><div class="grow"><b>Couteaux à palette ×2</b><div class="sub">—</div></div><span class="st bon">bon</span></div>
+    <div class="row"><div class="ph">♨️</div><div class="grow"><b>Plaque chauffante</b><div class="sub">notice dans le Coffre</div></div><span class="st hs">hors service</span></div>
+
+    <h2>Proposé par la note vocale — à cocher</h2>
+    <p class="sub">« … une plaque de verre dépoli, une spatule, des bocaux… »</p>
+    <label class="row prop"><input type="checkbox" checked><div class="grow"><b>Plaque de verre dépoli</b><div class="sub">placé sur Étagère A</div></div></label>
+    <label class="row prop"><input type="checkbox" checked><div class="grow"><b>Spatule</b><div class="sub">placé sur Étagère A</div></div></label>
+    <label class="row prop"><input type="checkbox"><div class="grow"><b>Bocaux</b><div class="sub">consommable ? → Stock « Autre »</div></div></label>
+  </section>
+
+  <section class="view" id="item">
+    <div class="crumb">Atelier › Coin broyage › Étagère A ›</div>
+    <h1>Balance au centième</h1>
+    <table>
+      <tr><th>État</th><td><span class="st rep">à réparer</span> — dérive de 0,03 g</td></tr>
+      <tr><th>Lieu</th><td>Étagère A (AT-BR-A)</td></tr>
+      <tr><th>Arrivée</th><td>c. 2019 · 45 € · fournisseur —</td></tr>
+      <tr><th>Papiers</th><td>Notice (Coffre)</td></tr>
+      <tr><th>Entretien</th><td>Recalibrer — 15/12</td></tr>
+      <tr><th>Recettes</th><td>Budget de blancs — étape 1 (pesée)</td></tr>
+    </table>
+  </section>
+</main>
+<div class="bar"><button type="button" class="main">🎙️ Dire</button><button type="button">📷 Photo</button><button type="button">⌁ Scanner</button></div>
+<script>
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+    document.querySelectorAll('section.view').forEach((s) => s.classList.toggle('on', s.id === b.dataset.v))
+  }))
+</script>
+</body>
+</html>

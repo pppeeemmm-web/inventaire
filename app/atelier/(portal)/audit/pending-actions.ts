@@ -20,7 +20,7 @@ import {
 } from '@/lib/work-pending-keys'
 import { contactListLabel } from '@/lib/contacts/contact-display'
 import { loadWorkPlanState, PLAN_READ_FIELD, planReadGuardJson } from '@/lib/work-plan-state'
-import { WORK_CHANGED_ERROR } from '@/lib/work-save-error'
+import { WORK_CHANGED_ERROR, WORK_CONTACT_GONE_ERROR } from '@/lib/work-save-error'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
@@ -339,6 +339,7 @@ export async function approvePendingChange(
       const result = await saveWork(fd)
       if ('error' in result && result.error === WORK_CHANGED_ERROR && attempt === 0) continue
       if ('error' in result) {
+        if (result.error === WORK_CONTACT_GONE_ERROR) return { error: resolveMessage('fr', 'pending_contact_deleted') }
         return { error: result.error === WORK_CHANGED_ERROR ? resolveMessage('fr', 'wc_err_work_changed') : result.error }
       }
       break
@@ -391,7 +392,7 @@ async function replayPendingCreate(
   fd.set('__skip_review', '1')
   if (authorId) fd.set('__pending_author_id', authorId)
   const result = await saveWork(fd)
-  if ('error' in result) return { error: result.error }
+  if ('error' in result) return { error: result.error === WORK_CONTACT_GONE_ERROR ? resolveMessage('fr', 'pending_contact_deleted') : result.error }
 
   if (shareInboxId && typeof result.newId === 'number') {
     const idx =

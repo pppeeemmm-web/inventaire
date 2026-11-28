@@ -2,10 +2,8 @@
   "writes": {
     "app/atelier/(portal)/fiscal/_components/Fiscal.tsx": 3,
     "app/atelier/(portal)/production/_components/Production.tsx": 2,
-    "app/atelier/(portal)/stock-take/_components/StockTake.tsx": 1,
     "app/atelier/(portal)/themes/_components/Themes.tsx": 12,
-    "components/atelier/SupplierHub.tsx": 4,
-    "components/atelier/supplies/SuppliesRestock.tsx": 1,
+    "components/atelier/SupplierHub.tsx": 1,
     "components/atelier/SystemTab.tsx": 4,
     "components/public/EnquiryClient.tsx": 1
   },

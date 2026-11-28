@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stock — motif téléphone (maquette)</title>
+<style>
+  :root { --bg:#f6f4f0; --bg1:#fff; --tx:#1d1b18; --tx3:#8a857c; --bd:#e4dfd6; --ac:#b8860b; --ko:#b23b2a; --chip:#efe9df; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141311; --bg1:#1e1c19; --tx:#f1ede6; --tx3:#9b958a; --bd:#34302a; --ac:#d9a62a; --ko:#e0735f; --chip:#2a2723; } }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font: 16px/1.4 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--tx); }
+  .note { font-size: 12px; color: var(--tx3); padding: 8px 16px 0; max-width: 480px; margin: 0 auto; }
+  .app { max-width: 480px; margin: 0 auto; padding-bottom: 96px; container-type: inline-size; }
+  header.top { display:flex; align-items:center; gap: 8px; padding: 8px 12px; }
+  header.top h1 { flex:1; font-size: 22px; margin:0; letter-spacing: .2px; }
+  .ib { min-width:44px; min-height:44px; border:0; background:none; color:var(--tx); font-size: 22px; border-radius: 12px; }
+  .ib.round { background: var(--ac); color: var(--bg); font-size: 26px; border-radius: 50%; width: 44px; }
+  .seg { display:flex; gap: 6px; overflow-x:auto; padding: 0 12px 8px; scroll-snap-type: x mandatory;
+         mask-image: linear-gradient(to right, #000 85%, transparent); }
+  .seg::-webkit-scrollbar { display:none; }
+  .seg button { scroll-snap-align:start; flex: 0 0 auto; min-height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid var(--bd);
+                background: var(--bg1); color: var(--tx); font: inherit; font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--tx); color: var(--bg); border-color: var(--tx); }
+  .sticky { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 6px 12px 8px; border-bottom: 1px solid transparent; }
+  .search { display:flex; align-items:center; gap: 8px; background: var(--bg1); border: 1px solid var(--bd); border-radius: 12px; padding: 0 10px; min-height: 44px; }
+  .search input { flex:1; min-width:0; border:0; background:none; font: inherit; color: var(--tx); outline: none; }
+  .search .x { border:0; background: var(--chip); color: var(--tx3); width: 24px; height: 24px; border-radius: 50%; font-size: 14px; display:none; }
+  .chips { display:flex; gap:6px; overflow-x:auto; padding-top: 8px; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex: 0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--bd);
+          background: var(--bg1); color: var(--tx); font: inherit; font-size: 14px; }
+  .chip.on { background: color-mix(in srgb, var(--ac) 16%, var(--bg1)); border-color: var(--ac); }
+  .chip .n { background: var(--ac); color: var(--bg); border-radius: 9px; font-size: 12px; padding: 0 6px; }
+  .meta { font-size: 13px; color: var(--tx3); padding: 8px 16px 4px; }
+  .meta b { color: var(--ko); font-weight: 600; }
+  ul.list { list-style:none; margin: 0; padding: 0 12px; }
+  ul.list li button { width:100%; display:flex; align-items:center; gap: 12px; min-height: 60px; padding: 8px 4px; border:0; border-bottom: 1px solid var(--bd);
+                      background:none; color: var(--tx); font: inherit; text-align:left; }
+  .sw { width: 36px; height: 36px; border-radius: 8px; flex-shrink:0; }
+  .grow { flex:1; min-width:0; } .name { white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
+  .sub { font-size: 13px; color: var(--tx3); white-space:nowrap; overflow:hidden; text-overflow: ellipsis; }
+  .qty { font-size: 14px; font-variant-numeric: tabular-nums; } .qty.low { color: var(--ko); font-weight: 600; }
+  .empty { padding: 24px 16px; color: var(--tx3); text-align:center; }
+  dialog { border:0; padding:0; width: 100%; max-width: 480px; margin: auto auto 0; border-radius: 18px 18px 0 0; background: var(--bg1); color: var(--tx);
+           padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  dialog::backdrop { background: rgba(0,0,0,.3); }
+  .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--bd); margin: 8px auto 4px; }
+  .sh { padding: 4px 16px 0; } .sh h2 { font-size: 17px; margin: 6px 0 10px; display:flex; align-items:center; }
+  .sh h2 span { flex:1; } .sh h3 { font-size: 13px; color: var(--tx3); font-weight: 600; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
+  .wrap { display:flex; flex-wrap:wrap; gap: 6px; }
+  .row { display:flex; align-items:center; justify-content: space-between; min-height: 48px; border-bottom: 1px solid var(--bd); }
+  .cta { width: 100%; min-height: 50px; margin-top: 16px; border:0; border-radius: 14px; background: var(--ac); color: var(--bg); font: inherit; font-weight: 600; }
+  .link { border:0; background:none; color: var(--ac); font: inherit; min-height: 44px; }
+  .kv { display:grid; grid-template-columns: 40% 60%; gap: 0; } .kv div { padding: 10px 0; border-bottom: 1px solid var(--bd); } .kv div:nth-child(odd) { color: var(--tx3); }
+  .menu { position: fixed; inset: auto; margin: 0; border: 1px solid var(--bd); border-radius: 12px; padding: 4px; background: var(--bg1); color: var(--tx); min-width: 210px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .menu button { display:block; width:100%; text-align:left; min-height: 44px; border:0; background:none; color: var(--tx); font: inherit; padding: 0 12px; border-radius: 8px; }
+  nav.bar { position: fixed; left:0; right:0; bottom:0; display:grid; grid-template-columns: repeat(4,1fr); background: var(--bg1); border-top:1px solid var(--bd);
+            padding: 6px 6px max(10px, env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; }
+  nav.bar span { display:flex; flex-direction:column; align-items:center; font-size: 12px; min-height: 52px; justify-content:center; }
+  @container (min-width: 700px) { ul.list li button { min-height: 44px; } }
+</style>
+</head>
+<body>
+<p class="note">Maquette du motif téléphone, sur l'onglet Stock — données d'exemple, rien n'est enregistré. Essayez : chercher, un filtre, « Filtres », un article, « … ».</p>
+<div class="app">
+  <header class="top">
+    <button class="ib" aria-label="Menu">☰</button>
+    <h1>Stock</h1>
+    <button class="ib" id="moreBtn" popovertarget="more" aria-label="Plus d'actions">…</button>
+    <button class="ib round" aria-label="Nouvel article">+</button>
+  </header>
+  <div class="seg" role="tablist" aria-label="Sections">
+    <button aria-pressed="true">Articles</button><button aria-pressed="false">Comptage</button><button aria-pressed="false">Réassort</button><button aria-pressed="false">Commandes</button><button aria-pressed="false">Fournisseurs</button>
+  </div>
+  <div class="sticky">
+    <div class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="Rechercher" autocomplete="off"><button class="x" id="qx" aria-label="Effacer">✕</button></div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="meta" id="meta"></div>
+  <ul class="list" id="list"></ul>
+</div>
+
+<dialog id="filters" closedby="any">
+  <div class="grab"></div>
+  <div class="sh">
+    <h2><span>Filtres</span><button class="link" id="reset">Tout effacer</button></h2>
+    <h3>Catégorie</h3><div class="wrap" id="fcat"></div>
+    <h3>Fournisseur</h3><div class="wrap" id="fsup"></div>
+    <h3>État</h3>
+    <label class="row"><span>Stock bas seulement</span><input type="checkbox" id="flow" style="width:22px;height:22px"></label>
+    <button class="cta" id="apply"></button>
+  </div>
+</dialog>
+
+<dialog id="item" closedby="any">
+  <div class="grab"></div>
+  <div class="sh" id="itemBody"></div>
+</dialog>
+
+<div id="more" popover class="menu">
+  <button>Exporter tout (CSV)</button><button>Imprimer la liste</button><button>Compter ce rayon</button>
+</div>
+
+<nav class="bar" aria-label="Saisie rapide"><span>✍️<br>Écrire</span><span>🎙️<br>Vocal</span><span>🖼️<br>Œuvre</span><span>📷<br>Photo</span></nav>
+
+<script>
+const ITEMS = [
+  ['Outremer naturel', 'Pigment', 'Kremer', 40, 'g', 50, '#2b3f8f'],
+  ['Blanc de titane PW6', 'Couleur à l’huile', 'Michael Harding', 3, 'tubes', 1, '#f2f0ea'],
+  ['Calcite PW18', 'Pigment', 'Kremer', 500, 'g', 100, '#e9e4d8'],
+  ['Huile de lin pressée à froid', 'Liant', 'Kremer', 1, 'L', 0.5, '#d6b25a'],
+  ['Temperone 79250', 'Medium à peindre', 'Kremer', 100, 'ml', 50, '#c9b48a'],
+  ['Zirconium PW12', 'Couleur à l’huile', 'Kremer', 1, 'tube', 1, '#f6f4ef'],
+  ['Lithopone PW5', 'Pigment', 'Kremer', 250, 'g', 100, '#ecebe6'],
+  ['Térébenthine de Venise', 'Liant', 'Kremer', 0, 'ml', 50, '#b98a3a'],
+  ['Molette en verre', 'Équipement', '—', 1, '', 0, '#9fb5b0'],
+  ['Balance au centième', 'Équipement', '—', 1, '', 0, '#8a8f96'],
+  ['Pinceau soie n° 12', 'Pinceau', 'Raphaël', 4, '', 2, '#7a5a3a'],
+  ['Lin 186 g grain moyen', 'Lin', 'Claessens', 6, 'm', 2, '#c2b59b'],
+]
+const state = { q: '', cats: new Set(), sups: new Set(), low: false }
+const $ = (id) => document.getElementById(id)
+const isLow = (it) => it[5] > 0 && it[3] < it[5]
+function match(it, s = state) {
+  if (s.q && !(it[0] + ' ' + it[1] + ' ' + it[2]).toLowerCase().includes(s.q.toLowerCase())) return false
+  if (s.cats.size && !s.cats.has(it[1])) return false
+  if (s.sups.size && !s.sups.has(it[2])) return false
+  if (s.low && !isLow(it)) return false
+  return true
+}
+function render() {
+  const rows = ITEMS.filter((it) => match(it))
+  const n = state.cats.size + state.sups.size + (state.low ? 1 : 0)
+  const chips = [`<button class="chip${n ? ' on' : ''}" id="openF">Filtres${n ? ` <span class="n">${n}</span>` : ''}</button>`]
+  state.cats.forEach((c) => chips.push(`<button class="chip on" data-rm="cat:${c}">${c} ✕</button>`))
+  state.sups.forEach((c) => chips.push(`<button class="chip on" data-rm="sup:${c}">${c} ✕</button>`))
+  if (state.low) chips.push(`<button class="chip on" data-rm="low">Stock bas ✕</button>`)
+  if (!n) ['Pigment', 'Liant', 'Équipement'].forEach((c) => chips.push(`<button class="chip" data-add="${c}">${c}</button>`))
+  $('chips').innerHTML = chips.join('')
+  const low = ITEMS.filter(isLow).length
+  $('meta').innerHTML = `${rows.length} / ${ITEMS.length} articles${low ? ` · <b>${low} sous le seuil</b>` : ''}`
+  $('list').innerHTML = rows.length ? rows.map((it) => `<li><button data-i="${ITEMS.indexOf(it)}"><span class="sw" style="background:${it[6]}"></span><span class="grow"><div class="name">${it[0]}</div><div class="sub">${it[1]} · ${it[2]}</div></span><span class="qty${isLow(it) ? ' low' : ''}">${it[3]} ${it[4]}</span></button></li>`).join('')
+    : `<li class="empty">Rien ne correspond. <button class="link" id="clearAll">Tout effacer</button></li>`
+  $('qx').style.display = state.q ? 'block' : 'none'
+}
+function renderSheet() {
+  const cats = [...new Set(ITEMS.map((i) => i[1]))].sort((a, b) => a.localeCompare(b, 'fr'))
+  const sups = [...new Set(ITEMS.map((i) => i[2]))].filter((s) => s !== '—').sort((a, b) => a.localeCompare(b, 'fr'))
+  $('fcat').innerHTML = cats.map((c) => `<button class="chip${draft.cats.has(c) ? ' on' : ''}" data-fc="${c}">${c}</button>`).join('')
+  $('fsup').innerHTML = sups.map((c) => `<button class="chip${draft.sups.has(c) ? ' on' : ''}" data-fs="${c}">${c}</button>`).join('')
+  $('flow').checked = draft.low
+  $('apply').textContent = `Voir ${ITEMS.filter((it) => match(it, { ...draft, q: state.q })).length} articles`
+}
+let draft = null
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.id === 'openF') { draft = { cats: new Set(state.cats), sups: new Set(state.sups), low: state.low }; renderSheet(); $('filters').showModal(); return }
+  if (b.dataset.rm) { const [k, v] = b.dataset.rm.split(':'); if (k === 'cat') state.cats.delete(v); else if (k === 'sup') state.sups.delete(v); else state.low = false; render(); return }
+  if (b.dataset.add) { state.cats.add(b.dataset.add); render(); return }
+  if (b.dataset.fc) { draft.cats.has(b.dataset.fc) ? draft.cats.delete(b.dataset.fc) : draft.cats.add(b.dataset.fc); renderSheet(); return }
+  if (b.dataset.fs) { draft.sups.has(b.dataset.fs) ? draft.sups.delete(b.dataset.fs) : draft.sups.add(b.dataset.fs); renderSheet(); return }
+  if (b.id === 'reset') { draft = { cats: new Set(), sups: new Set(), low: false }; renderSheet(); return }
+  if (b.id === 'apply') { Object.assign(state, draft); $('filters').close(); render(); return }
+  if (b.id === 'qx' || b.id === 'clearAll') { state.q = ''; $('q').value = ''; if (b.id === 'clearAll') { state.cats.clear(); state.sups.clear(); state.low = false } render(); return }
+  if (b.dataset.i != null) {
+    const it = ITEMS[+b.dataset.i]
+    $('itemBody').innerHTML = `<h2><span>${it[0]}</span><button class="link" onclick="document.getElementById('item').close()">Fermer</button></h2>
+      <div class="kv"><div>Catégorie</div><div>${it[1]}</div><div>Quantité</div><div class="${isLow(it) ? 'qty low' : ''}">${it[3]} ${it[4]}${it[5] ? ` (seuil ${it[5]})` : ''}</div><div>Fournisseur</div><div>${it[2]}</div><div>Lieu</div><div>Étagère A</div></div>
+      <button class="cta">Modifier la quantité</button>`
+    $('item').showModal(); return
+  }
+  if (b.parentElement?.classList.contains('seg')) { b.parentElement.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))) }
+})
+$('flow').addEventListener('change', (e) => { draft.low = e.target.checked; renderSheet() })
+$('q').addEventListener('input', (e) => { state.q = e.target.value; render() })
+render()
+</script>
+</body>
+</html>

@@ -298,16 +298,12 @@ export async function attachShareInboxToContact(
   const block = formatShareInboxText(loaded.payload)
   if (!block && loaded.payload.files.length === 0) return { error: 'empty' }
 
-  const { data: c } = await g.supabase.from('Contact')
-    .select('Notes')
-    .eq('ContactID', contactId)
-    .maybeSingle()
-  if (!c) return { error: 'not_found' }
-
-  const { error: upErr } = await g.supabase.from('Contact')
-    .update({ Notes: appendBlock(c.Notes, block) })
-    .eq('ContactID', contactId)
+  // One statement in the database (append_contact_notes.sql): two shares at once both land; a private card is
+  // « not found » for a non-admin. Not through saveContact: a share is no card edit (no Fil line per share).
+  const { data: res, error: upErr } = await g.supabase.rpc('append_contact_notes', { p_contact: contactId, p_block: block })
   if (upErr) return { error: upErr.message }
+  const answer = res as { refused?: string } | null
+  if (answer?.refused) return { error: answer.refused === 'forbidden' ? 'forbidden' : 'not_found' }
 
   const fin = await finishInbox(inboxId, { target: 'contact', contactId })
   if (fin) return fin

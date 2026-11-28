@@ -17,9 +17,11 @@ import {
   type StockContactLike,
   supplierDisplayName,
   formatStockCurrency,
+  stockDoorReason,
 } from '@/lib/stock-item'
 import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
 import { saveSupplyOrder } from '@/app/atelier/(portal)/stock/supply-order-actions'
+import { saveStockItem } from '@/app/atelier/(portal)/stock/equipment-actions'
 
 const DRAFT_KEY = 'pem_restock_order_draft'
 
@@ -81,10 +83,11 @@ export function SuppliesRestock({ contacts }: { contacts: StockContactLike[] }) 
   async function saveMin(it: StockItemRow, raw: string) {
     const v = raw === '' ? 0 : Math.max(0, Number(raw))
     if (Number.isNaN(v) || v === it.min_stock) return
-    const { error } = await createClient().from('stock_item').update({ min_stock: v }).eq('id', it.id)
-    if (error) { toast.error(`${t('error_prefix')} ${stringifyError(error)}`); return }
-    setItems((p) => p.map((x) => (x.id === it.id ? { ...x, min_stock: v } : x)))
-    toast.success(t('restock_min_saved'))
+    // Through the Stock door, one field, no stale check (the door stamps updated_at).
+    const r = await saveStockItem({ id: it.id, fields: { min_stock: v } })
+    if (!('ok' in r) && !('unchanged' in r)) { toast.error(`${t('error_prefix')} ${stockDoorReason(r, t)}`); return }
+    setItems((p) => p.map((x) => (x.id === it.id ? { ...x, min_stock: v, updated_at: r.item.updated_at } : x)))
+    if ('ok' in r) toast.success(t('restock_min_saved'))
   }
 
   async function copyOrder(label: string, rows: StockItemRow[]) {

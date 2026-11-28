@@ -10,7 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter'
-import { countryFromName, normalizePhone } from '@/lib/contacts/phone'
+import { countryFromName, normalizePhone, phoneLabelFor } from '@/lib/contacts/phone'
 import type { CountryCode } from 'libphonenumber-js'
 import type {
   ContactAddress,
@@ -169,7 +169,7 @@ async function normalizePhones(
     lists.phones = lists.phones.map((r) => {
       if (!rowTouched(r)) return r
       const n = normalizePhone({ country_code: r.country_code ?? null, phone: r.phone }, country)
-      return { ...r, country_code: n.country_code, phone: n.phone }
+      return { ...r, country_code: n.country_code, phone: n.phone, label: phoneLabelFor(n, r.label) ?? r.label }
     })
   }
   for (const pair of fieldPairs) {

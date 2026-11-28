@@ -18,6 +18,7 @@ import { toast } from '@/lib/ui/toast'
 import { stringifyError } from '@/lib/error'
 import {
   type StockItemRow,
+  stockDoorReason,
   type StockContactLike,
   supplierDisplayName,
   supplierContactSummary,
@@ -37,7 +38,9 @@ import {
 } from '@/lib/stock-material-list-export'
 import { pickableContacts } from '@/lib/contacts/contact-display'
 import { useIsAdmin } from '@/hooks/useIsAdmin'
+import { StockPhoneList } from '@/components/atelier/supplies/StockPhoneList'
 import { phoneMatches, phoneQueryDigits } from '@/lib/contacts/phone-search'
+import { saveStockItem } from '@/app/atelier/(portal)/stock/equipment-actions'
 
 const UNCATEGORIZED = '__stock_uc__'
 const SUPPLIERS_OPEN_KEY = 'pem-stock-suppliers-open'
@@ -371,40 +374,38 @@ export function SupplierHub({ contacts }: Props) {
   async function handleSave(): Promise<boolean> {
     if (!editing?.name?.trim()) return false
     setBusy(true)
-    const sb = createClient()
     const cost = parseCost()
-    const payload = {
-      name: editing.name.trim(),
-      category: editing.category || null,
-      quantity: Number(editing.quantity ?? 0),
-      unit: (editing.unit || 'units').trim() || 'units',
-      min_stock: Number(editing.min_stock ?? 0),
-      supplier_id: editing.supplier_id || null,
-      cost_unit: cost,
-      notes: (editing.draftNotes ?? '').trim() || null,
-    }
-
-    try {
-      if (editing.id) {
-        const { error } = await sb
-          .from('stock_item')
-          .update(payload)
-          .eq('id', editing.id)
-        if (error) throw error
-      } else {
-        const { error } = await sb.from('stock_item').insert(payload)
-        if (error) throw error
-      }
+    // The Stock door (`save_stock_item`): the stale check refuses a save over a newer change (Équipement, Comptage…).
+    // The unit is kept as typed: a new line starts at « units », an Équipement line keeps its empty unit.
+    const r = await saveStockItem({
+      id: editing.id ?? null,
+      readUpdatedAt: editing.id ? editing.updated_at ?? null : null,
+      fields: {
+        name: editing.name.trim(),
+        category: editing.category || null,
+        quantity: Number(editing.quantity ?? 0),
+        unit: (editing.unit ?? '').trim(),
+        min_stock: Number(editing.min_stock ?? 0),
+        supplier_id: editing.supplier_id || null,
+        cost_unit: cost,
+        notes: (editing.draftNotes ?? '').trim() || null,
+      },
+    })
+    setBusy(false)
+    if ('refused' in r && r.refused === 'stale') {
+      toast.error(t('eq_stale'))
       await load()
-      toast.success(t('stock_toast_saved'))
-      setEditing(null)
-      return true
-    } catch (e) {
-      toast.error(`${t('stock_save_failed')} ${stringifyError(e)}`)
+      if (r.item) openEdit({ ...(editing as StockItemRow), ...r.item } as StockItemRow)
       return false
-    } finally {
-      setBusy(false)
     }
+    if (!('ok' in r) && !('unchanged' in r)) {
+      toast.error(`${t('stock_save_failed')} ${stockDoorReason(r, t)}`)
+      return false
+    }
+    // Principle 3: « nothing changed » closes without saying « saved ».
+    if ('ok' in r) { await load(); toast.success(t('stock_toast_saved')) }
+    setEditing(null)
+    return true
   }
 
   async function handleDelete(id: number) {
@@ -426,17 +427,16 @@ export function SupplierHub({ contacts }: Props) {
     const it = items.find((i) => i.id === id)
     if (!it) return
     const next = Math.max(0, Number(it.quantity) + delta)
-    const sb = createClient()
-    const { error } = await sb
-      .from('stock_item')
-      .update({ quantity: next })
-      .eq('id', id)
-    if (error) {
-      toast.error(`${t('stock_adjust_failed')} ${stringifyError(error)}`)
+    // Through the door with the stale check: a count or a receipt since the list loaded is not overwritten.
+    // Quick taps stay valid: each save stores the new updated_at below.
+    const r = await saveStockItem({ id, readUpdatedAt: it.updated_at, fields: { quantity: next } })
+    if ('refused' in r && r.refused === 'stale') { toast.error(t('eq_stale')); await load(); return }
+    if (!('ok' in r) && !('unchanged' in r)) {
+      toast.error(`${t('stock_adjust_failed')} ${stockDoorReason(r, t)}`)
       return
     }
     setItems((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, quantity: next } : x)),
+      prev.map((x) => (x.id === id ? { ...x, quantity: next, updated_at: r.item.updated_at } : x)),
     )
   }
 
@@ -622,7 +622,8 @@ export function SupplierHub({ contacts }: Props) {
     }
   }
 
-  const editKey = editing ? String(editing.id ?? 'new') : ''
+  // updated_at in the key: a stale reopen takes a fresh baseline (not dirty with nothing typed).
+  const editKey = editing ? `${editing.id ?? 'new'}:${editing.updated_at ?? ''}` : ''
   const editingSnap = useMemo(
     () => (editing ? JSON.stringify(editing) : ''),
     [editing],
@@ -655,13 +656,17 @@ export function SupplierHub({ contacts }: Props) {
     <div
       data-testid="atelier-stock-root"
       style={{
-        display: 'flex',
+        // Phone: a plain block (no flex shrinking) that scrolls as one (PhonePattern.md).
+        display: narrow ? 'block' : 'flex',
         flexDirection: 'column',
         height: '100%',
         minWidth: 0,
         padding: pad,
+        // Phone: one scroll for the whole tab, so the search sticks to its top (PhonePattern.md).
+        overflowY: narrow ? 'auto' : undefined,
       }}
     >
+      {narrow ? null : (
       <div
         style={{
           display: 'flex',
@@ -693,6 +698,7 @@ export function SupplierHub({ contacts }: Props) {
           {t('stock_new_item')}
         </button>
       </div>
+      )}
 
       <section
         id="atelier-stock-suppliers-anchor"
@@ -924,6 +930,30 @@ export function SupplierHub({ contacts }: Props) {
         </div>
       </section>
 
+      {narrow ? (
+        <StockPhoneList
+          rows={filteredSorted}
+          loading={loading}
+          total={items.length}
+          low={kpiLow}
+          valueLabel={kpiValue != null ? formatStockCurrency(lang, kpiValue) : '\u2014'}
+          search={search}
+          onSearch={setSearch}
+          categoryKey={categoryKey}
+          onCategory={setCategoryKey}
+          supplierId={materialSupplierFilter}
+          onSupplier={setMaterialSupplierFilter}
+          suppliers={suppliersForFilter}
+          lowOnly={lowOnly}
+          onLowOnly={setLowOnly}
+          onClear={clearMaterialFilters}
+          onOpen={openEdit}
+          onNew={() => openNew()}
+          onExport={() => exportCsv()}
+          supplierNameFor={supplierNameFor}
+        />
+      ) : (
+        <>
       <div
         data-testid="atelier-stock-kpis"
         style={{
@@ -1229,9 +1259,7 @@ export function SupplierHub({ contacts }: Props) {
                   ? contactById.get(it.supplier_id)
                   : undefined
                 const supName = sup ? supplierDisplayName(sup) : '\u2014'
-                const stepStyle = narrow
-                  ? { minWidth: 44, minHeight: 44, padding: 0 }
-                  : { minWidth: 32, minHeight: 32, padding: '2px 6px' }
+                const stepStyle = { minWidth: 32, minHeight: 32, padding: '2px 6px' }
                 return (
                   <tr
                     key={it.id}
@@ -1351,6 +1379,8 @@ export function SupplierHub({ contacts }: Props) {
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
       {editing && (
         <>

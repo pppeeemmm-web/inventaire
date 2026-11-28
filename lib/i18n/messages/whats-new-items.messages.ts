@@ -7,6 +7,47 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.110 (2026-11-27) — phone bar tap / hold; found work: year + « Terminée ? »; contacts on the phone; theme / group changes everywhere.
+  // 3.1.111 (2026-11-28) — phone labels by type; private cards; clearer save messages; Équipement; Fil « Revenir ».
+  wn_contacts_phone_label_type_t: { fr: 'Téléphones : le libellé suit le numéro', en: 'Phones: the label follows the number' },
+  wn_contacts_phone_label_type_d: {
+    fr: 'Un numéro tapé ou modifié sur une fiche prend « Mobile » si c’est un portable et « Home » si c’est un fixe (au lieu de « Mobile » par défaut) ; « Travail » et les libellés choisis restent.',
+    en: 'A number typed or changed on a card gets « Mobile » if it is a mobile and « Home » if it is a landline (instead of « Mobile » by default); « Work » and chosen labels stay.',
+  },
+  wn_contacts_private_admin_t: { fr: 'Fiches privées : réservées à l’administrateur', en: 'Private cards: admin only' },
+  wn_contacts_private_admin_d: {
+    fr: 'Une fiche marquée privée s’ouvre en lecture pour l’équipe : « Enregistrer » est désactivé avec « Fiche privée : seul un administrateur peut la modifier ».',
+    en: 'A card marked private opens read-only for the team: « Save » is disabled with « Private card: only an admin can change it ».',
+  },
+  wn_work_save_clear_messages_t: { fr: 'Œuvres : messages d’enregistrement plus clairs', en: 'Works: clearer save messages' },
+  wn_work_save_clear_messages_d: {
+    fr: 'Si un contact choisi sur la fiche a été supprimé entre-temps, le message le dit. Au téléphone, une modification faite hors ligne dont la réponse s’était perdue dit « peut-être déjà enregistrée — ouvrez la fiche » au lieu de « Pas enregistré ».',
+    en: 'If a contact chosen on the card was deleted meanwhile, the message says so. On the phone, an offline change whose answer was lost says « perhaps already saved — open the card » instead of « Not saved ».',
+  },
+  wn_stock_phone_list_t: { fr: 'Stock au téléphone : la liste d’abord', en: 'Stock on the phone: the list first' },
+  wn_stock_phone_list_d: {
+    fr: 'Au téléphone, Stock s’ouvre sur la liste : une recherche qui reste en haut, des filtres en une touche (Pigment, Liant, Équipement), « Filtres » ouvre une feuille avec catégories, fournisseurs et stock bas, « Voir n articles » ; « … » pour l’export, « + » pour un nouvel article. Le titre en haut ne chevauche plus le nombre d’œuvres.',
+    en: 'On the phone, Stock opens on the list: a search that stays at the top, one-tap filters (Pigment, Binder, Equipment), « Filters » opens a sheet with categories, suppliers and low stock, « Show n items »; « … » for export, « + » for a new item. The title at the top no longer runs into the works count.',
+  },
+  wn_stock_equipment_view_t: { fr: 'Stock : vue « Équipement » et « Dire »', en: 'Stock: « Equipment » view and « Say »' },
+  wn_stock_equipment_view_d: {
+    fr: 'Stock › Équipement montre l’atelier lieu par lieu (zone, meuble, boîte) et ce qui s’y trouve ; chaque objet a sa fiche (état, année d’arrivée, lieu, notes). Devant une étagère, « 🎙️ Dire » : dites ou tapez ce qu’il y a, cochez les lignes proposées, « Ajouter ». Le découpage se fait sur l’appareil, rien n’est envoyé ailleurs.',
+    en: 'Stock › Equipment shows the studio place by place (zone, furniture, box) and what sits there; each item has its card (condition, year it arrived, place, notes). At a shelf, « 🎙️ Say »: say or type what is there, tick the proposed lines, « Add ». The split happens on the device, nothing is sent anywhere.',
+  },
+  wn_stock_save_safe_t: { fr: 'Stock : un enregistrement ne recouvre plus un changement plus récent', en: 'Stock: a save no longer overwrites a later change' },
+  wn_stock_save_safe_d: {
+    fr: 'Si un article a changé ailleurs (Comptage, réception d’une commande, Équipement, un autre appareil) depuis que vous l’avez ouvert, l’enregistrement est refusé et la fiche se rouvre sur la dernière version. Comptage dit quelles lignes n’ont pas été enregistrées et les garde.',
+    en: 'If an item changed elsewhere (count, order received, Equipment, another device) since you opened it, the save is refused and the card reopens on the latest version. Count names the lines that were not saved and keeps them.',
+  },
+  wn_stock_equipment_t: { fr: 'Stock : catégorie « Équipement »', en: 'Stock: « Equipment » category' },
+  wn_stock_equipment_d: {
+    fr: 'Les outils durables de l’atelier (molette, balance, plaque chauffante…) se rangent dans le Stock sous « Équipement ».',
+    en: 'Durable studio tools (muller, scale, hot plate…) go into Stock under « Equipment ».',
+  },
+  wn_fil_revert_safe_t: { fr: 'Fil : « Revenir » n’efface plus un changement plus récent', en: 'Fil: « Undo » no longer wipes a later change' },
+  wn_fil_revert_safe_d: {
+    fr: '« Revenir » sur un changement de fiche par l’équipe refuse si le champ a encore changé depuis (« Pas annulé : … »), au lieu de l’écraser.',
+    en: '« Undo » on a team change to a card refuses if the field changed again since (« Not undone: … »), instead of overwriting it.',
+  },
   wn_phone_bar_tap_hold_t: { fr: 'Téléphone : toucher = faire, maintenir = choisir', en: 'Phone: tap = do, hold = choose' },
   wn_phone_bar_tap_hold_d: {
     fr: 'Dans la barre du bas, un toucher fait l’action la plus courante, sans carte intermédiaire : 📷 Photo → inspiration du jour (ou document), 🖼️ Œuvre → nouvelle œuvre, 🎙️ Vocal → l’enregistrement démarre. Maintenir ½ s empile les autres choix au-dessus du bouton (document, carte de visite, QR ; reprise, session terrain ; 🎧 import de Dictaphone) : glissez le pouce sur l’un et relâchez. « maintenir : n choix » sous chaque bouton le rappelle.',

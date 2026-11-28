@@ -33,7 +33,6 @@ export const todayMessages = defineMessages({
   today_doc_card_sub: { fr: 'Nouveau contact depuis une carte', en: 'New contact from a card' },
   today_doc_qr: { fr: 'Étiquette QR', en: 'QR label' },
   today_doc_qr_sub: { fr: 'Scanner l’étiquette d’une œuvre', en: 'Scan a work’s label' },
-  today_doc_close: { fr: 'Fermer', en: 'Close' },
   today_work_title: { fr: 'Œuvre', en: 'Work' },
   today_work_new: { fr: 'Nouvelle œuvre', en: 'New work' },
   today_work_new_sub: { fr: 'Un nouveau numéro : photo, titre, technique, format', en: 'A new number: photo, title, technique, size' },
