@@ -29,6 +29,7 @@ import { analyticsUiMessages } from './analytics-ui.messages'
 import { auditMessages } from './audit.messages'
 import { pendingApproveMessages } from './pending-approve.messages'
 import { stockUiMessages } from './stock-ui.messages'
+import { phonePatternMessages } from './phone-pattern.messages'
 import { supplyOrdersMessages } from './supply-orders.messages'
 import { portfolioConfigMessages } from './portfolio-config.messages'
 import { knobsPanelMessages } from './knobs-panel.messages'
@@ -115,6 +116,7 @@ export const featureMessages = {
   ...auditMessages,
   ...pendingApproveMessages,
   ...stockUiMessages,
+  ...phonePatternMessages,
   ...supplyOrdersMessages,
   ...portfolioConfigMessages,
   ...knobsPanelMessages,

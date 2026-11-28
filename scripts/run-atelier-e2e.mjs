@@ -16,6 +16,7 @@ const defaultSpecs = [
   'tests/mobile-sale.spec.ts',
   'tests/hub-mobile-capture.spec.ts',
   'tests/atelier-mobile-action-bar.spec.ts',
+  'tests/phone-pattern.spec.ts',
   'tests/session-new.spec.ts',
   'tests/session-journal.spec.ts',
   'tests/batch-edit-broadcast-ready.spec.ts',

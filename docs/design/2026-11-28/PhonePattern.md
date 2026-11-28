@@ -79,6 +79,21 @@ failure names the tab and the element. (Runs at the desk or on the preview — t
 5. **Every batch passes:** typecheck, lint, i18n, chrome, the phone check, a code-review / simplify pass on the diff,
    and the flow review; I read every diff before it lands.
 
+## As built — step 1 (2026-11-28), where it differs from the plan above
+
+- **Sheets** use the app's existing overlay (`PemModalOverlay`: Escape, tap outside, the same look as every other
+  sheet) through one shared `PhoneSheet`, not a new `<dialog>` layer — one sheet system, not two. The bottom bar's
+  choice sheet now uses it too.
+- **Phone vs desk** is the app's existing `useMediaQuery('(max-width: 767px)')` switch; container queries wait until
+  a piece is shared between a phone column and a desk column.
+- **Header:** on the phone the works count stays in the header on the Œuvres tab only (it was meaningless on the
+  other tabs and caused the overlap); the title is one line everywhere.
+- **Stock on the phone** has no −/+ steppers on rows (a row opens the editor; counting shelf by shelf is
+  Comptage), no sorting (by name), no multi-select « export list » (« … » has the CSV export).
+- **Guard:** each visible element is measured (the shell scrolls inside, so the page's own width proves nothing);
+  short rows may scroll sideways, a frame marked `data-phone-scroll-x` too (tables of figures); pending tabs are
+  expected to fail and turn the run red once they pass.
+
 ## Scenario (steps Pem can check, on the phone)
 
 1. Stock opens on the list: title, sections, search, three chips, « 235 articles · 1 sous le seuil », rows. Nothing

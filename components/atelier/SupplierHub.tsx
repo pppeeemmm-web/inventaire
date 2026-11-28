@@ -37,6 +37,7 @@ import {
 } from '@/lib/stock-material-list-export'
 import { pickableContacts } from '@/lib/contacts/contact-display'
 import { useIsAdmin } from '@/hooks/useIsAdmin'
+import { StockPhoneList } from '@/components/atelier/supplies/StockPhoneList'
 import { phoneMatches, phoneQueryDigits } from '@/lib/contacts/phone-search'
 
 const UNCATEGORIZED = '__stock_uc__'
@@ -655,13 +656,17 @@ export function SupplierHub({ contacts }: Props) {
     <div
       data-testid="atelier-stock-root"
       style={{
-        display: 'flex',
+        // Phone: a plain block (no flex shrinking) that scrolls as one (PhonePattern.md).
+        display: narrow ? 'block' : 'flex',
         flexDirection: 'column',
         height: '100%',
         minWidth: 0,
         padding: pad,
+        // Phone: one scroll for the whole tab, so the search sticks to its top (PhonePattern.md).
+        overflowY: narrow ? 'auto' : undefined,
       }}
     >
+      {narrow ? null : (
       <div
         style={{
           display: 'flex',
@@ -693,6 +698,7 @@ export function SupplierHub({ contacts }: Props) {
           {t('stock_new_item')}
         </button>
       </div>
+      )}
 
       <section
         id="atelier-stock-suppliers-anchor"
@@ -924,6 +930,30 @@ export function SupplierHub({ contacts }: Props) {
         </div>
       </section>
 
+      {narrow ? (
+        <StockPhoneList
+          rows={filteredSorted}
+          loading={loading}
+          total={items.length}
+          low={kpiLow}
+          valueLabel={kpiValue != null ? formatStockCurrency(lang, kpiValue) : '\u2014'}
+          search={search}
+          onSearch={setSearch}
+          categoryKey={categoryKey}
+          onCategory={setCategoryKey}
+          supplierId={materialSupplierFilter}
+          onSupplier={setMaterialSupplierFilter}
+          suppliers={suppliersForFilter}
+          lowOnly={lowOnly}
+          onLowOnly={setLowOnly}
+          onClear={clearMaterialFilters}
+          onOpen={openEdit}
+          onNew={() => openNew()}
+          onExport={() => exportCsv()}
+          supplierNameFor={supplierNameFor}
+        />
+      ) : (
+        <>
       <div
         data-testid="atelier-stock-kpis"
         style={{
@@ -1229,9 +1259,7 @@ export function SupplierHub({ contacts }: Props) {
                   ? contactById.get(it.supplier_id)
                   : undefined
                 const supName = sup ? supplierDisplayName(sup) : '\u2014'
-                const stepStyle = narrow
-                  ? { minWidth: 44, minHeight: 44, padding: 0 }
-                  : { minWidth: 32, minHeight: 32, padding: '2px 6px' }
+                const stepStyle = { minWidth: 32, minHeight: 32, padding: '2px 6px' }
                 return (
                   <tr
                     key={it.id}
@@ -1351,6 +1379,8 @@ export function SupplierHub({ contacts }: Props) {
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
       {editing && (
         <>

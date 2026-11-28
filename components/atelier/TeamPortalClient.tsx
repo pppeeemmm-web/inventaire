@@ -1351,10 +1351,10 @@ export function TeamPortalClient({
             style={{
               color: 'var(--ac)',
               fontSize: 10,
-              overflow: atelierNarrow ? 'visible' : 'hidden',
-              textOverflow: atelierNarrow ? 'clip' : 'ellipsis',
-              whiteSpace: atelierNarrow ? 'normal' : 'nowrap',
-              lineHeight: atelierNarrow ? 1.25 : undefined,
+              // One line everywhere: on the phone a long title used to spill over the count (PhonePattern.md).
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
               minWidth: 0,
             }}
           >
@@ -1363,7 +1363,8 @@ export function TeamPortalClient({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: atelierNarrow ? 8 : 12, flexShrink: 0 }}>
-          {oeuvresPaging ? (
+          {/* The catalogue count belongs to the works tab on the phone; elsewhere it crowded the title. */}
+          {oeuvresPaging && (!atelierNarrow || activeTab === 'inventory') ? (
             <AtelierCatalogueTotalBadge
               total={oeuvresPaging.totalCount}
               loaded={oeuvres.length}

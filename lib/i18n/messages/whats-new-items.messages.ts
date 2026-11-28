@@ -23,6 +23,11 @@ export const whatsNewItemMessages = defineMessages({
     fr: 'Si un contact choisi sur la fiche a été supprimé entre-temps, le message le dit. Au téléphone, une modification faite hors ligne dont la réponse s’était perdue dit « peut-être déjà enregistrée — ouvrez la fiche » au lieu de « Pas enregistré ».',
     en: 'If a contact chosen on the card was deleted meanwhile, the message says so. On the phone, an offline change whose answer was lost says « perhaps already saved — open the card » instead of « Not saved ».',
   },
+  wn_stock_phone_list_t: { fr: 'Stock au téléphone : la liste d’abord', en: 'Stock on the phone: the list first' },
+  wn_stock_phone_list_d: {
+    fr: 'Au téléphone, Stock s’ouvre sur la liste : une recherche qui reste en haut, des filtres en une touche (Pigment, Liant, Équipement), « Filtres » ouvre une feuille avec catégories, fournisseurs et stock bas, « Voir n articles » ; « … » pour l’export, « + » pour un nouvel article. Le titre en haut ne chevauche plus le nombre d’œuvres.',
+    en: 'On the phone, Stock opens on the list: a search that stays at the top, one-tap filters (Pigment, Binder, Equipment), « Filters » opens a sheet with categories, suppliers and low stock, « Show n items »; « … » for export, « + » for a new item. The title at the top no longer runs into the works count.',
+  },
   wn_stock_equipment_t: { fr: 'Stock : catégorie « Équipement »', en: 'Stock: « Equipment » category' },
   wn_stock_equipment_d: {
     fr: 'Les outils durables de l’atelier (molette, balance, plaque chauffante…) se rangent dans le Stock sous « Équipement ».',

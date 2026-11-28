@@ -10,6 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { StockContactLike } from '@/lib/stock-item'
 import { SUPPLY_ORDERS_SQL_LIVE } from '@/lib/supply-orders'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 function TabPanelFallback() {
   return <div style={{ flex: 1 }} />
@@ -35,6 +36,7 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const view = parseSuppliesView(params.get('view'))
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   const setView = (v: SuppliesView) => {
     const next = new URLSearchParams(params.toString())
@@ -49,7 +51,11 @@ export function SuppliesTab({ contacts }: { contacts: StockContactLike[] }) {
       <div
         role="tablist"
         aria-label={t('supplies_views_aria')}
-        style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '0 16px', flexShrink: 0, overflowX: 'auto' }}
+        style={{
+          display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '0 16px', flexShrink: 0, overflowX: 'auto',
+          // Phone: the row scrolls sideways; the fading edge says there is more (PhonePattern.md).
+          ...(narrow ? { padding: '0 8px', scrollbarWidth: 'none', maskImage: 'linear-gradient(to right, #000 85%, transparent)' } : null),
+        }}
       >
         {VIEWS.map((v) => (
           <button
