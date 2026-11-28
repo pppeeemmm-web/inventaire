@@ -71,8 +71,8 @@ Value per cell: ✓ tient · ~ sous condition (+ the condition) · ✗ ne tient 
 
 ## Lexique — the technical vocabulary (Mayer's glossary)
 
-Pem 2026-11-28: « there is a very large technical vocabulary as well ». The book ends with a glossary, French
-first with the English / Italian / German word beside it (sources mix languages): émulsion (maigre / grasse),
+Pem 2026-11-28: « there is a very large technical vocabulary as well ». The book ends with a glossary, English
+first with the French / Italian / German word beside it (sources mix languages; Pem 2026-11-28: the book is in English): émulsion (maigre / grasse),
 tempera grassa, gras sur maigre, térébenthine de Venise (baume de mélèze) ≠ essence de térébenthine, huile cuite /
 standolie, siccatif, imprimeure, aparejo, gesso, demi-pâte, empâtement, glacis, frottis, velatura, grisaille,
 technique mixte (Mischtechnik), embu, chancis, craquelure, repentir, saponification, CPVC… A term is a short entry
@@ -137,7 +137,7 @@ which Stock items are it. A material page is an idea with `lab_role = matiere`; 
    Thyssen observation as the first evidence (a Journal entry: museum visit), and Pem's own trials (it worked;
    adhesion, flexibility, layering, thickness and supports as the limits met). Reverse-engineering the recipe from
    the trials is the Laboratoire's first real game.
-5. French only: not answered yet.
+5. **The book is in English** (most of Pem's materials are in English); French is used too — an entry may be written in either, and the Lexique gives each term in English first with the French (and Italian / German) beside it.
 
 ## Questions for Pem (still open)
 
@@ -145,4 +145,3 @@ which Stock items are it. A material page is an idea with `lab_role = matiere`; 
 2. The grid of limits — anything to add or drop? The ✓ / ~ / ✗ / ? scale, or a 1–5 score?
 3. « Fait » deducts the recipe's amounts from Stock — yes, asked each time, or never?
 4. Temperone: its ingredients and steps as you used them (or Kremer's sheet), to fill the first real card.
-5. The book in French only?
