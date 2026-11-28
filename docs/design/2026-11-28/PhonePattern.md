@@ -77,10 +77,36 @@ failure names the tab and the element. (Runs at the desk or on the preview — t
 
 ## Inventory of tabs (read from the code, 2026-11-28)
 
-(Filled below from the code survey.)
+Read from the code only (no phone screenshots): the switch is `components/atelier/team-portal-segment-panel.tsx`;
+the header title and count overlap at `components/atelier/TeamPortalClient.tsx` :1349–1373 (title :1361, count
+badge :1366–1373); Stock's sections row is `components/atelier/supplies/SuppliesTab.tsx` :49–72.
+
+**A. Desk table + desk toolbar, no real phone layout — the worst, in the pattern's order:**
+
+| Tab | File | What the phone gets |
+|---|---|---|
+| Stock (Articles, Fournisseurs) | `components/atelier/SupplierHub.tsx` | tables :835, :1154; search :1006 + two selects :1022, :1042 (the screenshot) |
+| Comptage (Stock) | `app/atelier/(portal)/stock-take/_components/StockTake.tsx` | table :254; toolbar :187–200 |
+| Coffre (Vault) | `app/atelier/(portal)/vault/_components/Vault.tsx` | no phone flag at all; table :592; search :556 |
+| Fiscal | `app/atelier/(portal)/fiscal/_components/Fiscal.tsx` | table :468; year / regime selects :335, :340 |
+| Rapports | `app/atelier/(portal)/reports/_components/Reports.tsx` | report table :662; search :620; select :540 |
+| Contacts | `components/atelier/ContactsTab.tsx` | phone list since 27/11 — moves onto the shared pieces |
+| Audit (admin) | `app/atelier/(portal)/audit/_components/Audit.tsx` | no phone flag; table :242 |
+
+**B. Have a phone layout already — check against the pattern, align where cheap:** Ventes (`Orders.tsx`, its own
+phone list + filter chips — closest to the pattern), Inventaire (grid on the phone; a table remains at :2021),
+Production (search :302), Kaizen (search :293), Système (four selects), Overview, Thèmes, Chronologie, Logistique,
+Expositions, Pipeline, Idées, Journal, Aide, Bureau IA, Site.
+
+**C. Visual screens, their own pattern (not lists):** Carte (`WorldMapTab.tsx`, no phone flag), Constellation (no
+phone flag; toolbar selects in `ConstellationToolbar.tsx`), Diaporamas, Diffusion — checked on the phone one by
+one; a map or a constellation is not a list.
+
+Not checked: the rendered result at 375 px (no login here), and the children of each main file (only the main file
+was read).
 
 ## Questions for Pem
 
 1. Sections inside a tab as pills (as in the mockup), or a segmented bar of fixed width?
 2. The three one-tap chips: the most used filters (learned from use), or fixed per tab?
-3. Order after Stock: Contacts, then which tabs hurt most on the phone?
+3. Order after Stock: Comptage, Coffre, Fiscal, Rapports, Contacts, Audit (group A) — or another order from how often you use them on the phone?
