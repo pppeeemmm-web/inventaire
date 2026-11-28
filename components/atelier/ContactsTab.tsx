@@ -38,6 +38,7 @@ import {
   ContactEditorPanel,
   type ContactEditorPanelHandle,
 } from '@/components/atelier/ContactEditorPanel'
+import { PHONE_SLIDE_UP_CLASS, PhoneSlideUpStyle } from '@/components/shared/phone/PhoneSlideUp'
 import { PersonPage } from '@/components/atelier/PersonPage'
 import {
   readContactIdsWithSphere,
@@ -800,6 +801,19 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const editorContactResolved: ContactRow | null =
     !isCreating && activeId != null && editorSourceRow ? { ...editorSourceRow, ...extra[activeId] } : null
 
+  // Phone: the list stays mounted (display: none) under the editor; the outer scroller's offset is saved on open and restored on close.
+  const phoneScrollRef = useRef<HTMLDivElement>(null)
+  const savedPhoneScrollRef = useRef(0)
+  const prevShowEditorRef = useRef(false)
+  useLayoutEffect(() => {
+    const el = phoneScrollRef.current
+    const was = prevShowEditorRef.current
+    prevShowEditorRef.current = showEditor
+    if (!narrow || !el || was === showEditor) return
+    el.scrollTop = showEditor ? 0 : savedPhoneScrollRef.current
+  }, [showEditor, narrow])
+  const rememberPhoneScroll = () => { savedPhoneScrollRef.current = phoneScrollRef.current?.scrollTop ?? 0 }
+
   const nameContent = (c: (typeof filtered)[number]) => (
     <>
       {(() => {
@@ -827,7 +841,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: narrow ? 'auto' : undefined }}>
+    <div ref={phoneScrollRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: narrow ? 'auto' : undefined }}>
 
       {navUnsavedDialog}
 
@@ -1155,7 +1169,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           minWidth: 0,
         }}
       >
-        {narrow && !showEditor ? (
+        {narrow ? (
+          <div style={{ display: showEditor ? 'none' : 'block' }}>
           <ContactsPhoneList
             rows={filtered.map((c) => {
               const owned = workCounts.owner[c.ContactID]
@@ -1179,11 +1194,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             privateOnly={privateOnly} onPrivate={setPrivateOnly} privateCount={privateCount}
             isAdmin={isAdmin} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
             onClear={() => { setQ(''); setSearchBy('all'); setRole('all'); pickSphere(''); setArchivedOnly(false); setPrivateOnly(false) }}
-            onOpen={requestSelectContact}
-            onNewFull={requestStartCreate}
+            onOpen={(id) => { rememberPhoneScroll(); requestSelectContact(id) }}
+            onNewFull={() => { rememberPhoneScroll(); requestStartCreate() }}
             onQuickAdd={(e) => void handleQuickAdd(e)} quickBusy={quickBusy}
             onImportCsv={() => setImporting(true)} onImportUrl={() => setUrlModalOpen(true)}
           />
+          </div>
         ) : null}
         {!narrow && (
         <div
@@ -1268,6 +1284,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         </div>
         )}
 
+        {narrow && showEditor ? <PhoneSlideUpStyle /> : null}
+        <div className={narrow && showEditor ? PHONE_SLIDE_UP_CLASS : undefined} style={narrow ? { display: 'flex', flexDirection: 'column', flex: showEditor ? 1 : undefined, minHeight: 0, minWidth: 0 } : { display: 'contents' }}>
         {showPage && editorContactResolved ? (
           <PersonPage
             contact={editorContactResolved}
@@ -1318,6 +1336,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             </div>
           )
         )}
+        </div>
       </div>
     </div>
   )
