@@ -78,6 +78,12 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   Next: Vercel preview of PR #14 → Pem tries on desk + phone → Pem merges. None of the screens was opened in a
   browser (no login in the cloud); the 375 px phone guard was not run — its PENDING tabs (reports, vault, contacts,
   fiscal) should now pass and turn the run red until removed from PENDING. `gen:types` not run.
+- **Waves 1 + 2 (Pem « go wave 1 and then 2 », 28/11) on PR #14 too:** ⚑ in the phone ☰ menu (review sheet),
+  Laboratoire « 📖 Livre » (`/api/ideas?book=`), phone step 4 (Contacts / Stock: the card over the list, the list keeps
+  its place), Équipement photo per item (`setStockItemPhoto`), Kaizen + Production on the phone toolbar, guards in Node
+  (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
+  no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
+  n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
   unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
   …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**

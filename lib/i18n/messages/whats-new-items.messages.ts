@@ -7,6 +7,21 @@ import { defineMessages } from '../message-core'
  */
 export const whatsNewItemMessages = defineMessages({
   // 3.1.112 (2026-11-28 eve) — review window; phone pattern on Coffre, Rapports, Fiscal, Audit, Contacts; « Envoyer au PC »; Laboratoire.
+  wn_review_phone_t: { fr: '« ⚑ » aussi sur le téléphone', en: '« ⚑ » on the phone too' },
+  wn_review_phone_d: {
+    fr: 'Dans le menu ☰ : signaler un bug ou noter une idée sur l’écran ouvert, au clavier ou à la voix, avec des captures prises dans Photos.',
+    en: 'In the ☰ menu: report a bug or note an idea about the open screen, typed or dictated, with screenshots from Photos.',
+  },
+  wn_equipment_photo_t: { fr: 'Équipement : une photo par objet', en: 'Equipment: a photo per item' },
+  wn_equipment_photo_d: {
+    fr: 'La fiche d’un objet prend une photo (« 📷 Photo ») ; la liste la montre en vignette.',
+    en: 'An item’s card takes a photo (« 📷 Photo »); the list shows it as a thumbnail.',
+  },
+  wn_laboratoire_book_t: { fr: 'Laboratoire : « 📖 Livre »', en: 'Laboratoire: « 📖 Book »' },
+  wn_laboratoire_book_d: {
+    fr: 'Le Laboratoire se lit comme un livre, chapitre par chapitre : buts, règles, recettes, conjectures et leurs grilles.',
+    en: 'The Laboratoire reads as a book, chapter by chapter: aims, rules, recipes, conjectures and their grids.',
+  },
   wn_review_window_t: { fr: '« ⚑ Revue » : signaler un bug ou noter une idée sans quitter la page', en: '« ⚑ Review »: report a bug or note an idea without leaving the page' },
   wn_review_window_d: {
     fr: 'En haut de l’Atelier (ou Ctrl+Maj+K), une petite fenêtre reste au-dessus de Chrome : écrire ou dicter, montrer l’élément, ajouter des captures. Bug → Kaizen « App » avec la page et la version ; Idée → le Journal du jour. Un signalement de l’équipe attend l’accord de Pem.',

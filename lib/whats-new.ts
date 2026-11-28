@@ -128,6 +128,9 @@ export const WHATS_NEW_DOT_DAYS = 21
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'review_phone', day: '2026-11-28', spot: 'kaizen-ops' },
+  { id: 'equipment_photo', day: '2026-11-28', spot: 'stock' },
+  { id: 'laboratoire_book', day: '2026-11-28', spot: 'concepts', admin: true },
   { id: 'review_window', day: '2026-11-28', spot: 'kaizen-ops' },
   { id: 'phone_pattern_tabs', day: '2026-11-28', spot: 'contacts' },
   { id: 'equipment_send_pc', day: '2026-11-28', spot: 'stock' },
