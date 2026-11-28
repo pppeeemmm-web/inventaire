@@ -13,6 +13,7 @@ import sharp from 'sharp'
 import { createClient } from '@/lib/supabase/server'
 import { r2DeleteObject, r2PutObject } from '@/lib/r2-s3-object'
 import { IDEA_MATURITIES, IDEA_WEIGHTS, type IdeaMaturity, type IdeaWeight } from '@/components/atelier/concepts/concept-constants'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -320,11 +321,15 @@ export type LooseReminder = { id: string; message: string; remind_at: string }
 export async function fetchLooseReminders(): Promise<LooseReminder[]> {
   const { error: authErr, supabase } = await guardAdmin()
   if (authErr || !supabase) return []
+  // A sale's return-period reminder belongs to the sale (Pem 2026-11-28 « C »): Ventes shows its window, Aujourd'hui
+  // the reminder on its day; Idées leaves it out. Its text always starts with the copy below (advanceWorkOrder).
+  const coolingOff = resolveMessage('fr', 'ord_reminder_cooling_off').split('{ref}')[0].replace(/[%_]/g, '')
   const { data } = await supabase
     .from('suivi_reminder')
     .select('id, message, remind_at')
     .eq('lu', false)
     .is('process_id', null)
+    .not('message', 'like', `${coolingOff}%`)
     .order('remind_at', { ascending: true })
     .limit(50)
   return (data ?? []) as LooseReminder[]

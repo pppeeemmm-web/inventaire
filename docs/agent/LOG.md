@@ -4,6 +4,7 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-28
+- Airport (Pem): year pass used (25 dated, selection done) · PR #15 merged (`75bccd8`) · both phone checks pass · triple back-tap free · labels cleaned · « Chronologie » kept · « better autofill » dropped (Pem: « idk »).
 - Journal #53 / #54 deleted on Pem's « delete 53 54 » (guards off for that one transaction; link + nodes with them; verified).
 - « Apply photo rule »: `stock_photo_key_shape.sql` live (validated).
 - PR #14 merged on Pem's « Merge and go for all the rest » (`1f1f055`); then: design notes' « now » lines (`9bb461e`),

@@ -78,10 +78,9 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   PC, Laboratoire screens + book, Équipement photo, session start + guards in Node). Pem tried the phone side
   (« All good »); **desk not tried yet:** ⚑ window, Kaizen Approuver / Confirmer, recipe edit. Deploy not proven from the
   cloud (no access to the live host).
-- **Draft PR #15, not merged:** week-1 report, design notes' « now » lines, year pass (`/atelier/year-pass`), phone labels
-  from a list, Journal #53 / #54 deleted (live), photo-key rule (live), TODO → DONE. Pem merges after a phone check.
-- **Waiting on Pem:** delete the branches `claude/eloquent-johnson-zlbeqx` and `claude/github-repo-fixes-liz9zp` on GitHub (fully in main; the cloud cannot delete other branches) · `clean labels` (5 old phone labels) · « better autofill » (which form?) · the two reminder calls
-  (return-period reminders on Idées; « Emportée aujourd'hui » by default) · R4 / R6 look at the desk · `GO measuring pass`.
+- **PR #15 merged at Pem's « merge pr »** (`75bccd8`): year pass (used: 25 dated, selection done), phone labels (cleaned live),
+  week-1 report, tidy. Phone checks passed (offline Aujourd'hui, double back-tap → recorder); triple back-tap → ⚑ review sheet (`?review=1`, Pem sets the Shortcut).
+- **Waiting on Pem:** delete the branches `claude/eloquent-johnson-zlbeqx` and `claude/github-repo-fixes-liz9zp` on GitHub (fully in main; the cloud cannot delete other branches) · « Emportée aujourd'hui » by default on a new sale? · R4 / R6 look at the desk (« Chronologie » kept) · `GO measuring pass`.
 - **At the desk (Pem):** `npm run ai:agent` (Ollama « Dire »), `npm run test:e2e:field` (375 px guard: take Coffre,
   Contacts, Rapports, Fiscal out of PENDING), `npm run gen:types`.
 - **Open, not built:** « c. » for every date (design + SQL) · QR labels (needs shelves / boxes in the tree + SQL) ·
