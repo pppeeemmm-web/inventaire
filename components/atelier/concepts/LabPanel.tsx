@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { MAIN_ACTION_STYLE } from '@/lib/ui/main-action'
 import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
+import { LabBook } from './LabBook'
 import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 import { addTrial, plantLabIdea, saveRecipe } from '@/app/atelier/(portal)/concepts/lab-actions'
 import {
@@ -67,6 +68,7 @@ export function LabPanel({ ideaId, lab, isAdmin, narrow, onOpen, onChanged }: {
   const [baseline, setBaseline] = useState('')
   const [busy, setBusy] = useState(false)
   const [trialOpen, setTrialOpen] = useState(false)
+  const [bookOpen, setBookOpen] = useState(false)
 
   const errText = (code: string) => (KNOWN_ERR.includes(code) ? tt(`lab_err_${code}`) : code)
   const isCard = lab.role === 'recette' || lab.role === 'conjecture'
@@ -119,59 +121,16 @@ export function LabPanel({ ideaId, lab, isAdmin, narrow, onOpen, onChanged }: {
 
   // ---- tree ----
   if (lab.role === 'champ' || lab.role === 'chapitre') {
-    return <Tree ideaId={ideaId} lab={lab} isAdmin={isAdmin} onOpen={onOpen} onChanged={onChanged} errText={errText} />
+    if (bookOpen) return <LabBook rootId={ideaId} onOpen={onOpen} onClose={() => setBookOpen(false)} />
+    return (
+      <>
+        <button type="button" className="btn ghost sm" data-testid="lab-book-open" onClick={() => setBookOpen(true)} style={{ minHeight: 44, marginTop: 10 }}>{t('lab_book_open')}</button>
+        <Tree ideaId={ideaId} lab={lab} isAdmin={isAdmin} onOpen={onOpen} onChanged={onChanged} errText={errText} />
+      </>
+    )
   }
 
-  // ---- grid (read) ----
-  const cellText = (a: LabAssessment | undefined) => {
-    if (!a) return null
-    return `${LAB_SIGN_MARK[a.sign]}${a.score != null ? ` ${a.score}/5` : ''}`
-  }
-  const find = (c: LabCriterion, s: LabSource) => lab.assessments.find((a) => a.criterion === c && a.source === s)
-
-  const gridRead = narrow ? (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {LAB_CRITERIA.map((c) => (
-        <div key={c} style={box}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{tt(`lab_crit_${c}`)}</div>
-          {SOURCES.map((s) => {
-            const a = find(c, s)
-            return (
-              <div key={s} style={{ fontSize: 14 }}>
-                <span style={{ color: 'var(--tx3)' }}>{tt(`lab_col_${s}`)} · </span>
-                {a ? cellText(a) : t('lab_empty_cell')}
-                {a?.note ? <div style={small}>{a.note}</div> : null}
-              </div>
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  ) : (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, tableLayout: 'fixed' }}>
-      <thead>
-        <tr style={{ textAlign: 'left', color: 'var(--tx3)', fontSize: 12.5 }}>
-          <th style={{ padding: '4px 6px', width: '46%' }}>{t('lab_grid')}</th>
-          {SOURCES.map((s) => <th key={s} style={{ padding: '4px 6px' }}>{tt(`lab_col_${s}`)}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {LAB_CRITERIA.map((c) => (
-          <tr key={c} style={{ borderTop: '1px solid var(--bd)' }}>
-            <td style={{ padding: '6px', overflowWrap: 'anywhere' }}>{tt(`lab_crit_${c}`)}</td>
-            {SOURCES.map((s) => {
-              const a = find(c, s)
-              return (
-                <td key={s} style={{ padding: '6px' }} title={a?.note ?? undefined}>
-                  {a ? cellText(a) : t('lab_empty_cell')}
-                </td>
-              )
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
+  const gridRead = <LabGrid assessments={lab.assessments} narrow={narrow} />
 
   // ---- edit form ----
   const patch = (fn: (d: Draft) => Draft) => setDraft((d) => (d ? fn(d) : d))
@@ -341,6 +300,62 @@ export function LabPanel({ ideaId, lab, isAdmin, narrow, onOpen, onChanged }: {
       {draft ? editForm : card}
       {trialSheet}
     </section>
+  )
+}
+
+/** Read-only grid of limits: one block per criterion on the phone, a table on desk. */
+export function LabGrid({ assessments, narrow }: { assessments: LabAssessment[]; narrow: boolean }) {
+  const { t } = useI18n()
+  const tt = t as unknown as (k: string) => string
+  const cellText = (a: LabAssessment | undefined) => {
+    if (!a) return null
+    return `${LAB_SIGN_MARK[a.sign]}${a.score != null ? ` ${a.score}/5` : ''}`
+  }
+  const find = (c: LabCriterion, s: LabSource) => assessments.find((a) => a.criterion === c && a.source === s)
+  return (
+    narrow ? (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {LAB_CRITERIA.map((c) => (
+        <div key={c} style={box}>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{tt(`lab_crit_${c}`)}</div>
+          {SOURCES.map((s) => {
+            const a = find(c, s)
+            return (
+              <div key={s} style={{ fontSize: 14 }}>
+                <span style={{ color: 'var(--tx3)' }}>{tt(`lab_col_${s}`)} · </span>
+                {a ? cellText(a) : t('lab_empty_cell')}
+                {a?.note ? <div style={small}>{a.note}</div> : null}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, tableLayout: 'fixed' }}>
+      <thead>
+        <tr style={{ textAlign: 'left', color: 'var(--tx3)', fontSize: 12.5 }}>
+          <th style={{ padding: '4px 6px', width: '46%' }}>{t('lab_grid')}</th>
+          {SOURCES.map((s) => <th key={s} style={{ padding: '4px 6px' }}>{tt(`lab_col_${s}`)}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {LAB_CRITERIA.map((c) => (
+          <tr key={c} style={{ borderTop: '1px solid var(--bd)' }}>
+            <td style={{ padding: '6px', overflowWrap: 'anywhere' }}>{tt(`lab_crit_${c}`)}</td>
+            {SOURCES.map((s) => {
+              const a = find(c, s)
+              return (
+                <td key={s} style={{ padding: '6px' }} title={a?.note ?? undefined}>
+                  {a ? cellText(a) : t('lab_empty_cell')}
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
   )
 }
 

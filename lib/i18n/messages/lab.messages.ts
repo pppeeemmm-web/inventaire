@@ -75,6 +75,13 @@ export const labMessages = defineMessages({
   lab_trial_label_failed: { fr: 'Essai enregistré, mais l’étiquette « essai » n’a pas tenu.', en: 'Trial saved, but the « essai » label did not hold.' },
   lab_trial_grid_failed: { fr: 'Essai enregistré, mais la grille n’a pas été mise à jour.', en: 'Trial saved, but the grid was not updated.' },
 
+  lab_book_open: { fr: '📖 Livre', en: '📖 Book' },
+  lab_book_back: { fr: '← Retour', en: '← Back' },
+  lab_book_loading: { fr: 'Chargement du livre…', en: 'Loading the book…' },
+  lab_book_error: { fr: 'Le livre n’a pas pu être chargé.', en: 'The book could not be loaded.' },
+  lab_book_empty: { fr: 'Livre vide : rien n’est encore planté dans ce champ.', en: 'Empty book: nothing is planted in this field yet.' },
+  lab_book_open_item: { fr: 'Ouvrir : {title}', en: 'Open: {title}' },
+
   lab_err_auth: { fr: 'Connexion requise.', en: 'Sign-in required.' },
   lab_err_forbidden: { fr: 'Réservé à Pem.', en: 'Pem only.' },
   lab_err_not_found: { fr: 'Introuvable.', en: 'Not found.' },
