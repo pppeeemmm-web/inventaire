@@ -16,12 +16,13 @@ import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { KaizenScreenshots } from './KaizenScreenshots'
 import { WhatsNewList } from '@/components/atelier/WhatsNew'
 import { WHATS_NEW_RELEASE } from '@/lib/whats-new'
-import { KAIZEN_SECTIONS, type KaizenItem, type KaizenScope, type KaizenSection } from '@/lib/kaizen'
+import { KAIZEN_SECTIONS, kaizenStateOf, type KaizenItem, type KaizenScope, type KaizenSection } from '@/lib/kaizen'
 import {
   confirmKaizenSections,
   createKaizen,
   listKaizen,
   markKaizenSeen,
+  reviewKaizen,
   setKaizenDone,
   updateKaizen,
 } from '@/app/atelier/(portal)/kaizen/actions'
@@ -34,11 +35,24 @@ const SECTION_KEY = {
   creation: 'kaizen_section_creation',
   website: 'kaizen_section_website',
   business: 'kaizen_section_business',
+  app: 'kaizen_section_app',
+} as const
+
+const STATE_KEY = {
+  proposed: 'kaizen_state_proposed',
+  open: 'kaizen_state_open',
+  to_verify: 'kaizen_state_to_verify',
+  confirmed: 'kaizen_state_confirmed',
 } as const
 
 function parseView(raw: string | null): View | null {
   if (raw === 'system') return 'website'
   return raw === 'review' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
+}
+
+/** Closed = « done » for a stack; an app report closes only when Pem confirms it (« à vérifier » stays live). */
+function isClosed(i: KaizenItem): boolean {
+  return i.section === 'app' ? !!i.verified_at : !!i.done_at
 }
 
 export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
@@ -95,7 +109,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
   const view: View =
     scope === 'creation'
       ? 'creation'
-      : raw === 'website' || raw === 'business' || raw === 'review'
+      : raw === 'website' || raw === 'business' || raw === 'review' || raw === 'app'
         ? raw
         : opsDefault
   // Old links (`/atelier/kaizen?view=website|business|system|review`) → the Opérations & Stratégie entry.
@@ -117,15 +131,17 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
     const qq = q.trim().toLowerCase()
     const rows = items.filter((i) => {
       if (i.section !== view) return false
-      if ((stack === 'done') !== !!i.done_at) return false
+      if ((stack === 'done') !== isClosed(i)) return false
       if (!qq) return true
       return `${i.title} ${i.body ?? ''}`.toLowerCase().includes(qq)
     })
     // Live: newest idea first. Done: most recently ticked first.
-    return stack === 'done' ? [...rows].sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? '')) : rows
+    if (stack === 'done') return [...rows].sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''))
+    // App: « à vérifier » on top (Pem confirms or reopens), then newest.
+    return view === 'app' ? [...rows].sort((a, b) => Number(!!b.done_at) - Number(!!a.done_at)) : rows
   }, [items, pending, view, stack, q])
-  const stackCount = (done: boolean) => items.filter((i) => i.section === view && !!i.done_at === done).length
-  const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !i.done_at).length
+  const stackCount = (done: boolean) => items.filter((i) => i.section === view && isClosed(i) === done).length
+  const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !isClosed(i)).length
 
   async function add() {
     if (!newTitle.trim() || view === 'review') return
@@ -167,6 +183,12 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
     if ('error' in res) { toast.error(errText(res.error)); return }
     setItems((prev) => prev.map((x) => res.items.find((y) => y.id === x.id) ?? x))
     toast.success(t('kaizen_review_done'))
+  }
+
+  async function review(it: KaizenItem, what: 'approve' | 'verify') {
+    const res = await reviewKaizen(it.id, what)
+    if ('error' in res) { toast.error(res.error === 'unchanged' ? t('kaizen_unchanged') : errText(res.error)); return }
+    replace(res.item)
   }
 
   const canEdit = (it: KaizenItem) => isAdmin || it.author_id === me
@@ -258,6 +280,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
       </div>
       {scope === 'ops' ? (
         <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
+          {subTab('app', t('kaizen_section_app'), countOf('app'))}
           {subTab('website', t('kaizen_section_website'), countOf('website'))}
           {subTab('business', t('kaizen_section_business'), countOf('business'))}
           {pending.length > 0 ? subTab('review', t('kaizen_review_fmt').replace('{n}', String(pending.length))) : null}
@@ -322,7 +345,9 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
         ) : (
           visible.map((it) => {
             const editing = editingId === it.id
-            const done = !!it.done_at
+            const done = isClosed(it)
+            const state = it.section === 'app' ? kaizenStateOf(it) : null
+            const ctx = it.context
             return (
               <article
                 key={it.id}
@@ -346,6 +371,13 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
                     ) : null}
                   </>
                 )}
+                {state ? (
+                  <div className="t-mono-sm" data-testid={`kaizen-state-${it.id}`} style={{ fontSize: 10, color: state === 'to_verify' || state === 'proposed' ? 'var(--rust)' : 'var(--tx3)', marginTop: 4 }}>
+                    {t(STATE_KEY[state])}
+                    {it.fixed_sha ? ` · ${it.fixed_sha.slice(0, 7)}` : ''}
+                    {ctx ? ` · ${[ctx.page, ctx.build, ctx.pointed].filter(Boolean).join(' · ')}` : ''}
+                  </div>
+                ) : null}
                 <KaizenScreenshots item={it} canEdit={canEdit(it) && view !== 'review'} onItem={replace} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
                   {seenBefore && it.created_at > seenBefore && it.author_id !== me ? (
@@ -376,6 +408,15 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
                     )
                   ) : canEdit(it) && !editing ? (
                     <>
+                      {isAdmin && state === 'proposed' ? (
+                        <button type="button" className="btn primary sm" data-testid={`kaizen-approve-${it.id}`} onClick={() => void review(it, 'approve')}>{t('kaizen_approve')}</button>
+                      ) : null}
+                      {isAdmin && state === 'to_verify' ? (
+                        <>
+                          {ctx?.page ? <a className="btn ghost sm" href={ctx.page} target="_blank" rel="noreferrer">{t('kaizen_open_page')}</a> : null}
+                          <button type="button" className="btn primary sm" data-testid={`kaizen-verify-${it.id}`} onClick={() => void review(it, 'verify')}>{t('kaizen_verify')}</button>
+                        </>
+                      ) : null}
                       {sectionSelect(it.section ?? 'creation', (s) => void move(it, s), t('kaizen_move_aria'))}
                       <button type="button" className="btn ghost sm" onClick={() => { setEditingId(it.id); setDraft({ title: it.title, body: it.body ?? '' }) }}>
                         {t('kaizen_edit')}

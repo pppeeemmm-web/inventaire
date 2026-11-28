@@ -1,0 +1,30 @@
+import { defineMessages } from '../message-core'
+
+/** Review window (« ⚑ Revue ») — docs/design/2026-11-28/ReviewTool.md. */
+export const reviewMessages = defineMessages({
+  review_button: { fr: 'Revue', en: 'Review' },
+  review_open: { fr: 'Signaler un bug ou noter une idée', en: 'Report a bug or note an idea' },
+  review_title: { fr: 'Revue', en: 'Review' },
+  review_close: { fr: 'Fermer la revue', en: 'Close the review' },
+  review_kind_bug: { fr: 'Bug', en: 'Bug' },
+  review_kind_idea: { fr: 'Idée', en: 'Idea' },
+  review_text_ph: { fr: 'Ce qui ne va pas, ou ce que vous voulez — la première ligne sert de titre', en: 'What is wrong, or what you want — the first line is the title' },
+  review_voice: { fr: 'Dicter', en: 'Dictate' },
+  review_voice_stop: { fr: 'Arrêter', en: 'Stop' },
+  review_voice_unavailable: { fr: 'La dictée n’est pas disponible dans ce navigateur.', en: 'Dictation is not available in this browser.' },
+  review_point: { fr: 'Montrer', en: 'Point' },
+  review_point_cancel: { fr: 'Annuler', en: 'Cancel' },
+  review_point_hint: { fr: 'Cliquez l’élément dans la page (Échap pour annuler).', en: 'Click the element in the page (Esc to cancel).' },
+  review_point_clear: { fr: 'Retirer l’élément montré', en: 'Remove the pointed element' },
+  review_shot_fmt: { fr: 'Capture ({n}/{max})', en: 'Screenshot ({n}/{max})' },
+  review_shot_failed: { fr: 'Capture refusée ou impossible.', en: 'Screenshot refused or not possible.' },
+  review_shot_remove: { fr: 'Retirer cette capture', en: 'Remove this screenshot' },
+  review_bug_hint: { fr: 'Bug → Kaizen « App », avec la page, la version et l’écran.', en: 'Bug → Kaizen « App », with the page, the build and the screen.' },
+  review_idea_hint: { fr: 'Idée → le Journal d’aujourd’hui, avec l’adresse de la page.', en: 'Idea → today’s Journal page, with the page address.' },
+  review_send: { fr: 'Envoyer', en: 'Send' },
+  review_sending: { fr: 'Envoi…', en: 'Sending…' },
+  review_sent_bug_fmt: { fr: 'Kaizen #{id}', en: 'Kaizen #{id}' },
+  review_sent_idea: { fr: 'Journal, aujourd’hui', en: 'Journal, today' },
+  review_shots_failed_fmt: { fr: '{n} capture(s) non enregistrée(s)', en: '{n} screenshot(s) not saved' },
+  review_refused_fmt: { fr: 'Refusé : {e} — le texte reste ici.', en: 'Refused: {e} — the text stays here.' },
+})
