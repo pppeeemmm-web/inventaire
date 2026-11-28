@@ -30,6 +30,7 @@ Stress-test leftovers ([`StressTest.notes.md`](./design/2026-11-18/StressTest.no
 - [ ] « Commandes » badge 179 vs list « Toutes » 187: the badge leaves out 8 reconstituted open orders. Order list at 1280 with the panel open: « Papiers » column cut.
 
 Small fixes
+- [ ] Stock: deleting an item (SupplierHub, a browser delete) leaves its Équipement photo in R2 (`stock/S_…` + thumb, ledger still « linked »); and `save_stock_item` accepts any `photo_key` text from a direct call — the door should hold the `stock/S_{id}_…` shape (SQL, Pem's OK).
 - [ ] Phone pattern, tabs still failing the 375 px guard (`tests/phone-pattern.spec.ts` PENDING): Coffre, Contacts (onto the shared pieces), Rapports, Audit, Fiscal « par année » → [PhonePattern](./design/2026-11-28/PhonePattern.md).
 - [ ] A contact merge rewrites a Stock line's supplier without marking the line changed: a Stock card open across the merge saves the deleted supplier back and fails with « erreur de la base » (admin merge, rare).
 - [ ] Desk Journal: an image dropped offline on a day older than the 5 newest is not reread when it is sent, and waits under today with no sign of its day.

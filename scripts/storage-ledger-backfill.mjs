@@ -155,6 +155,12 @@ async function buildReferenceMap(supabase, bucketByRole) {
     })
   }
 
+  // Équipement photos (setStockItemPhoto): `stock/S_…avif` + its thumb `thumbs/stock/S_…avif`.
+  for (const row of await selectAll(supabase, 'stock_item', 'id,photo_key')) {
+    addRef(refs, paintingsBucket, row.photo_key, { table: 'stock_item', column: 'photo_key', row_id: row.id })
+    if (row.photo_key) addRef(refs, paintingsBucket, `thumbs/${row.photo_key}`, { table: 'stock_item', column: 'photo_key', row_id: row.id })
+  }
+
   for (const row of await selectAll(supabase, 'system_log', 'id,attachments')) {
     for (const attachment of row.attachments ?? []) {
       addRef(refs, paintingsBucket, attachment.key, { table: 'system_log', column: 'attachments', row_id: row.id })

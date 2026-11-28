@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { addKaizenScreenshot, createKaizen } from '@/app/atelier/(portal)/kaizen/actions'
 import { createJournalEntry } from '@/app/atelier/(portal)/journal/entry-actions'
@@ -153,14 +154,16 @@ export function ReviewButton({ style }: { style?: CSSProperties }) {
  */
 export function PhoneReviewSheet({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
+  const router = useRouter()
   return (
     <PhoneSheet title={`⚑ ${t('review_title')}`} onClose={onClose} testId="phone-review-sheet">
-      <ReviewPanel onClose={onClose} inPip={false} phone />
+      {/* An Idée lands on today's page, often the screen under the sheet: read it again. */}
+      <ReviewPanel onClose={onClose} inPip={false} phone onSent={() => router.refresh()} />
     </PhoneSheet>
   )
 }
 
-function ReviewPanel({ onClose, inPip, phone = false }: { onClose: () => void; inPip: boolean; phone?: boolean }) {
+function ReviewPanel({ onClose, inPip, phone = false, onSent }: { onClose: () => void; inPip: boolean; phone?: boolean; onSent?: () => void }) {
   const { t, lang } = useI18n()
   const [kind, setKind] = useState<Kind>('bug')
   const [text, setText] = useState('')
@@ -249,6 +252,7 @@ function ReviewPanel({ onClose, inPip, phone = false }: { onClose: () => void; i
       setBusy(false)
       if ('error' in r) { setResult({ ok: false, text: t('review_refused_fmt').replace('{e}', r.error) }); return }
       setResult({ ok: true, text: t('review_sent_idea') })
+      onSent?.()
       setText('')
       setDictated(false)
       return

@@ -126,6 +126,8 @@ export async function saveStockItem(input: {
   if ('name' in f && (typeof f.name !== 'string' || !f.name.trim() || f.name.trim().length > 120)) return { refused: 'bad_field', detail: 'name' }
   if ('quantity' in f && !(Number.isFinite(f.quantity) && Number(f.quantity) >= 0)) return { refused: 'bad_field', detail: 'quantity' }
   if ('min_stock' in f && !(Number.isFinite(f.min_stock) && Number(f.min_stock) >= 0)) return { refused: 'bad_field', detail: 'min_stock' }
+  // A photo key is only ever one the photo door made for this item (or null): never another record's image.
+  if ('photo_key' in f && f.photo_key != null && !(input.id && stockPhotoKeyOf(input.id, f.photo_key))) return { refused: 'bad_field', detail: 'photo_key' }
   const fields = 'name' in f ? { ...f, name: String(f.name).trim() } : f
   const { data, error } = await g.sb.rpc('save_stock_item', {
     p: { id: input.id ?? null, ...(input.readUpdatedAt ? { read_updated_at: input.readUpdatedAt } : {}), fields },
@@ -215,13 +217,16 @@ export async function setStockItemPhoto(id: number, readUpdatedAt: string, formD
   const base = `S_${id}_${randomUUID().slice(0, 8)}_${crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)}`
   const key = `stock/${base}.avif`
   const thumb = `thumbs/stock/${base}.avif`
+  let mainUp = false
   try {
     const { mainBuf, thumbBuf } = await normalizeImageToAvifPair(raw, { maxEdge: 2100 })
     const refs = [{ table: 'stock_item', column: 'photo_key', row_id: String(id) }]
     await r2PutObject(mainBuf, key, 'image/avif', { source: 'stock_photo', classification: 'linked', linkedRefs: refs, metadata: { role: 'main', stock_item_id: id } })
+    mainUp = true
     await r2PutObject(thumbBuf, thumb, 'image/avif', { source: 'stock_photo_thumb', classification: 'linked', linkedRefs: refs, metadata: { role: 'thumb', original_key: key } })
   } catch (e) {
     void logError('equipment: photo upload', e)
+    if (mainUp) await r2SoftDeleteObject(key).catch(() => {})
     return { error: 'upload' }
   }
 
@@ -231,10 +236,16 @@ export async function setStockItemPhoto(id: number, readUpdatedAt: string, formD
     await r2SoftDeleteObject(thumb).catch(() => {})
     return saved
   }
+  // Only this item's own earlier photo goes to the recycle bin — never a key of another kind or record.
   const old = (cur as { photo_key: string | null }).photo_key
-  if (old && old !== key) {
+  if (old && old !== key && stockPhotoKeyOf(id, old)) {
     await r2SoftDeleteObject(old).catch(() => {})
-    await r2SoftDeleteObject(old.replace(/^stock\//, 'thumbs/stock/')).catch(() => {})
+    await r2SoftDeleteObject(`thumbs/${old}`).catch(() => {})
   }
   return saved
+}
+
+/** True when `key` is a photo key the photo door made for item `id` (`stock/S_{id}_{rand8}_{hash8}.avif`). */
+function stockPhotoKeyOf(id: number, key: unknown): boolean {
+  return typeof key === 'string' && new RegExp(`^stock/S_${id}_[0-9a-f]{8}_[0-9a-f]{8}\\.avif$`).test(key)
 }
