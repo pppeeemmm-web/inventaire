@@ -16,6 +16,9 @@ import { WorksBin } from './WorksBin'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 import { toast } from '@/lib/ui/toast'
 import { foregroundSettled } from '@/lib/atelier/foreground-gate'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
+import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 
 type AuditView = 'ledger' | 'pending' | 'fil' | 'rules' | 'bin'
 
@@ -61,6 +64,8 @@ export function Audit() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [checkedIds, setCheckedIds] = useState<Set<number>>(() => new Set())
   const [deletePending, startDeleteTransition] = useTransition()
+  const phone = useMediaQuery('(max-width: 767px)')
+  const [openId, setOpenId] = useState<number | null>(null)
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
@@ -179,7 +184,7 @@ export function Audit() {
   return (
     <div data-testid="audit-tab-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header / Filter Bar */}
-      <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+      <div style={{ padding: phone ? '12px 16px' : '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
         <AuditSubtabs view={view} setView={setView} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {eventTypes.map((evt) => (
@@ -239,6 +244,20 @@ export function Audit() {
 
       {/* Ledger Table */}
       <div style={{ flex: 1, overflow: 'auto' }}>
+        {phone ? (
+          <ul style={{ margin: 0, padding: '0 16px' }} data-testid="audit-phone-list">
+            {filtered.map((l) => (
+              <PhoneListRow
+                key={l.id}
+                title={l.action}
+                sub={`${l.user_email?.split('@')[0] || t('audit_actor_system')} · ${l.table_name || '—'}`}
+                value={l.event_type.replace('_', ' ')}
+                alert={l.event_type === 'GATE_BYPASS'}
+                onClick={() => setOpenId(l.id)}
+              />
+            ))}
+          </ul>
+        ) : (
         <table className="tbl" style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -296,7 +315,44 @@ export function Audit() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
+      {phone && openId !== null ? (() => {
+        const l = logs.find((x) => x.id === openId)
+        if (!l) return null
+        const meta = l.metadata ? (typeof l.metadata === 'string' ? l.metadata : JSON.stringify(l.metadata)) : '—'
+        const lines: [string, string][] = [
+          [t('audit_sheet_when'), new Date(l.created_at).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })],
+          [t('audit_sheet_event'), l.event_type],
+          [t('audit_sheet_user'), l.user_email?.split('@')[0] || t('audit_actor_system')],
+          [t('audit_sheet_table'), l.table_name || '—'],
+          [t('audit_sheet_details'), `${l.action}\n${meta}`],
+        ]
+        return (
+          <PhoneSheet title={l.action} onClose={() => setOpenId(null)}>
+            {lines.map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 0', borderBottom: '1px solid var(--bd)' }}>
+                <span style={{ color: 'var(--tx3)', fontSize: 12 }}>{k}</span>
+                <span style={{ fontSize: 14, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{v}</span>
+              </div>
+            ))}
+            {isAdmin ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44 }}>
+                <input
+                  type="checkbox"
+                  data-testid={`audit-row-checkbox-${l.id}`}
+                  checked={checkedIds.has(l.id)}
+                  disabled={deletePending}
+                  onChange={() => toggleRow(l.id)}
+                  aria-label={t('audit_row_select_aria').replace('{id}', String(l.id))}
+                  style={{ width: 22, height: 22 }}
+                />
+                <span>{t('audit_row_select_aria').replace('{id}', String(l.id))}</span>
+              </label>
+            ) : null}
+          </PhoneSheet>
+        )
+      })() : null}
     </div>
   )
 }

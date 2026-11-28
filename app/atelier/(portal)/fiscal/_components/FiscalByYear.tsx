@@ -11,6 +11,9 @@ import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { fetchIncomeEntries } from '@/lib/sales/income'
 import { MoneyApart } from './MoneyApart'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { PhoneListRow } from '@/components/shared/phone/PhoneListRow'
+import { PhoneSheet } from '@/components/shared/phone/PhoneSheet'
 
 type Flow = {
   date: string
@@ -27,6 +30,8 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
   const [flows, setFlows] = useState<Flow[] | null>(null)
   const [moneyApart, setMoneyApart] = useState({ held: 0, toRefund: 0 })
   const [error, setError] = useState<string | null>(null)
+  const phone = useMediaQuery('(max-width: 767px)')
+  const [openLabel, setOpenLabel] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -124,7 +129,7 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
   }
 
   return (
-    <div data-testid="fiscal-by-year" style={{ flex: 1, overflow: 'auto', padding: '28px 32px' }}>
+    <div data-testid="fiscal-by-year" style={{ flex: 1, overflow: 'auto', padding: phone ? '16px' : '28px 32px' }}>
       <div className="t-label" style={{ marginBottom: 4 }}>{t('fiscal_by_year_heading')}</div>
       <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '0 0 16px' }}>{t('fiscal_by_year_hint')}</p>
       <MoneyApart held={moneyApart.held} toRefund={moneyApart.toRefund} fmtEur={fmtEur} />
@@ -134,6 +139,22 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
         <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('ps_loading')}</div>
       ) : rows.every((r) => r.income === 0 && r.expenses === 0) ? (
         <p style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('fiscal_by_year_empty')}</p>
+      ) : phone ? (
+        <ul style={{ margin: '0 0 28px', padding: 0 }} data-testid="fiscal-by-year-phone">
+          {rows.map((r) => {
+            const net = r.income - r.expenses
+            return (
+              <PhoneListRow
+                key={r.label}
+                title={r.label}
+                sub={`${t('fiscal_col_income')} ${fmtEur(r.income)} · ${t('fiscal_col_expenses')} ${fmtEur(r.expenses)}`}
+                value={fmtEur(net)}
+                alert={net < 0}
+                onClick={() => setOpenLabel(r.label)}
+              />
+            )
+          })}
+        </ul>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--bd)', marginBottom: 28 }}>
           <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
@@ -163,6 +184,27 @@ export function FiscalByYear({ fmtEur }: { fmtEur: (n: number) => string }) {
           </table>
         </div>
       )}
+
+      {phone && openLabel !== null ? (() => {
+        const r = rows.find((x) => x.label === openLabel)
+        if (!r) return null
+        const lines: [string, string][] = [
+          [t('fiscal_col_income'), fmtEur(r.income)],
+          [t('fiscal_col_expenses'), fmtEur(r.expenses)],
+          [t('fiscal_col_net'), fmtEur(r.income - r.expenses)],
+          [t('fiscal_col_count'), String(r.count)],
+        ]
+        return (
+          <PhoneSheet title={r.label} onClose={() => setOpenLabel(null)}>
+            {lines.map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, minHeight: 44, alignItems: 'center', borderBottom: '1px solid var(--bd)' }}>
+                <span style={{ color: 'var(--tx3)', fontSize: 13 }}>{k}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+              </div>
+            ))}
+          </PhoneSheet>
+        )
+      })() : null}
 
       {flows && flows.length > 0 ? (
         <PivotPanel<Flow>
