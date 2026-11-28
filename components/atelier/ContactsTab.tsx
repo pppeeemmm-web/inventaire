@@ -3,7 +3,6 @@
 // ContactsTab — searchable, filterable contact list with full field set + edit/create.
 // Supports multiple addresses per contact: places linked to the card (contact_place_lines, Places phase B).
 
-import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -29,6 +28,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
+import { ContactsPhoneList } from '@/components/atelier/contacts/ContactsPhoneList'
 import { formatContactDeleteBlockers } from '@/lib/contacts/delete-blockers'
 import { compareContactsByName, contactListLabel, contactPersonListName, contactSearchText, pickableContacts } from '@/lib/contacts/contact-display'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
@@ -152,9 +152,6 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [archivedOnly, setArchivedOnly] = useState(false)
   /** Sphere filter: '' = all; sphereIds = contacts carrying the chosen sphere (asked of the database). */
   const [sphere, setSphere] = useState('')
-  // Phone: the quick add and the filters / actions fold away; the search and the list stay in view.
-  const [phoneQuickOpen, setPhoneQuickOpen] = useState(false)
-  const [phoneToolsOpen, setPhoneToolsOpen] = useState(false)
   const [sphereIds, setSphereIds] = useState<Set<number> | null>(null)
   const [spheres, setSpheres] = useState<Sphere[]>([])
   const [sphereCounts, setSphereCounts] = useState<Record<string, number>>({})
@@ -829,62 +826,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     </>
   )
 
-  const phoneToolsActive = (searchBy !== 'all' ? 1 : 0) + (role !== 'all' ? 1 : 0) + (sphere ? 1 : 0) + (archivedOnly ? 1 : 0) + (privateOnly ? 1 : 0)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: narrow ? 'auto' : undefined }}>
 
       {navUnsavedDialog}
 
-
-      {narrow && !showEditor && (
-        <div
-          data-testid="contacts-quick-add"
-          style={{
-            flexShrink: 0,
-            borderBottom: '1px solid var(--bd)',
-            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
-            background: 'var(--bg1)',
-          }}
-        >
-          <button type="button" className="btn ghost sm" data-testid="contacts-quick-toggle" aria-expanded={phoneQuickOpen}
-            onClick={() => setPhoneQuickOpen((v) => !v)} style={{ minHeight: 44, width: '100%', justifyContent: 'space-between', display: 'flex', alignItems: 'center' }}>
-            <span>{t('contacts_phone_quick_open')}</span><span aria-hidden>{phoneQuickOpen ? '▴' : '▾'}</span>
-          </button>
-          {phoneQuickOpen ? (<>
-          <div className="t-eyebrow" style={{ margin: '10px 0', color: 'var(--tx3)' }}>{t('contacts_quick_title')}</div>
-          <form onSubmit={(e) => void handleQuickAdd(e)} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input name="institution" placeholder={t('contacts_quick_inst')} style={{ ...FIS, minHeight: 44 }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input name="prenom" placeholder={t('contacts_quick_first')} style={{ ...FIS, minHeight: 44 }} />
-              <input name="nom" placeholder={t('contacts_quick_last')} style={{ ...FIS, minHeight: 44 }} />
-            </div>
-            <input name="email" type="email" placeholder={t('contacts_quick_email')} style={{ ...FIS, minHeight: 44 }} />
-            {isAdmin && (
-              <label className="t-mono-sm" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--tx2)' }}>
-                <input type="checkbox" name="is_private" value="true" style={{ width: 18, height: 18 }} />
-                {t('contacts_quick_private')}
-              </label>
-            )}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))' }}>
-              <button type="submit" className="btn sm" disabled={quickBusy} style={{ minHeight: 44, flex: 1 }}>
-                {quickBusy ? t('contacts_quick_saving') : t('contacts_quick_save')}
-              </button>
-              <Link
-                href="/atelier/capture?mode=card#capture-card-live-text"
-                className="btn ghost sm"
-                style={{ minHeight: 44, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                {t('contacts_quick_live_text')}
-              </Link>
-              <button type="button" className="btn ghost sm" style={{ minHeight: 44, flex: 1 }} onClick={requestStartCreate}>
-                {t('contacts_quick_full')}
-              </button>
-            </div>
-          </form>
-          </>) : null}
-        </div>
-      )}
 
       {batchEditing && (
         <BatchEditModal
@@ -896,10 +842,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         />
       )}
 
-      {/* Filter bar */}
-      <div style={{
-        display: narrow && showPage ? 'none' : 'flex', alignItems: 'center', gap: 8,
-        padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px',
+      {/* Filter bar (desk; the phone has ContactsPhoneList) */}
+      {!narrow && <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '12px 28px',
         borderBottom: '1px solid var(--bd)', flexShrink: 0, flexWrap: 'wrap',
       }}>
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>
@@ -909,18 +855,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('searchPlaceholderContacts')}
-          style={{ ...FIS, flex: narrow ? '1 1 100%' : 1, order: narrow ? -1 : undefined, minWidth: narrow ? 0 : 200, minHeight: narrow ? 44 : undefined, fontSize: narrow ? 16 : FIS.fontSize }}
+          style={{ ...FIS, flex: 1, minWidth: 200 }}
         />
-        {narrow ? (
-          <button type="button" className="btn ghost sm" data-testid="contacts-phone-tools" aria-expanded={phoneToolsOpen}
-            onClick={() => setPhoneToolsOpen((v) => !v)}
-            style={{ minHeight: 44, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: phoneToolsActive ? 'var(--ac)' : undefined }}>
-            <span>{phoneToolsActive ? t('contacts_phone_tools_active_fmt').replace('{n}', String(phoneToolsActive)) : t('contacts_phone_tools')}</span>
-            <span aria-hidden>{phoneToolsOpen ? '▴' : '▾'}</span>
-          </button>
-        ) : null}
-        {/* Desk: these sit in the bar (display contents). Phone: folded under « Filtres et actions ». */}
-        <div style={{ display: narrow ? (phoneToolsOpen ? 'flex' : 'none') : 'contents', flexWrap: 'wrap', gap: 8, width: '100%' }}>
+        <div style={{ display: 'contents' }}>
         <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110, minHeight: narrow ? 44 : undefined }}>
           <option value="all">{t('searchFieldAll')}</option>
           <option value="name">{t('searchFieldName')}</option>
@@ -1053,7 +990,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           URL
         </button>
         </div>
-      </div>
+      </div>}
 
       {importing && (
         <ImportGoogleModal
@@ -1218,61 +1155,48 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           minWidth: 0,
         }}
       >
+        {narrow && !showEditor ? (
+          <ContactsPhoneList
+            rows={filtered.map((c) => {
+              const owned = workCounts.owner[c.ContactID]
+              const person = contactPersonListName(c)
+              const inst = (c.NomInstitution ?? '').trim()
+              return {
+                id: c.ContactID,
+                title: person && inst ? `${person} · ${inst}` : displayName(c),
+                sub: [(c.Role ?? '').trim(), (listVille(c.ContactID) ?? '').toString().trim(), owned && owned > 0 ? `${owned} ${t('contacts_col_works_abbr')}` : '']
+                  .filter((x) => x && x !== '—').join(' · '),
+                badge: [isAdmin && c.is_private ? t('contacts_private_chip') : '', conflicts.some((conf) => conf.public_contact_id === c.ContactID) ? t('contacts_conflict_badge') : ''].filter(Boolean).join(' · '),
+              }
+            })}
+            total={browsable.length}
+            search={q} onSearch={setQ}
+            searchBy={searchBy} onSearchBy={setSearchBy}
+            role={role} onRole={setRole}
+            roleList={browsable.map((c) => (c.Role ?? '').trim())}
+            sphere={sphere} onSphere={pickSphere} sphereOptions={sphereOptions} sphereCounts={sphereCounts}
+            archivedOnly={archivedOnly} onArchived={setArchivedOnly} archivedCount={archivedCount}
+            privateOnly={privateOnly} onPrivate={setPrivateOnly} privateCount={privateCount}
+            isAdmin={isAdmin} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+            onClear={() => { setQ(''); setSearchBy('all'); setRole('all'); pickSphere(''); setArchivedOnly(false); setPrivateOnly(false) }}
+            onOpen={requestSelectContact}
+            onNewFull={requestStartCreate}
+            onQuickAdd={(e) => void handleQuickAdd(e)} quickBusy={quickBusy}
+            onImportCsv={() => setImporting(true)} onImportUrl={() => setUrlModalOpen(true)}
+          />
+        ) : null}
+        {!narrow && (
         <div
-          className={narrow ? undefined : 'contacts-list-scroll'}
-          style={{
-            display: narrow && showPage ? 'none' : undefined,
-            flex: 1,
-            minWidth: 0,
-            // Phone: the page scrolls as one block; with the editor open the list keeps its own short scroll.
-            overflow: narrow && !showEditor ? 'visible' : 'auto',
-            borderRight: narrow ? 'none' : '1px solid var(--bd)',
-            borderBottom: narrow && showEditor ? '1px solid var(--bd)' : undefined,
-            maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,
-          }}
+          className="contacts-list-scroll"
+          style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}
         >
-          {narrow ? (
-            <div data-testid="contacts-phone-list">
-              {filtered.map((c) => {
-                const isFoc = c.ContactID === activeId && !isCreating
-                const inactive = extra[c.ContactID]?.Actif === false
-                const owned = workCounts.owner[c.ContactID]
-                const sub = [
-                  (c.Role ?? '').trim(),
-                  (listVille(c.ContactID) ?? '').toString().trim(),
-                  owned && owned > 0 ? `${owned} ${t('contacts_col_works_abbr')}` : '',
-                ].filter((x) => x && x !== '—')
-                const ell = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
-                return (
-                  <button
-                    key={c.ContactID}
-                    type="button"
-                    data-testid="contacts-phone-row"
-                    onClick={() => requestSelectContact(c.ContactID)}
-                    style={{
-                      display: 'block', width: '100%', textAlign: 'left', minHeight: 56,
-                      padding: '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))',
-                      border: 0, borderBottom: '1px solid var(--bd)',
-                      background: isFoc ? 'var(--bg2)' : 'transparent', color: 'var(--tx)',
-                      opacity: inactive ? 0.45 : 1, cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ fontSize: 14, fontWeight: isFoc ? 600 : 500, ...ell }}>{nameContent(c)}</div>
-                    {sub.length > 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2, ...ell }}>{sub.join(' · ')}</div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
           <table
             className="tbl"
             style={{
               width: '100%',
               tableLayout: 'fixed',
               /* Fixed sibling cols sum ~982px; without a floor the lone `auto` name col collapses + clips on mid-width panes */
-              minWidth: narrow ? Math.max(720, 982 + 180) : 982 + 180,
+              minWidth: 982 + 180,
             }}
           >
             <thead style={{ whiteSpace: 'nowrap' }}>
@@ -1341,8 +1265,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               })}
             </tbody>
           </table>
-          )}
         </div>
+        )}
 
         {showPage && editorContactResolved ? (
           <PersonPage

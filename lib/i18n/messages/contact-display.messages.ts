@@ -27,7 +27,10 @@ export const contactDisplayMessages = defineMessages({
     en: 'Show only private contacts',
   },
   // Phone (Pem 2026-11-27: « avoid clutter, offer collapsible and interactive presentation »).
-  contacts_phone_quick_open: { fr: '+ Ajout rapide', en: '+ Quick add' },
-  contacts_phone_tools: { fr: 'Filtres et actions', en: 'Filters and actions' },
-  contacts_phone_tools_active_fmt: { fr: 'Filtres et actions · {n} actif(s)', en: 'Filters and actions · {n} on' },
+  contacts_phone_count_fmt: { fr: '{n} contacts', en: '{n} contacts' },
+  contacts_phone_empty: { fr: 'Aucun contact', en: 'No contacts' },
+  contacts_phone_search_in: { fr: 'Chercher dans', en: 'Search in' },
+  contacts_phone_sphere: { fr: 'Sphère', en: 'Sphere' },
+  contacts_phone_other: { fr: 'Autres', en: 'Other' },
+  contacts_phone_sort: { fr: 'Trier par', en: 'Sort by' },
 })
