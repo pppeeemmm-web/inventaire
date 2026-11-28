@@ -71,7 +71,10 @@ function run(input) {
     if (branch !== 'main' && !(cloud && branch.startsWith('claude/'))) {
       block(`Push blocked: current branch is '${branch}', not 'main'. origin/main is release truth; a cloud session pushes only its own claude/… branch.`)
     }
-    if (git('status', '--porcelain')) block('Push blocked: working tree is dirty. Commit or explicitly leave local draft files before pushing.')
+    // `git commit … && git push` in one command: this runs before the commit, so the tree cannot be judged yet.
+    const pushAt = cmd.search(/(^|[;&|]\s*)git\s+push(\s|$)/)
+    const commitsFirst = /(^|[;&|]\s*)git\s+commit(\s|$)/.test(cmd.slice(0, pushAt))
+    if (!commitsFirst && git('status', '--porcelain')) block('Push blocked: working tree is dirty. Commit or explicitly leave local draft files before pushing.')
     process.exit(0)
   }
 
