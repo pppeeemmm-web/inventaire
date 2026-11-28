@@ -4,7 +4,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 ## 2026-11-28 (4)
 
-- Tidy on Pem's « delete all »: 11 source files nothing imported (old phone home `HubHomeClient`, old Exhibitions tab, `oeuvre-historique`, `LandingPdfPopup`, `DrawerContentSaveFooter`, `AsyncButton`, `BlockLayoutCell`, `assert-contact-email-synced`, `broadcast-queue-types`, `worksUx`, `drawer-content-utils`, ~1 650 lines) and the 4 `.ps1` hooks replaced by `guard.mjs` / `session-start.mjs`; the five checks pass without them. Branches `claude/eloquent-johnson-zlbeqx`, `claude/github-repo-fixes-liz9zp` (fully in main) deleted; the cloud session's 10 scratch worktrees removed.
+- Tidy on Pem's « delete all »: 11 source files nothing imported (old phone home `HubHomeClient`, old Exhibitions tab, `oeuvre-historique`, `LandingPdfPopup`, `DrawerContentSaveFooter`, `AsyncButton`, `BlockLayoutCell`, `assert-contact-email-synced`, `broadcast-queue-types`, `worksUx`, `drawer-content-utils`, ~1 650 lines) and the 4 `.ps1` hooks replaced by `guard.mjs` / `session-start.mjs`; the five checks pass without them. The cloud session's 10 scratch worktrees removed. The two old branches (`claude/eloquent-johnson-zlbeqx`, `claude/github-repo-fixes-liz9zp`, fully in main) could not be deleted from the cloud (its git access pushes only its own branch): Pem deletes them on GitHub.
 - Journal #53 « Test note » and #54 « @Natural Pigments EU tell test » (hidden test notes, 26/11) deleted on Pem's « delete 53 54 » (`journal_delete_53_54.sql`: the two guards off for that transaction only, link #100 and the two graph nodes with them); re-read live: 0 left, guards enabled, 62 entries.
 - `stock_photo_key_shape.sql` live (« Apply photo rule »).
 

@@ -80,7 +80,7 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   cloud (no access to the live host).
 - **Draft PR #15, not merged:** week-1 report, design notes' « now » lines, year pass (`/atelier/year-pass`), phone labels
   from a list, Journal #53 / #54 deleted (live), photo-key rule (live), TODO → DONE. Pem merges after a phone check.
-- **Waiting on Pem:** `clean labels` (5 old phone labels) · « better autofill » (which form?) · the two reminder calls
+- **Waiting on Pem:** delete the branches `claude/eloquent-johnson-zlbeqx` and `claude/github-repo-fixes-liz9zp` on GitHub (fully in main; the cloud cannot delete other branches) · `clean labels` (5 old phone labels) · « better autofill » (which form?) · the two reminder calls
   (return-period reminders on Idées; « Emportée aujourd'hui » by default) · R4 / R6 look at the desk · `GO measuring pass`.
 - **At the desk (Pem):** `npm run ai:agent` (Ollama « Dire »), `npm run test:e2e:field` (375 px guard: take Coffre,
   Contacts, Rapports, Fiscal out of PENDING), `npm run gen:types`.
