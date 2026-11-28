@@ -1,5 +1,5 @@
 -- Studio equipment — database part (docs/design/2026-11-28/Equipment.md step 2; Pem « Parallel 2-4 » 2026-11-28).
--- PROPOSAL until applied on Pem's own OK, after the throwaway test (equipment.test.sql).
+-- Applied on live 2026-11-28 on Pem's « apply equipment », after the throwaway test (equipment.test.sql, 13/13).
 --
 -- 1. stock_item: place_id (where it sits in the studio tree — place kinds studio / zone / furniture / container),
 --    condition (bon · a_reparer · hors_service · prete), acquired_on (+ precision: a year is enough — « c. 2015 »),
