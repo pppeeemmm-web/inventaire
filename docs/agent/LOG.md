@@ -4,6 +4,8 @@ One line per decision or authorised send: date · what · who decided · where i
 writing by Pem) also become a moment in the Hub. Nothing in this file authorises anything by itself.
 
 ## 2026-11-28
+- PR #14 merged on Pem's « Merge and go for all the rest » (`1f1f055`); then: design notes' « now » lines (`9bb461e`),
+  photo-key rule proved on the throwaway copy (`d5687a9`, not live), week-1 data-quality report (read only).
 - Pem on the PR #14 preview, phone (« All good », ~10:50 UTC): the floating ⚑ (`d963497`) and the phone builds of the
   day. Desk parts (⚑ window, Kaizen Approuver / Confirmer, recipe edit) not tried yet. Not merged.
 - Evening, Pem « Build feedback tool and other designs as well in parallel »: review window, Laboratoire step 3,

@@ -32,6 +32,9 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   [`Equipment.md`](../design/2026-11-28/Equipment.md); research copies in [`research/`](./research/).
 
 ## What the data say (keep, re-check monthly)
+- **Week-1 report (28/11):** [`reports/2026-11-28_system-overview.md`](./reports/2026-11-28_system-overview.md) — drawings mostly
+  have no year (Crayons 211 / 251, Graphite 61 / 62); 2025–2026 works mostly have no dimensions (148 / 154, 139 / 206);
+  575 works no theme. Proposed: a phone « year pass » then a « measuring pass » (Pem's GO).
 - Catalogue ≈ 1 180 works; ≈ 70 % on paper (Crayons 251, Graphite 62, Pierre noire 49, Encre noire 75, Pastel 41…),
   Huile 333 — lead with drawing, then oil.
 - Contacts: few art-world cards (4 galleries / gallerists, 5 institutions, 1 collector, 1 adviser).
@@ -84,9 +87,10 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
   no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
   n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
-- **Floating ⚑ on every phone screen** (`d963497`, Pem « Go »): bottom right, over the screen in use. **Pem tried the
-  preview on the phone: « All good » (28/11).** Next: Pem's desk check (⚑ window, Approuver / Confirmer, recipe edit) or
-  Pem merges PR #14 as it is; then batch C (data-quality report) and the design-note status lines.
+- **PR #14 merged at Pem's « Merge »** (`1f1f055`, pushed to origin/main; deploy not proven from the cloud — no
+  access to the live host). Pem tried the phone side (« All good »); desk parts (⚑ window, Approuver / Confirmer,
+  recipe edit) not yet tried. Next: the photo-key rule live (`stock_photo_key_shape.sql`, proved, waits for OK);
+  Pem's GO on the report's two passes.
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
   unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
   …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
