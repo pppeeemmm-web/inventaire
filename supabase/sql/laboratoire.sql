@@ -1,5 +1,5 @@
 -- Laboratoire — database part (docs/design/2026-11-28/Laboratoire.md, build step 2; Pem « GO lab build » 2026-11-28).
--- PROPOSAL until applied on Pem's own OK, after the throwaway test (laboratoire.test.sql).
+-- Applied on live 2026-11-28 on Pem's « apply lab », after the throwaway test (laboratoire.test.sql, 14/14).
 --
 -- 1. concept: lab_role (champ · chapitre · but · conjecture · regle · recette · matiere · terme), position (order in a
 --    chapter), lab_version (a recipe's version number). An idea with no lab_role is an ordinary idea.
