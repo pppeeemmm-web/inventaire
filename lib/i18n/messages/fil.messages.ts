@@ -74,6 +74,10 @@ export const filMessages = defineMessages({
   fil_c_archived: { fr: 'Contact archivé', en: 'Contact archived' },
   fil_c_recalled: { fr: 'Contact rappelé', en: 'Contact recalled' },
   fil_c_lists: { fr: 'listes : {lists}', en: 'lists: {lists}' },
+  fil_c_revert_stale: {
+    fr: 'Pas annulé : « {field} » a encore changé depuis ce changement. Ouvrez la fiche et corrigez à la main.',
+    en: 'Not undone: « {field} » changed again since. Open the card and correct it by hand.',
+  },
   fil_c_revert_lists_note: {
     fr: 'Champs rétablis ; les listes (e-mails, téléphones…) ne se rétablissent pas.',
     en: 'Fields reverted; lists (emails, phones…) cannot be reverted.',

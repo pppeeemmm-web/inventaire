@@ -496,7 +496,13 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       })
     }
 
+    // A private card is the admin's (the contact door answers « not found » to anyone else): say so, don't send.
+    const lockedPrivate = !isNew && !isAdminUser && !!contact?.is_private
     const handleSave = useCallback(async (): Promise<boolean> => {
+      if (lockedPrivate) {
+        setErr(t('contact_private_admin_only'))
+        return false
+      }
       setBusy(true)
       setErr(null)
       if (relationsPendingRef.current) {
@@ -655,6 +661,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       emailList,
       form,
       isAdminUser,
+      lockedPrivate,
       isNew,
       onCreated,
       onUpdated,
@@ -1521,7 +1528,8 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy} style={{ minHeight: 44 }}>
               {t('cancel')}
             </button>
-            <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy} style={{ minHeight: 44 }}>
+            {lockedPrivate ? <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--tx3)', flex: '1 1 100%' }}>{t('contact_private_admin_only')}</span> : null}
+            <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy || lockedPrivate} style={{ minHeight: 44 }}>
               {busy ? '…' : isNew ? t('contactEditorCreate') : t('save')}
             </button>
           </div>

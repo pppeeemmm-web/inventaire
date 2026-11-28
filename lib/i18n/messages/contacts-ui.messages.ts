@@ -109,6 +109,10 @@ export const contactsUiMessages = defineMessages({
     fr: 'Rien n’a été enregistré : cette fiche a été modifiée ailleurs entre-temps. Rouvrez-la pour voir la version actuelle, puis refaites votre changement.',
     en: 'Nothing was saved: this contact was changed elsewhere meanwhile. Reopen it to see the current version, then make your change again.',
   },
+  contact_private_admin_only: {
+    fr: 'Fiche privée : seul un administrateur peut la modifier.',
+    en: 'Private card: only an admin can change it.',
+  },
   contact_save_not_found: {
     fr: 'Rien n’a été enregistré : cette fiche n’existe plus (supprimée ou fusionnée).',
     en: 'Nothing was saved: this contact no longer exists (deleted or merged).',
