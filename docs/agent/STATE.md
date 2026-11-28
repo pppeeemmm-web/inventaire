@@ -84,6 +84,9 @@ Last updated: 2026-11-28 evening (cloud session, Pem in Madrid).
   (`.claude/hooks/guard.mjs`). Flow review fixes in `2294d16`. **Not built:** QR labels for places (no place has a code,
   no zones / shelves yet; needs SQL for codes + a place page) · Système phone (its selects are form fields) · « Ce qui
   n'a pas marché » in the book (no data state). **Waiting on Pem:** SQL so `save_stock_item` holds the photo_key shape (TODO).
+- **Floating ⚑ on every phone screen** (`d963497`, Pem « Go »): bottom right, over the screen in use. **Pem tried the
+  preview on the phone: « All good » (28/11).** Next: Pem's desk check (⚑ window, Approuver / Confirmer, recipe edit) or
+  Pem merges PR #14 as it is; then batch C (data-quality report) and the design-note status lines.
 - **Done on Pem's « go » (28/11):** session start in Node (`.claude/hooks/session-start.mjs`: lists every
   unmerged `origin` branch and the docs it touches); SQL guard allows catalog reads (`pg_get_expr`, `has_*_privilege`
   …); read-only Supabase tools allowed in `.claude/settings.json`; project id in `supabase/CLAUDE.md`. **Still true:**
