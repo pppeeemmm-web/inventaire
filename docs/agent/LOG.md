@@ -35,6 +35,9 @@ writing by Pem) also become a moment in the Hub. Nothing in this file authorises
   Kaizen item read at session start; switch Bug → Kaizen « App » / Idée → today's Journal; loop open → to verify →
   confirmed; the team can report but everything waits for Pem's OK → `docs/design/2026-11-28/ReviewTool.md` (+ mockup).
   Build waits for Pem's GO on step 1 (SQL).
+- SQL prompt fix **not proven** (later session): the first read was still refused (`permission-rule`, no
+  `mcpServerPolicy`); the hook never ran — the connector loaded as `mcp__45c2b1ae…`, which its matcher misses.
+  Pem stopped the session to restart fresh; nothing else changed → `STATE.md` (`393dd97`).
 
 ## 2026-11-27
 - PR #10 merged (`34656a2`) on Pem's « All good for me to merge »: phone menu (Pipeline, Ventes), « Tous les champs » ↔ « ← Formulaire court », SQL hook fix. Notes #53 / #54: delete refused by the database (« journal_no_delete », the Journal keeps everything); they stay hidden — Pem to choose a « masqués » toggle or nothing.
